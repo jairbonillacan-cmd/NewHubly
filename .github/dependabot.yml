@@ -1,0 +1,34 @@
+version: 2
+
+# Dependabot abre PRs; no fusiona. Cada actualización pasa por el mismo CI y
+# por revisión cruzada, como cualquier otro cambio. Las de riesgo alto
+# (dependencias nuevas o cambios de major) van a Vega.
+
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      produccion-menor:
+        dependency-type: production
+        update-types: [minor, patch]
+      desarrollo-menor:
+        dependency-type: development
+        update-types: [minor, patch]
+    labels:
+      - dependencias
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      acciones:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    labels:
+      - dependencias
+      - ci
