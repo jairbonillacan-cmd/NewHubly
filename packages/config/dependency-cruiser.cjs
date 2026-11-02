@@ -43,7 +43,9 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: "node_modules" },
-    exclude: { path: "(^|/)(node_modules|\.next|\.turbo)/" },
+    // next-env.d.ts lo genera `next typegen` (typecheck/build), está en .gitignore y referencia
+    // next/image-types/global, que no es resoluble; sin excluirlo daría un falso error.
+    exclude: { path: ["(^|/)(node_modules|\\.next|\\.turbo)/", "(^|/)next-env\\.d\\.ts$"] },
     tsPreCompilationDeps: true,
     combinedDependencies: true,
     enhancedResolveOptions: {
