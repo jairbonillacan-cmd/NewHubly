@@ -1,0 +1,12 @@
+{
+  "name": "@hubly/config",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint": "./eslint.config.mjs"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

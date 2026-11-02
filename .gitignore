@@ -12,3 +12,5 @@ storybook-static/
 .DS_Store
 Thumbs.db
 *.log
+next-env.d.ts
+*.tsbuildinfo
