@@ -36,7 +36,7 @@ module.exports = {
       severity: "error",
       comment: "Entre paquetes solo se importa el punto de entrada declarado en exports (ADR 0002).",
       from: { path: "^(apps|packages)/([^/]+)/" },
-      to: { path: `${PKG}[^/]+/src/(?!index\.ts$)`, pathNot: "^$1/$2/" },
+      to: { path: `${PKG}[^/]+/src/(?!(index\\.ts|tokens\\.css)$)`, pathNot: "^$1/$2/" },
     },
     { name: "sin-ciclos", severity: "error", from: {}, to: { circular: true } },
     { name: "sin-irresolubles", severity: "error", from: {}, to: { couldNotResolve: true } },
