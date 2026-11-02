@@ -1,0 +1,135 @@
+/* Tokens semánticos base de Hubly (Fase 0 / 1A) — única fuente permitida de colores y medidas (Constitución #6).
+   Contraste WCAG 2.2 AA: >= 4.5:1 en texto normal y >= 3:1 en bordes de controles (--border-control, --border-strong) y foco (--focus-ring-color).
+   --border-subtle y --border-default son para divisores y contenedores decorativos, no para delimitar inputs/controles. */
+:root {
+  color-scheme: light;
+  --surface-canvas: #faf9f6;
+  --surface-raised: #ffffff;
+  --surface-subtle: #f2efe9;
+  --surface-interactive: #eae6de;
+  --text-primary: #181816;
+  --text-secondary: #4a4944;
+  --text-muted: #66645e;
+  --text-on-accent: #ffffff;
+  --border-subtle: #e2ddd4;
+  --border-default: #c7c1b6;
+  --border-control: #878176;
+  --border-strong: #878176;
+  --accent-primary: #1f4f46;
+  --accent-primary-hover: #173d36;
+  --status-success-bg: #eaf4ee;
+  --status-success-text: #165632;
+  --status-warning-bg: #fbf2e1;
+  --status-warning-text: #6e4506;
+  --status-danger-bg: #fbeae8;
+  --status-danger-text: #8c1d18;
+  --focus-ring-color: #1f4f46;
+  --focus-ring-width: 0.125rem;
+  --focus-ring-offset: 0.125rem;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --space-0: 0rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --border-width-thin: 0.0625rem;
+  --container-reading: 44rem;
+  --container-workspace: 72rem;
+  --measure-viewport-height: 100dvh;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-canvas: #121312;
+    --surface-raised: #1a1c1a;
+    --surface-subtle: #222522;
+    --surface-interactive: #2c302c;
+    --text-primary: #f2f0ea;
+    --text-secondary: #c2bfb6;
+    --text-muted: #98948a;
+    --text-on-accent: #121312;
+    --border-subtle: #2a2d2a;
+    --border-default: #3d423d;
+    --border-control: #6e746e;
+    --border-strong: #6e746e;
+    --accent-primary: #6ec4b3;
+    --accent-primary-hover: #8bd2c4;
+    --status-success-bg: #132a1e;
+    --status-success-text: #8ce0ad;
+    --status-warning-bg: #2d210c;
+    --status-warning-text: #f3c677;
+    --status-danger-bg: #321615;
+    --status-danger-text: #f99b96;
+    --focus-ring-color: #6ec4b3;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-canvas: #121312;
+  --surface-raised: #1a1c1a;
+  --surface-subtle: #222522;
+  --surface-interactive: #2c302c;
+  --text-primary: #f2f0ea;
+  --text-secondary: #c2bfb6;
+  --text-muted: #98948a;
+  --text-on-accent: #121312;
+  --border-subtle: #2a2d2a;
+  --border-default: #3d423d;
+  --border-control: #6e746e;
+  --border-strong: #6e746e;
+  --accent-primary: #6ec4b3;
+  --accent-primary-hover: #8bd2c4;
+  --status-success-bg: #132a1e;
+  --status-success-text: #8ce0ad;
+  --status-warning-bg: #2d210c;
+  --status-warning-text: #f3c677;
+  --status-danger-bg: #321615;
+  --status-danger-text: #f99b96;
+  --focus-ring-color: #6ec4b3;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: var(--space-0);
+  padding: var(--space-0);
+  background-color: var(--surface-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}

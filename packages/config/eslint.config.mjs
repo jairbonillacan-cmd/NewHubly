@@ -58,4 +58,22 @@ export default defineConfig(
       ],
     },
   },
+  {
+    files: ["apps/web/**/*.{ts,tsx}", "packages/ui/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "Literal[value=/(#[0-9a-fA-F]{3,8}\\b|\\b(rgb|rgba|hsl|hsla|oklch|lab|lch)\\(|\\b[0-9]+(\\.[0-9]+)?(px|rem|em|vh|vw|vmin|vmax|dvh|svh|lvh|dvw|svw|lvw|ch)\\b)/]",
+          message: "Usa tokens semánticos de @hubly/ui; se prohíben colores y medidas sueltas (Constitución #6).",
+        },
+        {
+          selector:
+            "TemplateElement[value.raw=/(#[0-9a-fA-F]{3,8}\\b|\\b(rgb|rgba|hsl|hsla|oklch|lab|lch)\\(|\\b[0-9]+(\\.[0-9]+)?(px|rem|em|vh|vw|vmin|vmax|dvh|svh|lvh|dvw|svw|lvw|ch)\\b)/]",
+          message: "Usa tokens semánticos de @hubly/ui; se prohíben colores y medidas sueltas (Constitución #6).",
+        },
+      ],
+    },
+  },
 );
