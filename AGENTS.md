@@ -7,7 +7,7 @@ Lee antes de cada tarea: [docs/CONSTITUCION.md](docs/CONSTITUCION.md) y la fase 
 - El repo y sus issues son la fuente de verdad. El chat no lo es.
 - Una rama y un PR por issue: `tipo/numero-descripcion`. Máximo unas 400 líneas. Nunca hagas push a `main`.
 - Riesgo alto: auth, RLS, migraciones, pagos, tokens, webhooks, CI y dependencias nuevas. Requiere aprobación de Vega.
-- Quien revisa usa un proveedor distinto al que usó quien escribió.
+- Quien revisa usa un proveedor distinto al que usó quien escribió. *Excepción autorizada por el dueño ([ADR 0005](docs/adr/0005-modelo-unico-gemini-argon.md)):* todo el equipo opera exclusivamente con Gemini 4 Argon High; la revisión independiente la realiza un subagente nuevo en un clon limpio sin el razonamiento del autor, incluyendo en el veredicto la línea: `Modelo: Gemini 4 Argon. Revisión del mismo proveedor por excepción del dueño`.
 - Los cambios visuales requieren además aprobación de Prisma.
 - Puerto de desarrollo: `3100` o el que asigne Atlas. Nunca `3000`.
 - Interfaz, documentación y commits en español. Identificadores de código en inglés.
