@@ -51,9 +51,11 @@ Al cerrar cada fase, Atlas publica un resumen y el equipo espera la aceptación 
 
 ## Fase 0: mantenerla mínima
 
-Incluye solo lo que Notas y pendientes requiere. Los ADR iniciales son monorepo, fronteras, multi-tenancy y RLS.
+Incluye solo lo que Notas y pendientes requiere. Los ADR iniciales son monorepo, fronteras, multi-tenancy y RLS (más ADR 0005 de excepción de modelo).
+Estado actual documentado en [docs/ESTADO.md](ESTADO.md) y en el Issue #19: monorepo, tokens semánticos (#5), contrato UX 1A y pruebas negativas CI (#6) completados; pendiente despliegue en Vercel para cierre formal de fase.
 
 Cuando exista el CI, Atlas pide al dueño del producto que marque sus chequeos como obligatorios en `main`; los agentes no tienen permisos de administración.
+
 
 ## Fase 1A: Notas y pendientes
 
