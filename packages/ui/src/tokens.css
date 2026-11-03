@@ -1,6 +1,11 @@
-/* Tokens semánticos base de Hubly (Fase 0 / 1A) — única fuente permitida de colores y medidas (Constitución #6).
+/* Tokens semánticos base de Hubly (Fase 0 / 1A / 1B) — única fuente permitida de colores y medidas (Constitución #6).
    Contraste WCAG 2.2 AA: >= 4.5:1 en texto normal y >= 3:1 en bordes de controles (--border-control, --border-strong) y foco (--focus-ring-color).
    --border-subtle y --border-default son para divisores y contenedores decorativos, no para delimitar inputs/controles. */
+@import "tailwindcss";
+@import "@heroui/styles";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+@source "../../../apps/web/src/**/*.{ts,tsx}";
+
 :root {
   color-scheme: light;
   --surface-canvas: #faf9f6;
@@ -147,6 +152,45 @@
   --glass-hero-veil: linear-gradient(180deg, rgba(16, 8, 6, 0.82) 0%, rgba(28, 12, 9, 0.86) 60%, rgba(10, 4, 3, 0.95) 100%);
   --pill-active-bg: #f7f4ee; --pill-active-text: #181514;
   --pill-glass-bg: rgba(255, 255, 255, 0.12); --pill-glass-border: rgba(255, 255, 255, 0.22); --pill-glass-text: #f7f4ee;
+}
+
+/* Derivación del tema de HeroUI v3 OSS desde tokens semánticos de @hubly/ui (ADR 0006 / Constitución #6).
+   Sincroniza modo claro, preferencia del sistema y selector canónico [data-theme="dark"] sin valores sueltos. */
+:root,
+.light,
+.default,
+[data-theme="light"],
+[data-theme="default"],
+.dark,
+[data-theme="dark"] {
+  --background: var(--surface-canvas); --background-secondary: var(--surface-subtle); --background-tertiary: var(--surface-interactive);
+  --background-inverse: var(--text-primary); --foreground: var(--text-primary);
+  --surface: var(--surface-raised); --surface-foreground: var(--text-primary); --surface-hover: var(--surface-interactive);
+  --surface-secondary: var(--surface-subtle); --surface-secondary-foreground: var(--text-primary);
+  --surface-tertiary: var(--surface-interactive); --surface-tertiary-foreground: var(--text-primary); --surface-shadow: var(--bento-card-shadow);
+  --overlay: var(--glass-fallback-bg); --overlay-glass: var(--glass-bg); --overlay-border: var(--glass-border);
+  --overlay-foreground: var(--glass-text-primary); --overlay-shadow: var(--glass-shadow); --backdrop: var(--glass-hero-veil);
+  --muted: var(--text-muted); --link: var(--accent-primary);
+  --default: var(--surface-subtle); --default-foreground: var(--text-primary); --default-hover: var(--surface-interactive);
+  --default-soft: var(--surface-subtle); --default-soft-foreground: var(--text-secondary); --default-soft-hover: var(--surface-interactive);
+  --accent: var(--accent-primary); --accent-foreground: var(--text-on-accent); --accent-hover: var(--accent-primary-hover);
+  --accent-soft: var(--accent-warm-subtle); --accent-soft-foreground: var(--accent-warm-text); --accent-soft-hover: var(--surface-interactive);
+  --brand: var(--surface-brand); --brand-subtle: var(--surface-brand-subtle); --brand-foreground: var(--surface-brand-contrast); --brand-muted: var(--surface-brand-muted);
+  --success: var(--status-success-text); --success-foreground: var(--surface-raised); --success-hover: var(--status-success-text);
+  --success-soft: var(--status-success-bg); --success-soft-foreground: var(--status-success-text); --success-soft-hover: var(--status-success-bg);
+  --warning: var(--status-warning-text); --warning-foreground: var(--surface-raised); --warning-hover: var(--status-warning-text);
+  --warning-soft: var(--status-warning-bg); --warning-soft-foreground: var(--status-warning-text); --warning-soft-hover: var(--status-warning-bg);
+  --danger: var(--status-danger-text); --danger-foreground: var(--surface-raised); --danger-hover: var(--status-danger-text);
+  --danger-soft: var(--status-danger-bg); --danger-soft-foreground: var(--status-danger-text); --danger-soft-hover: var(--status-danger-bg);
+  --segment: var(--pill-active-bg); --segment-foreground: var(--pill-active-text);
+  --border: var(--border-default); --border-secondary: var(--border-control); --border-tertiary: var(--border-strong);
+  --separator: var(--border-subtle); --separator-secondary: var(--border-default); --separator-tertiary: var(--border-control);
+  --focus: var(--focus-ring-color); --border-width: var(--border-width-thin); --ring-offset-width: var(--focus-ring-offset);
+  --field-background: var(--surface-raised); --field-foreground: var(--text-primary); --field-placeholder: var(--text-muted);
+  --field-hover: var(--surface-subtle); --field-focus: var(--surface-raised); --field-border: var(--border-control);
+  --field-border-hover: var(--border-strong); --field-border-focus: var(--focus-ring-color);
+  --field-border-width: var(--border-width-thin); --field-radius: var(--radius-md); --field-shadow: var(--bento-card-shadow);
+  --radius: var(--radius-lg); --spacing: var(--space-1); --font-family-sans: var(--font-sans); --font-family-mono: var(--font-mono);
 }
 
 *,
