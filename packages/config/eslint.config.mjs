@@ -78,9 +78,40 @@ export default defineConfig(
   },
   {
     files: ["**/*.{ts,tsx}"],
-    ignores: ["packages/db/src/{client,context,internal}.ts", "apps/web/src/server/composition/**", "**/*.test.ts"],
+    ignores: ["packages/ui/**"],
     rules: {
-      "no-restricted-imports": ["error", { paths: [{ name: "@hubly/db/internal", message: "@hubly/db/internal solo se permite en context/internal, pruebas (*.test.ts) y raíz de composición." }] }],
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@heroui/*", "@heroui"],
+              message: "@heroui/* solo puede importarse dentro de packages/ui (ADR 0006). apps/web consume exclusivamente @hubly/ui.",
+            },
+            {
+              group: ["@heroui-pro/*", "@heroui-pro", "@heroui/pro/*", "@heroui/pro"],
+              message: "HeroUI Pro está estrictamente prohibido. Solo se permite HeroUI v3 OSS bajo Apache-2.0 (Constitución #4, ADR 0006).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["packages/ui/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@heroui-pro/*", "@heroui-pro", "@heroui/pro/*", "@heroui/pro"],
+              message: "HeroUI Pro está estrictamente prohibido. Solo se permite HeroUI v3 OSS bajo Apache-2.0 (Constitución #4, ADR 0006).",
+            },
+          ],
+        },
+      ],
     },
   },
 );
+

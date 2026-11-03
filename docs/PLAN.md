@@ -12,7 +12,7 @@
 | Publicación | Adaptadores propios por red; primero Meta |
 | Pagos | Stripe |
 | IA | Puerto `ai`; Anthropic como primer proveedor |
-| UI | Tokens propios, Tailwind 4, Radix Primitives, Storybook |
+| UI | Tokens propios, Tailwind 4, HeroUI v3 OSS, React Aria, Storybook |
 | Pruebas | Vitest, Playwright, axe, regresión visual, RLS contra Supabase local en Docker |
 | Observabilidad | Sentry, OpenTelemetry, PostHog |
 | Seguridad en CI | CodeQL, gitleaks, Dependabot, `pnpm audit` |
@@ -74,4 +74,5 @@ Las cuentas de Supabase y Vercel las crea el dueño del producto. Los secretos v
 
 ## Fase 1B: dirección visual
 
-Lienzo presenta dos o tres direcciones como páginas reales. El dueño del producto elige una.
+Lienzo presenta dos o tres direcciones como páginas reales. El dueño del producto elige una. Se adopta HeroUI v3 OSS (`@heroui/react` y `@heroui/styles` sobre React Aria y Tailwind 4, [ADR 0006](adr/0006-componentes-heroui-v3-oss.md)) para los componentes base de `packages/ui`, con recreación propia sobre React Aria de los componentes ausentes en la versión gratuita y prohibición de HeroUI Pro.
+

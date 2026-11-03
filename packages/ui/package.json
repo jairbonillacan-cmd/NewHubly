@@ -11,6 +11,11 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@hubly/config": "workspace:*"
+    "@hubly/config": "workspace:*",
+    "@types/react": "19.3.0",
+    "react": "19.3.1"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0"
   }
 }
