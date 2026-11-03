@@ -3,18 +3,26 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-const DEFAULT_URL = process.env.DATABASE_URL || "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
-let clientInstance: ReturnType<typeof postgres> | null = null;
-let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
+export type DbClient = ReturnType<typeof drizzle<typeof schema>>;
 
-export function getDb(url: string = DEFAULT_URL) {
+export function resolveDatabaseUrl(url?: string): string {
+  if (url) return url;
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  if (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development") {
+    return "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+  }
+  throw new Error("DATABASE_URL no está definida. Configure DATABASE_URL en el entorno.");
+}
+
+let clientInstance: ReturnType<typeof postgres> | null = null, dbInstance: DbClient | null = null;
+
+export function getDb(url?: string): DbClient {
   if (!dbInstance) {
-    clientInstance = postgres(url, { prepare: false }); // ADR 0004: pooler en modo transacción
+    clientInstance = postgres(resolveDatabaseUrl(url), { prepare: false });
     dbInstance = drizzle(clientInstance, { schema });
   }
   return dbInstance;
 }
-
-export function createDbClient(url: string = DEFAULT_URL) {
-  return drizzle(postgres(url, { prepare: false }), { schema });
+export function createDbClient(url?: string): DbClient {
+  return drizzle(postgres(resolveDatabaseUrl(url), { prepare: false }), { schema });
 }

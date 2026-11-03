@@ -2,21 +2,17 @@ create schema if not exists private;
 revoke usage on schema private from public, anon;
 grant usage on schema private to authenticated;
 alter default privileges in schema private revoke execute on functions from public, anon;
-alter default privileges in schema public revoke all on tables from anon;
-alter default privileges in schema public revoke all on functions from anon;
-alter default privileges in schema public revoke all on sequences from anon;
+alter default privileges in schema public revoke all on tables, functions, sequences from anon;
 
 create table if not exists public.workspaces (
   id uuid primary key default gen_random_uuid(), name text not null, slug text not null unique,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
-
 create table if not exists public.workspace_members (
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   user_id uuid not null, role text not null default 'owner',
   created_at timestamptz not null default now(), primary key (workspace_id, user_id)
 );
-
 create table if not exists public.notes (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -25,7 +21,6 @@ create table if not exists public.notes (
   created_at timestamptz not null default now(), updated_at timestamptz not null default now(), unique (workspace_id, id)
 );
 create index if not exists notes_workspace_created_archived_idx on public.notes (workspace_id, created_by, is_archived);
-
 create table if not exists public.todos (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -80,12 +75,6 @@ create policy notes_insert on public.notes for insert to authenticated with chec
 create policy notes_update on public.notes for update to authenticated using (created_by = (select auth.uid()) and private.is_workspace_member(workspace_id)) with check (created_by = (select auth.uid()) and private.is_workspace_member(workspace_id));
 create policy notes_delete on public.notes for delete to authenticated using (created_by = (select auth.uid()) and private.is_workspace_member(workspace_id));
 create policy todos_select on public.todos for select to authenticated using (created_by = (select auth.uid()) and private.is_workspace_member(workspace_id));
-create policy todos_insert on public.todos for insert to authenticated with check (
-  created_by = (select auth.uid()) and private.is_workspace_member(workspace_id)
-  and (note_id is null or exists (select 1 from public.notes n where n.id = note_id and n.workspace_id = todos.workspace_id and n.created_by = (select auth.uid())))
-);
-create policy todos_update on public.todos for update to authenticated using (created_by = (select auth.uid()) and private.is_workspace_member(workspace_id)) with check (
-  created_by = (select auth.uid()) and private.is_workspace_member(workspace_id)
-  and (note_id is null or exists (select 1 from public.notes n where n.id = note_id and n.workspace_id = todos.workspace_id and n.created_by = (select auth.uid())))
-);
+create policy todos_insert on public.todos for insert to authenticated with check (created_by = (select auth.uid()) and private.is_workspace_member(workspace_id) and (note_id is null or exists (select 1 from public.notes n where n.id = note_id and n.workspace_id = todos.workspace_id and n.created_by = (select auth.uid()))));
+create policy todos_update on public.todos for update to authenticated using (created_by = (select auth.uid()) and private.is_workspace_member(workspace_id)) with check (created_by = (select auth.uid()) and private.is_workspace_member(workspace_id) and (note_id is null or exists (select 1 from public.notes n where n.id = note_id and n.workspace_id = todos.workspace_id and n.created_by = (select auth.uid()))));
 create policy todos_delete on public.todos for delete to authenticated using (created_by = (select auth.uid()) and private.is_workspace_member(workspace_id));
