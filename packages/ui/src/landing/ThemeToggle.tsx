@@ -31,26 +31,14 @@ export function ThemeToggle() {
       aria-label={`Cambiar a modo ${theme === "light" ? "oscuro" : "claro"}`}
       title={`Modo actual: ${theme === "light" ? "Claro" : "Oscuro"}. Clic para alternar.`}
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: tokens.space[1],
-        paddingBlock: tokens.space[2],
-        paddingInline: tokens.space[3],
-        backgroundColor: tokens.pill.glassBg,
-        color: tokens.pill.glassText,
-        border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`,
-        borderRadius: tokens.radius.full,
-        fontSize: tokens.font.size.xs,
-        fontWeight: tokens.font.weight.medium,
-        cursor: "pointer",
-        backdropFilter: `blur(${tokens.glass.blurMobile})`,
-        WebkitBackdropFilter: `blur(${tokens.glass.blurMobile})`,
+        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: tokens.space[1],
+        paddingBlock: tokens.space[2], paddingInline: tokens.space[3], backgroundColor: tokens.pill.glassBg,
+        color: tokens.pill.glassText, border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`,
+        borderRadius: tokens.radius.full, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.medium,
+        cursor: "pointer", backdropFilter: `blur(${tokens.glass.blurMobile})`, WebkitBackdropFilter: `blur(${tokens.glass.blurMobile})`,
       }}
     >
-      <span aria-hidden="true" style={{ fontSize: tokens.font.size.sm }}>
-        {theme === "light" ? "☾" : "☼"}
-      </span>
+      <span aria-hidden="true" style={{ fontSize: tokens.font.size.sm }}>{theme === "light" ? "☾" : "☼"}</span>
       <span>{theme === "light" ? "Oscuro" : "Claro"}</span>
     </button>
   );

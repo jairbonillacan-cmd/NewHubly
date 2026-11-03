@@ -23,17 +23,11 @@ export function LineGraphicCycle({ activeStageIndex = 3, compact = false }: Line
       className="hubly-lifecycle-container"
     >
       <div className="hubly-lifecycle-track">
-        {/* Línea conectora base */}
         <div
           aria-hidden="true"
           style={{
-            position: "absolute",
-            top: tokens.space[3],
-            left: tokens.space[4],
-            right: tokens.space[4],
-            height: tokens.border.thin,
-            backgroundColor: tokens.color.borderControl,
-            zIndex: 0,
+            position: "absolute", top: tokens.space[3], left: tokens.space[4], right: tokens.space[4],
+            height: tokens.border.thin, backgroundColor: tokens.color.borderControl, zIndex: 0,
           }}
         />
 
@@ -45,71 +39,37 @@ export function LineGraphicCycle({ activeStageIndex = 3, compact = false }: Line
             <div
               key={stage.id}
               style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                textAlign: "center",
-                position: "relative",
-                zIndex: 1,
-                gap: tokens.space[2],
-                minWidth: tokens.space[0],
+                display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center",
+                position: "relative", zIndex: 1, gap: tokens.space[2], minWidth: tokens.space[0],
               }}
             >
-              {/* Nodo indicador con línea fina */}
               <div
                 style={{
-                  width: tokens.space[6],
-                  height: tokens.space[6],
-                  borderRadius: tokens.radius.full,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: isActive
-                    ? tokens.color.accentWarm
-                    : isPassed
-                      ? tokens.color.textPrimary
-                      : tokens.bento.cardBg,
-                  border: `${tokens.border.thin} solid ${
-                    isActive
-                      ? tokens.color.accentWarm
-                      : isPassed
-                        ? tokens.color.textPrimary
-                        : tokens.color.borderControl
-                  }`,
+                  width: tokens.space[6], height: tokens.space[6], borderRadius: tokens.radius.full,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  backgroundColor: isActive ? tokens.color.accentWarm : isPassed ? tokens.color.textPrimary : tokens.bento.cardBg,
+                  border: `${tokens.border.thin} solid ${isActive ? tokens.color.accentWarm : isPassed ? tokens.color.textPrimary : tokens.color.borderControl}`,
                   color: isActive || isPassed ? tokens.color.textOnAccent : tokens.color.textMuted,
-                  fontSize: tokens.font.size.xs,
-                  fontWeight: tokens.font.weight.semibold,
+                  fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold,
                   boxShadow: isActive ? `0 0 0 ${tokens.space[1]} ${tokens.color.accentWarmSubtle}` : "none",
-                  transition: "transform 0.2s ease",
                 }}
               >
                 {isPassed ? "✓" : idx + 1}
               </div>
 
-              {/* Etiqueta de la etapa */}
               <div style={{ display: "flex", flexDirection: "column", gap: tokens.space[0] }}>
                 <span
                   style={{
                     fontSize: compact ? tokens.font.size.xs : tokens.font.size.sm,
                     fontWeight: isActive ? tokens.font.weight.bold : tokens.font.weight.medium,
-                    color: isActive
-                      ? tokens.color.accentWarmText
-                      : isPassed
-                        ? tokens.color.textPrimary
-                        : tokens.color.textMuted,
+                    color: isActive ? tokens.color.accentWarmText : isPassed ? tokens.color.textPrimary : tokens.color.textMuted,
                     lineHeight: tokens.font.leading.tight,
                   }}
                 >
                   {stage.name}
                 </span>
                 {!compact && (
-                  <span
-                    style={{
-                      fontSize: tokens.font.size.xs,
-                      color: tokens.color.textMuted,
-                      display: "none",
-                    }}
-                  >
+                  <span style={{ fontSize: tokens.font.size.xs, color: tokens.color.textMuted, display: "none" }}>
                     {stage.description}
                   </span>
                 )}

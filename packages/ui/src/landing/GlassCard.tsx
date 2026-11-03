@@ -31,12 +31,7 @@ export function GlassCard({
   };
 
   return (
-    <Component
-      className={`glass-panel ${className}`.trim()}
-      style={baseStyle}
-      aria-label={ariaLabel}
-      aria-labelledby={ariaLabelledby}
-    >
+    <Component className={`glass-panel ${className}`.trim()} style={baseStyle} aria-label={ariaLabel} aria-labelledby={ariaLabelledby}>
       {children}
     </Component>
   );
