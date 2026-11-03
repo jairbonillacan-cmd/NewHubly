@@ -5,3 +5,10 @@ export { tokens, type DesignTokens } from "./tokens";
 export * from "./landing/GlassCard";
 export * from "./landing/LineGraphicCycle";
 export * from "./landing/ThemeToggle";
+
+// Componentes de Notas y Pendientes de Fase 1A (Issue #26)
+export * from "./components/notes/NoteEditorCard";
+export * from "./components/todos/QuickCaptureBar";
+export * from "./components/todos/TodoItemCard";
+export * from "./components/workspace/ViewSelector";
+export * from "./components/workspace/WorkspaceEmptyState";
