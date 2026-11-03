@@ -27,11 +27,33 @@ export const isUpcoming = (t: Todo, ref: string) => !t.isDone && Boolean(t.dueDa
 export const isNoDate = (t: Todo) => !t.isDone && !t.dueDate;
 export const isDoneView = (t: Todo) => t.isDone;
 
+const PRIORITY_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
+
 export function classifyTodoView(t: Todo, ref: string): TodoView {
   if (isDoneView(t)) return 'done';
   if (isToday(t, ref)) return 'today';
   if (isUpcoming(t, ref)) return 'upcoming';
   return 'no_date';
+}
+
+export function sortTodosForView(todos: readonly Todo[], view: TodoView, ref: string): Todo[] {
+  const list = [...todos];
+  if (view === 'today') {
+    return list.sort((a, b) => {
+      const aOver = isOverdue(a, ref) ? 0 : 1, bOver = isOverdue(b, ref) ? 0 : 1;
+      if (aOver !== bOver) return aOver - bOver;
+      const pDiff = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+      if (pDiff !== 0) return pDiff;
+      return (a.dueDate ?? '').localeCompare(b.dueDate ?? '');
+    });
+  }
+  if (view === 'upcoming') {
+    return list.sort((a, b) => {
+      const dDiff = (a.dueDate ?? '').localeCompare(b.dueDate ?? '');
+      return dDiff !== 0 ? dDiff : PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+    });
+  }
+  return list;
 }
 
 export const toggleTodo = (t: Todo, now: string): Todo =>

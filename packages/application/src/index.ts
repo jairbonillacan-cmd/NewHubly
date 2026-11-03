@@ -1,7 +1,7 @@
 // Casos de uso y puertos. Sin framework ni base de datos (ADR 0002).
 import type { Note, Todo, TodoView } from '@hubly/domain';
 import {
-  isToday, isUpcoming, isNoDate, isDoneView, ConcurrencyError, NoteNotFoundError, TodoNotFoundError,
+  isToday, isUpcoming, isNoDate, isDoneView, sortTodosForView, ConcurrencyError, NoteNotFoundError, TodoNotFoundError,
   pinNote as domainPinNote, archiveNote as domainArchiveNote, toggleTodo as domainToggleTodo,
 } from '@hubly/domain';
 import type { CreateNoteInput, UpdateNoteInput, CreateTodoInput, UpdateTodoInput, ExportData } from '@hubly/contracts';
@@ -40,7 +40,8 @@ export class InMemoryTodoRepository implements TodoRepository {
     return Array.from(this.items.values()).filter(t => t.workspaceId === wId && t.createdBy === uId && (f?.noteId === undefined || t.noteId === f.noteId) && (f?.isDone === undefined || t.isDone === f.isDone));
   }
   async findTodayAndOverdue(wId: string, uId: string, ref: string) {
-    return Array.from(this.items.values()).filter(t => t.workspaceId === wId && t.createdBy === uId && isToday(t, ref));
+    const filtered = Array.from(this.items.values()).filter(t => t.workspaceId === wId && t.createdBy === uId && isToday(t, ref));
+    return sortTodosForView(filtered, 'today', ref);
   }
   async save(t: Todo) { this.items.set(t.id, t); } async delete(id: string) { this.items.delete(id); }
 }
@@ -107,7 +108,8 @@ export async function toggleTodoDone(repo: TodoRepository, clock: Clock, id: str
 
 export async function listTodosByView(repo: TodoRepository, clock: Clock, view: TodoView, ctx: AppContext): Promise<Todo[]> {
   const all = await repo.findByWorkspace(ctx.workspaceId, ctx.userId), ref = clock.todayString();
-  return all.filter(t => (view === 'done' ? isDoneView(t) : view === 'today' ? isToday(t, ref) : view === 'upcoming' ? isUpcoming(t, ref) : isNoDate(t)));
+  const filtered = all.filter(t => (view === 'done' ? isDoneView(t) : view === 'today' ? isToday(t, ref) : view === 'upcoming' ? isUpcoming(t, ref) : isNoDate(t)));
+  return sortTodosForView(filtered, view, ref);
 }
 
 export async function createTodoFromNote(tRepo: TodoRepository, nRepo: NoteRepository, c: Clock, idGen: IdGenerator, noteId: string, input: Omit<CreateTodoInput, 'noteId'>, ctx: AppContext): Promise<Todo> {

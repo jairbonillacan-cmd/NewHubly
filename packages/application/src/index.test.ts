@@ -35,17 +35,27 @@ describe('Application: Use cases', () => {
     expect(await listNotes(noteRepo, ctx1)).toHaveLength(1);
   });
 
-  it('gestiona pendientes y filtros de vistas con detalle no nulo por defecto', async () => {
-    const overdue = await createTodo(todoRepo, clock, idGen, { title: 'Vencido', dueDate: '2026-11-02' }, ctx1);
-    const today = await createTodo(todoRepo, clock, idGen, { title: 'Hoy', dueDate: '2026-11-03' }, ctx1);
-    const upcoming = await createTodo(todoRepo, clock, idGen, { title: 'Mañana', dueDate: '2026-11-04' }, ctx1);
+  it('gestiona pendientes y ordena vistas Hoy (vencidos, prioridad, fecha) y Próximos (por fecha)', async () => {
+    const todayLow = await createTodo(todoRepo, clock, idGen, { title: 'Hoy baja', dueDate: '2026-11-03', priority: 'low' }, ctx1);
+    const todayHigh = await createTodo(todoRepo, clock, idGen, { title: 'Hoy alta', dueDate: '2026-11-03', priority: 'high' }, ctx1);
+    const overdueMed2 = await createTodo(todoRepo, clock, idGen, { title: 'Vencido 2', dueDate: '2026-11-02', priority: 'medium' }, ctx1);
+    const overdueMed1 = await createTodo(todoRepo, clock, idGen, { title: 'Vencido 1', dueDate: '2026-11-01', priority: 'medium' }, ctx1);
+    const overdueHigh = await createTodo(todoRepo, clock, idGen, { title: 'Vencido alta', dueDate: '2026-11-02', priority: 'high' }, ctx1);
+    const upcoming2 = await createTodo(todoRepo, clock, idGen, { title: 'Pasado mañana', dueDate: '2026-11-05', priority: 'high' }, ctx1);
+    const upcoming1 = await createTodo(todoRepo, clock, idGen, { title: 'Mañana', dueDate: '2026-11-04', priority: 'low' }, ctx1);
     const noDate = await createTodo(todoRepo, clock, idGen, { title: 'Sin fecha' }, ctx1);
     expect(noDate.detail).toBe('');
-    expect((await listTodosByView(todoRepo, clock, 'today', ctx1)).map(t => t.id)).toEqual([overdue.id, today.id]);
-    expect((await listTodosByView(todoRepo, clock, 'upcoming', ctx1)).map(t => t.id)).toEqual([upcoming.id]);
+    expect((await listTodosByView(todoRepo, clock, 'today', ctx1)).map(t => t.id)).toEqual([
+      overdueHigh.id,
+      overdueMed1.id,
+      overdueMed2.id,
+      todayHigh.id,
+      todayLow.id,
+    ]);
+    expect((await listTodosByView(todoRepo, clock, 'upcoming', ctx1)).map(t => t.id)).toEqual([upcoming1.id, upcoming2.id]);
     expect((await listTodosByView(todoRepo, clock, 'no_date', ctx1)).map(t => t.id)).toEqual([noDate.id]);
-    expect((await toggleTodoDone(todoRepo, clock, today.id, ctx1)).isDone).toBe(true);
-    expect((await listTodosByView(todoRepo, clock, 'done', ctx1)).map(t => t.id)).toEqual([today.id]);
+    expect((await toggleTodoDone(todoRepo, clock, todayLow.id, ctx1)).isDone).toBe(true);
+    expect((await listTodosByView(todoRepo, clock, 'done', ctx1)).map(t => t.id)).toEqual([todayLow.id]);
     expect((await updateTodo(todoRepo, clock, { id: noDate.id, title: 'Con fecha', detail: 'D' }, ctx1)).detail).toBe('D');
   });
 

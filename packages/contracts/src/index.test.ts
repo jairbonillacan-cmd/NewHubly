@@ -18,4 +18,13 @@ describe('Contracts: Zod schemas', () => {
     expect(updateTodoSchema.safeParse({ id: 't-1', isDone: true }).success).toBe(true);
     expect(exportDataSchema.safeParse({ version: 1, exportedAt: '2026-11-03', workspaceId: 'w-1', notes: [], todos: [] }).success).toBe(true);
   });
+
+  it('rechaza fechas imposibles de calendario en dueDate y acepta bisiestos válidos', () => {
+    expect(createTodoSchema.safeParse({ title: 'A', dueDate: '2026-02-31' }).success).toBe(false);
+    expect(createTodoSchema.safeParse({ title: 'A', dueDate: '2026-02-31' }).error?.issues[0]?.message).toContain('calendario');
+    expect(createTodoSchema.safeParse({ title: 'A', dueDate: '2025-02-29' }).success).toBe(false);
+    expect(createTodoSchema.safeParse({ title: 'A', dueDate: '2026-04-31' }).success).toBe(false);
+    expect(updateTodoSchema.safeParse({ id: 't-1', dueDate: '2026-02-31' }).success).toBe(false);
+    expect(createTodoSchema.safeParse({ title: 'A', dueDate: '2024-02-29' }).success).toBe(true);
+  });
 });
