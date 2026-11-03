@@ -49,7 +49,15 @@ export const exportDataSchema = z.object({
   notes: z.array(z.object({ id: z.string(), title: z.string(), content: z.string(), isPinned: z.boolean(), isArchived: z.boolean(), version: z.number(), createdAt: z.string(), updatedAt: z.string() })),
   todos: z.array(z.object({ id: z.string(), noteId: z.string().nullable().optional(), title: z.string(), detail: z.string(), dueDate: z.string().nullable().optional(), priority: z.enum(['low', 'medium', 'high'] as const), isDone: z.boolean(), doneAt: z.string().nullable().optional(), createdAt: z.string(), updatedAt: z.string() })),
 });
+const emailField = z.string().trim().email('Correo electrónico inválido');
+const passField = z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128);
+export const signInWithPasswordSchema = z.object({ email: emailField, password: passField });
+export const signUpWithPasswordSchema = z.object({ email: emailField, password: passField, workspaceName: z.string().trim().min(1).max(80).optional() });
+export const signInWithMagicLinkSchema = z.object({ email: emailField });
 
 export type CreateNoteInput = z.input<typeof createNoteSchema>; export type UpdateNoteInput = z.input<typeof updateNoteSchema>;
 export type CreateTodoInput = z.input<typeof createTodoSchema>; export type UpdateTodoInput = z.input<typeof updateTodoSchema>;
 export type ExportData = z.infer<typeof exportDataSchema>;
+export type SignInWithPasswordInput = z.input<typeof signInWithPasswordSchema>;
+export type SignUpWithPasswordInput = z.input<typeof signUpWithPasswordSchema>;
+export type SignInWithMagicLinkInput = z.input<typeof signInWithMagicLinkSchema>;

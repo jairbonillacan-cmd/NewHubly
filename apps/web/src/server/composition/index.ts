@@ -10,8 +10,18 @@ import {
   type CreateNoteInput, type CreateTodoInput, type UpdateNoteInput, type UpdateTodoInput,
 } from "@hubly/contracts";
 import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleWorkspaceRepository, withUserContext, type UserClaims } from "@hubly/db";
+import {
+  createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
+  getVerifiedServerSession, resolveSupabaseConfig, setSupabaseServerClientFactoryForTests,
+} from "./auth";
+export {
+  createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
+  getVerifiedServerSession, resolveSupabaseConfig, setSupabaseServerClientFactoryForTests,
+};
 
 type DbInstance = Parameters<typeof withUserContext>[2];
+let testDbOverride: DbInstance | undefined;
+export const setWorkspaceDbForTests = (db: DbInstance | undefined): void => { testDbOverride = db; };
 
 export interface CompositionContext extends AppContext {
   claims: UserClaims;
@@ -33,13 +43,16 @@ export async function getWorkspaceContext(
   db?: DbInstance,
 ): Promise<CompositionContext> {
   if (!input.claims?.sub || input.claims.role !== "authenticated") throw new Error("Sesión no autenticada");
-  const wsRepo = new DrizzleWorkspaceRepository(input.claims, db);
-  const member = await wsRepo.findMember(input.workspaceId, input.claims.sub);
-  if (!member) throw new Error(`No autorizado en el espacio de trabajo: ${input.workspaceId}`);
-  return {
-    claims: input.claims, workspaceId: input.workspaceId, userId: input.claims.sub,
-    ...(input.timezone ? { timezone: input.timezone } : {}), ...(db ? { db } : {}),
-  };
+  const resolvedDb = db ?? testDbOverride, wsRepo = new DrizzleWorkspaceRepository(input.claims, resolvedDb);
+  if (!(await wsRepo.findMember(input.workspaceId, input.claims.sub))) throw new Error(`No autorizado en el espacio de trabajo: ${input.workspaceId}`);
+  return { claims: input.claims, workspaceId: input.workspaceId, userId: input.claims.sub, ...(input.timezone ? { timezone: input.timezone } : {}), ...(resolvedDb ? { db: resolvedDb } : {}) };
+}
+
+export async function ensureAuthenticatedWorkspace(workspaceId?: string, defaultName?: string, db?: DbInstance): Promise<CompositionContext> {
+  const { claims } = await getVerifiedServerSession(), resolvedDb = db ?? testDbOverride, wsRepo = new DrizzleWorkspaceRepository(claims, resolvedDb);
+  if (workspaceId && !(await wsRepo.findMember(workspaceId, claims.sub))) throw new Error(`No autorizado en el espacio de trabajo: ${workspaceId}`);
+  const resolvedWorkspaceId = workspaceId ?? (await wsRepo.ensurePersonalWorkspace(defaultName));
+  return { claims, workspaceId: resolvedWorkspaceId, userId: claims.sub, ...(resolvedDb ? { db: resolvedDb } : {}) };
 }
 
 const repos = (ctx: CompositionContext) => ({
@@ -79,4 +92,4 @@ export const exportDataUseCase = (ctx: CompositionContext) => () => {
   return exportWorkspaceData(noteRepo, todoRepo, clock, ctx);
 };
 export const provisionPersonalWorkspace = (claims: UserClaims, name: string, slug: string, db?: DbInstance): Promise<string> =>
-  new DrizzleWorkspaceRepository(claims, db).createPersonalWorkspace(name, slug);
+  new DrizzleWorkspaceRepository(claims, db ?? testDbOverride).createPersonalWorkspace(name, slug);

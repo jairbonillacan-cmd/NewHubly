@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 import postgres from "postgres";
 import { eq, sql } from "drizzle-orm";
 import { withUserContext } from "../src/context";
+import { DrizzleWorkspaceRepository } from "../src/repositories";
 import { notes, todos, workspaces, workspaceMembers } from "../src/schema";
 import { getDb } from "../src/internal";
 
@@ -333,7 +334,7 @@ describe("Aislamiento Multi-inquilino y RLS en Docker (ADR 0003, ADR 0004 & Issu
     expect((await db.select().from(todos).where(eq(todos.id, tA1.id)))[0]?.title).toBe("Todo 28-A1");
   });
 
-  it("Certificación Issue #28 (6-7): FK compuesta cross-workspace (ADR 0003) y rechazo de petición anónima", async () => {
+  it("Certificación Issue #28 (6-7) e Issue #46: FK compuesta, rechazo anónimo y alta idempotente de espacio al primer inicio", async () => {
     const [wsA] = await db.select().from(workspaces).where(eq(workspaces.slug, slugA));
     const [wsB] = await db.select().from(workspaces).where(eq(workspaces.slug, slugB));
     const [noteA] = await db.select().from(notes).where(eq(notes.workspaceId, wsA!.id)).limit(1);
@@ -342,5 +343,10 @@ describe("Aislamiento Multi-inquilino y RLS en Docker (ADR 0003, ADR 0004 & Issu
     await expect(withUserContext({ sub: "", role: "anon" }, async () => {})).rejects.toThrow();
     await expect(db.transaction(async (tx) => { await tx.execute(sql`set local role anon`); await tx.select().from(notes); })).rejects.toThrow();
     await expect(db.transaction(async (tx) => { await tx.execute(sql`set local role anon`); await tx.select().from(todos); })).rejects.toThrow();
+    const firstSignInUser = crypto.randomUUID();
+    const wsRepo = new DrizzleWorkspaceRepository({ sub: firstSignInUser, role: "authenticated" });
+    const createdWsId = await wsRepo.ensurePersonalWorkspace("Espacio Primer Inicio");
+    expect(await wsRepo.ensurePersonalWorkspace("Otro Nombre")).toBe(createdWsId);
+    expect((await wsRepo.findMember(createdWsId, firstSignInUser))?.role).toBe("owner");
   });
 });

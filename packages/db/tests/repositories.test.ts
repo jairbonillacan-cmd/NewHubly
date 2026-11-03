@@ -10,7 +10,7 @@ function createMockDb(state: {
 }) {
   const nameOf = (t: unknown) => (t as { [k: symbol]: string })?.[Symbol.for("drizzle:Name")];
   const tx = {
-    execute: vi.fn().mockResolvedValue([]),
+    execute: vi.fn().mockImplementation(async () => [{ id: "w-provisioned" }]),
     select: vi.fn().mockImplementation(() => ({
       from: (table: unknown) => ({
         where: () => {
@@ -98,5 +98,8 @@ describe("Repositorios Drizzle y aislamiento con withUserContext (#25)", () => {
     expect((await todoRepo.listByNoteId("w-1", "n-1")).length).toBeGreaterThan(0);
     expect((await wsRepo.findById("w-1"))?.slug).toBe("hubly");
     expect((await wsRepo.findMember("w-1", "u-1"))?.role).toBe("owner");
+    expect(await wsRepo.ensurePersonalWorkspace("Mi Espacio")).toBe("w-1");
+    state.members.length = 0;
+    expect(await wsRepo.ensurePersonalWorkspace("Nuevo Espacio")).toBe("w-provisioned");
   });
 });
