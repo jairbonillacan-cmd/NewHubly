@@ -3,6 +3,21 @@ import { z } from 'zod';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/, TITLE_MSG = 'El título no puede superar los 200 caracteres';
 
+function isValidCalendarDate(v: string): boolean {
+  const [y = 0, m = 0, d = 0] = v.split('-').map(Number);
+  if (m < 1 || m > 12 || d < 1) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCFullYear(y);
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
+const dueDateSchema = z
+  .string()
+  .regex(DATE_RE, 'Formato de fecha inválido (debe ser YYYY-MM-DD)')
+  .refine(isValidCalendarDate, 'Fecha de calendario inválida')
+  .optional()
+  .nullable();
+
 export const createNoteSchema = z.object({
   title: z.string().trim().max(200, TITLE_MSG).default(''),
   content: z.string().optional().default(''),
@@ -16,7 +31,7 @@ export const updateNoteSchema = z.object({
 export const createTodoSchema = z.object({
   title: z.string().trim().min(1, 'El título es obligatorio').max(200, TITLE_MSG),
   detail: z.string().max(1000).nullish().transform(v => v ?? ''),
-  dueDate: z.string().regex(DATE_RE, 'Formato de fecha inválido (debe ser YYYY-MM-DD)').optional().nullable(),
+  dueDate: dueDateSchema,
   priority: z.enum(['low', 'medium', 'high'] as const, { message: 'Prioridad inválida' }).default('medium'),
   noteId: z.string().min(1, 'El ID de nota no puede estar vacío').optional().nullable(),
 });
@@ -24,7 +39,7 @@ export const updateTodoSchema = z.object({
   id: z.string().min(1, 'El ID es obligatorio'),
   title: z.string().trim().min(1, 'El título no puede estar vacío').max(200, TITLE_MSG).optional(),
   detail: z.string().max(1000).optional(),
-  dueDate: z.string().regex(DATE_RE, 'Formato de fecha inválido (debe ser YYYY-MM-DD)').optional().nullable(),
+  dueDate: dueDateSchema,
   priority: z.enum(['low', 'medium', 'high'] as const, { message: 'Prioridad inválida' }).optional(),
   isDone: z.boolean().optional(),
   noteId: z.string().min(1, 'El ID de nota no puede estar vacío').optional().nullable(),
