@@ -2,10 +2,10 @@
   "extends": "@hubly/config/tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "allowJs": false,
     "incremental": true,
     "plugins": [{ "name": "next" }]
   },
-  "include": ["next-env.d.ts", "src", ".next/types/**/*.ts", "next.config.ts"]
+  "include": ["next-env.d.ts", "src", "tests", ".next/types/**/*.ts", "next.config.ts"]
 }
