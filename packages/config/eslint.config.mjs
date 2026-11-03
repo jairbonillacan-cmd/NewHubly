@@ -78,9 +78,9 @@ export default defineConfig(
   },
   {
     files: ["**/*.{ts,tsx}"],
-    ignores: ["packages/db/**", "apps/web/src/server/composition/**", "**/*.test.ts"],
+    ignores: ["packages/db/src/{client,context,internal}.ts", "apps/web/src/server/composition/**", "**/*.test.ts"],
     rules: {
-      "no-restricted-imports": ["error", { paths: [{ name: "@hubly/db/internal", message: "@hubly/db/internal solo se permite en packages/db, pruebas (*.test.ts) y raíz de composición." }] }],
+      "no-restricted-imports": ["error", { paths: [{ name: "@hubly/db/internal", message: "@hubly/db/internal solo se permite en context/internal, pruebas (*.test.ts) y raíz de composición." }] }],
     },
   },
 );

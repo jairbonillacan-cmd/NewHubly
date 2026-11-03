@@ -1,4 +1,2 @@
 import "server-only";
-
-export { createDbClient, getDb, resolveDatabaseUrl } from "./client";
-export type { DbClient } from "./client";
+export { createDbClient, getDb, resolveDatabaseUrl, type DbClient } from "./client";

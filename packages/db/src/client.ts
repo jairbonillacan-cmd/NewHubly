@@ -14,15 +14,12 @@ export function resolveDatabaseUrl(url?: string): string {
   throw new Error("DATABASE_URL no está definida. Configure DATABASE_URL en el entorno.");
 }
 
-let clientInstance: ReturnType<typeof postgres> | null = null, dbInstance: DbClient | null = null;
+let dbInstance: DbClient | null = null;
 
-export function getDb(url?: string): DbClient {
-  if (!dbInstance) {
-    clientInstance = postgres(resolveDatabaseUrl(url), { prepare: false });
-    dbInstance = drizzle(clientInstance, { schema });
-  }
-  return dbInstance;
-}
 export function createDbClient(url?: string): DbClient {
   return drizzle(postgres(resolveDatabaseUrl(url), { prepare: false }), { schema });
+}
+export function getDb(url?: string): DbClient {
+  if (!dbInstance) dbInstance = createDbClient(url);
+  return dbInstance;
 }

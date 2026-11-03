@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 import { withUserContext } from "../src/context";
-import { resolveDatabaseUrl } from "../src/client";
+import { resolveDatabaseUrl } from "../src/internal";
 import * as dbExports from "../src/index";
 
 describe("withUserContext & boundaries (ADR 0004 & Issue #23)", () => {

@@ -41,9 +41,9 @@ module.exports = {
     {
       name: "db-internal-restringido",
       severity: "error",
-      comment: "@hubly/db/internal solo se permite en packages/db, pruebas (*.test.ts) y raíz de composición.",
-      from: { pathNot: "^(packages/db/|apps/web/src/server/composition/|.*\\.test\\.ts$)" },
-      to: { path: "^packages/db/src/internal\\.ts$" },
+      comment: "@hubly/db/internal y client.ts solo se permiten en context/internal, pruebas (*.test.ts) y raíz de composición.",
+      from: { pathNot: "^(packages/db/src/(client|context|internal)\\.ts$|apps/web/src/server/composition/|.*\\.test\\.ts$)" },
+      to: { path: "^packages/db/src/(client|internal)\\.ts$" },
     },
     { name: "sin-ciclos", severity: "error", from: {}, to: { circular: true } },
     { name: "sin-irresolubles", severity: "error", from: {}, to: { couldNotResolve: true } },
