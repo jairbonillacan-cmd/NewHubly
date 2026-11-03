@@ -306,4 +306,41 @@ describe("Aislamiento Multi-inquilino y RLS en Docker (ADR 0003, ADR 0004 & Issu
     expect(persistedTodo!.noteId).toBeNull();
     expect(persistedTodo!.workspaceId).toBe(wsAId);
   });
+
+  it("Certificación Issue #28 (1-5): SELECT aislado, SELECT por ID, INSERT inyectado, UPDATE cruzado y DELETE cruzado de pendiente", async () => {
+    const [wsA] = await db.select().from(workspaces).where(eq(workspaces.slug, slugA));
+    const wsAId = wsA!.id;
+    const [nA, tA1, tA2] = await withUserContext({ sub: userA, role: "authenticated" }, async (tx) => {
+      const [n] = await tx.insert(notes).values({ workspaceId: wsAId, createdBy: userA, title: "Nota 28-A", content: "Secreto" }).returning();
+      const [t1] = await tx.insert(todos).values({ workspaceId: wsAId, createdBy: userA, title: "Todo 28-A1" }).returning();
+      const [t2] = await tx.insert(todos).values({ workspaceId: wsAId, createdBy: userA, title: "Todo 28-A2" }).returning();
+      return [n!, t1!, t2!];
+    });
+    await withUserContext({ sub: userB, role: "authenticated" }, async (tx) => {
+      expect(await tx.select().from(notes).where(eq(notes.workspaceId, wsAId))).toEqual([]);
+      expect(await tx.select().from(todos).where(eq(todos.workspaceId, wsAId))).toEqual([]);
+      expect(await tx.select().from(notes).where(eq(notes.id, nA.id))).toEqual([]);
+      expect(await tx.select().from(todos).where(eq(todos.id, tA1.id))).toEqual([]);
+      expect(await tx.select().from(todos).where(eq(todos.id, tA2.id))).toEqual([]);
+    });
+    await expect(withUserContext({ sub: userB, role: "authenticated" }, (tx) => tx.insert(notes).values({ workspaceId: wsAId, createdBy: userB, title: "X" }))).rejects.toThrow();
+    await expect(withUserContext({ sub: userB, role: "authenticated" }, (tx) => tx.insert(todos).values({ workspaceId: wsAId, createdBy: userB, title: "X" }))).rejects.toThrow();
+    const upd = await withUserContext({ sub: userB, role: "authenticated" }, (tx) => tx.update(notes).set({ title: "Hack" }).where(eq(notes.id, nA.id)).returning());
+    expect(upd).toEqual([]);
+    expect((await db.select().from(notes).where(eq(notes.id, nA.id)))[0]?.title).toBe("Nota 28-A");
+    const del = await withUserContext({ sub: userB, role: "authenticated" }, (tx) => tx.delete(todos).where(eq(todos.id, tA1.id)).returning());
+    expect(del).toEqual([]);
+    expect((await db.select().from(todos).where(eq(todos.id, tA1.id)))[0]?.title).toBe("Todo 28-A1");
+  });
+
+  it("Certificación Issue #28 (6-7): FK compuesta cross-workspace (ADR 0003) y rechazo de petición anónima", async () => {
+    const [wsA] = await db.select().from(workspaces).where(eq(workspaces.slug, slugA));
+    const [wsB] = await db.select().from(workspaces).where(eq(workspaces.slug, slugB));
+    const [noteA] = await db.select().from(notes).where(eq(notes.workspaceId, wsA!.id)).limit(1);
+    await expect(withUserContext({ sub: userB, role: "authenticated" }, (tx) => tx.insert(todos).values({ workspaceId: wsB!.id, createdBy: userB, noteId: noteA!.id, title: "Cross FK" }))).rejects.toThrow();
+    await expect(db.insert(todos).values({ workspaceId: wsB!.id, createdBy: userB, noteId: noteA!.id, title: "Cross FK raw" })).rejects.toThrow();
+    await expect(withUserContext({ sub: "", role: "anon" }, async () => {})).rejects.toThrow();
+    await expect(db.transaction(async (tx) => { await tx.execute(sql`set local role anon`); await tx.select().from(notes); })).rejects.toThrow();
+    await expect(db.transaction(async (tx) => { await tx.execute(sql`set local role anon`); await tx.select().from(todos); })).rejects.toThrow();
+  });
 });

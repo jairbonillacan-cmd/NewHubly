@@ -1,7 +1,7 @@
 "use server";
 import type { NoteFilter } from "@hubly/application";
 import { createNoteSchema, createTodoSchema, exportDataSchema, updateNoteSchema, updateTodoSchema, type CreateNoteInput, type CreateTodoInput, type ExportData, type UpdateNoteInput, type UpdateTodoInput } from "@hubly/contracts";
-import { archiveNoteUseCase, createNoteUseCase, createTodoFromNoteUseCase, createTodoUseCase, exportDataUseCase, getWorkspaceContext, listNotesUseCase, listTodosUseCase, pinNoteUseCase, toggleTodoUseCase, updateNoteUseCase, updateTodoUseCase } from "../server/composition";
+import { archiveNoteUseCase, createNoteUseCase, createTodoFromNoteUseCase, createTodoUseCase, exportDataUseCase, getWorkspaceContext, listNotesUseCase, listTodosUseCase, pinNoteUseCase, provisionPersonalWorkspace, toggleTodoUseCase, updateNoteUseCase, updateTodoUseCase } from "../server/composition";
 
 export type SessionInput = Parameters<typeof getWorkspaceContext>[0];
 export type DbOverride = Parameters<typeof getWorkspaceContext>[1];
@@ -10,6 +10,8 @@ export type WorkspaceTodo = Awaited<ReturnType<ReturnType<typeof listTodosUseCas
 export type WorkspaceTodoView = Parameters<ReturnType<typeof listTodosUseCase>>[0];
 
 const autosaveNoteSchema = updateNoteSchema.required({ expectedVersion: true });
+export const provisionPersonalWorkspaceAction = async (claims: SessionInput["claims"], name: string, slug: string, db?: DbOverride): Promise<string> =>
+  provisionPersonalWorkspace(claims, name, slug, db);
 
 export async function createTodoAction(s: SessionInput, input: CreateTodoInput, db?: DbOverride): Promise<WorkspaceTodo> {
   const parsed = createTodoSchema.parse(input);

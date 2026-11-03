@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, ilike, isNull, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, lte, or, sql } from "drizzle-orm";
 import type { Note as DomainNote, Todo as DomainTodo } from "@hubly/domain";
 import { ConcurrencyError, sortTodosForView } from "@hubly/domain";
 import type { NoteFilter, NoteRepository, TodoFilter, TodoRepository } from "@hubly/application";
@@ -11,6 +11,7 @@ export interface NoteSearchFilter extends NoteFilter { query?: string; }
 export interface WorkspaceRepository {
   findById(workspaceId: string): Promise<Workspace | null>;
   findMember(workspaceId: string, userId: string): Promise<WorkspaceMember | null>;
+  createPersonalWorkspace(name: string, slug: string): Promise<string>;
 }
 
 const toIso = (d: Date | string): string => (d instanceof Date ? d.toISOString() : new Date(d).toISOString());
@@ -150,6 +151,14 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     return withUserContext(this.claims, async (tx) => {
       const [row] = await tx.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, userId))).limit(1);
       return row ?? null;
+    }, this.db);
+  }
+
+  async createPersonalWorkspace(name: string, slug: string): Promise<string> {
+    return withUserContext(this.claims, async (tx) => {
+      const res = await tx.execute<{ id: string }>(sql`select private.create_personal_workspace(${name}, ${slug}) as id`);
+      if (!res[0]?.id) throw new Error("No se pudo provisionar el espacio personal");
+      return res[0].id;
     }, this.db);
   }
 }

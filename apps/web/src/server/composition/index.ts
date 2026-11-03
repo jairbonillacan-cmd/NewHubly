@@ -78,3 +78,5 @@ export const exportDataUseCase = (ctx: CompositionContext) => () => {
   const { noteRepo, todoRepo, clock } = repos(ctx);
   return exportWorkspaceData(noteRepo, todoRepo, clock, ctx);
 };
+export const provisionPersonalWorkspace = (claims: UserClaims, name: string, slug: string, db?: DbInstance): Promise<string> =>
+  new DrizzleWorkspaceRepository(claims, db).createPersonalWorkspace(name, slug);

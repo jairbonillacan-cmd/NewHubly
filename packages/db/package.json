@@ -8,7 +8,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:rls": "vitest run tests/rls-isolation.test.ts tests/rls-catalog.test.ts"
   },
   "dependencies": {
     "@hubly/application": "workspace:*",
