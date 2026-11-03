@@ -1,4 +1,5 @@
-import { buttonVariants } from "@heroui/react";
+"use client";
+import { Chip, Tabs } from "@heroui/react";
 import type { KeyboardEvent } from "react";
 import { tokens } from "../../tokens";
 
@@ -14,7 +15,7 @@ export interface ViewSelectorProps {
 }
 
 export function ViewSelector({ activeView, counts = {}, onSelectView }: ViewSelectorProps) {
-  const handleKeyDown = (index: number, e: KeyboardEvent<HTMLButtonElement>) => {
+  const handleKeyDown = (index: number, e: KeyboardEvent<HTMLElement>) => {
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault?.();
       const delta = e.key === "ArrowRight" ? 1 : -1;
@@ -28,31 +29,54 @@ export function ViewSelector({ activeView, counts = {}, onSelectView }: ViewSele
   };
 
   return (
-    <div
-      role="tablist" aria-label="Vistas de pendientes"
-      style={{ display: "inline-flex", flexWrap: "wrap", gap: tokens.space[2], padding: tokens.space[1], backgroundColor: tokens.color.surfaceSubtle, border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.lg }}
+    <Tabs
+      selectedKey={activeView}
+      onSelectionChange={(key) => onSelectView?.(String(key) as TodoViewKey)}
+      aria-label="Vistas de pendientes"
     >
-      {TODO_VIEW_ITEMS.map((item, idx) => {
-        const isSelected = activeView === item.key;
-        const count = counts[item.key] ?? 0;
-        return (
-          <button
-            key={item.key} type="button" role="tab" aria-selected={isSelected} tabIndex={isSelected ? 0 : -1}
-            onClick={() => onSelectView?.(item.key)} onKeyDown={(e) => handleKeyDown(idx, e)}
-            className={buttonVariants({ variant: isSelected ? "primary" : "ghost", size: "sm" })}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: tokens.space[2], paddingBlock: tokens.space[2], paddingInline: tokens.space[3],
-              borderRadius: tokens.radius.md, border: `${tokens.border.thin} solid ${isSelected ? tokens.color.accentPrimary : tokens.color.borderControl}`,
-              backgroundColor: isSelected ? tokens.color.accentPrimary : tokens.color.surfaceRaised,
-              color: isSelected ? tokens.color.textOnAccent : tokens.color.textPrimary,
-              fontWeight: isSelected ? tokens.font.weight.semibold : tokens.font.weight.medium, fontSize: tokens.font.size.sm, cursor: "pointer",
-            }}
-          >
-            <span>{item.label}</span>
-            <span aria-label={`${count} pendientes en ${item.label}`} style={{ fontSize: tokens.font.size.xs }}>({count})</span>
-          </button>
-        );
-      })}
-    </div>
+      <Tabs.List
+        aria-label="Vistas de pendientes"
+        style={{
+          display: "inline-flex", flexWrap: "wrap", gap: tokens.space[2], padding: tokens.space[1],
+          backgroundColor: tokens.pill.glassBg, border: `${tokens.border.thin} solid ${tokens.color.borderControl}`,
+          borderRadius: tokens.radius.full,
+        }}
+      >
+        {TODO_VIEW_ITEMS.map((item, idx) => {
+          const isSelected = activeView === item.key;
+          const count = counts[item.key] ?? 0;
+          return (
+            <Tabs.Tab
+              key={item.key} id={item.key}
+              onClick={() => onSelectView?.(item.key)}
+              onKeyDown={(e) => handleKeyDown(idx, e)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: tokens.space[2],
+                paddingBlock: tokens.space[2], paddingInline: tokens.space[4], borderRadius: tokens.radius.full,
+                border: `${tokens.border.thin} solid ${isSelected ? tokens.pill.activeBg : tokens.color.borderControl}`,
+                backgroundColor: isSelected ? tokens.pill.activeBg : tokens.bento.cardBg,
+                color: isSelected ? tokens.pill.activeText : tokens.color.textPrimary,
+                fontWeight: isSelected ? tokens.font.weight.semibold : tokens.font.weight.medium,
+                fontSize: tokens.font.size.sm, cursor: "pointer",
+              }}
+            >
+              <span>{item.label}</span>
+              <Chip
+                size="sm" variant="soft"
+                aria-label={`${count} pendientes en ${item.label}`}
+                style={{
+                  backgroundColor: isSelected ? tokens.color.accentWarmSubtle : tokens.bento.surfaceBase,
+                  color: isSelected ? tokens.color.accentWarmText : tokens.color.textSecondary,
+                  borderRadius: tokens.radius.full, paddingInline: tokens.space[2],
+                  fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.light,
+                }}
+              >
+                ({count})
+              </Chip>
+            </Tabs.Tab>
+          );
+        })}
+      </Tabs.List>
+    </Tabs>
   );
 }

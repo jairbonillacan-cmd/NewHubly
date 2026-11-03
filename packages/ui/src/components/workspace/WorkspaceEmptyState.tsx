@@ -1,4 +1,5 @@
-import { EmptyState } from "@heroui/react";
+"use client";
+import { Button, EmptyState } from "@heroui/react";
 import { tokens } from "../../tokens";
 import type { TodoViewKey } from "./ViewSelector";
 
@@ -14,16 +15,31 @@ export function WorkspaceEmptyState({ view, actionLabel, onAction }: WorkspaceEm
   return (
     <EmptyState
       role="status" aria-live="polite"
-      style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: tokens.space[2], padding: tokens.space[5], backgroundColor: tokens.color.surfaceSubtle, border: `${tokens.border.thin} solid ${tokens.color.borderDefault}`, borderRadius: tokens.radius.lg, color: tokens.color.textSecondary, fontSize: tokens.font.size.sm }}
+      style={{
+        display: "flex", flexDirection: "column", alignItems: "flex-start", gap: tokens.space[3],
+        padding: tokens.space[6], backgroundColor: tokens.bento.cardBg,
+        border: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`,
+        borderRadius: tokens.radius.xl, boxShadow: tokens.bento.cardShadow,
+        color: tokens.color.textSecondary, fontSize: tokens.font.size.sm,
+      }}
     >
-      <p style={{ margin: tokens.space[0], color: tokens.color.textPrimary, fontWeight: tokens.font.weight.medium }}>{WORKSPACE_EMPTY_MESSAGES[view]}</p>
+      <p style={{ margin: tokens.space[0], color: tokens.color.textPrimary, fontWeight: tokens.font.weight.medium }}>
+        {WORKSPACE_EMPTY_MESSAGES[view]}
+      </p>
       {actionLabel && onAction ? (
-        <button
-          type="button" onClick={onAction}
-          style={{ border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.md, backgroundColor: tokens.color.surfaceRaised, color: tokens.color.textPrimary, paddingBlock: tokens.space[1], paddingInline: tokens.space[3], fontSize: tokens.font.size.xs, cursor: "pointer" }}
+        <Button
+          type="button" variant="primary" size="sm"
+          onPress={() => onAction()} onClick={() => onAction()}
+          style={{
+            border: `${tokens.border.thin} solid ${tokens.color.accentWarm}`,
+            borderRadius: tokens.radius.full, backgroundColor: tokens.color.accentWarm,
+            color: tokens.color.surfaceBrandContrast, paddingBlock: tokens.space[2],
+            paddingInline: tokens.space[4], fontSize: tokens.font.size.xs,
+            fontWeight: tokens.font.weight.semibold, cursor: "pointer",
+          }}
         >
           {actionLabel}
-        </button>
+        </Button>
       ) : null}
     </EmptyState>
   );
