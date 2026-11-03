@@ -31,6 +31,34 @@ export function findCssRawViolations(files) {
   return violations;
 }
 
+const HEROUI_IMPORT_RE = /(from\s+["']@heroui(\/.*)?["']|import\s+["']@heroui(\/.*)?["'])/;
+const HEROUI_PRO_IMPORT_RE = /(from\s+["']@heroui-pro(\/.*)?["']|import\s+["']@heroui-pro(\/.*)?["'])/;
+
+function listCodeFiles(dir) {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  return entries.flatMap((entry) => {
+    if (entry.name === "node_modules" || entry.name === ".next" || entry.name === ".turbo") return [];
+    const full = resolve(dir, entry.name);
+    if (entry.isDirectory()) return listCodeFiles(full);
+    return entry.name.endsWith(".ts") || entry.name.endsWith(".tsx") ? [full] : [];
+  });
+}
+
+export function findHeroUiViolations(files) {
+  const violations = [];
+  for (const file of files) {
+    const rel = relative(repoRoot, file).replaceAll("\\", "/");
+    const content = readFileSync(file, "utf8");
+    if (HEROUI_PRO_IMPORT_RE.test(content)) {
+      violations.push(`${rel}: importación prohibida de HeroUI Pro (Constitución #4, ADR 0006)`);
+    }
+    if (!rel.startsWith("packages/ui/") && HEROUI_IMPORT_RE.test(content)) {
+      violations.push(`${rel}: @heroui/* solo puede importarse dentro de packages/ui (ADR 0006)`);
+    }
+  }
+  return violations;
+}
+
 describe("evaluateCruise", () => {
   it("acepta un análisis que cubre todos los paquetes sin violaciones", () => {
     const result = { modules: [mod("apps/web/src/app/page.tsx"), mod("packages/db/src/index.ts")], summary: { violations: [] } };
@@ -62,10 +90,57 @@ describe("evaluateCruise", () => {
     expect(evaluateCruise(result, ["apps/web"])).toEqual(["web: apps/web/src/app/page.tsx → packages/db/src/index.ts"]);
   });
 
+  it("reporta violaciones de dependencia directa hacia @heroui fuera de packages/ui", () => {
+    const result = {
+      modules: [mod("apps/web/src/app/page.tsx")],
+      summary: {
+        violations: [
+          {
+            from: "apps/web/src/app/page.tsx",
+            to: "@heroui/react",
+            rule: { name: "heroui-solo-en-ui", severity: "error" },
+          },
+        ],
+      },
+    };
+    expect(evaluateCruise(result, ["apps/web"])).toEqual([
+      "heroui-solo-en-ui: apps/web/src/app/page.tsx → @heroui/react",
+    ]);
+  });
+
+  it("reporta violaciones de importación de HeroUI Pro en cualquier paquete", () => {
+    const result = {
+      modules: [mod("packages/ui/src/index.ts")],
+      summary: {
+        violations: [
+          {
+            from: "packages/ui/src/index.ts",
+            to: "@heroui-pro/react",
+            rule: { name: "prohibido-heroui-pro", severity: "error" },
+          },
+        ],
+      },
+    };
+    expect(evaluateCruise(result, ["packages/ui"])).toEqual([
+      "prohibido-heroui-pro: packages/ui/src/index.ts → @heroui-pro/react",
+    ]);
+  });
+
   it("prohíbe colores o medidas sueltas en archivos .css fuera de packages/ui/src/tokens.css", () => {
     const cssFiles = [...listCssFiles(resolve(repoRoot, "apps/web")), ...listCssFiles(resolve(repoRoot, "packages/ui"))];
     expect(findCssRawViolations(cssFiles)).toEqual([]);
     expect(RAW_CSS_VALUE_RE.test("color: #ff0000;")).toBe(true);
     expect(RAW_CSS_VALUE_RE.test("min-height: 100dvh;")).toBe(true);
   });
+
+  it("garantiza que ninguna app consume @heroui/* directamente y prohíbe @heroui-pro/* en todo el repo", () => {
+    const codeFiles = [
+      ...listCodeFiles(resolve(repoRoot, "apps")),
+      ...listCodeFiles(resolve(repoRoot, "packages")),
+    ];
+    expect(findHeroUiViolations(codeFiles)).toEqual([]);
+    expect(HEROUI_IMPORT_RE.test('import { Button } from "@heroui/react";')).toBe(true);
+    expect(HEROUI_PRO_IMPORT_RE.test('import { ProCard } from "@heroui-pro/react";')).toBe(true);
+  });
 });
+
