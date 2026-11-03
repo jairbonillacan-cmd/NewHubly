@@ -8,7 +8,7 @@ export interface Note {
 }
 export interface Todo {
   id: string; workspaceId: string; createdBy: string; noteId?: string | null | undefined;
-  title: string; detail?: string | null | undefined; dueDate?: string | null | undefined;
+  title: string; detail: string; dueDate?: string | null | undefined;
   priority: Priority; isDone: boolean; doneAt?: string | null | undefined; createdAt: string; updatedAt: string;
 }
 
@@ -19,9 +19,7 @@ export class NoteNotFoundError extends DomainError { constructor(id: string) { s
 export class TodoNotFoundError extends DomainError { constructor(id: string) { super(`Pendiente no encontrado: ${id}`); } }
 export class UnauthorizedWorkspaceError extends DomainError { constructor(id: string) { super(`No autorizado: ${id}`); } }
 export class InvalidTodoStateError extends DomainError {}
-export class ConcurrencyError extends DomainError {
-  constructor(exp: number, act: number) { super(`Conflicto versión: esperada ${exp}, actual ${act}`); }
-}
+export class ConcurrencyError extends DomainError { constructor(exp: number, act: number) { super(`Conflicto versión: esperada ${exp}, actual ${act}`); } }
 
 export const isOverdue = (t: Todo, ref: string) => !t.isDone && Boolean(t.dueDate && t.dueDate < ref);
 export const isToday = (t: Todo, ref: string) => !t.isDone && (t.dueDate === ref || isOverdue(t, ref));

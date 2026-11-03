@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { classifyTodoView, isOverdue, isToday, isUpcoming, isNoDate, isDoneView, toggleTodo, completeTodo, reopenTodo, updateNoteContent, pinNote, archiveNote, NoteNotFoundError, TodoNotFoundError, ConcurrencyError, type Todo, type Note } from './index.js';
 
 const baseTodo: Todo = {
-  id: 't-1', workspaceId: 'w-1', createdBy: 'u-1', title: 'T', priority: 'medium',
+  id: 't-1', workspaceId: 'w-1', createdBy: 'u-1', title: 'T', detail: '', priority: 'medium',
   isDone: false, createdAt: '2026-11-03T10:00:00Z', updatedAt: '2026-11-03T10:00:00Z',
 };
 const baseNote: Note = {
@@ -18,11 +18,8 @@ describe('Domain logic', () => {
     expect(classifyTodoView({ ...baseTodo, dueDate: '2026-11-04' }, ref)).toBe('upcoming');
     expect(classifyTodoView({ ...baseTodo, dueDate: null }, ref)).toBe('no_date');
     expect(classifyTodoView({ ...baseTodo, isDone: true, doneAt: '2026-11-03T10:00:00Z' }, ref)).toBe('done');
-    expect(isOverdue({ ...baseTodo, dueDate: '2026-11-02' }, ref)).toBe(true);
-    expect(isToday({ ...baseTodo, dueDate: '2026-11-03' }, ref)).toBe(true);
-    expect(isUpcoming({ ...baseTodo, dueDate: '2026-11-04' }, ref)).toBe(true);
-    expect(isNoDate({ ...baseTodo, dueDate: null })).toBe(true);
-    expect(isDoneView({ ...baseTodo, isDone: true })).toBe(true);
+    expect(isOverdue({ ...baseTodo, dueDate: '2026-11-02' }, ref) && isToday({ ...baseTodo, dueDate: '2026-11-03' }, ref)).toBe(true);
+    expect(isUpcoming({ ...baseTodo, dueDate: '2026-11-04' }, ref) && isNoDate(baseTodo) && isDoneView({ ...baseTodo, isDone: true })).toBe(true);
   });
 
   it('ejecuta transiciones puras de Todo y Note', () => {
