@@ -3,7 +3,7 @@ import { LineGraphicCycle } from "./LineGraphicCycle";
 
 export function BentoSection() {
   return (
-    <section id="ciclo" aria-label="Bloques Bento con el flujo de trabajo de Hubly" style={{ backgroundColor: tokens.bento.surfaceBase, color: tokens.color.textPrimary, paddingBlock: tokens.space[12], paddingInline: tokens.space[4], boxSizing: "border-box", width: "100%", overflowX: "hidden" }}>
+    <section id="ciclo" aria-label="Bloques Bento con el flujo de trabajo de Hubly" style={{ backgroundColor: tokens.bento.surfaceBase, color: tokens.color.textPrimary, paddingBlock: tokens.space[12], paddingInline: tokens.space[4], boxSizing: "border-box", width: "100%" }}>
       <div style={{ width: "100%", maxWidth: tokens.layout.bentoWidth, marginInline: "auto", display: "flex", flexDirection: "column", gap: tokens.space[10], boxSizing: "border-box" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: tokens.space[3], maxWidth: tokens.layout.readingWidth }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2] }}>
@@ -35,7 +35,7 @@ export function BentoSection() {
             <p style={{ margin: tokens.space[0], fontSize: tokens.font.size.base, lineHeight: tokens.font.leading.relaxed, color: tokens.color.textSecondary, maxWidth: tokens.layout.readingWidth }}>
               Cada publicación avanza por transiciones ordenadas. No hay estados ambiguos: se sabe cuándo nació la idea, quién editó el borrador, quién dio el visto bueno interno y qué cliente autorizó la publicación.
             </p>
-            <div style={{ borderTop: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`, borderBottom: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`, width: "100%" }}>
+            <div style={{ borderTop: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`, borderBottom: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`, width: "100%", maxWidth: "100%", minWidth: tokens.space[0], overflowX: "auto" }}>
               <LineGraphicCycle activeStageIndex={3} />
             </div>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(${tokens.bento.colMin}, 1fr))`, gap: tokens.space[4], fontSize: tokens.font.size.xs, color: tokens.color.textMuted }}>

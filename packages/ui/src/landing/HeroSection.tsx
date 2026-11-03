@@ -22,7 +22,7 @@ export function HeroSection({
       <div aria-hidden="true" style={{ position: "absolute", inset: tokens.space[0], backgroundImage: `url(${imageSrc})`, backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
       <div aria-hidden="true" style={{ position: "absolute", inset: tokens.space[0], background: tokens.glass.heroOverlayVeil, zIndex: 1 }} />
 
-      <div style={{ position: "relative", zIndex: 2, width: "100%", maxWidth: tokens.layout.heroWidth, marginInline: "auto", display: "flex", flexDirection: "column", gap: tokens.space[8], paddingTop: tokens.space[8], boxSizing: "border-box" }}>
+      <div className="hubly-hero-content" style={{ position: "relative", zIndex: 2, width: "100%", maxWidth: tokens.layout.heroWidth, marginInline: "auto", display: "flex", flexDirection: "column", gap: tokens.space[8], paddingTop: tokens.space[8], boxSizing: "border-box" }}>
         <div className="hubly-hero-grid">
           <div style={{ display: "flex", flexDirection: "column", gap: tokens.space[5] }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], paddingBlock: tokens.space[1], paddingInline: tokens.space[3], backgroundColor: tokens.pill.glassBg, border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`, borderRadius: tokens.radius.full, alignSelf: "flex-start", backdropFilter: `blur(${tokens.glass.blurMobile})`, WebkitBackdropFilter: `blur(${tokens.glass.blurMobile})` }}>
