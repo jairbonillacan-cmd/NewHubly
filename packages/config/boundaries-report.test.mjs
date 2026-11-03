@@ -1,8 +1,14 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { evaluateCruise } from "./boundaries-report.mjs";
+import {
+  evaluateCruise,
+  findHeroUiCodeViolations,
+  findHeroUiCssViolations,
+  findHeroUiManifestViolations,
+  listProjectFiles,
+} from "./boundaries-report.mjs";
 
 const mod = (source) => ({ source });
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -31,33 +37,7 @@ export function findCssRawViolations(files) {
   return violations;
 }
 
-const HEROUI_IMPORT_RE = /(from\s+["']@heroui(\/.*)?["']|import\s+["']@heroui(\/.*)?["'])/;
-const HEROUI_PRO_IMPORT_RE = /(from\s+["']@heroui-pro(\/.*)?["']|import\s+["']@heroui-pro(\/.*)?["'])/;
-
-function listCodeFiles(dir) {
-  const entries = readdirSync(dir, { withFileTypes: true });
-  return entries.flatMap((entry) => {
-    if (entry.name === "node_modules" || entry.name === ".next" || entry.name === ".turbo") return [];
-    const full = resolve(dir, entry.name);
-    if (entry.isDirectory()) return listCodeFiles(full);
-    return entry.name.endsWith(".ts") || entry.name.endsWith(".tsx") ? [full] : [];
-  });
-}
-
-export function findHeroUiViolations(files) {
-  const violations = [];
-  for (const file of files) {
-    const rel = relative(repoRoot, file).replaceAll("\\", "/");
-    const content = readFileSync(file, "utf8");
-    if (HEROUI_PRO_IMPORT_RE.test(content)) {
-      violations.push(`${rel}: importación prohibida de HeroUI Pro (Constitución #4, ADR 0006)`);
-    }
-    if (!rel.startsWith("packages/ui/") && HEROUI_IMPORT_RE.test(content)) {
-      violations.push(`${rel}: @heroui/* solo puede importarse dentro de packages/ui (ADR 0006)`);
-    }
-  }
-  return violations;
-}
+export const findHeroUiViolations = findHeroUiCodeViolations;
 
 describe("evaluateCruise", () => {
   it("acepta un análisis que cubre todos los paquetes sin violaciones", () => {
@@ -133,14 +113,73 @@ describe("evaluateCruise", () => {
     expect(RAW_CSS_VALUE_RE.test("min-height: 100dvh;")).toBe(true);
   });
 
-  it("garantiza que ninguna app consume @heroui/* directamente y prohíbe @heroui-pro/* en todo el repo", () => {
+  it("garantiza que ninguna app consume @heroui/* directamente y prohíbe @heroui-pro / @heroui/pro en todo el repo", () => {
     const codeFiles = [
-      ...listCodeFiles(resolve(repoRoot, "apps")),
-      ...listCodeFiles(resolve(repoRoot, "packages")),
+      ...listProjectFiles(resolve(repoRoot, "apps"), { extensions: [".ts", ".tsx"] }),
+      ...listProjectFiles(resolve(repoRoot, "packages"), { extensions: [".ts", ".tsx"] }),
     ];
-    expect(findHeroUiViolations(codeFiles)).toEqual([]);
-    expect(HEROUI_IMPORT_RE.test('import { Button } from "@heroui/react";')).toBe(true);
-    expect(HEROUI_PRO_IMPORT_RE.test('import { ProCard } from "@heroui-pro/react";')).toBe(true);
+    expect(findHeroUiViolations(codeFiles, { repoRoot })).toEqual([]);
+
+    // Fixtures sintéticos para asegurar detección de variantes
+    const mockViolations = findHeroUiViolations(
+      [
+        { path: "apps/web/src/component.tsx", content: 'import { Button } from "@heroui/react";' },
+        { path: "packages/ui/src/card.tsx", content: 'import { ProCard } from "@heroui-pro/react";' },
+        { path: "packages/ui/src/table.tsx", content: 'import { ProTable } from "@heroui/pro";' },
+        { path: "packages/ui/src/button.tsx", content: 'import { Button } from "@heroui/react";' },
+      ],
+      { repoRoot: "" },
+    );
+    expect(mockViolations).toHaveLength(3);
+    expect(mockViolations[0]).toContain("@heroui/* solo puede importarse dentro de packages/ui");
+    expect(mockViolations[1]).toContain("importación prohibida de HeroUI Pro");
+    expect(mockViolations[2]).toContain("importación prohibida de HeroUI Pro");
+  });
+
+  it("prohíbe menciones de HeroUI Pro en cualquier package.json o en pnpm-lock.yaml", () => {
+    const manifests = [
+      ...(["package.json", "pnpm-lock.yaml"].filter((f) => existsSync(resolve(repoRoot, f))).map((f) => resolve(repoRoot, f))),
+      ...listProjectFiles(resolve(repoRoot, "apps"), { names: ["package.json"] }),
+      ...listProjectFiles(resolve(repoRoot, "packages"), { names: ["package.json"] }),
+    ];
+    expect(findHeroUiManifestViolations(manifests, { repoRoot })).toEqual([]);
+
+    // Fixtures sintéticos
+    const mockViolations = findHeroUiManifestViolations(
+      [
+        { path: "packages/ui/package.json", content: '{"dependencies": {"@heroui-pro/react": "^1.0.0"}}' },
+        { path: "apps/web/package.json", content: '{"dependencies": {"@heroui/pro": "^1.0.0"}}' },
+        { path: "pnpm-lock.yaml", content: "packages:\n  /@heroui-pro/react@1.0.0:\n    resolution: ..." },
+        { path: "packages/ui/package.json", content: '{"dependencies": {"@heroui/react": "^3.2.7"}}' },
+      ],
+      { repoRoot: "" },
+    );
+    expect(mockViolations).toHaveLength(3);
+    expect(mockViolations[0]).toContain("mención prohibida de HeroUI Pro en manifiesto");
+    expect(mockViolations[1]).toContain("mención prohibida de HeroUI Pro en manifiesto");
+    expect(mockViolations[2]).toContain("mención prohibida de HeroUI Pro en manifiesto");
+  });
+
+  it("prohíbe @import de @heroui/styles en archivos CSS fuera de packages/ui y HeroUI Pro en cualquier CSS", () => {
+    const cssFiles = [
+      ...listProjectFiles(resolve(repoRoot, "apps"), { extensions: [".css"] }),
+      ...listProjectFiles(resolve(repoRoot, "packages"), { extensions: [".css"] }),
+    ];
+    expect(findHeroUiCssViolations(cssFiles, { repoRoot })).toEqual([]);
+
+    // Fixtures sintéticos
+    const mockViolations = findHeroUiCssViolations(
+      [
+        { path: "apps/web/src/app/globals.css", content: '@import "@heroui/styles";' },
+        { path: "apps/web/src/app/globals.css", content: "@import url('@heroui/styles');" },
+        { path: "packages/ui/src/tokens.css", content: '@import "@heroui-pro/styles";' },
+        { path: "packages/ui/src/tokens.css", content: '@import "@heroui/styles";' },
+      ],
+      { repoRoot: "" },
+    );
+    expect(mockViolations).toHaveLength(3);
+    expect(mockViolations[0]).toContain("@import de @heroui/styles solo está permitido dentro de packages/ui");
+    expect(mockViolations[1]).toContain("@import de @heroui/styles solo está permitido dentro de packages/ui");
+    expect(mockViolations[2]).toContain("importación prohibida de HeroUI Pro en CSS");
   });
 });
-

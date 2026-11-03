@@ -36,7 +36,7 @@ Para aquellos componentes que no formen parte de la versión gratuita OSS de Her
 ### 4. Tokens semánticos de @hubly/ui como única fuente de verdad
 Conforme a la Constitución #6 («Diseño por tokens. Se prohíben colores y medidas sueltas...»):
 - Los tokens semánticos definidos en `packages/ui` (`tokens.css` y `tokens.ts`) son la **única fuente de verdad** estética y funcional de Hubly.
-- El tema de HeroUI se configura y mapea derivando sus variables CSS desde nuestros tokens semánticos (`--color-surface-*`, `--color-glass-*`, `--color-brand-*`, `--color-text-*`, `--color-border-*`, radios y tipografías).
+- El tema de HeroUI se configura y mapea derivando sus variables CSS desde nuestros tokens semánticos (`--surface-*`, `--glass-*`, `--surface-brand*`, `--text-*`, `--border-*`, radios y tipografías).
 - Se prohíbe el uso de valores hexadecimales, RGB o dimensiones fijas arbitrarias en componentes o temas.
 - Selector canónico para modo oscuro: `[data-theme="dark"]`, garantizando coherencia con el componente `ThemeToggle` y la infraestructura existente.
 

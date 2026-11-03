@@ -50,7 +50,7 @@ module.exports = {
       severity: "error",
       comment: "HeroUI Pro está estrictamente prohibido en todo el proyecto (Constitución #4, ADR 0006).",
       from: {},
-      to: { path: "@heroui-pro(/|$)" },
+      to: { path: "(@heroui-pro|@heroui/pro)(/|$)" },
     },
     { name: "sin-ciclos", severity: "error", from: {}, to: { circular: true } },
     { name: "sin-irresolubles", severity: "error", from: {}, to: { couldNotResolve: true } },
