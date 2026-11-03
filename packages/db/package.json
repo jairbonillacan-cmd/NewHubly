@@ -6,12 +6,16 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.1",
+    "postgres": "^3.4.5",
     "server-only": "0.0.1"
   },
   "devDependencies": {
-    "@hubly/config": "workspace:*"
+    "@hubly/config": "workspace:*",
+    "@types/node": "26.6.6"
   }
 }
