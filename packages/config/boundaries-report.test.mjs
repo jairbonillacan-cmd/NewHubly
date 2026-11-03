@@ -182,4 +182,15 @@ describe("evaluateCruise", () => {
     expect(mockViolations[1]).toContain("@import de @heroui/styles solo está permitido dentro de packages/ui");
     expect(mockViolations[2]).toContain("importación prohibida de HeroUI Pro en CSS");
   });
+
+  it("invalida la caché de turbo test cuando cambian archivos CSS en apps/web o packages/ui", () => {
+    const turboConfig = JSON.parse(readFileSync(resolve(repoRoot, "turbo.json"), "utf8"));
+    expect(turboConfig.tasks?.test?.inputs).toEqual(
+      expect.arrayContaining([
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/web/**/*.css",
+        "$TURBO_ROOT$/packages/ui/**/*.css",
+      ]),
+    );
+  });
 });

@@ -2,7 +2,13 @@
   "$schema": "https://turborepo.com/schema.json",
   "tasks": {
     "typecheck": {},
-    "test": {},
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/web/**/*.css",
+        "$TURBO_ROOT$/packages/ui/**/*.css"
+      ]
+    },
     "build": {
       "outputs": [".next/**", "!.next/cache/**"]
     }
