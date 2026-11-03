@@ -1,6 +1,6 @@
 # 0005. Excepción de modelo único Gemini 4 Argon y protocolo de revisión
 
-Estado: Propuesto
+Estado: Aceptado
 Fecha: 2026-11-02
 Issue: #17
 
