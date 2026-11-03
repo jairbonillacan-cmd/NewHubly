@@ -36,7 +36,14 @@ module.exports = {
       severity: "error",
       comment: "Entre paquetes solo se importa el punto de entrada declarado en exports (ADR 0002).",
       from: { path: "^(apps|packages)/([^/]+)/" },
-      to: { path: `${PKG}[^/]+/src/(?!(index\\.ts|tokens\\.css)$)`, pathNot: "^$1/$2/" },
+      to: { path: `${PKG}[^/]+/src/(?!(index\\.ts|internal\\.ts|tokens\\.css)$)`, pathNot: "^$1/$2/" },
+    },
+    {
+      name: "db-internal-restringido",
+      severity: "error",
+      comment: "@hubly/db/internal y client.ts solo se permiten en context/internal, pruebas (*.test.ts) y raíz de composición.",
+      from: { pathNot: "^(packages/db/src/(client|context|internal)\\.ts$|apps/web/src/server/composition/|.*\\.test\\.ts$)" },
+      to: { path: "^packages/db/src/(client|internal)\\.ts$" },
     },
     {
       name: "heroui-solo-en-ui",
