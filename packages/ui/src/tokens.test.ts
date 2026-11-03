@@ -30,4 +30,33 @@ describe("tokens semánticos de @hubly/ui", () => {
     expect(tokens.radius.md).toBe("var(--radius-md)");
     expect(tokens.layout.viewportHeight).toBe("var(--measure-viewport-height)");
   });
+
+  it("cubre tokens de marca, bento, liquid glass, píldoras y tipografía display (Fase 1B / Issue #8)", () => {
+    expect(tokens.color.surfaceBrand).toBe("var(--surface-brand)");
+    expect(tokens.color.accentWarm).toBe("var(--accent-warm)");
+    expect(tokens.bento.surfaceBase).toBe("var(--bento-surface-base)");
+    expect(tokens.bento.cardBg).toBe("var(--bento-card-bg)");
+    expect(tokens.bento.cardBorder).toBe("var(--bento-card-border)");
+    expect(tokens.glass.bg).toBe("var(--glass-bg)");
+    expect(tokens.glass.border).toBe("var(--glass-border)");
+    expect(tokens.glass.shadow).toBe("var(--glass-shadow)");
+    expect(tokens.glass.blur).toBe("var(--glass-blur)");
+    expect(tokens.glass.blurMobile).toBe("var(--glass-blur-mobile)");
+    expect(tokens.glass.fallbackBg).toBe("var(--glass-fallback-bg)");
+    expect(tokens.pill.activeBg).toBe("var(--pill-active-bg)");
+    expect(tokens.pill.glassBg).toBe("var(--pill-glass-bg)");
+    expect(tokens.font.size.displayHero).toBe("var(--text-display-hero)");
+    expect(tokens.font.size.displayNum).toBe("var(--text-display-num)");
+    expect(tokens.font.weight.light).toBe("var(--weight-light)");
+    expect(tokens.radius.xl).toBe("var(--radius-xl)");
+    expect(tokens.radius["2xl"]).toBe("var(--radius-2xl)");
+    expect(tokens.radius.full).toBe("var(--radius-full)");
+    expect(tokens.bento.cardShadow).toBe("var(--bento-card-shadow)");
+    expect(tokens.glass.heroOverlayVeil).toBe("var(--glass-hero-veil)");
+    expect(tokens.font.tracking.wide).toBe("var(--tracking-wide)");
+    expect(tokens.layout.heroWidth).toBe("var(--container-hero)");
+    expect(tokens.layout.bentoWidth).toBe("var(--container-bento)");
+    expect(tokens.layout.heroMinHeight).toBe("var(--measure-hero-min-height)");
+  });
 });
+
