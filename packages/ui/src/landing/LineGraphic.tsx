@@ -1,4 +1,4 @@
-import { tokens } from "@hubly/ui";
+import { tokens } from "../tokens";
 
 export interface LineGraphicCycleProps {
   activeStageIndex?: number;
@@ -20,23 +20,9 @@ export function LineGraphicCycle({ activeStageIndex = 3, compact = false }: Line
     <div
       role="img"
       aria-label="Diagrama del ciclo de vida de la pieza: de idea a medida, con aprobación del cliente en curso"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: tokens.space[4],
-        width: "100%",
-      }}
+      className="hubly-lifecycle-container"
     >
-      {/* Línea horizontal en escritorio / tablet */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${LIFECYCLE_STAGES.length}, minmax(0, 1fr))`,
-          alignItems: "center",
-          position: "relative",
-          gap: tokens.space[2],
-        }}
-      >
+      <div className="hubly-lifecycle-track">
         {/* Línea conectora base */}
         <div
           aria-hidden="true"
@@ -66,6 +52,7 @@ export function LineGraphicCycle({ activeStageIndex = 3, compact = false }: Line
                 position: "relative",
                 zIndex: 1,
                 gap: tokens.space[2],
+                minWidth: tokens.space[0],
               }}
             >
               {/* Nodo indicador con línea fina */}

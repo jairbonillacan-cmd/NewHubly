@@ -1,20 +1,19 @@
-import { tokens } from "@hubly/ui";
+import { tokens } from "../tokens";
 import { LineGraphicCycle } from "./LineGraphic";
 
-export interface BentoSectionProps {
-  layoutVariant?: "asymmetric" | "integrated" | "timeline";
-}
-
-export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps) {
+export function BentoSection() {
   return (
     <section
       id="ciclo"
-      aria-label="Bloques Bento con el producto real de Hubly"
+      aria-label="Bloques Bento con el flujo de trabajo de Hubly"
       style={{
         backgroundColor: tokens.bento.surfaceBase,
         color: tokens.color.textPrimary,
         paddingBlock: tokens.space[12],
         paddingInline: tokens.space[4],
+        boxSizing: "border-box",
+        width: "100%",
+        overflowX: "hidden",
       }}
     >
       <div
@@ -25,6 +24,7 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
           display: "flex",
           flexDirection: "column",
           gap: tokens.space[10],
+          boxSizing: "border-box",
         }}
       >
         {/* Cabecera del bloque Bento */}
@@ -36,13 +36,7 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
             maxWidth: tokens.layout.readingWidth,
           }}
         >
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: tokens.space[2],
-            }}
-          >
+          <div style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2] }}>
             <span
               style={{
                 width: tokens.space[2],
@@ -85,32 +79,14 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
               color: tokens.color.textSecondary,
             }}
           >
-            Sin datos simulados ni métricas inventadas. Cada módulo de este bento refleja el modelo operativo que ejecuta NewHubly desde el primer día.
+            Diseñado para el ritmo de tu agencia: cada pieza tiene un estado claro y un responsable asignado desde el primer día.
           </p>
         </div>
 
-        {/* Cuadrícula Bento Asimétrica */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(12, minmax(0, 1fr))",
-            gap: tokens.space[6],
-          }}
-        >
-          {/* MÓDULO 1 (Grande, 8 columnas): El ciclo de la pieza (Constitución #2) */}
-          <article
-            style={{
-              gridColumn: "span 12",
-              backgroundColor: tokens.bento.cardBg,
-              border: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`,
-              borderRadius: tokens.radius["2xl"],
-              padding: tokens.space[8],
-              display: "flex",
-              flexDirection: "column",
-              gap: tokens.space[6],
-              boxShadow: tokens.bento.cardShadow,
-            }}
-          >
+        {/* Cuadrícula Bento Equilibrada: Fila 1 (12 col), Fila 2 (6+6 col), Fila 3 (6+6 col) */}
+        <div className="hubly-bento-grid">
+          {/* MÓDULO 1 (12 columnas): El ciclo completo de la pieza */}
+          <article className="hubly-bento-card hubly-bento-card-12" style={{ gap: tokens.space[6] }}>
             <div
               style={{
                 display: "flex",
@@ -130,7 +106,7 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                     color: tokens.color.textMuted,
                   }}
                 >
-                  Constitución #2 · Columna vertebral
+                  Flujo central
                 </span>
                 <h3
                   style={{
@@ -158,7 +134,7 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                   color: tokens.color.accentWarmText,
                 }}
               >
-                <span>7 etapas auditadas</span>
+                <span>7 etapas definidas</span>
               </div>
             </div>
 
@@ -171,16 +147,15 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                 maxWidth: tokens.layout.readingWidth,
               }}
             >
-              Cada publicación avanza por transiciones irreversibles y auditadas. No hay estados ambiguos: se sabe cuándo nació la idea, quién editó el borrador, quién dio el visto bueno interno y qué cliente autorizó la publicación.
+              Cada publicación avanza por transiciones ordenadas. No hay estados ambiguos: se sabe cuándo nació la idea, quién editó el borrador, quién dio el visto bueno interno y qué cliente autorizó la publicación.
             </p>
 
             {/* Gráfico lineal fino monocromo con 1 solo acento naranja */}
             <div
               style={{
-                paddingBlock: tokens.space[4],
-                paddingInline: tokens.space[2],
                 borderTop: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`,
                 borderBottom: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`,
+                width: "100%",
               }}
             >
               <LineGraphicCycle activeStageIndex={3} />
@@ -196,35 +171,28 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
               }}
             >
               <div>
-                <strong style={{ color: tokens.color.textPrimary, display: "block" }}>Auditoría inmutable:</strong>
+                <strong style={{ color: tokens.color.textPrimary, display: "block" }}>
+                  Auditoría inmutable (próximamente):
+                </strong>
                 Registro con marca de tiempo UTC, usuario y cambio de estado en cada paso.
               </div>
               <div>
                 <strong style={{ color: tokens.color.textPrimary, display: "block" }}>Cero saltos:</strong>
-                No se puede programar sin aprobación del cliente; no se puede medir sin publicación real.
+                No se puede programar sin aprobación; no se puede medir sin publicación real.
               </div>
               <div>
-                <strong style={{ color: tokens.color.textPrimary, display: "block" }}>Portal cliente:</strong>
-                El cliente aprueba o solicita ajustes desde un enlace firmado sin tener que crear cuenta.
+                <strong style={{ color: tokens.color.textPrimary, display: "block" }}>
+                  Portal cliente (próximamente):
+                </strong>
+                El cliente aprueba o solicita ajustes desde un enlace seguro sin contraseñas.
               </div>
             </div>
           </article>
 
-          {/* MÓDULO 2 (4 columnas): Contraste tipográfico radical (Número grande en peso ligero) */}
+          {/* MÓDULO 2 (6 columnas): Claridad operativa (sin cifras ficticias) */}
           <article
-            id="pregunta"
-            style={{
-              gridColumn: layoutVariant === "integrated" ? "span 12" : "span 4",
-              backgroundColor: tokens.bento.cardBg,
-              border: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`,
-              borderRadius: tokens.radius["2xl"],
-              padding: tokens.space[8],
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              gap: tokens.space[6],
-              boxShadow: tokens.bento.cardShadow,
-            }}
+            className="hubly-bento-card hubly-bento-card-6"
+            style={{ justifyContent: "space-between", gap: tokens.space[6] }}
           >
             <div style={{ display: "flex", flexDirection: "column", gap: tokens.space[2] }}>
               <span
@@ -236,7 +204,7 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                   color: tokens.color.textMuted,
                 }}
               >
-                Honestidad operativa
+                Claridad operativa
               </span>
               <h3
                 style={{
@@ -246,21 +214,21 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                   color: tokens.color.textPrimary,
                 }}
               >
-                Cero ambigüedad
+                Sin preguntas en el limbo
               </h3>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: tokens.space[1] }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: tokens.space[2] }}>
               <div
                 style={{
-                  fontSize: tokens.font.size.displayNum,
-                  lineHeight: "1",
-                  fontWeight: tokens.font.weight.light,
-                  color: tokens.color.surfaceBrand,
-                  letterSpacing: tokens.font.tracking.tightest,
+                  fontSize: tokens.font.size["2xl"],
+                  lineHeight: tokens.font.leading.tight,
+                  fontWeight: tokens.font.weight.bold,
+                  color: tokens.bento.highlightText,
+                  letterSpacing: tokens.font.tracking.tight,
                 }}
               >
-                0
+                Estado único y visible
               </div>
               <p
                 style={{
@@ -271,7 +239,7 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                   lineHeight: tokens.font.leading.normal,
                 }}
               >
-                Preguntas de «¿en qué quedó este post?» en WhatsApp o Slack.
+                Sabes en qué quedó cada publicación sin hilos dispersos en chats ni mensajes cruzados. Cada pieza tiene un único estado y un responsable actual asignado.
               </p>
             </div>
 
@@ -285,37 +253,27 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                 paddingTop: tokens.space[4],
               }}
             >
-              Cada pieza tiene un único estado y un único responsable actual claramente visibles para todo el equipo.
+              Visibilidad compartida en tiempo real para todo el equipo de redacción, diseño y cuentas.
             </p>
           </article>
 
-          {/* MÓDULO 3 (4 columnas): La pregunta central («¿Qué sigue y quién lo tiene?») */}
+          {/* MÓDULO 3 (6 columnas): La pregunta central */}
           <article
-            style={{
-              gridColumn: "span 4",
-              backgroundColor: tokens.bento.cardBg,
-              border: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`,
-              borderRadius: tokens.radius["2xl"],
-              padding: tokens.space[8],
-              display: "flex",
-              flexDirection: "column",
-              gap: tokens.space[4],
-              boxShadow: tokens.bento.cardShadow,
-            }}
+            id="pregunta"
+            className="hubly-bento-card hubly-bento-card-6"
+            style={{ gap: tokens.space[4] }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: tokens.space[2] }}>
-              <span
-                style={{
-                  fontSize: tokens.font.size.xs,
-                  fontWeight: tokens.font.weight.bold,
-                  textTransform: "uppercase",
-                  letterSpacing: tokens.font.tracking.wider,
-                  color: tokens.color.textMuted,
-                }}
-              >
-                Constitución #1
-              </span>
-            </div>
+            <span
+              style={{
+                fontSize: tokens.font.size.xs,
+                fontWeight: tokens.font.weight.bold,
+                textTransform: "uppercase",
+                letterSpacing: tokens.font.tracking.wider,
+                color: tokens.color.textMuted,
+              }}
+            >
+              Pregunta central
+            </span>
 
             <h3
               style={{
@@ -384,20 +342,11 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
             </ul>
           </article>
 
-          {/* MÓDULO 4 (4 columnas): Vista Hoy (Fase 1A) */}
+          {/* MÓDULO 4 (6 columnas): Vista Hoy */}
           <article
             id="hoy"
-            style={{
-              gridColumn: "span 4",
-              backgroundColor: tokens.bento.cardBg,
-              border: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`,
-              borderRadius: tokens.radius["2xl"],
-              padding: tokens.space[8],
-              display: "flex",
-              flexDirection: "column",
-              gap: tokens.space[4],
-              boxShadow: tokens.bento.cardShadow,
-            }}
+            className="hubly-bento-card hubly-bento-card-6"
+            style={{ gap: tokens.space[4] }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span
@@ -409,7 +358,7 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                   color: tokens.color.textMuted,
                 }}
               >
-                Fase 1A · Entrada Diaria
+                Entrada diaria
               </span>
               <span
                 style={{
@@ -422,7 +371,7 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                   fontWeight: tokens.font.weight.semibold,
                 }}
               >
-                Listo
+                Operativo
               </span>
             </div>
 
@@ -445,7 +394,7 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                 color: tokens.color.textSecondary,
               }}
             >
-              Sin dashboards sobrecargados ni paneles infinitos. Tu jornada arranca con lo que requiere atención hoy:
+              Sin paneles sobrecargados ni métricas superfluas. Tu jornada arranca con lo que requiere atención hoy:
             </p>
 
             <div
@@ -459,26 +408,14 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                 color: tokens.color.textSecondary,
               }}
             >
-              <div>• <strong>Pendientes vencidos y de hoy</strong> priorizados primero.</div>
-              <div>• <strong>Captura rápida de 1 línea</strong> sin abrir modales.</div>
-              <div>• <strong>Notas fijadas</strong> con autoguardado visible.</div>
+              <div>• <strong>Pendientes priorizados</strong> con alertas claras.</div>
+              <div>• <strong>Captura rápida de 1 línea</strong> sin abrir modales pesados.</div>
+              <div>• <strong>Notas fijadas</strong> con persistencia inmediata.</div>
             </div>
           </article>
 
-          {/* MÓDULO 5 (4 columnas): Soberanía de datos (Constitución #5) */}
-          <article
-            style={{
-              gridColumn: "span 4",
-              backgroundColor: tokens.bento.cardBg,
-              border: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`,
-              borderRadius: tokens.radius["2xl"],
-              padding: tokens.space[8],
-              display: "flex",
-              flexDirection: "column",
-              gap: tokens.space[4],
-              boxShadow: tokens.bento.cardShadow,
-            }}
-          >
+          {/* MÓDULO 5 (6 columnas): Soberanía de datos */}
+          <article className="hubly-bento-card hubly-bento-card-6" style={{ gap: tokens.space[4] }}>
             <span
               style={{
                 fontSize: tokens.font.size.xs,
@@ -488,7 +425,7 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                 color: tokens.color.textMuted,
               }}
             >
-              Constitución #5 · Soberanía
+              Soberanía de datos
             </span>
 
             <h3
@@ -499,7 +436,7 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                 color: tokens.color.textPrimary,
               }}
             >
-              Los datos son del cliente
+              Los datos son de tu agencia
             </h3>
 
             <p
@@ -516,8 +453,10 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
             <div
               style={{
                 display: "flex",
+                alignItems: "center",
                 gap: tokens.space[2],
                 paddingTop: tokens.space[2],
+                flexWrap: "wrap",
               }}
             >
               <span
@@ -547,6 +486,15 @@ export function BentoSection({ layoutVariant = "asymmetric" }: BentoSectionProps
                 }}
               >
                 .MD
+              </span>
+              <span
+                style={{
+                  fontSize: tokens.font.size.xs,
+                  color: tokens.color.textMuted,
+                  fontStyle: "italic",
+                }}
+              >
+                Exportación abierta (próximamente)
               </span>
             </div>
           </article>

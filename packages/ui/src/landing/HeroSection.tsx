@@ -1,9 +1,8 @@
-import { tokens } from "@hubly/ui";
 import type { ReactNode } from "react";
+import { tokens } from "../tokens";
 import { GlassCard } from "./GlassCard";
 
 export interface HeroSectionProps {
-  variant?: "variante-1" | "variante-2" | "variante-3";
   imageSrc?: string;
   headlineLine1?: string;
   headlineLine2?: string;
@@ -12,10 +11,9 @@ export interface HeroSectionProps {
 }
 
 export function HeroSection({
-  variant = "variante-1",
   imageSrc = "/images/hero-studio.jpg",
-  headlineLine1 = "El trabajo de tu agencia.",
-  headlineLine2 = "Bajo control, en una sola vista.",
+  headlineLine1 = "Cada pieza de contenido.",
+  headlineLine2 = "Sabe qué sigue y quién la tiene.",
   subheadline = "Hubly ordena el ciclo de cada pieza: desde la idea inicial hasta la métrica real, sin perder tiempo en chats dispersos ni adivinar quién tiene el turno.",
   glassCardsSlot,
 }: HeroSectionProps) {
@@ -35,6 +33,8 @@ export function HeroSection({
         paddingTop: tokens.space[12],
         paddingBottom: tokens.space[10],
         paddingInline: tokens.space[4],
+        boxSizing: "border-box",
+        width: "100%",
       }}
     >
       {/* Fotografía editorial real de fondo a sangre */}
@@ -73,25 +73,16 @@ export function HeroSection({
           flexDirection: "column",
           gap: tokens.space[8],
           paddingTop: tokens.space[8],
+          boxSizing: "border-box",
         }}
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: variant === "variante-2" ? "1fr" : "minmax(0, 1.25fr) minmax(0, 0.95fr)",
-            gap: tokens.space[8],
-            alignItems: "center",
-          }}
-        >
+        <div className="hubly-hero-grid">
           {/* Bloque de texto editorial: Titular grande de 2 líneas + párrafo */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               gap: tokens.space[5],
-              maxWidth: variant === "variante-2" ? tokens.layout.readingWidth : "none",
-              marginInline: variant === "variante-2" ? "auto" : "0",
-              textAlign: variant === "variante-2" ? "center" : "left",
             }}
           >
             {/* Píldora de estado de producto real */}
@@ -105,7 +96,7 @@ export function HeroSection({
                 backgroundColor: tokens.pill.glassBg,
                 border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`,
                 borderRadius: tokens.radius.full,
-                alignSelf: variant === "variante-2" ? "center" : "flex-start",
+                alignSelf: "flex-start",
                 backdropFilter: `blur(${tokens.glass.blurMobile})`,
                 WebkitBackdropFilter: `blur(${tokens.glass.blurMobile})`,
               }}
@@ -128,7 +119,7 @@ export function HeroSection({
                   color: tokens.pill.glassText,
                 }}
               >
-                Trazabilidad editorial para agencias
+                Flujo editorial para agencias
               </span>
             </div>
 
@@ -169,7 +160,6 @@ export function HeroSection({
                 gap: tokens.space[4],
                 paddingTop: tokens.space[2],
                 flexWrap: "wrap",
-                justifyContent: variant === "variante-2" ? "center" : "flex-start",
               }}
             >
               <a
@@ -225,10 +215,12 @@ export function HeroSection({
                 display: "flex",
                 flexDirection: "column",
                 gap: tokens.space[4],
+                width: "100%",
+                boxSizing: "border-box",
               }}
             >
-              {/* Tarjeta de Cristal 1: Pieza en curso */}
-              <GlassCard aria-label="Ejemplo real: Pieza en curso con etapa y responsable actual">
+              {/* Tarjeta de Cristal 1: Ejemplo visible de Pieza en curso */}
+              <GlassCard aria-label="Ejemplo: Campaña Primavera · Revisión interna">
                 <div
                   style={{
                     display: "flex",
@@ -236,19 +228,34 @@ export function HeroSection({
                     justifyContent: "space-between",
                     borderBottom: `${tokens.border.thin} solid ${tokens.glass.border}`,
                     paddingBottom: tokens.space[3],
+                    gap: tokens.space[2],
+                    flexWrap: "wrap",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: tokens.space[2] }}>
                     <span
                       style={{
+                        paddingBlock: tokens.space[0],
+                        paddingInline: tokens.space[2],
+                        backgroundColor: tokens.color.surfaceBrandContrast,
+                        color: tokens.color.surfaceBrand,
+                        borderRadius: tokens.radius.sm,
                         fontSize: tokens.font.size.xs,
                         fontWeight: tokens.font.weight.bold,
+                        letterSpacing: tokens.font.tracking.wide,
                         textTransform: "uppercase",
-                        letterSpacing: tokens.font.tracking.wider,
+                      }}
+                    >
+                      Ejemplo
+                    </span>
+                    <span
+                      style={{
+                        fontSize: tokens.font.size.xs,
+                        fontWeight: tokens.font.weight.semibold,
                         color: tokens.glass.textMuted,
                       }}
                     >
-                      Pieza #104 · Instagram
+                      Campaña Primavera
                     </span>
                   </div>
                   <span
@@ -262,7 +269,7 @@ export function HeroSection({
                       fontWeight: tokens.font.weight.semibold,
                     }}
                   >
-                    Aprobación del cliente
+                    Revisión interna
                   </span>
                 </div>
 
@@ -285,7 +292,7 @@ export function HeroSection({
                       color: tokens.glass.textSecondary,
                     }}
                   >
-                    Enlace de portal enviado a <strong>cliente@marca.com</strong>. Esperando validación o ajustes en una sola vista sin login.
+                    Borrador completado y listo para revisión del director de arte antes de solicitar visto bueno.
                   </p>
                 </div>
 
@@ -297,14 +304,18 @@ export function HeroSection({
                     paddingTop: tokens.space[2],
                     fontSize: tokens.font.size.xs,
                     color: tokens.glass.textMuted,
+                    gap: tokens.space[2],
+                    flexWrap: "wrap",
                   }}
                 >
-                  <span>¿Quién lo tiene?: <strong>Cliente (hace 2h)</strong></span>
-                  <span style={{ color: tokens.color.accentWarmText, fontWeight: tokens.font.weight.semibold }}>Auditoría activa</span>
+                  <span>¿Quién la tiene?: <strong>Equipo creativo (hace 2h)</strong></span>
+                  <span style={{ color: tokens.color.accentWarmText, fontWeight: tokens.font.weight.semibold }}>
+                    Auditoría (próximamente)
+                  </span>
                 </div>
               </GlassCard>
 
-              {/* Tarjeta de Cristal 2: La regla de oro */}
+              {/* Tarjeta de Cristal 2: Pregunta central */}
               <GlassCard aria-label="La pregunta central de Hubly">
                 <div style={{ display: "flex", alignItems: "center", gap: tokens.space[3] }}>
                   <div
@@ -319,6 +330,7 @@ export function HeroSection({
                       justifyContent: "center",
                       fontSize: tokens.font.size.base,
                       fontWeight: tokens.font.weight.bold,
+                      flexShrink: 0,
                     }}
                     aria-hidden="true"
                   >
@@ -334,7 +346,7 @@ export function HeroSection({
                         color: tokens.glass.textMuted,
                       }}
                     >
-                      Constitución #1
+                      Pregunta central
                     </span>
                     <strong style={{ fontSize: tokens.font.size.sm, color: tokens.glass.textPrimary }}>
                       «¿Qué sigue y quién lo tiene?»

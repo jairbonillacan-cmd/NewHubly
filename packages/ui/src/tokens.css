@@ -74,6 +74,7 @@
   --bento-card-hover: #ffffff;
   --bento-card-shadow: 0 0.0625rem 0.1875rem 0 rgba(0, 0, 0, 0.04);
   --bento-col-min: 14rem;
+  --bento-highlight-text: #7a2e22;
   /* Liquid glass (cristal translúcido con desenfoque, tinte y borde de luz) */
   --glass-bg: rgba(255, 252, 248, 0.74);
   --glass-border: rgba(255, 255, 255, 0.65);
@@ -154,6 +155,7 @@
     --bento-card-hover: #25211e;
     --bento-card-shadow: 0 0.0625rem 0.1875rem 0 rgba(0, 0, 0, 0.45);
     --bento-col-min: 14rem;
+    --bento-highlight-text: #f08344;
     --glass-bg: rgba(28, 22, 20, 0.82);
     --glass-border: rgba(255, 255, 255, 0.14);
     --glass-border-strong: rgba(255, 255, 255, 0.26);
@@ -208,6 +210,7 @@
   --bento-card-hover: #25211e;
   --bento-card-shadow: 0 0.0625rem 0.1875rem 0 rgba(0, 0, 0, 0.45);
   --bento-col-min: 14rem;
+  --bento-highlight-text: #f08344;
   --glass-bg: rgba(28, 22, 20, 0.82);
   --glass-border: rgba(255, 255, 255, 0.14);
   --glass-border-strong: rgba(255, 255, 255, 0.26);
@@ -276,6 +279,88 @@ body {
   .glass-panel {
     backdrop-filter: blur(var(--glass-blur-mobile));
     -webkit-backdrop-filter: blur(var(--glass-blur-mobile));
+  }
+}
+
+/* Layout responsivo de landing sin desbordamiento horizontal (scrollWidth <= 390px, Issue #8) */
+.hubly-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.95fr);
+  gap: var(--space-8);
+  align-items: center;
+  width: 100%;
+}
+
+.hubly-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-6);
+  width: 100%;
+}
+
+.hubly-bento-card {
+  background-color: var(--bento-card-bg);
+  border: var(--border-width-thin) solid var(--bento-card-border);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--bento-card-shadow);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.hubly-bento-card-12 {
+  grid-column: span 12;
+}
+
+.hubly-bento-card-6 {
+  grid-column: span 6;
+}
+
+.hubly-bento-card-4 {
+  grid-column: span 4;
+}
+
+.hubly-lifecycle-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-block: var(--space-4);
+  padding-inline: var(--space-2);
+}
+
+.hubly-lifecycle-track {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: center;
+  position: relative;
+  gap: var(--space-2);
+  min-width: 32rem;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .hubly-lifecycle-track {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .hubly-hero-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  .hubly-bento-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .hubly-bento-card-12,
+  .hubly-bento-card-6,
+  .hubly-bento-card-4 {
+    grid-column: span 1 !important;
   }
 }
 

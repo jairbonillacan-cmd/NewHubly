@@ -1,5 +1,5 @@
-import { tokens } from "@hubly/ui";
 import type { CSSProperties, ReactNode } from "react";
+import { tokens } from "../tokens";
 
 export interface GlassCardProps {
   children: ReactNode;
@@ -25,6 +25,8 @@ export function GlassCard({
     gap: tokens.space[4],
     position: "relative",
     overflow: "hidden",
+    boxSizing: "border-box",
+    width: "100%",
     ...style,
   };
 

@@ -54,8 +54,19 @@ describe("Verificación matemática de accesibilidad y contraste WCAG 2.2 AA (Is
     expect(ratioLight).toBeGreaterThanOrEqual(13.0);
   });
 
+  it("cumple ratio >= 4.5:1 para el texto destacado del bento en modo claro y oscuro (Issue #8)", () => {
+    // Modo claro: --bento-card-bg (253, 251, 247) vs --bento-highlight-text (122, 46, 34)
+    const ratioLight = contrastRatio([253, 251, 247], [122, 46, 34]);
+    expect(ratioLight).toBeGreaterThanOrEqual(7.0); // 9.07:1 (AAA)
+
+    // Modo oscuro: --bento-card-bg oscuro (28, 25, 23) vs --bento-highlight-text oscuro (240, 131, 68)
+    const ratioDark = contrastRatio([28, 25, 23], [240, 131, 68]);
+    expect(ratioDark).toBeGreaterThanOrEqual(4.5); // 6.76:1 (AA)
+  });
+
   it("expone todos los tokens semánticos requeridos por la landing editorial", () => {
     expect(tokens.color.surfaceBrand).toBe("var(--surface-brand)");
+    expect(tokens.bento.highlightText).toBe("var(--bento-highlight-text)");
     expect(tokens.glass.heroOverlayVeil).toBe("var(--glass-hero-veil)");
     expect(tokens.bento.cardShadow).toBe("var(--bento-card-shadow)");
     expect(tokens.font.tracking.wider).toBe("var(--tracking-wider)");

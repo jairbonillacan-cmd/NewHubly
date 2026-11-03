@@ -1,7 +1,7 @@
 "use client";
 
-import { tokens } from "@hubly/ui";
 import { useEffect, useState } from "react";
+import { tokens } from "../tokens";
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -46,7 +46,6 @@ export function ThemeToggle() {
         cursor: "pointer",
         backdropFilter: `blur(${tokens.glass.blurMobile})`,
         WebkitBackdropFilter: `blur(${tokens.glass.blurMobile})`,
-        transition: "background-color 0.15s ease, border-color 0.15s ease",
       }}
     >
       <span aria-hidden="true" style={{ fontSize: tokens.font.size.sm }}>
