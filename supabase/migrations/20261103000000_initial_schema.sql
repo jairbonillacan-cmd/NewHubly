@@ -2,7 +2,9 @@ create schema if not exists private;
 revoke usage on schema private from public, anon;
 grant usage on schema private to authenticated;
 alter default privileges in schema private revoke execute on functions from public, anon;
-alter default privileges in schema public revoke all on tables, functions, sequences from anon;
+alter default privileges in schema public revoke all on tables from anon;
+alter default privileges in schema public revoke all on functions from anon;
+alter default privileges in schema public revoke all on sequences from anon;
 
 create table if not exists public.workspaces (
   id uuid primary key default gen_random_uuid(), name text not null, slug text not null unique,
