@@ -11,6 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@hubly/application": "workspace:*",
+    "@hubly/domain": "workspace:*",
     "drizzle-orm": "^0.45.1",
     "postgres": "^3.4.5",
     "server-only": "0.0.1"
