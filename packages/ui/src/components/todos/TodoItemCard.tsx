@@ -1,6 +1,5 @@
 "use client";
 import { Card, Checkbox, Chip } from "@heroui/react";
-import type { KeyboardEvent } from "react";
 import { tokens } from "../../tokens";
 import type { TodoPriorityValue } from "./QuickCaptureBar";
 
@@ -22,9 +21,6 @@ export function TodoItemCard({
   isOverdue = false, isToday = false, noteId = null, noteTitle = null, noteHref, onToggle, onSelectNote,
 }: TodoItemCardProps) {
   const priorityMeta = PRIORITY_STYLE[priority];
-  const handleCheckboxKeyDown = (e: KeyboardEvent<HTMLElement>) => {
-    if (e.key === " " || e.key === "Spacebar") { e.preventDefault?.(); onToggle?.(id); }
-  };
 
   return (
     <Card
@@ -43,11 +39,6 @@ export function TodoItemCard({
             style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], flex: "1 1 auto" }}
           >
             <Checkbox.Content
-              role="checkbox"
-              aria-checked={isDone}
-              aria-label={`Marcar "${title}" como ${isDone ? "pendiente" : "hecho"}`}
-              onKeyDown={handleCheckboxKeyDown}
-              onClick={() => onToggle?.(id)}
               style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], cursor: "pointer" }}
             >
               <Checkbox.Control

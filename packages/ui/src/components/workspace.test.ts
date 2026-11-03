@@ -70,15 +70,13 @@ describe("Componentes UI de Notas y Pendientes con dirección visual y HeroUI (@
     expect(html).toContain('data-slot="card"');
     expect(html).toContain('data-slot="checkbox"');
     expect(html).toContain('data-slot="chip"');
-    expect(html).toContain('role="checkbox"');
+    expect(html).toContain('type="checkbox"');
     expect(html).toContain("var(--bento-card-bg)");
     expect(renderToStaticMarkup(tree)).toContain("Vencido · 2026-11-01");
     expect(renderToStaticMarkup(tree)).toContain("Nota de origen: Reunión creativa");
-    const checkbox = findElements(tree, (el) => el.props["role"] === "checkbox")[0];
-    (checkbox?.props["onKeyDown"] as (e: { key: string; preventDefault: () => void }) => void)({ key: " ", preventDefault: () => {} });
     const rootCheckbox = findElements(tree, (el) => typeof el.props["onChange"] === "function")[0];
     (rootCheckbox?.props["onChange"] as () => void)();
-    expect(onToggle).toHaveBeenCalledTimes(2);
+    expect(onToggle).toHaveBeenCalledTimes(1);
     expect(onToggle).toHaveBeenCalledWith("todo-1");
   });
 
@@ -115,11 +113,11 @@ describe("Componentes UI de Notas y Pendientes con dirección visual y HeroUI (@
     expect(html).toContain('aria-selected="true"');
     expect(html).toContain("var(--pill-active-bg)");
     expect(html).toContain("(3)");
-    const tabs = findElements(tree, (el) => typeof el.props["onKeyDown"] === "function");
-    expect(tabs).toHaveLength(4);
-    (tabs[0]?.props["onKeyDown"] as (e: { key: string; preventDefault: () => void }) => void)({ key: "ArrowRight", preventDefault: () => {} });
+    const tabsRoot = findElements(tree, (el) => typeof el.props["onSelectionChange"] === "function")[0];
+    expect(tabsRoot).toBeDefined();
+    (tabsRoot?.props["onSelectionChange"] as (key: string) => void)("upcoming");
     expect(onSelectView).toHaveBeenCalledWith("upcoming");
-    (tabs[0]?.props["onKeyDown"] as (e: { key: string; preventDefault: () => void }) => void)({ key: "ArrowLeft", preventDefault: () => {} });
+    (tabsRoot?.props["onSelectionChange"] as (key: string) => void)("done");
     expect(onSelectView).toHaveBeenCalledWith("done");
   });
 

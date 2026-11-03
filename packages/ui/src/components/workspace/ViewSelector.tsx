@@ -1,6 +1,5 @@
 "use client";
 import { Chip, Tabs } from "@heroui/react";
-import type { KeyboardEvent } from "react";
 import { tokens } from "../../tokens";
 
 export type TodoViewKey = "today" | "upcoming" | "no_date" | "done";
@@ -15,19 +14,6 @@ export interface ViewSelectorProps {
 }
 
 export function ViewSelector({ activeView, counts = {}, onSelectView }: ViewSelectorProps) {
-  const handleKeyDown = (index: number, e: KeyboardEvent<HTMLElement>) => {
-    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-      e.preventDefault?.();
-      const delta = e.key === "ArrowRight" ? 1 : -1;
-      const nextItem = TODO_VIEW_ITEMS[(index + delta + TODO_VIEW_ITEMS.length) % TODO_VIEW_ITEMS.length];
-      if (nextItem) onSelectView?.(nextItem.key);
-    } else if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
-      e.preventDefault?.();
-      const currentItem = TODO_VIEW_ITEMS[index];
-      if (currentItem) onSelectView?.(currentItem.key);
-    }
-  };
-
   return (
     <Tabs
       selectedKey={activeView}
@@ -42,14 +28,12 @@ export function ViewSelector({ activeView, counts = {}, onSelectView }: ViewSele
           borderRadius: tokens.radius.full,
         }}
       >
-        {TODO_VIEW_ITEMS.map((item, idx) => {
+        {TODO_VIEW_ITEMS.map((item) => {
           const isSelected = activeView === item.key;
           const count = counts[item.key] ?? 0;
           return (
             <Tabs.Tab
               key={item.key} id={item.key}
-              onClick={() => onSelectView?.(item.key)}
-              onKeyDown={(e) => handleKeyDown(idx, e)}
               style={{
                 display: "inline-flex", alignItems: "center", gap: tokens.space[2],
                 paddingBlock: tokens.space[2], paddingInline: tokens.space[4], borderRadius: tokens.radius.full,
