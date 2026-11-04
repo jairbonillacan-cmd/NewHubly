@@ -6,6 +6,13 @@ Describe qué necesita una agencia, no cómo debe verse la solución. La experie
 
 **Hoy**, **Contenido**, **Clientes**, **Aprobaciones**, **Resultados** y **Ajustes**. Lienzo y Vega la validan en un ADR.
 
+## Principios de producto
+
+1. **Integrar antes que clonar.** Cuando la agencia ya usa una herramienta madura (hojas de cálculo, pizarras, diseño, video, chat), Hubly la enlaza o la incrusta en la pieza o la marca, en vez de reconstruirla. Solo se construye lo que es el centro de Hubly: el ciclo de la pieza, la aprobación del cliente, la publicación y los resultados.
+2. **Recetas fijas antes que constructores libres.** Cuando lleguen las automatizaciones, se ofrecen como interruptores de una sola acción dentro de cada módulo (por ejemplo, «avisar al responsable cuando el cliente pida cambios»), no como un editor genérico de flujos.
+3. **Comentarios en contexto antes que chat.** El diálogo vive en la pieza, el entregable o el cliente, con menciones, y los avisos pueden salir a las herramientas que ya usa el equipo. Encaja con lo aplazado en el inventario.
+4. **Una sola versión de cada módulo.** Rediseñar es reemplazar. No conviven dos generaciones de la misma función.
+
 ## Se resuelve
 
 | Necesidad | Qué debe permitir |
