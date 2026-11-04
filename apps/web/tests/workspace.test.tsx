@@ -3,8 +3,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+import nextConfig from "../next.config";
 import { createTodoAction, exportWorkspaceAction, loadWorkspaceDashboardAction, saveNoteAction } from "../src/actions";
 import { signOutAction } from "../src/actions/auth";
+import { InvitacionPage, consumeInvitationHashToken } from "../src/app/(public)/invitacion/page";
 import { HoyPage } from "../src/app/(workspace)/hoy/page";
 import {
   TZ_REFRESH_STORAGE_KEY, type ActionErrorState, WorkspaceScreen, classifyTodoItemForView,
@@ -23,17 +25,18 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     const tx = {
       execute: vi.fn().mockResolvedValue([]),
       select: vi.fn().mockImplementation(() => ({
-        from: (table: unknown) => ({
-          where: () => {
-            const n = nameOf(table);
-            const rows = n === "notes"
-              ? [{ id: "n-1", workspaceId: "w-1", createdBy: "u-1", title: "Estrategia Q4", content: "Objetivos", isPinned: true, isArchived: false, version: 2, createdAt: instant, updatedAt: instant }]
-              : n === "todos"
-                ? [{ id: "t-1", workspaceId: "w-1", createdBy: "u-1", noteId: "n-1", title: "Revisar presupuesto", detail: "Hoy local", dueDate: "2026-11-03", priority: "high", isDone: false, doneAt: null, createdAt: instant, updatedAt: instant }]
+        from: (table: unknown) => {
+          const n = nameOf(table);
+          const rows = n === "notes"
+            ? [{ id: "n-1", workspaceId: "w-1", createdBy: "u-1", title: "Estrategia Q4", content: "Objetivos", isPinned: true, isArchived: false, visibility: "private", version: 2, createdAt: instant, updatedAt: instant }]
+            : n === "todos"
+              ? [{ id: "t-1", workspaceId: "w-1", createdBy: "u-1", noteId: "n-1", title: "Revisar presupuesto", detail: "Hoy local", dueDate: "2026-11-03", priority: "high", visibility: "private", isDone: false, doneAt: null, createdAt: instant, updatedAt: instant }]
+              : n === "workspaces"
+                ? [{ id: "w-1", name: "Mi Espacio", slug: "mi-espacio", kind: "personal", role: "owner", createdAt: instant }]
                 : [{ workspaceId: "w-1", userId: "u-1", role: "owner", createdAt: instant }];
-            return { limit: async (c: number) => rows.slice(0, c), orderBy: async () => rows };
-          },
-        }),
+          const res = { limit: async (c: number) => rows.slice(0, c), orderBy: async () => rows };
+          return { where: () => res, innerJoin: () => ({ where: () => res }) };
+        },
       })),
     };
     const getUserSpy = vi.fn().mockResolvedValue({ data: { user: { id: "u-1", email: "ana@agencia.es" } }, error: null });
@@ -131,5 +134,29 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     expect(exp.jsonFilename).toBe("hubly-export-2026-11-03.json");
     expect(exp.mdFilename).toBe("hubly-export-2026-11-03.md");
     expect(exp.markdownContent).toContain("## Estrategia Q4 [Fijada]");
+  });
+
+  it("configura Referrer-Policy: no-referrer en /invitacion, limpia el fragmento URL con replaceState y renderiza panel de agencia y visibilidad en /hoy (#64)", async () => {
+    const headers = await nextConfig.headers!();
+    expect(headers).toEqual(expect.arrayContaining([
+      { source: "/invitacion", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
+    ]));
+    const replaceState = vi.fn();
+    expect(consumeInvitationHashToken({ hash: "#tok_secreto_1234567890" }, { replaceState })).toBe("tok_secreto_1234567890");
+    expect(replaceState).toHaveBeenCalledWith(null, "", "/invitacion");
+    expect(renderToStaticMarkup(<InvitacionPage initialToken={"a".repeat(24)} />)).toContain("Aceptar invitación a la agencia");
+    expect(renderToStaticMarkup(<InvitacionPage initialError="El correo no coincide" />)).toContain("El correo no coincide");
+
+    const agencyHtml = renderToStaticMarkup(
+      <WorkspaceScreen
+        todayDate="2026-11-04" currentUserId="u-1"
+        initialActiveWorkspace={{ id: "ws-ag", name: "Estudio Norte", slug: "estudio-norte", kind: "agency", role: "owner" }}
+        initialMembers={[{ workspaceId: "ws-ag", userId: "u-1", role: "owner", createdAt: "2026-11-04T00:00:00.000Z" }]}
+        initialNotes={[{ id: "n-1", workspaceId: "ws-ag", createdBy: "u-1", title: "Pauta Compartida", content: "Guion", isPinned: true, isArchived: false, visibility: "workspace", version: 1, createdAt: "", updatedAt: "" }]}
+      />,
+    );
+    expect(agencyHtml).toContain("Agencia: Estudio Norte · 2026-11-04");
+    expect(agencyHtml).toContain("Compartido con agencia");
+    expect(agencyHtml).toContain("Pasar a privado");
   });
 });

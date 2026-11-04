@@ -25,9 +25,7 @@ export function TodoItemCard({
   visibility = "private", canChangeVisibility = false, isReadOnly = false,
   onToggle, onSelectNote, onChangeVisibility,
 }: TodoItemCardProps) {
-  const priorityMeta = PRIORITY_STYLE[priority];
-  const isWorkspaceVisible = visibility === "workspace";
-  const nextVisibility: ItemVisibilityValue = isWorkspaceVisible ? "private" : "workspace";
+  const priorityMeta = PRIORITY_STYLE[priority], isShared = visibility === "workspace", nextVis: ItemVisibilityValue = isShared ? "private" : "workspace";
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: tokens.space[2], padding: tokens.space[4], backgroundColor: tokens.bento.cardBg, border: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`, borderRadius: tokens.radius.xl, boxShadow: tokens.bento.cardShadow }}>
@@ -38,7 +36,7 @@ export function TodoItemCard({
             aria-label={`Marcar "${title}" como ${isDone ? "pendiente" : "hecho"}`}
             style={{ display: "inline-flex", flexDirection: "row", alignItems: "center", gap: tokens.space[2], flex: "1 1 auto" }}
           >
-            <Checkbox.Content style={{ display: "inline-flex", flexDirection: "row", alignItems: "center", gap: tokens.space[2], cursor: isReadOnly ? "default" : "pointer" }}>
+            <Checkbox.Content style={{ display: "inline-flex", flexDirection: "row", alignItems: "center", gap: tokens.space[2], cursor: "pointer" }}>
               <Checkbox.Control style={{ border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.sm, backgroundColor: isDone ? tokens.color.accentPrimary : tokens.bento.surfaceBase, color: tokens.color.textOnAccent }}>
                 <Checkbox.Indicator />
               </Checkbox.Control>
@@ -48,8 +46,8 @@ export function TodoItemCard({
             </Checkbox.Content>
           </Checkbox>
           <div style={{ display: "flex", alignItems: "center", gap: tokens.space[2], flexWrap: "wrap" }}>
-            <Chip size="sm" variant="soft" style={{ backgroundColor: isWorkspaceVisible ? tokens.color.accentPrimarySubtle : tokens.bento.surfaceBase, color: isWorkspaceVisible ? tokens.color.accentPrimary : tokens.color.textSecondary, paddingInline: tokens.space[3], paddingBlock: tokens.space[1], borderRadius: tokens.radius.full, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold }}>
-              {isWorkspaceVisible ? "Compartido con agencia" : "Privado"}
+            <Chip size="sm" variant="soft" style={{ backgroundColor: isShared ? tokens.color.accentPrimarySubtle : tokens.bento.surfaceBase, color: isShared ? tokens.color.accentPrimary : tokens.color.textSecondary, paddingInline: tokens.space[3], paddingBlock: tokens.space[1], borderRadius: tokens.radius.full, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold }}>
+              {isShared ? "Compartido con agencia" : "Privado"}
             </Chip>
             <Chip size="sm" variant="soft" style={{ backgroundColor: priorityMeta.bg, color: priorityMeta.color, paddingInline: tokens.space[3], paddingBlock: tokens.space[1], borderRadius: tokens.radius.full, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold }}>
               Prioridad: {priorityMeta.label}
@@ -60,13 +58,8 @@ export function TodoItemCard({
               </Chip>
             ) : null}
             {canChangeVisibility && !isReadOnly ? (
-              <Button
-                type="button" variant="secondary" size="sm"
-                aria-label={isWorkspaceVisible ? `Cambiar visibilidad de "${title}" a Privado` : `Cambiar visibilidad de "${title}" a Compartido con agencia`}
-                onPress={() => onChangeVisibility?.(nextVisibility)} onClick={() => onChangeVisibility?.(nextVisibility)}
-                style={{ border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.md, backgroundColor: tokens.bento.surfaceBase, color: tokens.color.textPrimary, paddingBlock: tokens.space[1], paddingInline: tokens.space[3], fontSize: tokens.font.size.xs }}
-              >
-                {isWorkspaceVisible ? "Pasar a privado" : "Compartir con agencia"}
+              <Button type="button" variant="secondary" size="sm" aria-label={isShared ? `Cambiar visibilidad de "${title}" a Privado` : `Cambiar visibilidad de "${title}" a Compartido con agencia`} onPress={() => onChangeVisibility?.(nextVis)} onClick={() => onChangeVisibility?.(nextVis)} style={{ border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.md, backgroundColor: tokens.bento.surfaceBase, color: tokens.color.textPrimary, paddingBlock: tokens.space[1], paddingInline: tokens.space[3], fontSize: tokens.font.size.xs }}>
+                {isShared ? "Pasar a privado" : "Compartir con agencia"}
               </Button>
             ) : null}
           </div>

@@ -3,10 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 import {
+  acceptWorkspaceInvitationAction, changeNoteVisibilityAction, changeTodoVisibilityAction, createAgencyWorkspaceAction,
   createNoteAction,
   createTodoAction,
   createTodoFromNoteAction,
   exportWorkspaceAction,
+  inviteWorkspaceMemberAction,
   listNotesAction,
   listTodosByViewAction,
   saveNoteAction,
@@ -14,7 +16,7 @@ import {
 } from "../../src/actions";
 import { HoyPage } from "../../src/app/(workspace)/hoy/page";
 import { shouldTriggerQuickCaptureShortcut } from "../../src/components/WorkspaceScreen";
-import { DEFAULT_APP_TIMEZONE, ensureAuthenticatedWorkspace, setSupabaseServerClientFactoryForTests } from "../../src/server/composition";
+import { DEFAULT_APP_TIMEZONE, ensureAuthenticatedWorkspace, seedAuthUserForTests, setSupabaseServerClientFactoryForTests } from "../../src/server/composition";
 
 describe("Flujo E2E Completo Fase 1A contra Postgres real en Docker (#28 y #46)", { timeout: 30000 }, () => {
   const userA = { id: crypto.randomUUID(), email: "a@hubly.es" };
@@ -100,5 +102,34 @@ describe("Flujo E2E Completo Fase 1A contra Postgres real en Docker (#28 y #46)"
     expect(exported.markdownContent).toContain("## Minuta cliente Q4 [Fijada]");
     expect(exported.markdownContent).toContain(`- [x] [ALTA] Publicar parrilla mensual (Vence: ${today})`);
     expect(exported.markdownContent).toContain(`- [ ] [NORMAL] Enviar minuta por correo (Vence: ${today}) (Nota: ${savedNote.id})\n  Adjuntar métricas`);
+  });
+
+  it("verifica en HoyPage visibilidad compartida entre miembros de Agencia A tras aceptar /invitacion#<token> y aislamiento frente a Agencia B (#64)", async () => {
+    const run = Math.random().toString(36).slice(2, 8);
+    const memberA = { id: crypto.randomUUID(), email: `miembro-a-${run}@hubly.local` }, memberB = { id: crypto.randomUUID(), email: `miembro-b-${run}@hubly.local` }, agencyBOwner = { id: crypto.randomUUID(), email: `owner-b-${run}@hubly.local` };
+    for (const u of [memberA, memberB, agencyBOwner]) await seedAuthUserForTests(u.id, u.email, true);
+    actAs(memberA);
+    const agencyA = await createAgencyWorkspaceAction({ name: "Agencia E2E Alfa", slug: `alfa-${run}` });
+    await createNoteAction({ title: "Secreto de Autor A", content: "Solo autor" }, agencyA.id);
+    const sharedNote = await createNoteAction({ title: "Brief Compartido Alfa", content: "Visible para equipo" }, agencyA.id);
+    const sharedTodo = await createTodoAction({ title: "Entregar arte Alfa", dueDate: today, priority: "high" }, agencyA.id);
+    await changeNoteVisibilityAction({ noteId: sharedNote.id, visibility: "workspace" }, agencyA.id);
+    await changeTodoVisibilityAction({ todoId: sharedTodo.id, visibility: "workspace" }, agencyA.id);
+    const invite = await inviteWorkspaceMemberAction({ workspaceId: agencyA.id, email: memberB.email, role: "editor" });
+    actAs(memberB);
+    await acceptWorkspaceInvitationAction({ token: invite.invitationPath });
+    const memberBHtml = renderToStaticMarkup(await HoyPage());
+    expect(memberBHtml).toContain("Agencia: Agencia E2E Alfa");
+    expect(memberBHtml).toContain("Brief Compartido Alfa");
+    expect(memberBHtml).toContain("Entregar arte Alfa");
+    expect(memberBHtml).toContain("Compartido con agencia");
+    expect(memberBHtml).not.toContain("Secreto de Autor A");
+    actAs(agencyBOwner);
+    await createAgencyWorkspaceAction({ name: "Agencia E2E Beta", slug: `beta-${run}` });
+    const agencyBHtml = renderToStaticMarkup(await HoyPage());
+    expect(agencyBHtml).toContain("Agencia: Agencia E2E Beta");
+    expect(agencyBHtml).not.toContain("Brief Compartido Alfa");
+    expect(agencyBHtml).not.toContain("Entregar arte Alfa");
+    await expect(listNotesAction(undefined, agencyA.id)).rejects.toThrow("No autorizado en el espacio de trabajo");
   });
 });

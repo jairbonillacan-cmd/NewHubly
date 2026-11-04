@@ -1,15 +1,15 @@
 "use client";
 import { createTodoSchema } from "@hubly/contracts";
 import {
-  Button, Card, HublySymbol, Input, NoteEditorCard, type NoteSaveStatus, QuickCaptureBar,
+  AgencyTeamPanel, Button, Card, HublySymbol, Input, type InvitationRoleValue, type ItemVisibilityValue, NoteEditorCard, type NoteSaveStatus, QuickCaptureBar,
   type QuickCapturePayload, TextField, ThemeToggle, TodoItemCard, ViewSelector,
-  WorkspaceEmptyState, tokens,
+  WorkspaceEmptyState, type WorkspaceRoleValue, tokens,
 } from "@hubly/ui";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  archiveNoteAction, createNoteAction, createTodoAction, createTodoFromNoteAction,
-  exportWorkspaceAction, pinNoteAction, saveNoteAction, toggleTodoAction,
-  type WorkspaceNote, type WorkspaceTodo, type WorkspaceTodoView,
+  archiveNoteAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction, createAgencyWorkspaceAction, createNoteAction, createTodoAction, createTodoFromNoteAction,
+  exportWorkspaceAction, inviteWorkspaceMemberAction, loadWorkspaceDashboardAction, pinNoteAction, removeOrLeaveWorkspaceMemberAction, revokeWorkspaceInvitationAction, saveNoteAction, selectActiveWorkspaceAction, toggleTodoAction,
+  type WorkspaceInvitationSummary, type WorkspaceMemberSummary, type WorkspaceNote, type WorkspaceSummary, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
 import { signOutAction } from "../actions/auth";
 
@@ -19,6 +19,7 @@ export interface ActionErrorState { message: string; retry: () => Promise<void>;
 export interface WorkspaceScreenProps {
   initialStatus?: ScreenStatus; errorMessage?: string; todayDate?: string; initialTimezone?: string; initialView?: WorkspaceTodoView;
   initialTodos?: WorkspaceTodo[]; initialNotes?: WorkspaceNote[]; initialActionError?: ActionErrorState | null;
+  currentUserId?: string; initialActiveWorkspace?: WorkspaceSummary; initialWorkspaces?: WorkspaceSummary[]; initialMembers?: WorkspaceMemberSummary[]; initialPendingInvitations?: WorkspaceInvitationSummary[];
   onRetry?: () => void; onLoginRedirect?: () => void; onTimezoneRefresh?: () => void; onSignOut?: () => Promise<void>;
   onSaveNote?: (note: WorkspaceNote, nextTitle: string, nextContent: string) => Promise<WorkspaceNote>;
   onCreateTodo?: (input: { title: string; priority: "low" | "medium" | "high"; dueDate: string | null; noteId: string | null }) => Promise<WorkspaceTodo>;
@@ -27,6 +28,7 @@ export interface WorkspaceScreenProps {
 }
 
 export const TZ_REFRESH_STORAGE_KEY = "hubly_tz_refresh_attempted";
+const DEFAULT_WORKSPACE: WorkspaceSummary = { id: "ws-personal", name: "Mi Espacio", slug: "mi-espacio", kind: "personal", role: "owner" };
 const ctrlBorder = `${tokens.border.thin} solid ${tokens.color.borderControl}`, cardBorder = `${tokens.border.thin} solid ${tokens.bento.cardBorder}`;
 const btnStyle = { border: ctrlBorder, borderRadius: tokens.radius.full, paddingBlock: tokens.space[1], paddingInline: tokens.space[3], backgroundColor: tokens.bento.cardBg, color: tokens.color.textPrimary, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold, cursor: "pointer" } as const;
 const inputStyle = { border: ctrlBorder, borderRadius: tokens.radius.md, paddingBlock: tokens.space[2], paddingInline: tokens.space[3], backgroundColor: tokens.bento.cardBg, color: tokens.color.textPrimary, fontSize: tokens.font.size.sm } as const;
@@ -74,11 +76,18 @@ export async function executeProtectedAction(
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialView = "today", initialTodos = [], initialNotes = [], initialActionError = null,
+  currentUserId = "", initialActiveWorkspace = DEFAULT_WORKSPACE, initialWorkspaces, initialMembers = [], initialPendingInvitations = [],
   onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [view, setView] = useState<WorkspaceTodoView>(initialView);
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
   const [notes, setNotes] = useState<WorkspaceNote[]>(initialNotes);
+  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceSummary>(initialActiveWorkspace);
+  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>(initialWorkspaces ?? [initialActiveWorkspace]);
+  const [members, setMembers] = useState<WorkspaceMemberSummary[]>(initialMembers);
+  const [pendingInvitations, setPendingInvitations] = useState<WorkspaceInvitationSummary[]>(initialPendingInvitations);
+  const [newAgencyName, setNewAgencyName] = useState(""), [inviteEmail, setInviteEmail] = useState(""), [inviteRole, setInviteRole] = useState<InvitationRoleValue>("editor");
+  const [generatedInviteLink, setGeneratedInviteLink] = useState<string | null>(null), [isTeamOpen, setIsTeamOpen] = useState(initialActiveWorkspace.kind === "agency"), [agencyStatusMsg, setAgencyStatusMsg] = useState<string | null>(null);
   const [captureTitle, setCaptureTitle] = useState("");
   const [capturePriority, setCapturePriority] = useState<"low" | "medium" | "high">("medium");
   const [captureDueDate, setCaptureDueDate] = useState<string | null>(null);
@@ -91,6 +100,11 @@ export function WorkspaceScreen({
   const captureInputRef = useRef<HTMLInputElement | null>(null);
   const redirectLogin = () => { if (onLoginRedirect) onLoginRedirect(); else if (typeof window !== "undefined") window.location.assign("/login"); };
   const runSafe = (fallbackMsg: string, fn: () => Promise<void>) => executeProtectedAction(fallbackMsg, fn, redirectLogin, setActionError);
+  const reloadDashboard = async (wsId?: string) => {
+    const fresh = await loadWorkspaceDashboardAction(wsId);
+    setActiveWorkspace(fresh.activeWorkspace); setWorkspaces(fresh.workspaces); setMembers(fresh.members); setPendingInvitations(fresh.pendingInvitations);
+    setNotes(fresh.notes); setTodos(fresh.todos); setIsTeamOpen(fresh.activeWorkspace.kind === "agency");
+  };
 
   useEffect(() => {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -128,6 +142,8 @@ export function WorkspaceScreen({
     );
   }
 
+  const isAgency = activeWorkspace.kind === "agency", isViewerRole = isAgency && activeWorkspace.role === "viewer";
+  const canAuthorChangeVis = (createdBy: string) => isAgency && !isViewerRole && (!currentUserId || createdBy === currentUserId);
   const visibleTodos = todos.filter((t) => classifyTodoItemForView(t, todayDate) === view);
   const pinnedNotes = notes.filter((n) => n.isPinned && !n.isArchived);
   const q = searchQuery.trim().toLowerCase();
@@ -150,20 +166,20 @@ export function WorkspaceScreen({
       const created = onCreateTodo
         ? await onCreateTodo({ title: parsed.data.title, priority: parsed.data.priority, dueDate: parsed.data.dueDate ?? null, noteId: parsed.data.noteId ?? null })
         : parsed.data.noteId
-          ? await createTodoFromNoteAction(parsed.data.noteId, { title: parsed.data.title, priority: parsed.data.priority, dueDate: parsed.data.dueDate ?? todayDate })
-          : await createTodoAction({ title: parsed.data.title, priority: parsed.data.priority, dueDate: parsed.data.dueDate ?? null });
+          ? await createTodoFromNoteAction(parsed.data.noteId, { title: parsed.data.title, priority: parsed.data.priority, dueDate: parsed.data.dueDate ?? todayDate }, activeWorkspace.id)
+          : await createTodoAction({ title: parsed.data.title, priority: parsed.data.priority, dueDate: parsed.data.dueDate ?? null }, activeWorkspace.id);
       setTodos((prev) => [created, ...prev.filter((t) => t.id !== created.id)]);
       setCaptureTitle(""); setCaptureDueDate(null); setCaptureNoteId(null);
     });
   };
 
   const handleToggleTodo = (id: string) => runSafe("No se pudo actualizar el pendiente.", async () => {
-    const updated = onToggleTodo ? await onToggleTodo(id) : await toggleTodoAction(id);
+    const updated = onToggleTodo ? await onToggleTodo(id) : await toggleTodoAction(id, activeWorkspace.id);
     setTodos((prev) => prev.map((t) => (t.id === id ? (updated ?? { ...t, isDone: !t.isDone, doneAt: !t.isDone ? `${todayDate}T12:00:00.000Z` : null }) : t)));
   });
 
   const handleCreateNote = () => runSafe("No se pudo crear la nota.", async () => {
-    const created = await createNoteAction({ title: "Nueva nota", content: "" });
+    const created = await createNoteAction({ title: "Nueva nota", content: "" }, activeWorkspace.id);
     setNotes((prev) => [created, ...prev]); setNoteStatus((prev) => ({ ...prev, [created.id]: "saved" }));
   });
 
@@ -171,7 +187,7 @@ export function WorkspaceScreen({
     setNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, title: nextTitle, content: nextContent } : n)));
     setNoteStatus((prev) => ({ ...prev, [note.id]: "saving" }));
     await executeProtectedAction("No se pudo guardar la nota.", async () => {
-      const saved = onSaveNote ? await onSaveNote(note, nextTitle, nextContent) : await saveNoteAction({ id: note.id, title: nextTitle, content: nextContent, expectedVersion: note.version });
+      const saved = onSaveNote ? await onSaveNote(note, nextTitle, nextContent) : await saveNoteAction({ id: note.id, title: nextTitle, content: nextContent, expectedVersion: note.version }, activeWorkspace.id);
       setNotes((prev) => prev.map((n) => (n.id === note.id ? saved : n))); setNoteStatus((prev) => ({ ...prev, [note.id]: "saved" }));
     }, redirectLogin, (errState) => {
       if (errState) setNoteStatus((prev) => ({ ...prev, [note.id]: "error" }));
@@ -181,19 +197,30 @@ export function WorkspaceScreen({
 
   const handleTogglePin = (id: string) => runSafe("No se pudo fijar la nota.", async () => {
     const target = notes.find((n) => n.id === id); if (!target) return;
-    const saved = await pinNoteAction(id, !target.isPinned);
+    const saved = await pinNoteAction(id, !target.isPinned, activeWorkspace.id);
     setNotes((prev) => prev.map((n) => (n.id === id ? saved : n)));
   });
 
   const handleToggleArchive = (id: string) => runSafe("No se pudo archivar la nota.", async () => {
     const target = notes.find((n) => n.id === id); if (!target) return;
-    const saved = await archiveNoteAction(id, !target.isArchived);
+    const saved = await archiveNoteAction(id, !target.isArchived, activeWorkspace.id);
     setNotes((prev) => prev.map((n) => (n.id === id ? saved : n)));
+  });
+
+  const handleChangeNoteVisibility = (noteId: string, nextVis: ItemVisibilityValue) => runSafe("No se pudo cambiar la visibilidad de la nota.", async () => {
+    const saved = await changeNoteVisibilityAction({ noteId, visibility: nextVis }, activeWorkspace.id);
+    setNotes((prev) => prev.map((n) => (n.id === noteId ? saved : n)));
+    if (nextVis === "private") setTodos((prev) => prev.map((t) => (t.noteId === noteId && (t.createdBy !== saved.createdBy || t.visibility === "workspace") ? { ...t, noteId: null } : t)));
+  });
+
+  const handleChangeTodoVisibility = (todoId: string, nextVis: ItemVisibilityValue) => runSafe("No se pudo cambiar la visibilidad del pendiente.", async () => {
+    const saved = await changeTodoVisibilityAction({ todoId, visibility: nextVis }, activeWorkspace.id);
+    setTodos((prev) => prev.map((t) => (t.id === todoId ? saved : t)));
   });
 
   const handleDownloadExport = (format: "json" | "md") => runSafe("No se pudo exportar tu espacio.", async () => {
     const custom = onExport ? await onExport(format) : undefined;
-    const remote = custom ? undefined : await exportWorkspaceAction();
+    const remote = custom ? undefined : await exportWorkspaceAction(activeWorkspace.id);
     const filename = custom?.filename ?? (format === "json" ? remote!.jsonFilename : remote!.mdFilename);
     const content = custom?.content ?? (format === "json" ? remote!.jsonContent : remote!.markdownContent);
     if (typeof document !== "undefined" && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
@@ -214,7 +241,7 @@ export function WorkspaceScreen({
         <div style={{ maxWidth: tokens.layout.workspaceWidth, marginInline: "auto", display: "flex", flexDirection: "column", gap: tokens.space[4] }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: tokens.space[3] }}>
             <div style={{ display: "flex", flexDirection: "column", gap: tokens.space[1] }}>
-              <span style={{ fontSize: tokens.font.size.xs, color: tokens.color.surfaceBrandMuted, letterSpacing: tokens.font.tracking.wider, textTransform: "uppercase" }}>Espacio personal · {todayDate}</span>
+              <span style={{ fontSize: tokens.font.size.xs, color: tokens.color.surfaceBrandMuted, letterSpacing: tokens.font.tracking.wider, textTransform: "uppercase" }}>{isAgency ? `Agencia: ${activeWorkspace.name}` : "Espacio personal"} · {todayDate}</span>
               <div style={{ display: "flex", alignItems: "center", gap: tokens.space[3] }}><HublySymbol size={22} ariaLabel="Hubly" /><h1 style={{ margin: tokens.space[0], fontSize: tokens.font.size["2xl"], fontWeight: tokens.font.weight.bold, letterSpacing: tokens.font.tracking.tight }}>Hoy — ¿Qué sigue?</h1></div>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: tokens.space[2] }}>
@@ -229,6 +256,25 @@ export function WorkspaceScreen({
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12" style={{ maxWidth: tokens.layout.workspaceWidth, marginInline: "auto", gap: tokens.space[6], paddingBlock: tokens.space[6], paddingInline: tokens.space[4] }}>
+        <div className="lg:col-span-12">
+          <AgencyTeamPanel
+            workspaces={workspaces} activeWorkspaceId={activeWorkspace.id} currentUserRole={activeWorkspace.role}
+            members={members.map((m) => ({ userId: m.userId, label: m.userId, role: m.role, isCurrentUser: Boolean(currentUserId && m.userId === currentUserId) }))}
+            pendingInvitations={pendingInvitations.map((inv) => ({ id: inv.id, email: inv.email, role: inv.role, expiresAt: inv.expiresAt.slice(0, 10) }))}
+            newAgencyName={newAgencyName} inviteEmail={inviteEmail} inviteRole={inviteRole}
+            generatedInviteLink={generatedInviteLink} isTeamSectionOpen={isTeamOpen} statusMessage={agencyStatusMsg}
+            onNewAgencyNameChange={setNewAgencyName} onInviteEmailChange={setInviteEmail} onInviteRoleChange={setInviteRole} onToggleTeamSection={() => setIsTeamOpen((prev) => !prev)}
+            onSelectWorkspace={(wsId) => void runSafe("No se pudo cambiar de espacio.", async () => { await selectActiveWorkspaceAction(wsId); setGeneratedInviteLink(null); setAgencyStatusMsg(null); await reloadDashboard(wsId); })}
+            onCreateAgency={(name) => void runSafe("No se pudo crear la agencia.", async () => { const created = await createAgencyWorkspaceAction({ name }); setNewAgencyName(""); setGeneratedInviteLink(null); setAgencyStatusMsg(`Agencia "${created.name}" creada.`); await reloadDashboard(created.id); })}
+            onCreateInvitation={({ email, role }) => void runSafe("No se pudo generar la invitación.", async () => { const res = await inviteWorkspaceMemberAction({ workspaceId: activeWorkspace.id, email, role }); setInviteEmail(""); setGeneratedInviteLink(res.invitationPath); setPendingInvitations((prev) => [res.invitation, ...prev.filter((i) => i.id !== res.invitation.id)]); setAgencyStatusMsg("Enlace de invitación generado."); })}
+            onCopyInviteLink={(link) => { if (typeof window !== "undefined") void window.navigator?.clipboard?.writeText(`${window.location.origin}${link}`); setAgencyStatusMsg("Enlace copiado al portapapeles."); }}
+            onRevokeInvitation={(invId) => void runSafe("No se pudo revocar la invitación.", async () => { await revokeWorkspaceInvitationAction({ workspaceId: activeWorkspace.id, invitationId: invId }); setPendingInvitations((prev) => prev.filter((i) => i.id !== invId)); setAgencyStatusMsg("Invitación revocada."); })}
+            onChangeMemberRole={(targetUserId, nextRole: WorkspaceRoleValue) => void runSafe("No se pudo actualizar el rol del miembro.", async () => { await changeWorkspaceMemberRoleAction({ workspaceId: activeWorkspace.id, targetUserId, role: nextRole }); setAgencyStatusMsg("Rol actualizado."); await reloadDashboard(activeWorkspace.id); })}
+            onRemoveMember={(targetUserId) => void runSafe("No se pudo quitar al miembro.", async () => { await removeOrLeaveWorkspaceMemberAction({ workspaceId: activeWorkspace.id, targetUserId }); setAgencyStatusMsg("Miembro removido."); await reloadDashboard(activeWorkspace.id); })}
+            onLeaveAgency={() => void runSafe("No se pudo salir de la agencia.", async () => { const res = await removeOrLeaveWorkspaceMemberAction({ workspaceId: activeWorkspace.id, targetUserId: currentUserId }); setGeneratedInviteLink(null); setAgencyStatusMsg("Has salido de la agencia. Tus elementos privados se conservaron en tu espacio personal."); await reloadDashboard(res.leftCurrentWorkspace ? undefined : activeWorkspace.id); })}
+            onExportPrivateData={() => void handleDownloadExport("json")}
+          />
+        </div>
         {actionError && (
           <div role="alert" className="lg:col-span-12" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.space[3], padding: tokens.space[4], backgroundColor: tokens.color.statusDangerBg, color: tokens.color.statusDangerText, border: ctrlBorder, borderRadius: tokens.radius.lg }}>
             <span>{actionError.message}</span>
@@ -262,11 +308,13 @@ export function WorkspaceScreen({
             ) : visibleTodos.map((t) => {
               const overdue = !t.isDone && Boolean(t.dueDate && t.dueDate < todayDate);
               const originNote = t.noteId ? notes.find((n) => n.id === t.noteId) : undefined;
+              const vis: ItemVisibilityValue = t.visibility ?? "private";
               return (
                 <TodoItemCard
                   key={t.id} id={t.id} title={t.title} detail={t.detail} priority={t.priority} dueDate={t.dueDate ?? null}
                   isDone={t.isDone} isOverdue={overdue} isToday={!t.isDone && t.dueDate === todayDate}
-                  noteId={t.noteId ?? null} noteTitle={originNote?.title ?? t.noteId ?? null} onToggle={(id) => void handleToggleTodo(id)}
+                  visibility={vis} canChangeVisibility={canAuthorChangeVis(t.createdBy)} isReadOnly={isViewerRole && vis === "workspace"}
+                  noteId={t.noteId ?? null} noteTitle={originNote?.title ?? t.noteId ?? null} onToggle={(id) => void handleToggleTodo(id)} onChangeVisibility={(nextVis) => void handleChangeTodoVisibility(t.id, nextVis)}
                 />
               );
             })}
@@ -297,18 +345,23 @@ export function WorkspaceScreen({
               <label style={{ display: "flex", alignItems: "center", gap: tokens.space[1], fontSize: tokens.font.size.xs, color: tokens.color.textSecondary }}><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />Archivadas</label>
             </div>
 
-            {filteredNotes.map((n) => (
-              <NoteEditorCard
-                key={n.id} id={n.id} title={n.title} content={n.content} isPinned={n.isPinned} isArchived={n.isArchived}
-                saveStatus={noteStatus[n.id] ?? "saved"} linkedTodos={todos.filter((t) => t.noteId === n.id).map((t) => ({ id: t.id, title: t.title, isDone: t.isDone }))}
-                onTitleChange={(_, nextTitle) => void triggerAutosave(n, nextTitle, n.content)}
-                onContentChange={(_, nextContent) => void triggerAutosave(n, n.title, nextContent)}
-                onTogglePin={(id) => void handleTogglePin(id)}
-                onToggleArchive={(id) => void handleToggleArchive(id)}
-                onCreateTodoFromNote={(id) => { setCaptureNoteId(id); captureInputRef.current?.focus(); }}
-                onRetrySave={() => void triggerAutosave(n, n.title, n.content)}
-              />
-            ))}
+            {filteredNotes.map((n) => {
+              const vis: ItemVisibilityValue = n.visibility ?? "private";
+              return (
+                <NoteEditorCard
+                  key={n.id} id={n.id} title={n.title} content={n.content} isPinned={n.isPinned} isArchived={n.isArchived}
+                  saveStatus={noteStatus[n.id] ?? "saved"} visibility={vis} canChangeVisibility={canAuthorChangeVis(n.createdBy)} isReadOnly={isViewerRole && vis === "workspace"}
+                  linkedTodos={todos.filter((t) => t.noteId === n.id).map((t) => ({ id: t.id, title: t.title, isDone: t.isDone }))}
+                  onTitleChange={(_, nextTitle) => void triggerAutosave(n, nextTitle, n.content)}
+                  onContentChange={(_, nextContent) => void triggerAutosave(n, n.title, nextContent)}
+                  onTogglePin={(id) => void handleTogglePin(id)}
+                  onToggleArchive={(id) => void handleToggleArchive(id)}
+                  onCreateTodoFromNote={(id) => { setCaptureNoteId(id); captureInputRef.current?.focus(); }}
+                  onRetrySave={() => void triggerAutosave(n, n.title, n.content)}
+                  onChangeVisibility={(nextVis) => void handleChangeNoteVisibility(n.id, nextVis)}
+                />
+              );
+            })}
           </section>
         </aside>
       </div>
