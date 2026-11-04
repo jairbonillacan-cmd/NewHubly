@@ -1,5 +1,4 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
 import {
   archiveNote, createNote, createTodo, createTodoFromNote, exportWorkspaceData,
   listNotes, listTodosByView, pinNote, toggleTodoDone, updateNote, updateTodo,
@@ -10,8 +9,21 @@ import {
   type CreateNoteInput, type CreateTodoInput, type UpdateNoteInput, type UpdateTodoInput,
 } from "@hubly/contracts";
 import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleWorkspaceRepository, withUserContext, type UserClaims } from "@hubly/db";
+import {
+  GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, createHttpOnlyCookieMethods, createSupabaseServerClient,
+  enforceHttpOnlyCookieOptions, getVerifiedServerSession, resolveSiteUrl, resolveSupabaseConfig, setSupabaseServerClientFactoryForTests,
+} from "./auth";
+export {
+  GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, createHttpOnlyCookieMethods, createSupabaseServerClient,
+  enforceHttpOnlyCookieOptions, getVerifiedServerSession, resolveSiteUrl, resolveSupabaseConfig, setSupabaseServerClientFactoryForTests,
+};
 
 type DbInstance = Parameters<typeof withUserContext>[2];
+let testDbOverride: DbInstance | undefined;
+export function setWorkspaceDbForTests(db: DbInstance | undefined): void {
+  if (process.env.NODE_ENV !== "test") throw new Error("Solo permitido en entorno de pruebas");
+  testDbOverride = db;
+}
 
 export interface CompositionContext extends AppContext {
   claims: UserClaims;
@@ -26,21 +38,18 @@ export function createSystemClock(timezone = "UTC"): Clock {
   };
 }
 
-export const systemIdGenerator: IdGenerator = { generate: () => randomUUID() };
+export const systemIdGenerator: IdGenerator = { generate: () => crypto.randomUUID() };
 
-export async function getWorkspaceContext(
-  input: { claims: UserClaims; workspaceId: string; timezone?: string },
-  db?: DbInstance,
-): Promise<CompositionContext> {
-  if (!input.claims?.sub || input.claims.role !== "authenticated") throw new Error("Sesión no autenticada");
-  const wsRepo = new DrizzleWorkspaceRepository(input.claims, db);
-  const member = await wsRepo.findMember(input.workspaceId, input.claims.sub);
-  if (!member) throw new Error(`No autorizado en el espacio de trabajo: ${input.workspaceId}`);
-  return {
-    claims: input.claims, workspaceId: input.workspaceId, userId: input.claims.sub,
-    ...(input.timezone ? { timezone: input.timezone } : {}), ...(db ? { db } : {}),
-  };
+export async function ensureAuthenticatedWorkspace(workspaceId?: string, defaultName?: string): Promise<CompositionContext> {
+  const { claims } = await getVerifiedServerSession();
+  const resolvedDb = process.env.NODE_ENV === "test" ? testDbOverride : undefined;
+  const wsRepo = new DrizzleWorkspaceRepository(claims, resolvedDb);
+  if (workspaceId && !(await wsRepo.findMember(workspaceId, claims.sub))) throw new Error(`No autorizado en el espacio de trabajo: ${workspaceId}`);
+  const resolvedWorkspaceId = workspaceId ?? (await wsRepo.ensurePersonalWorkspace(defaultName));
+  return { claims, workspaceId: resolvedWorkspaceId, userId: claims.sub, ...(resolvedDb ? { db: resolvedDb } : {}) };
 }
+
+export const getWorkspaceContext = ensureAuthenticatedWorkspace;
 
 const repos = (ctx: CompositionContext) => ({
   noteRepo: new DrizzleNoteRepository(ctx.claims, ctx.workspaceId, ctx.db),
@@ -78,5 +87,3 @@ export const exportDataUseCase = (ctx: CompositionContext) => () => {
   const { noteRepo, todoRepo, clock } = repos(ctx);
   return exportWorkspaceData(noteRepo, todoRepo, clock, ctx);
 };
-export const provisionPersonalWorkspace = (claims: UserClaims, name: string, slug: string, db?: DbInstance): Promise<string> =>
-  new DrizzleWorkspaceRepository(claims, db).createPersonalWorkspace(name, slug);

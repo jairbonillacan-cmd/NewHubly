@@ -11,7 +11,8 @@ export interface NoteSearchFilter extends NoteFilter { query?: string; }
 export interface WorkspaceRepository {
   findById(workspaceId: string): Promise<Workspace | null>;
   findMember(workspaceId: string, userId: string): Promise<WorkspaceMember | null>;
-  createPersonalWorkspace(name: string, slug: string): Promise<string>;
+  createPersonalWorkspace(name: string, slug?: string | null): Promise<string>;
+  ensurePersonalWorkspace(defaultName?: string): Promise<string>;
 }
 
 const toIso = (d: Date | string): string => (d instanceof Date ? d.toISOString() : new Date(d).toISOString());
@@ -154,9 +155,21 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     }, this.db);
   }
 
-  async createPersonalWorkspace(name: string, slug: string): Promise<string> {
+  async createPersonalWorkspace(name: string, slug?: string | null): Promise<string> {
     return withUserContext(this.claims, async (tx) => {
-      const res = await tx.execute<{ id: string }>(sql`select private.create_personal_workspace(${name}, ${slug}) as id`);
+      const res = await tx.execute<{ id: string }>(sql`select private.create_personal_workspace(${name}, ${slug ?? null}) as id`);
+      if (!res[0]?.id) throw new Error("No se pudo provisionar el espacio personal");
+      return res[0].id;
+    }, this.db);
+  }
+
+  async ensurePersonalWorkspace(defaultName = "Mi Espacio"): Promise<string> {
+    return withUserContext(this.claims, async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${this.claims.sub}))`);
+      const [existing] = await tx.select().from(workspaceMembers).where(eq(workspaceMembers.userId, this.claims.sub)).limit(1);
+      if (existing?.workspaceId) return existing.workspaceId;
+      const name = defaultName.trim() || "Mi Espacio";
+      const res = await tx.execute<{ id: string }>(sql`select private.create_personal_workspace(${name}, null) as id`);
       if (!res[0]?.id) throw new Error("No se pudo provisionar el espacio personal");
       return res[0].id;
     }, this.db);
