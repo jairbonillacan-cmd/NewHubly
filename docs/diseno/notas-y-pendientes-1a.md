@@ -1,27 +1,27 @@
 # Contrato UX de Fase 1A — Notas y pendientes y pantalla terminada
 
-Estado: Vigente para Fase 1A (actualizado por decisión del dueño en Issue #47)
-Issues: #5, #8, #26, #35, #47
+Estado: Vigente para Fase 1A (actualizado por decisiones del dueño en Issues #47 y #52)
+Issues: #5, #8, #26, #35, #47, #52
 
 ## 1. Principios de esta entrega
 
 - **Pregunta central (`Constitución #1`):** la pantalla de entrada es **Hoy**, nunca un listado plano ni un tablero decorativo. Primero responde qué requiere atención hoy (pendientes vencidos y de hoy) y mantiene las notas fijadas a mano.
-- **Dirección visual unificada desde 1A (`Issues #8 y #47`):** la app aplica desde ahora la misma dirección visual elegida por el dueño para la landing: **editorial con bento y liquid glass**, superficie de marca terracota (`--surface-brand`, `--surface-brand-subtle`, `--surface-brand-contrast`, `--surface-brand-muted`), tarjetas crema (`--bento-surface-base`, `--bento-card-bg`, `--bento-card-border`, `--bento-card-shadow`), un solo acento cálido naranja (`--accent-warm`, `--accent-warm-hover`, `--accent-warm-subtle`, `--accent-warm-text`), paneles de cristal (`--glass-*`), navegación en píldoras (`--pill-*`), conteos numéricos grandes en peso ligero (`--text-display-num`, `--weight-light`) y radios amplios (`--radius-xl`, `--radius-2xl`, `--radius-full`).
+- **Dirección visual unificada desde 1A (`Issues #8, #47 y #52`):** la app aplica desde ahora la dirección visual y la paleta **«Grafito y azul tinta»** elegidas por el dueño: estructura **editorial con bento y liquid glass**, un único color de marca en azul tinta (`--accent-primary` `#1D4ED8` / `#6F98FF`, `--accent-primary-hover`, `--accent-primary-subtle`), superficie de marca grafito (`--surface-brand` `#111316` / `#16181C`, `--surface-brand-contrast`, `--surface-brand-subtle`, `--surface-brand-muted`), tarjetas del bento en neutros fríos (`--bento-surface-base` `#F0F0F2` / `#1C1F24`, `--bento-card-bg` `#FFFFFF` / `#16181C`, `--bento-card-border` `#E4E4E7` / `#26292F`), paneles de cristal frío (`--glass-bg` blanco al 72 % en claro y grafito al 80 % en oscuro), navegación en píldoras (`--pill-*`), conteos numéricos grandes en peso ligero (`--text-display-num`, `--weight-light`) y radios amplios (`--radius-xl`, `--radius-2xl`, `--radius-full`).
 - **Componentes reales de HeroUI v3 OSS (`ADR 0006`, `Issue #47`):** las pantallas y bloques de la app consumen los componentes reales de `@heroui/react` (`Button`, `Card`, `Tabs`, `Checkbox`, `TextField`, `Input`, `TextArea`, `Chip`, `Kbd`, `Switch`, `EmptyState`, etc.) envueltos y exportados desde `@hubly/ui` para aprovechar la accesibilidad y navegación por teclado de React Aria Components. Importar únicamente `buttonVariants` o `cardVariants` sobre etiquetas HTML sueltas no basta.
 - **Sin simulación (`Constitución #3`, `ADR 0003`):** en 1A cada elemento es privado del autor (`created_by = auth.uid()`). **Se prohíbe** mostrar selectores de responsable, avatares de terceros o etiquetas repetidas de «Asignado a: Tú». Los conteos numéricos se calculan exclusivamente con datos reales (si es `0`, se muestra `0`). El reparto entre personas, agencias, roles, invitaciones y Storybook permanecen en la Fase 1B.
 
 ## 2. Arquitectura de la vista y flujos (Mosaico y Obra)
 
 1. **Entrada en Hoy, disposición única por breakpoint y orden móvil:**
-   - Cabecera sobre la superficie de marca (`--surface-brand`) con la fecha y la pregunta «¿Qué sigue?», conteos reales en números grandes y ligeros (`--text-display-num`, `--weight-light`) y selector de vistas en píldoras (`Tabs` con `--pill-*`, activa sólida).
+   - Cabecera sobre la superficie de marca grafito (`--surface-brand`) con la fecha y la pregunta «¿Qué sigue?», conteos reales en números grandes y ligeros (`--text-display-num`, `--weight-light`) y selector de vistas en píldoras (`Tabs` con `--pill-*`, activa sólida en azul tinta `--accent-primary`).
    - Vistas de pendientes: **Hoy** (vencidos + fecha de hoy), **Próximos** (con fecha futura, ordenados por fecha), **Sin fecha** y **Hechos**.
-   - **Disposición de escritorio ($\ge 1024\text{ px}$):** dos columnas asimétricas dentro de `--container-workspace`; columna principal izquierda para la captura rápida en cristal (`Card` + `TextField` + `Kbd`) y la vista activa de pendientes en tarjetas del bento (`Card` + `Checkbox` + `Chip`), y columna secundaria derecha para **Notas fijadas**, buscador de notas (`título` y contenido) y filtro de archivadas en tarjetas crema (`--bento-card-bg`).
+   - **Disposición de escritorio ($\ge 1024\text{ px}$):** dos columnas asimétricas dentro de `--container-workspace`; columna principal izquierda para la captura rápida en cristal (`Card` + `TextField` + `Kbd`) y la vista activa de pendientes en tarjetas del bento (`Card` + `Checkbox` + `Chip`), y columna secundaria derecha para **Notas fijadas**, buscador de notas (`título` y contenido) y filtro de archivadas en tarjetas del bento (`--bento-card-bg`).
    - **Disposición móvil y tableta ($< 1024\text{ px}$):** una sola columna con este orden vertical exacto: (1) cabecera y selector de vista (**Hoy**, **Próximos**, **Sin fecha**, **Hechos**), (2) barra de captura rápida de una línea, (3) lista de pendientes de la vista activa (vencidos arriba, luego los de hoy), (4) bloque de **Notas fijadas** y (5) buscador y lista de notas con acceso a exportación.
 2. **Captura rápida en una línea:**
    - Barra de captura siempre visible en la parte superior de la vista activa sobre tarjeta de cristal (`--glass-*`), con borde `--border-control` ($\ge 3:1$), atajo visible en `Kbd` (`c` o `/` fuera de campos de texto) y `TextField`/`Input`, sin abrir modal.
    - `Enter` guarda al instante con valores por defecto (fecha de hoy si se está en **Hoy**, sin fecha en el resto). Permite indicar prioridad (`baja`, `media`, `alta`) y fecha opcional sin bloquear la captura.
 3. **Editor de nota y autoguardado con estado visible:**
-   - Tarjeta crema del bento (`Card` con `--bento-card-bg`), título y cuerpo con `TextField` (`Input` y `TextArea`), acciones con `Button` de **Fijar / Desfijar** y **Archivar / Restaurar**.
+   - Tarjeta del bento (`Card` con `--bento-card-bg`), título y cuerpo con `TextField` (`Input` y `TextArea`), acciones con `Button` de **Fijar / Desfijar** y **Archivar / Restaurar**.
    - Autoguardado por versión con indicador `Chip` sobrio y permanente en la cabecera de la nota (nunca toasts por cada pulsación):
      - `Guardando…` mientras hay cambios en vuelo.
      - `Guardado` (`--status-success-bg` / `--status-success-text`) cuando la versión coincide con el servidor.

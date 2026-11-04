@@ -1,17 +1,16 @@
 // Catálogo tipado de tokens semánticos de Hubly (Fase 0 / 1A / 1B).
-// Las pantallas y componentes solo consumen variables CSS a través de estos tokens (Constitución #6).
+// Paleta de marca: Grafito y azul tinta (Issue #52). Las pantallas y componentes solo consumen variables CSS a través de estos tokens (Constitución #6).
 
 export const tokens = {
   color: {
     surfaceCanvas: "var(--surface-canvas)", surfaceRaised: "var(--surface-raised)", surfaceSubtle: "var(--surface-subtle)", surfaceInteractive: "var(--surface-interactive)",
     textPrimary: "var(--text-primary)", textSecondary: "var(--text-secondary)", textMuted: "var(--text-muted)", textOnAccent: "var(--text-on-accent)",
     borderSubtle: "var(--border-subtle)", borderDefault: "var(--border-default)", borderControl: "var(--border-control)", borderStrong: "var(--border-strong)",
-    accentPrimary: "var(--accent-primary)", accentPrimaryHover: "var(--accent-primary-hover)",
+    accentPrimary: "var(--accent-primary)", accentPrimaryHover: "var(--accent-primary-hover)", accentPrimarySubtle: "var(--accent-primary-subtle)",
     statusSuccessBg: "var(--status-success-bg)", statusSuccessText: "var(--status-success-text)",
     statusWarningBg: "var(--status-warning-bg)", statusWarningText: "var(--status-warning-text)",
     statusDangerBg: "var(--status-danger-bg)", statusDangerText: "var(--status-danger-text)",
     surfaceBrand: "var(--surface-brand)", surfaceBrandSubtle: "var(--surface-brand-subtle)", surfaceBrandContrast: "var(--surface-brand-contrast)", surfaceBrandMuted: "var(--surface-brand-muted)",
-    accentWarm: "var(--accent-warm)", accentWarmHover: "var(--accent-warm-hover)", accentWarmSubtle: "var(--accent-warm-subtle)", accentWarmText: "var(--accent-warm-text)",
   },
   bento: {
     surfaceBase: "var(--bento-surface-base)", cardBg: "var(--bento-card-bg)", cardBorder: "var(--bento-card-border)",

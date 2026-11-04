@@ -47,11 +47,11 @@ export function LineGraphicCycle({ activeStageIndex = 3, compact = false }: Line
                 style={{
                   width: tokens.space[6], height: tokens.space[6], borderRadius: tokens.radius.full,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  backgroundColor: isActive ? tokens.color.accentWarm : isPassed ? tokens.color.textPrimary : tokens.bento.cardBg,
-                  border: `${tokens.border.thin} solid ${isActive ? tokens.color.accentWarm : isPassed ? tokens.color.textPrimary : tokens.color.borderControl}`,
+                  backgroundColor: isActive ? tokens.color.accentPrimary : isPassed ? tokens.color.textPrimary : tokens.bento.cardBg,
+                  border: `${tokens.border.thin} solid ${isActive ? tokens.color.accentPrimary : isPassed ? tokens.color.textPrimary : tokens.color.borderControl}`,
                   color: isActive || isPassed ? tokens.color.textOnAccent : tokens.color.textMuted,
                   fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold,
-                  boxShadow: isActive ? `0 0 0 ${tokens.space[1]} ${tokens.color.accentWarmSubtle}` : "none",
+                  boxShadow: isActive ? `0 0 0 ${tokens.space[1]} ${tokens.color.accentPrimarySubtle}` : "none",
                 }}
               >
                 {isPassed ? "✓" : idx + 1}
@@ -62,7 +62,7 @@ export function LineGraphicCycle({ activeStageIndex = 3, compact = false }: Line
                   style={{
                     fontSize: compact ? tokens.font.size.xs : tokens.font.size.sm,
                     fontWeight: isActive ? tokens.font.weight.bold : tokens.font.weight.medium,
-                    color: isActive ? tokens.color.accentWarmText : isPassed ? tokens.color.textPrimary : tokens.color.textMuted,
+                    color: isActive ? tokens.color.accentPrimary : isPassed ? tokens.color.textPrimary : tokens.color.textMuted,
                     lineHeight: tokens.font.leading.tight,
                   }}
                 >

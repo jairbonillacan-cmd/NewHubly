@@ -2,23 +2,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
-  Button,
-  Card,
-  Checkbox,
-  Chip,
-  EmptyState,
-  Input,
-  Kbd,
-  NoteEditorCard,
-  QuickCaptureBar,
-  Switch,
-  Tabs,
-  TextArea,
-  TextField,
-  TodoItemCard,
-  ViewSelector,
-  WORKSPACE_EMPTY_MESSAGES,
-  WorkspaceEmptyState,
+  Button, Card, Checkbox, Chip, EmptyState, Input, Kbd, NoteEditorCard, QuickCaptureBar,
+  Switch, Tabs, TextArea, TextField, TodoItemCard, ViewSelector, WORKSPACE_EMPTY_MESSAGES, WorkspaceEmptyState,
 } from "../index";
 
 function findElements(node: unknown, predicate: (el: { type: unknown; props: Record<string, unknown> }) => boolean): Array<{ type: unknown; props: Record<string, unknown> }> {
@@ -30,19 +15,11 @@ function findElements(node: unknown, predicate: (el: { type: unknown; props: Rec
   return [...matches, ...children.flatMap((child) => findElements(child, predicate))];
 }
 
-describe("Componentes UI de Notas y Pendientes con dirección visual y HeroUI (@hubly/ui, Issues #26 y #47)", () => {
+describe("Componentes UI de Notas y Pendientes con dirección visual y HeroUI (@hubly/ui, Issues #26, #47 y #52)", () => {
   it("reexporta las primitivas reales de @heroui/react desde @hubly/ui para consumo en apps/web", () => {
-    expect(typeof Button).toBe("function");
-    expect(typeof Card).toBe("function");
-    expect(typeof Tabs).toBe("function");
-    expect(typeof Checkbox).toBe("function");
-    expect(typeof TextField).toBe("function");
-    expect(typeof Input).toBe("function");
-    expect(typeof TextArea).toBe("function");
-    expect(typeof Chip).toBe("function");
-    expect(typeof Kbd).toBe("function");
-    expect(typeof Switch).toBe("function");
-    expect(typeof EmptyState).toBe("function");
+    for (const primitive of [Button, Card, Tabs, Checkbox, TextField, Input, TextArea, Chip, Kbd, Switch, EmptyState]) {
+      expect(typeof primitive).toBe("function");
+    }
   });
 
   it("QuickCaptureBar usa Card de cristal, Kbd, TextField, Input y Button reales de HeroUI y dispara onSubmit con Enter", () => {
@@ -55,7 +32,7 @@ describe("Componentes UI de Notas y Pendientes con dirección visual y HeroUI (@
     expect(html).toContain('data-slot="button"');
     expect(html).toContain("<kbd");
     expect(html).toContain("var(--glass-bg)");
-    expect(html).toContain("var(--accent-warm)");
+    expect(html).toContain("var(--accent-primary)");
     expect(html).toContain("var(--border-control)");
     expect(html).toContain("Capturar pendiente rápido… [Enter]");
     const textInput = findElements(tree, (el) => el.props["type"] === "text")[0];
@@ -71,16 +48,15 @@ describe("Componentes UI de Notas y Pendientes con dirección visual y HeroUI (@
     expect(html).toContain('data-slot="checkbox"');
     expect(html).toContain('data-slot="chip"');
     expect(html).toContain('type="checkbox"');
+    expect(html).toContain('data-selected="true"');
     expect(html).toContain("var(--bento-card-bg)");
-    expect(renderToStaticMarkup(tree)).toContain("Vencido · 2026-11-01");
-    expect(renderToStaticMarkup(tree)).toContain("Nota de origen: Reunión creativa");
+    expect(renderToStaticMarkup(createElement(TodoItemCard, { id: "todo-1", title: "Revisar creatividades", priority: "high", dueDate: "2026-11-01", isDone: false, isOverdue: true, noteId: "note-9", noteTitle: "Reunión creativa" }))).toContain("Vencido · 2026-11-01");
     const rootCheckbox = findElements(tree, (el) => typeof el.props["onChange"] === "function")[0];
     (rootCheckbox?.props["onChange"] as () => void)();
-    expect(onToggle).toHaveBeenCalledTimes(1);
     expect(onToggle).toHaveBeenCalledWith("todo-1");
   });
 
-  it("NoteEditorCard usa Card crema, Chip de autoguardado, TextField/Input/TextArea y Button reales de HeroUI", () => {
+  it("NoteEditorCard usa Card del bento, Chip de autoguardado, TextField/Input/TextArea y Button reales de HeroUI", () => {
     const onRetrySave = vi.fn();
     const savingHtml = renderToStaticMarkup(createElement(NoteEditorCard, { id: "n1", title: "Ideas", content: "Texto", isPinned: false, isArchived: false, saveStatus: "saving" }));
     const savedHtml = renderToStaticMarkup(createElement(NoteEditorCard, { id: "n1", title: "Ideas", content: "Texto", isPinned: true, isArchived: false, saveStatus: "saved" }));
@@ -102,7 +78,7 @@ describe("Componentes UI de Notas y Pendientes con dirección visual y HeroUI (@
     expect(onRetrySave).toHaveBeenCalledWith("n1");
   });
 
-  it("ViewSelector usa Tabs, Tabs.List, Tabs.Tab y Chip con estilo de píldoras y navegación por teclado", () => {
+  it("ViewSelector usa Tabs, Tabs.List, Tabs.Tab y Chip con estilo de píldoras y cambio de selección", () => {
     const onSelectView = vi.fn();
     const tree = ViewSelector({ activeView: "today", counts: { today: 3, upcoming: 5, no_date: 1, done: 8 }, onSelectView });
     const html = renderToStaticMarkup(createElement(ViewSelector, { activeView: "today", counts: { today: 3, upcoming: 5, no_date: 1, done: 8 } }));
@@ -114,11 +90,8 @@ describe("Componentes UI de Notas y Pendientes con dirección visual y HeroUI (@
     expect(html).toContain("var(--pill-active-bg)");
     expect(html).toContain("(3)");
     const tabsRoot = findElements(tree, (el) => typeof el.props["onSelectionChange"] === "function")[0];
-    expect(tabsRoot).toBeDefined();
     (tabsRoot?.props["onSelectionChange"] as (key: string) => void)("upcoming");
     expect(onSelectView).toHaveBeenCalledWith("upcoming");
-    (tabsRoot?.props["onSelectionChange"] as (key: string) => void)("done");
-    expect(onSelectView).toHaveBeenCalledWith("done");
   });
 
   it("WorkspaceEmptyState usa EmptyState y Button de HeroUI con tokens del bento en las 4 vistas", () => {

@@ -26,7 +26,7 @@ export function HeroSection({
         <div className="hubly-hero-grid">
           <div style={{ display: "flex", flexDirection: "column", gap: tokens.space[5] }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], paddingBlock: tokens.space[1], paddingInline: tokens.space[3], backgroundColor: tokens.pill.glassBg, border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`, borderRadius: tokens.radius.full, alignSelf: "flex-start", backdropFilter: `blur(${tokens.glass.blurMobile})`, WebkitBackdropFilter: `blur(${tokens.glass.blurMobile})` }}>
-              <span style={{ width: tokens.space[2], height: tokens.space[2], borderRadius: tokens.radius.full, backgroundColor: tokens.color.accentWarm }} aria-hidden="true" />
+              <span style={{ width: tokens.space[2], height: tokens.space[2], borderRadius: tokens.radius.full, backgroundColor: tokens.color.accentPrimary }} aria-hidden="true" />
               <span style={{ fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold, letterSpacing: tokens.font.tracking.wide, textTransform: "uppercase", color: tokens.pill.glassText }}>
                 Flujo editorial para agencias
               </span>
@@ -60,7 +60,7 @@ export function HeroSection({
                     <span style={{ fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.bold, textTransform: "uppercase", letterSpacing: tokens.font.tracking.wider, paddingBlock: tokens.space[1], paddingInline: tokens.space[2], backgroundColor: tokens.glass.border, borderRadius: tokens.radius.sm, color: tokens.glass.textPrimary }}>Ejemplo</span>
                     <span style={{ fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold, color: tokens.glass.textMuted }}>Campaña Primavera</span>
                   </div>
-                  <span style={{ paddingBlock: tokens.space[1], paddingInline: tokens.space[2], backgroundColor: tokens.color.accentWarmSubtle, color: tokens.color.accentWarmText, borderRadius: tokens.radius.sm, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold }}>Revisión interna</span>
+                  <span style={{ paddingBlock: tokens.space[1], paddingInline: tokens.space[2], backgroundColor: tokens.color.accentPrimarySubtle, color: tokens.color.accentPrimary, borderRadius: tokens.radius.sm, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold }}>Revisión interna</span>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: tokens.space[1] }}>
@@ -70,7 +70,7 @@ export function HeroSection({
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: tokens.space[2], fontSize: tokens.font.size.xs, color: tokens.glass.textMuted, gap: tokens.space[2], flexWrap: "wrap" }}>
                   <span>¿Quién la tiene?: <strong>Equipo creativo (hace 2h)</strong></span>
-                  <span style={{ color: tokens.color.accentWarmText, fontWeight: tokens.font.weight.semibold }}>Auditoría (próximamente)</span>
+                  <span style={{ color: tokens.color.accentPrimary, fontWeight: tokens.font.weight.semibold }}>Auditoría (próximamente)</span>
                 </div>
               </GlassCard>
 
