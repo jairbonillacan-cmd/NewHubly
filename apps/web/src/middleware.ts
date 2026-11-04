@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient, enforceHttpOnlyCookieOptions } from "./server/composition/auth";
 
 export async function updateSession(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  if (!path.startsWith("/hoy") && !path.startsWith("/login") && !path.startsWith("/auth")) {
+    return NextResponse.next({ request });
+  }
   let response = NextResponse.next({ request });
   const supabase = await createSupabaseServerClient({
     getAll: () => request.cookies.getAll(),
@@ -15,7 +19,7 @@ export async function updateSession(request: NextRequest) {
     },
   });
   const { data, error } = await supabase.auth.getUser();
-  if (request.nextUrl.pathname.startsWith("/hoy") && (error || !data?.user?.id)) {
+  if (path.startsWith("/hoy") && (error || !data?.user?.id)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   return response;

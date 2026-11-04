@@ -5,6 +5,32 @@ import type { UserClaims } from "@hubly/db";
 
 export const GENERIC_AUTH_ERROR = "No se pudo iniciar sesión";
 export const GENERIC_MAGIC_LINK_MESSAGE = "Si el correo es válido, te enviamos un mensaje";
+export const HUBLY_TIMEZONE_COOKIE = "hubly_tz";
+export const DEFAULT_APP_TIMEZONE = "America/Mexico_City";
+
+export function isValidIanaTimeZone(tz: string | null | undefined): tz is string {
+  if (!tz || typeof tz !== "string" || !tz.trim()) return false;
+  try { Intl.DateTimeFormat(undefined, { timeZone: tz.trim() }); return true; } catch { return false; }
+}
+
+let testTimeZoneResolver: (() => string | Promise<string>) | null = null;
+export function setTimeZoneResolverForTests(fn: (() => string | Promise<string>) | null): void {
+  if (process.env.NODE_ENV !== "test") throw new Error("Solo permitido en entorno de pruebas");
+  testTimeZoneResolver = fn;
+}
+
+export async function resolveRequestTimeZone(): Promise<string> {
+  const fallbackTz = isValidIanaTimeZone(process.env.HUBLY_DEFAULT_TIMEZONE) ? process.env.HUBLY_DEFAULT_TIMEZONE.trim() : DEFAULT_APP_TIMEZONE;
+  if (process.env.NODE_ENV === "test" && testTimeZoneResolver) {
+    const candidate = await testTimeZoneResolver();
+    return isValidIanaTimeZone(candidate) ? candidate.trim() : fallbackTz;
+  }
+  try {
+    const raw = (await cookies()).get(HUBLY_TIMEZONE_COOKIE)?.value;
+    const decoded = raw ? decodeURIComponent(raw) : undefined;
+    return isValidIanaTimeZone(decoded) ? decoded.trim() : fallbackTz;
+  } catch { return fallbackTz; }
+}
 
 export interface CookieStoreAdapter {
   getAll(): Array<{ name: string; value: string }>;

@@ -10,43 +10,54 @@ import {
 } from "@hubly/contracts";
 import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleWorkspaceRepository, withUserContext, type UserClaims } from "@hubly/db";
 import {
-  GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, createHttpOnlyCookieMethods, createSupabaseServerClient,
-  enforceHttpOnlyCookieOptions, getVerifiedServerSession, resolveSiteUrl, resolveSupabaseConfig, setSupabaseServerClientFactoryForTests,
+  DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE,
+  createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
+  getVerifiedServerSession, isValidIanaTimeZone, resolveRequestTimeZone, resolveSiteUrl,
+  resolveSupabaseConfig, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests,
 } from "./auth";
 export {
-  GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, createHttpOnlyCookieMethods, createSupabaseServerClient,
-  enforceHttpOnlyCookieOptions, getVerifiedServerSession, resolveSiteUrl, resolveSupabaseConfig, setSupabaseServerClientFactoryForTests,
+  DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE,
+  createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
+  getVerifiedServerSession, isValidIanaTimeZone, resolveRequestTimeZone, resolveSiteUrl,
+  resolveSupabaseConfig, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests,
 };
 
 type DbInstance = Parameters<typeof withUserContext>[2];
 let testDbOverride: DbInstance | undefined;
+let testClockNowOverride: (() => Date) | null = null;
 export function setWorkspaceDbForTests(db: DbInstance | undefined): void {
   if (process.env.NODE_ENV !== "test") throw new Error("Solo permitido en entorno de pruebas");
   testDbOverride = db;
 }
+export function setClockNowForTests(fn: (() => Date) | null): void {
+  if (process.env.NODE_ENV !== "test") throw new Error("Solo permitido en entorno de pruebas");
+  testClockNowOverride = fn;
+}
 
 export interface CompositionContext extends AppContext {
   claims: UserClaims;
-  timezone?: string;
+  timezone: string;
+  todayDate: string;
   db?: DbInstance;
 }
 
-export function createSystemClock(timezone = "UTC"): Clock {
-  return {
-    now: () => new Date(),
-    todayString: () => new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),
-  };
+export function createSystemClock(timezone = DEFAULT_APP_TIMEZONE): Clock & { todayIsoDate: () => string } {
+  const safeTz = isValidIanaTimeZone(timezone) ? timezone.trim() : DEFAULT_APP_TIMEZONE;
+  const now = () => (process.env.NODE_ENV === "test" && testClockNowOverride ? testClockNowOverride() : new Date());
+  const todayString = () => new Intl.DateTimeFormat("en-CA", { timeZone: safeTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(now());
+  return { now, todayString, todayIsoDate: todayString };
 }
 
 export const systemIdGenerator: IdGenerator = { generate: () => crypto.randomUUID() };
 
 export async function ensureAuthenticatedWorkspace(workspaceId?: string, defaultName?: string): Promise<CompositionContext> {
-  const { claims } = await getVerifiedServerSession();
+  const [{ claims }, timezone] = await Promise.all([getVerifiedServerSession(), resolveRequestTimeZone()]);
   const resolvedDb = process.env.NODE_ENV === "test" ? testDbOverride : undefined;
   const wsRepo = new DrizzleWorkspaceRepository(claims, resolvedDb);
   if (workspaceId && !(await wsRepo.findMember(workspaceId, claims.sub))) throw new Error(`No autorizado en el espacio de trabajo: ${workspaceId}`);
   const resolvedWorkspaceId = workspaceId ?? (await wsRepo.ensurePersonalWorkspace(defaultName));
-  return { claims, workspaceId: resolvedWorkspaceId, userId: claims.sub, ...(resolvedDb ? { db: resolvedDb } : {}) };
+  const todayDate = createSystemClock(timezone).todayIsoDate();
+  return { claims, workspaceId: resolvedWorkspaceId, userId: claims.sub, timezone, todayDate, ...(resolvedDb ? { db: resolvedDb } : {}) };
 }
 
 export const getWorkspaceContext = ensureAuthenticatedWorkspace;
