@@ -1,4 +1,4 @@
-// Reglas de lint y de fronteras (ADR 0002). dependency-cruiser es la fuente de verdad en CI;
+// Reglas de lint y de fronteras (ADR 0002, ADR 0006, Issue #69). dependency-cruiser es la fuente de verdad en CI;
 // eslint-plugin-boundaries da el mismo aviso en el editor.
 import { defineConfig } from "eslint/config";
 import boundaries from "eslint-plugin-boundaries";
@@ -9,6 +9,17 @@ const allowTo = (from, ...to) => ({
   from: element(from),
   allow: { to: { element: { types: { anyOf: to } } } },
 });
+
+const UNSANITIZED_HTML_SELECTORS = [
+  {
+    selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+    message: "Se prohíbe dangerouslySetInnerHTML sin sanitización en servidor y comentario de excepción justificado (#69).",
+  },
+  {
+    selector: "AssignmentExpression[left.property.name='innerHTML']",
+    message: "Se prohíbe asignar a innerHTML directamente (#69).",
+  },
+];
 
 export default defineConfig(
   { ignores: ["**/node_modules/**", "**/.next/**", "**/.turbo/**", "**/next-env.d.ts"] },
@@ -47,6 +58,7 @@ export default defineConfig(
           ],
         },
       ],
+      "no-restricted-syntax": ["error", ...UNSANITIZED_HTML_SELECTORS],
     },
   },
   {
@@ -65,6 +77,7 @@ export default defineConfig(
     rules: {
       "no-restricted-syntax": [
         "error",
+        ...UNSANITIZED_HTML_SELECTORS,
         {
           selector:
             "Literal[value=/(#[0-9a-fA-F]{3,8}\\b|\\b(rgb|rgba|hsl|hsla|oklch|lab|lch)\\(|\\b[0-9]+(\\.[0-9]+)?(px|rem|em|vh|vw|vmin|vmax|dvh|svh|lvh|dvw|svw|lvw|ch)\\b)/]",
