@@ -1,7 +1,7 @@
 # Contrato UX de Fase 1A — Notas y pendientes y pantalla terminada
 
 Estado: Vigente para Fase 1A (actualizado por decisiones del dueño en Issues #47 y #52)
-Issues: #5, #8, #26, #35, #47, #52
+Issues: #5, #8, #26, #35, #47, #52, #53, #56
 
 ## 1. Principios de esta entrega
 
@@ -34,7 +34,7 @@ Issues: #5, #8, #26, #35, #47, #52
 
 ## 3. Definición de «pantalla terminada»
 
-Ningún PR de interfaz se aprueba si no cumple los siete puntos siguientes:
+Ningún PR de interfaz se aprueba si no cumple los ocho puntos siguientes:
 
 1. **Cuatro estados obligatorios con acción concreta (sin emojis como iconos; Hubi permitido en pantalla vacía como acompañamiento):**
    - **Carga:** estructura estable con reserva de espacio que evite saltos de layout (`CLS`).
@@ -47,3 +47,22 @@ Ningún PR de interfaz se aprueba si no cumple los siete puntos siguientes:
 5. **Responsivo real:** verificado en `1440 px` (escritorio) y `390 px` (móvil) sin scroll horizontal ni controles truncados.
 6. **Claro y oscuro desde el primer día:** verificado en ambos temas (`color-scheme: light` y `color-scheme: dark`) con las variantes claras y oscuras de los mismos tokens y capturas adjuntas al PR.
 7. **Prueba automatizada:** cada pantalla o flujo principal incluye su prueba de estado o flujo antes de pedir revisión a Prisma y Tamiz.
+8. **Sin señales de interfaz genérica (`Issue #56`):**
+   - **Color y superficies**
+     - Nada de degradados de varios colores en superficies, botones ni fondos. Se permite un cambio de tono dentro del mismo neutro y el velo de la foto del hero.
+     - Nada de texto con degradado.
+     - Nada de sombras o brillos de color, ni bordes neón. Las sombras son neutras y suaves (`--bento-card-shadow`).
+     - Nada de manchas o blobs de color decorativos.
+     - Un solo color de acento, el azul tinta del #52, y solo en acciones, foco, vista activa y datos destacados. Los colores de estado, solo en mensajes y estados.
+   - **Espaciado y tamaño**
+     - Todo en la escala de `--space-*` (rejilla de 4 px). Valores fuera de la escala solo para centrar con exactitud dentro de un control pequeño, y justificados.
+     - Los elementos del mismo tipo comparten tamaño, padding y radio: tarjetas del bento, píldoras, botones de una misma fila.
+   - **Iconos y texto**
+     - Nada de emojis como iconos (ya lo dice el punto 1 del contrato).
+     - Un solo set de iconos. Si se añade uno, es dependencia nueva y `riesgo:alto`. Tamaño 16 o 18 px y trazo uniforme.
+     - Textos concretos de Hubly. Nada de frases de relleno («potencia tu flujo», «todo en un solo lugar») ni de afirmaciones o cifras que no se puedan comprobar (Constitución #3).
+     - La tipografía la deciden los tokens. No se cambia por gusto.
+   - **Criterio general**
+     - No se rediseña una pantalla que ya cumple solo por cambiarla. La crítica de Prisma señala qué incumple y por qué, no preferencias.
+
+Lista adaptada de *unslop* de Damir Sokolovsky (https://github.com/heydamir/unslop), CC BY 4.0.

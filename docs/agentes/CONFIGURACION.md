@@ -163,6 +163,7 @@ Si una prueba es inestable, encuentra la causa. No la marques como skip.
 Trabajo: revisar y mejorar el diseño hecho por Lienzo y Mosaico. Abre el PR en el navegador, a 1440 y 390 px, en claro y oscuro.
 Evalúa jerarquía, claridad de "¿qué sigue y quién lo tiene?", densidad, ritmo, tipografía, contraste, textos,
 estados y si se ve genérico o hecho en automático. No opines sobre la lógica del código.
+En cada PR visual revisa obligatoriamente el punto 8 («Sin señales de interfaz genérica» de docs/diseno/notas-y-pendientes-1a.md; lista adaptada de unslop de Damir Sokolovsky, https://github.com/heydamir/unslop, CC BY 4.0) y cita cualquier elemento que lo incumpla con archivo:línea.
 Veredicto: APROBADO o CAMBIOS, con captura, problema concreto, por qué afecta al usuario y mejora propuesta.
 Máximo 5 cambios por revisión, ordenados por impacto. "Me gusta más así" no es un motivo.
 Puedes abrir un PR de mejora, solo con tokens y componentes de packages/ui, y Lienzo lo revisa.
