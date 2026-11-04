@@ -76,7 +76,7 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
                   )}
                   {errorMessage && <p role="alert" style={{ margin: tokens.space[0], padding: tokens.space[3], borderRadius: tokens.radius.sm, backgroundColor: tokens.color.statusDangerBg, color: tokens.color.statusDangerText, fontSize: tokens.font.size.sm }}>{errorMessage}</p>}
                   {statusMessage && <p role="status" style={{ margin: tokens.space[0], padding: tokens.space[3], borderRadius: tokens.radius.sm, backgroundColor: tokens.color.statusSuccessBg, color: tokens.color.statusSuccessText, fontSize: tokens.font.size.sm }}>{statusMessage}</p>}
-                  <Button type="submit" variant="primary" isDisabled={submitting} fullWidth style={{ borderRadius: tokens.radius.full, paddingBlock: tokens.space[3], paddingInline: tokens.space[5], backgroundColor: tokens.color.accentWarm, color: tokens.color.textOnAccent, fontWeight: tokens.font.weight.semibold }}>
+                  <Button type="submit" variant="primary" isDisabled={submitting} fullWidth style={{ borderRadius: tokens.radius.full, paddingBlock: tokens.space[3], paddingInline: tokens.space[5], backgroundColor: tokens.color.accentPrimary, color: tokens.color.textOnAccent, fontWeight: tokens.font.weight.semibold }}>
                     {submitting ? "Procesando…" : mode === "signin" ? "Entrar a Hoy" : mode === "signup" ? "Crear cuenta y espacio personal" : "Enviar enlace mágico"}
                   </Button>
                 </form>
