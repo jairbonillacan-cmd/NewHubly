@@ -72,7 +72,14 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
     expect(todosB[0]?.isDone).toBe(false);
   });
 
-  it("middleware refresca sesión con cookies httpOnly y redirige /hoy -> /login si no hay sesión verificada", async () => {
+  it("middleware omite getUser en rutas públicas estáticas, refresca sesión con cookies httpOnly y redirige /hoy -> /login si no hay sesión", async () => {
+    const getUserSpy = vi.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSupabaseServerClientFactoryForTests(() => ({ auth: { getUser: getUserSpy } }) as any);
+    const publicRes = await middleware(new NextRequest("http://localhost:3100/privacidad"));
+    expect(publicRes.status).toBe(200);
+    expect(getUserSpy).not.toHaveBeenCalled();
+
     setSupabaseServerClientFactoryForTests((cookieMethods) => ({
       auth: {
         getUser: vi.fn().mockImplementation(async () => {

@@ -1,6 +1,6 @@
 "use client";
 import { Button, Card, Hubi, HublyWordmark, Input, Label, Tabs, TextField, ThemeToggle, tokens } from "@hubly/ui";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { signInWithMagicLinkAction, signInWithPasswordAction, signUpWithPasswordAction } from "../../../actions/auth";
 
 export type AuthMode = "signin" | "signup" | "magic";
@@ -13,16 +13,23 @@ const authTabs: ReadonlyArray<{ id: AuthMode; label: string }> = [
   { id: "signup", label: "Crear cuenta" },
   { id: "magic", label: "Enlace mágico" },
 ];
+const syncBrowserTimeZoneCookie = () => {
+  if (typeof document === "undefined") return;
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (tz) document.cookie = `hubly_tz=${encodeURIComponent(tz)}; path=/; max-age=31536000; SameSite=Lax`;
+};
 
 export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginScreenProps) {
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState(""), [password, setPassword] = useState(""), [workspaceName, setWorkspaceName] = useState("Mi Espacio");
   const [statusMessage, setStatusMessage] = useState<string | null>(null), [errorMessage, setErrorMessage] = useState<string | null>(null), [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => { syncBrowserTimeZoneCookie(); }, []);
   const navigate = (wsId: string | null) => onAuthenticated ? onAuthenticated(wsId) : (typeof window !== "undefined" && window.location.assign("/hoy"));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    syncBrowserTimeZoneCookie();
     setSubmitting(true); setErrorMessage(null); setStatusMessage(null);
     try {
       if (mode === "signin") navigate((await signInWithPasswordAction({ email, password })).workspaceId);

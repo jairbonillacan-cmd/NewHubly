@@ -1,4 +1,3 @@
-import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -13,13 +12,14 @@ import {
   saveNoteAction,
   toggleTodoAction,
 } from "../../src/actions";
-import { WorkspaceScreen, shouldTriggerQuickCaptureShortcut } from "../../src/components/WorkspaceScreen";
-import { ensureAuthenticatedWorkspace, setSupabaseServerClientFactoryForTests } from "../../src/server/composition";
+import { HoyPage } from "../../src/app/(workspace)/hoy/page";
+import { shouldTriggerQuickCaptureShortcut } from "../../src/components/WorkspaceScreen";
+import { DEFAULT_APP_TIMEZONE, ensureAuthenticatedWorkspace, setSupabaseServerClientFactoryForTests } from "../../src/server/composition";
 
 describe("Flujo E2E Completo Fase 1A contra Postgres real en Docker (#28 y #46)", { timeout: 30000 }, () => {
   const userA = { id: crypto.randomUUID(), email: "a@hubly.es" };
   const userB = { id: crypto.randomUUID(), email: "b@hubly.es" };
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: DEFAULT_APP_TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
   const actAs = (user: { id: string; email: string } | null) => {
     setSupabaseServerClientFactoryForTests(() => ({
@@ -34,27 +34,23 @@ describe("Flujo E2E Completo Fase 1A contra Postgres real en Docker (#28 y #46)"
 
   afterEach(() => { setSupabaseServerClientFactoryForTests(null); });
 
-  it("ejecuta flujo diario en Hoy con sesión verificada en servidor, alta de espacio al primer inicio y aislamiento RLS", async () => {
+  it("ejecuta flujo diario en Hoy en zona horaria local, persiste datos tras recarga completa de HoyPage y verifica aislamiento RLS", async () => {
     // 0. Sin sesión activa cualquier Server Action rechaza con 'Sesión caducada'
     actAs(null);
     await expect(listNotesAction()).rejects.toThrow("Sesión caducada");
 
-    // 1. Primer inicio de sesión de Usuario A: alta automática del espacio personal y carga inicial vacía
+    // 1. Primer inicio de sesión de Usuario A: alta automática del espacio personal y carga inicial real desde HoyPage
     actAs(userA);
     const { workspaceId: wsAId } = await ensureAuthenticatedWorkspace(undefined, "Espacio E2E A");
-    expect(await listTodosByViewAction("today")).toEqual([]);
-    expect(await listNotesAction()).toEqual([]);
-    const initialHtml = renderToStaticMarkup(<WorkspaceScreen initialStatus="ready" todayDate={today} initialTodos={[]} initialNotes={[]} />);
+    const initialHtml = renderToStaticMarkup(await HoyPage());
     expect(initialHtml).toContain("No tienes pendientes para hoy");
 
     // 2. Atajo de teclado 'c' y captura rápida de pendiente en Hoy
     expect(shouldTriggerQuickCaptureShortcut("c", "BODY", false)).toBe(true);
     expect(shouldTriggerQuickCaptureShortcut("c", "INPUT", false)).toBe(false);
     const capturedTodo = await createTodoAction({ title: "Publicar parrilla mensual", priority: "high", dueDate: today });
-    const todayAfterCapture = await listTodosByViewAction("today");
-    expect(todayAfterCapture.map((t) => t.id)).toEqual([capturedTodo.id]);
-    const captureHtml = renderToStaticMarkup(<WorkspaceScreen todayDate={today} initialTodos={todayAfterCapture} initialNotes={[]} />);
-    expect(captureHtml).toContain("Publicar parrilla mensual");
+    const afterCaptureHtml = renderToStaticMarkup(await HoyPage());
+    expect(afterCaptureHtml).toContain("Publicar parrilla mensual");
 
     // 3. Marcado de pendiente como hecho y paso a la vista de Hechos
     const toggledTodo = await toggleTodoAction(capturedTodo.id);
@@ -71,21 +67,22 @@ describe("Flujo E2E Completo Fase 1A contra Postgres real en Docker (#28 y #46)"
     expect(savedNote.version).toBe(2);
     await expect(saveNoteAction({ id: createdNote.id, content: "Versión obsoleta", expectedVersion: 1 })).rejects.toThrow();
 
-    // 5. Generación de pendiente derivado desde la nota creada conservando el vínculo
+    // 5. Captura de un único pendiente ligado a la nota y recarga completa de HoyPage desde Postgres real
     const derivedTodo = await createTodoFromNoteAction(savedNote.id, { title: "Enviar minuta por correo", detail: "Adjuntar métricas", dueDate: today, priority: "medium" });
     expect(derivedTodo.noteId).toBe(savedNote.id);
-    const activeNotes = await listNotesAction();
-    const todayTodos = await listTodosByViewAction("today");
-    const linkedHtml = renderToStaticMarkup(<WorkspaceScreen todayDate={today} initialTodos={todayTodos} initialNotes={activeNotes} />);
-    expect(linkedHtml).toContain("Guardado");
-    expect(linkedHtml).toContain("Nota de origen: Minuta cliente Q4");
-    expect(linkedHtml).toContain("Enviar minuta por correo · Pendiente");
+    const reloadedHtml = renderToStaticMarkup(await HoyPage());
+    expect(reloadedHtml).toContain("Guardado");
+    expect(reloadedHtml).toContain("Minuta cliente Q4");
+    expect(reloadedHtml).toContain("Borrador validado y guardado");
+    expect(reloadedHtml).toContain("Nota de origen: Minuta cliente Q4");
+    expect(reloadedHtml).toContain("Enviar minuta por correo · Pendiente");
 
-    // 6. Aislamiento multi-inquilino desde Server Actions: Usuario B con su propia sesión no lee ni altera nada de Usuario A
+    // 6. Aislamiento multi-inquilino tras recarga con Usuario B: HoyPage de B está vacío y no ve ni altera nada de Usuario A
     actAs(userB);
-    expect(await listNotesAction()).toEqual([]);
-    expect(await listTodosByViewAction("today")).toEqual([]);
-    expect(await listTodosByViewAction("done")).toEqual([]);
+    const userBReloadedHtml = renderToStaticMarkup(await HoyPage());
+    expect(userBReloadedHtml).toContain("No tienes pendientes para hoy");
+    expect(userBReloadedHtml).not.toContain("Minuta cliente Q4");
+    expect(userBReloadedHtml).not.toContain("Enviar minuta por correo");
     await expect(listNotesAction(undefined, wsAId)).rejects.toThrow("No autorizado en el espacio de trabajo");
     await expect(saveNoteAction({ id: savedNote.id, content: "Intento de B", expectedVersion: 2 }, wsAId)).rejects.toThrow("No autorizado en el espacio de trabajo");
     await expect(toggleTodoAction(derivedTodo.id)).rejects.toThrow();
