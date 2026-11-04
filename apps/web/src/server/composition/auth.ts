@@ -3,6 +3,9 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { UserClaims } from "@hubly/db";
 
+export const GENERIC_AUTH_ERROR = "No se pudo iniciar sesión";
+export const GENERIC_MAGIC_LINK_MESSAGE = "Si el correo es válido, te enviamos un mensaje";
+
 export interface CookieStoreAdapter {
   getAll(): Array<{ name: string; value: string }>;
   set(name: string, value: string, options: CookieOptions): void;

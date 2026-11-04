@@ -5,11 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 import { createTodoAction, exportWorkspaceAction, listNotesAction, toggleTodoAction } from "../src/actions";
-import { GENERIC_MAGIC_LINK_MESSAGE, signInWithMagicLinkAction, signInWithPasswordAction, signUpWithPasswordAction } from "../src/actions/auth";
+import { signInWithMagicLinkAction, signInWithPasswordAction, signUpWithPasswordAction } from "../src/actions/auth";
 import { LoginScreen } from "../src/app/(public)/login/page";
 import { middleware } from "../src/middleware";
 import {
-  createHttpOnlyCookieMethods, enforceHttpOnlyCookieOptions, getVerifiedServerSession,
+  GENERIC_MAGIC_LINK_MESSAGE, createHttpOnlyCookieMethods, enforceHttpOnlyCookieOptions, getVerifiedServerSession,
   resolveSiteUrl, resolveSupabaseConfig, setSupabaseServerClientFactoryForTests, setWorkspaceDbForTests,
 } from "../src/server/composition";
 

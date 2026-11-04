@@ -1,5 +1,4 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
 import {
   archiveNote, createNote, createTodo, createTodoFromNote, exportWorkspaceData,
   listNotes, listTodosByView, pinNote, toggleTodoDone, updateNote, updateTodo,
@@ -11,12 +10,12 @@ import {
 } from "@hubly/contracts";
 import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleWorkspaceRepository, withUserContext, type UserClaims } from "@hubly/db";
 import {
-  createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
-  getVerifiedServerSession, resolveSiteUrl, resolveSupabaseConfig, setSupabaseServerClientFactoryForTests,
+  GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, createHttpOnlyCookieMethods, createSupabaseServerClient,
+  enforceHttpOnlyCookieOptions, getVerifiedServerSession, resolveSiteUrl, resolveSupabaseConfig, setSupabaseServerClientFactoryForTests,
 } from "./auth";
 export {
-  createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
-  getVerifiedServerSession, resolveSiteUrl, resolveSupabaseConfig, setSupabaseServerClientFactoryForTests,
+  GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, createHttpOnlyCookieMethods, createSupabaseServerClient,
+  enforceHttpOnlyCookieOptions, getVerifiedServerSession, resolveSiteUrl, resolveSupabaseConfig, setSupabaseServerClientFactoryForTests,
 };
 
 type DbInstance = Parameters<typeof withUserContext>[2];
@@ -39,7 +38,7 @@ export function createSystemClock(timezone = "UTC"): Clock {
   };
 }
 
-export const systemIdGenerator: IdGenerator = { generate: () => randomUUID() };
+export const systemIdGenerator: IdGenerator = { generate: () => crypto.randomUUID() };
 
 export async function ensureAuthenticatedWorkspace(workspaceId?: string, defaultName?: string): Promise<CompositionContext> {
   const { claims } = await getVerifiedServerSession();

@@ -3,10 +3,7 @@ import {
   signInWithMagicLinkSchema, signInWithPasswordSchema, signUpWithPasswordSchema,
   type SignInWithMagicLinkInput, type SignInWithPasswordInput, type SignUpWithPasswordInput,
 } from "@hubly/contracts";
-import { createSupabaseServerClient, ensureAuthenticatedWorkspace, resolveSiteUrl } from "../server/composition";
-
-const GENERIC_AUTH_ERROR = "No se pudo iniciar sesión";
-export const GENERIC_MAGIC_LINK_MESSAGE = "Si el correo es válido, te enviamos un mensaje";
+import { GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, createSupabaseServerClient, ensureAuthenticatedWorkspace, resolveSiteUrl } from "../server/composition";
 
 export async function signInWithPasswordAction(input: SignInWithPasswordInput): Promise<{ ok: true; workspaceId: string; userId: string }> {
   const parsed = signInWithPasswordSchema.parse(input);

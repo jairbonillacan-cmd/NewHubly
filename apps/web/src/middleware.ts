@@ -1,6 +1,6 @@
 import type { CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { createSupabaseServerClient, enforceHttpOnlyCookieOptions } from "./server/composition";
+import { createSupabaseServerClient, enforceHttpOnlyCookieOptions } from "./server/composition/auth";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
