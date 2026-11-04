@@ -1,11 +1,17 @@
-// Chequeo de fronteras (ADR 0002, ADR 0006): ejecuta dependency-cruiser y reglas complementarias.
+// Chequeo de fronteras e higiene de CI (ADR 0002, ADR 0006, Issue #69): ejecuta dependency-cruiser y las reglas de fronteras/rutas/cliente.
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   evaluateCruise,
+  findBrowserStorageAndTokenViolations,
+  findClientDatabaseViolations,
+  findHardcodedTenantViolations,
+  findHeroUiCodeViolations,
   findHeroUiCssViolations,
   findHeroUiManifestViolations,
+  findOrphanRouteViolations,
+  findUnsanitizedHtmlViolations,
   listProjectFiles,
 } from "./boundaries-report.mjs";
 
@@ -38,14 +44,29 @@ const cssFiles = [
   ...listProjectFiles(resolve(repoRoot, "packages"), { extensions: [".css"] }),
 ];
 
+const routeFiles = listProjectFiles(resolve(repoRoot, "apps/web/src/app"), { names: ["page.tsx", "route.ts"] });
+const webSourceFiles = listProjectFiles(resolve(repoRoot, "apps/web/src"), { extensions: [".ts", ".tsx"] });
+const codeFiles = [
+  ...listProjectFiles(resolve(repoRoot, "apps"), { extensions: [".ts", ".tsx", ".mjs"] }),
+  ...listProjectFiles(resolve(repoRoot, "packages"), { extensions: [".ts", ".tsx", ".mjs"] }),
+];
+
 const result = JSON.parse(run.stdout);
 const problems = [
   ...evaluateCruise(result, roots),
   ...findHeroUiManifestViolations(manifests, { repoRoot }),
   ...findHeroUiCssViolations(cssFiles, { repoRoot }),
+  ...findHeroUiCodeViolations(codeFiles, { repoRoot }),
+  ...findOrphanRouteViolations(routeFiles, webSourceFiles, { repoRoot }),
+  ...findClientDatabaseViolations(codeFiles, { repoRoot }),
+  ...findBrowserStorageAndTokenViolations(codeFiles, { repoRoot }),
+  ...findHardcodedTenantViolations(codeFiles, { repoRoot }),
+  ...findUnsanitizedHtmlViolations(codeFiles, { repoRoot }),
 ];
 if (problems.length > 0) {
   console.error(`Fronteras: ${problems.length} problema(s)\n- ${problems.join("\n- ")}`);
   process.exit(1);
 }
-console.log(`Fronteras OK: ${result.modules.length} módulos en ${roots.length} paquetes; ${manifests.length} manifiestos y ${cssFiles.length} CSS verificados.`);
+console.log(
+  `Fronteras OK: ${result.modules.length} módulos en ${roots.length} paquetes; ${routeFiles.length} rutas, ${manifests.length} manifiestos y ${cssFiles.length} CSS verificados.`,
+);

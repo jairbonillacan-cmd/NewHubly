@@ -3,11 +3,19 @@ import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  ALLOWED_BROWSER_STORAGE_KEYS,
+  KNOWN_APP_ROUTES,
   evaluateCruise,
+  findBrowserStorageAndTokenViolations,
+  findClientDatabaseViolations,
+  findHardcodedTenantViolations,
   findHeroUiCodeViolations,
   findHeroUiCssViolations,
   findHeroUiManifestViolations,
+  findOrphanRouteViolations,
+  findUnsanitizedHtmlViolations,
   listProjectFiles,
+  routePathFromAppFile,
 } from "./boundaries-report.mjs";
 
 const mod = (source) => ({ source });
@@ -192,5 +200,132 @@ describe("evaluateCruise", () => {
         "$TURBO_ROOT$/packages/ui/**/*.css",
       ]),
     );
+  });
+});
+
+describe("Reglas de CI de higiene de rutas y fronteras de cliente (#69)", () => {
+  const allCodeFiles = [
+    ...listProjectFiles(resolve(repoRoot, "apps"), { extensions: [".ts", ".tsx", ".mjs"] }),
+    ...listProjectFiles(resolve(repoRoot, "packages"), { extensions: [".ts", ".tsx", ".mjs"] }),
+  ];
+
+  it("Regla 1 (Sin rutas huérfanas): verifica todas las rutas reales de apps/web/src/app y detecta rutas no registradas o sin enlaces", () => {
+    expect(routePathFromAppFile("apps/web/src/app/page.tsx")).toBe("/");
+    expect(routePathFromAppFile("apps/web/src/app/(workspace)/hoy/page.tsx")).toBe("/hoy");
+    expect(routePathFromAppFile("apps/web/src/app/(public)/login/page.tsx")).toBe("/login");
+    expect(routePathFromAppFile("apps/web/src/app/auth/callback/route.ts")).toBe("/auth/callback");
+
+    const routeFiles = listProjectFiles(resolve(repoRoot, "apps/web/src/app"), { names: ["page.tsx", "route.ts"] });
+    const webSourceFiles = listProjectFiles(resolve(repoRoot, "apps/web/src"), { extensions: [".ts", ".tsx"] });
+    expect(findOrphanRouteViolations(routeFiles, webSourceFiles, { repoRoot })).toEqual([]);
+    expect(KNOWN_APP_ROUTES.has("/hoy")).toBe(true);
+
+    const violations = findOrphanRouteViolations(
+      [
+        { path: "apps/web/src/app/page.tsx", content: '<a href="/hoy">Hoy</a>' },
+        { path: "apps/web/src/app/(workspace)/hoy/page.tsx", content: "export default function Hoy() {}" },
+        { path: "apps/web/src/app/vieja-pantalla/page.tsx", content: "export default function Vieja() {}" },
+        { path: "apps/web/src/app/(public)/terminos/page.tsx", content: "export default function Terminos() {}" },
+      ],
+      [{ path: "apps/web/src/app/page.tsx", content: '<a href="/hoy">Hoy</a>' }],
+      { repoRoot: "" },
+    );
+    expect(violations).toHaveLength(3);
+    expect(violations[0]).toContain('la ruta "/vieja-pantalla" no está registrada en KNOWN_APP_ROUTES');
+    expect(violations[1]).toContain('la ruta "/vieja-pantalla" es huérfana');
+    expect(violations[2]).toContain('la ruta "/terminos" es huérfana');
+  });
+
+  it("Regla 2 (Base de datos solo en servidor): prohíbe importar @hubly/db, Supabase o Drizzle en archivos con 'use client'", () => {
+    expect(findClientDatabaseViolations(allCodeFiles, { repoRoot })).toEqual([]);
+
+    const violations = findClientDatabaseViolations(
+      [
+        { path: "apps/web/src/server/db.ts", content: 'import { createDb } from "@hubly/db";' },
+        { path: "apps/web/src/components/OkClient.tsx", content: '"use client";\nimport { Button } from "@hubly/ui";' },
+        { path: "apps/web/src/components/BadDb.tsx", content: '"use client";\nimport { notes } from "@hubly/db";' },
+        { path: "apps/web/src/components/BadSupa.tsx", content: "'use client';\nimport { createBrowserClient } from '@supabase/ssr';" },
+        { path: "apps/web/src/components/BadDrizzle.tsx", content: '"use client";\nimport { eq } from "drizzle-orm";' },
+      ],
+      { repoRoot: "" },
+    );
+    expect(violations).toHaveLength(3);
+    expect(violations[0]).toContain('no puede importar "@hubly/db"');
+    expect(violations[1]).toContain('no puede importar "@supabase/ssr"');
+    expect(violations[2]).toContain('no puede importar "drizzle-orm"');
+  });
+
+  it("Regla 3 (Nada de sesión ni tokens en el navegador): permite solo claves en lista blanca y prohíbe exponer tokens en Server Actions", () => {
+    expect(findBrowserStorageAndTokenViolations(allCodeFiles, { repoRoot })).toEqual([]);
+    expect(ALLOWED_BROWSER_STORAGE_KEYS.has("hubly-theme")).toBe(true);
+    expect(ALLOWED_BROWSER_STORAGE_KEYS.has("hubly_tz_refresh_attempted")).toBe(true);
+
+    const violations = findBrowserStorageAndTokenViolations(
+      [
+        {
+          path: "packages/ui/src/ThemeToggle.tsx",
+          content: 'const K = "hubly-theme"; localStorage.getItem(K); localStorage.setItem("hubly-theme", "dark");',
+        },
+        {
+          path: "apps/web/src/components/BadStorage.tsx",
+          content: 'localStorage.setItem("sb-access-token", tok); sessionStorage.getItem("otra_clave"); localStorage.auth_jwt = "x";',
+        },
+        {
+          path: "apps/web/src/actions/ok.ts",
+          content: '"use server";\nexport async function act() { return { ok: true }; }',
+        },
+        {
+          path: "apps/web/src/actions/leak.ts",
+          content: '"use server";\nexport async function bad() { return { access_token: "secreto" }; }',
+        },
+      ],
+      { repoRoot: "" },
+    );
+    expect(violations).toHaveLength(4);
+    expect(violations[0]).toContain('clave "sb-access-token" no permitida');
+    expect(violations[1]).toContain('clave "otra_clave" no permitida');
+    expect(violations[2]).toContain('clave "auth_jwt" no permitida');
+    expect(violations[3]).toContain('Server Action ("use server") no puede exponer ni manipular el campo de token "access_token"');
+  });
+
+  it("Regla 4 (Nada fijo de un cliente en código): prohíbe UUIDs literales, correos y condicionales por cliente fuera de pruebas", () => {
+    expect(findHardcodedTenantViolations(allCodeFiles, { repoRoot })).toEqual([]);
+
+    const violations = findHardcodedTenantViolations(
+      [
+        { path: "apps/web/src/app/(public)/login/page.tsx", content: '<Input placeholder="equipo@agencia.es" />' },
+        { path: "apps/web/tests/fixture.test.ts", content: 'const id = "550e8400-e29b-41d4-a716-446655440000"; const e = "a@b.com";' },
+        { path: "packages/application/src/bad-uuid.ts", content: 'const FIXED = "550e8400-e29b-41d4-a716-446655440000";' },
+        { path: "packages/application/src/bad-email.ts", content: 'const VIP = "vip@cliente.com";' },
+        { path: "packages/application/src/bad-branch.ts", content: 'if (workspaceId === "agencia-especial") { return true; }' },
+      ],
+      { repoRoot: "" },
+    );
+    expect(violations).toHaveLength(3);
+    expect(violations[0]).toContain("UUID literal");
+    expect(violations[1]).toContain('correo electrónico literal "vip@cliente.com"');
+    expect(violations[2]).toContain("condicional por identificador o nombre de cliente/agencia fijo");
+  });
+
+  it("Regla 5 (Sin HTML sin sanitizar): prohíbe dangerouslySetInnerHTML sin justificación e innerHTML en código y en ESLint", () => {
+    expect(findUnsanitizedHtmlViolations(allCodeFiles, { repoRoot })).toEqual([]);
+    const eslintSource = readFileSync(resolve(repoRoot, "packages/config/eslint.config.mjs"), "utf8");
+    expect(eslintSource).toContain("JSXAttribute[name.name='dangerouslySetInnerHTML']");
+    expect(eslintSource).toContain("AssignmentExpression[left.property.name='innerHTML']");
+
+    const violations = findUnsanitizedHtmlViolations(
+      [
+        {
+          path: "apps/web/src/app/layout.tsx",
+          content: "// hubly-allow-dangerously-set-inner-html: script de tema estático sin entrada de usuario\n<script dangerouslySetInnerHTML={{ __html: code }} />",
+        },
+        { path: "apps/web/src/components/BadHtml.tsx", content: "<div dangerouslySetInnerHTML={{ __html: raw }} />" },
+        { path: "apps/web/src/components/BadDom.ts", content: "el.innerHTML = rawUserText;" },
+      ],
+      { repoRoot: "" },
+    );
+    expect(violations).toHaveLength(2);
+    expect(violations[0]).toContain("uso prohibido de dangerouslySetInnerHTML sin comentario de excepción justificado");
+    expect(violations[1]).toContain("asignación directa a innerHTML/outerHTML prohibida");
   });
 });
