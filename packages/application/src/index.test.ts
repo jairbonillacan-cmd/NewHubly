@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  InMemoryNoteRepository, InMemoryTodoRepository,
-  createNote, updateNote, pinNote, archiveNote, listNotes,
-  createTodo, updateTodo, toggleTodoDone, listTodosByView,
-  createTodoFromNote, exportWorkspaceData, type Clock, type IdGenerator,
+  InMemoryNoteRepository, InMemoryTodoRepository, InMemoryAgencyWorkspaceRepository,
+  createNote, updateNote, pinNote, archiveNote, listNotes, createTodo, updateTodo, toggleTodoDone, listTodosByView,
+  createTodoFromNote, exportWorkspaceData, createAgency, inviteWorkspaceMember, acceptWorkspaceInvitation,
+  revokeWorkspaceInvitation, changeWorkspaceMemberRole, removeOrLeaveWorkspaceMember, changeNoteVisibility, changeTodoVisibility,
+  type Clock, type IdGenerator,
 } from './index.js';
-import { ConcurrencyError, NoteNotFoundError, TodoNotFoundError } from '@hubly/domain';
+import { AgencyLimitExceededError, ConcurrencyError, ForbiddenWorkspaceActionError, InvitationError, LastOwnerProtectionError, NoteNotFoundError, TodoNotFoundError } from '@hubly/domain';
 
 const makeClock = (dt = '2026-11-03T10:00:00.000Z'): Clock => ({ now: () => new Date(dt), todayString: () => dt.slice(0, 10) });
 const makeIdGen = (): IdGenerator => { let n = 0; return { generate: () => `id-${++n}` }; };
@@ -13,6 +14,7 @@ const makeIdGen = (): IdGenerator => { let n = 0; return { generate: () => `id-$
 describe('Application: Use cases', () => {
   let noteRepo: InMemoryNoteRepository;
   let todoRepo: InMemoryTodoRepository;
+  let agencyRepo: InMemoryAgencyWorkspaceRepository;
   let clock: Clock;
   let idGen: IdGenerator;
   const ctx1 = { workspaceId: 'w-1', userId: 'u-1' };
@@ -21,6 +23,7 @@ describe('Application: Use cases', () => {
   beforeEach(() => {
     noteRepo = new InMemoryNoteRepository();
     todoRepo = new InMemoryTodoRepository();
+    agencyRepo = new InMemoryAgencyWorkspaceRepository();
     clock = makeClock();
     idGen = makeIdGen();
   });
@@ -86,5 +89,45 @@ describe('Application: Use cases', () => {
     await expect(createTodoFromNote(todoRepo, noteRepo, clock, idGen, note.id, { title: 'X' }, ctx2)).rejects.toThrow(NoteNotFoundError);
     const u2Todo = await createTodo(todoRepo, clock, idGen, { title: 'Propio' }, ctx2);
     await expect(updateTodo(todoRepo, clock, { id: u2Todo.id, noteId: note.id }, ctx2, noteRepo)).rejects.toThrow(NoteNotFoundError);
+  });
+
+  it('gestiona agencias, límite de 10, invitaciones, transferencia de owner, visibilidad y desvinculación al privatizar (#61)', async () => {
+    for (let i = 0; i < 10; i++) await createAgency(agencyRepo, clock, idGen, { name: `Agencia ${i}` }, 'u-limit');
+    await expect(createAgency(agencyRepo, clock, idGen, { name: 'Agencia 11' }, 'u-limit')).rejects.toThrow(AgencyLimitExceededError);
+    const { workspace } = await createAgency(agencyRepo, clock, idGen, { name: 'Agencia Central', slug: 'agencia-central' }, 'u-owner');
+    const hash1 = 'a'.repeat(64), hash2 = 'b'.repeat(64);
+    const invAdmin = await inviteWorkspaceMember(agencyRepo, clock, idGen, { workspaceId: workspace.id, email: ' Admin@Agencia.es ', role: 'admin' }, hash1, 'u-owner');
+    await expect(acceptWorkspaceInvitation(agencyRepo, clock, hash1, { userId: 'u-admin', email: 'otro@agencia.es', emailConfirmed: true })).rejects.toThrow(InvitationError);
+    await expect(acceptWorkspaceInvitation(agencyRepo, clock, hash1, { userId: 'u-admin', email: 'admin@agencia.es', emailConfirmed: false })).rejects.toThrow(InvitationError);
+    expect((await acceptWorkspaceInvitation(agencyRepo, clock, hash1, { userId: 'u-admin', email: 'ADMIN@agencia.es', emailConfirmed: true })).role).toBe('admin');
+    expect(invAdmin.email).toBe('admin@agencia.es');
+
+    await expect(inviteWorkspaceMember(agencyRepo, clock, idGen, { workspaceId: workspace.id, email: 'x@agencia.es', role: 'admin' }, hash2, 'u-admin')).rejects.toThrow(ForbiddenWorkspaceActionError);
+    const invEditor = await inviteWorkspaceMember(agencyRepo, clock, idGen, { workspaceId: workspace.id, email: 'editor@agencia.es', role: 'editor' }, hash2, 'u-admin');
+    expect((await revokeWorkspaceInvitation(agencyRepo, clock, { workspaceId: workspace.id, invitationId: invEditor.id }, 'u-admin')).revokedAt).toBeTruthy();
+
+    await expect(changeWorkspaceMemberRole(agencyRepo, { workspaceId: workspace.id, targetUserId: 'u-owner', nextRole: 'admin' }, 'u-owner')).rejects.toThrow(LastOwnerProtectionError);
+    await expect(removeOrLeaveWorkspaceMember(agencyRepo, { workspaceId: workspace.id, targetUserId: 'u-owner' }, 'u-owner')).rejects.toThrow(LastOwnerProtectionError);
+    await changeWorkspaceMemberRole(agencyRepo, { workspaceId: workspace.id, targetUserId: 'u-admin', nextRole: 'owner' }, 'u-owner');
+    expect((await changeWorkspaceMemberRole(agencyRepo, { workspaceId: workspace.id, targetUserId: 'u-owner', nextRole: 'admin' }, 'u-owner')).role).toBe('admin');
+
+    const cEditor = { workspaceId: workspace.id, userId: 'u-ed', role: 'editor' as const };
+    const cAdmin = { workspaceId: workspace.id, userId: 'u-owner', role: 'admin' as const };
+    const cViewer = { workspaceId: workspace.id, userId: 'u-vw', role: 'viewer' as const };
+    await expect(createNote(noteRepo, clock, idGen, { title: 'No', visibility: 'workspace' }, cViewer)).rejects.toThrow(ForbiddenWorkspaceActionError);
+    const sharedNote = await createNote(noteRepo, clock, idGen, { title: 'Brief', visibility: 'workspace' }, cEditor);
+    const privNote = await createNote(noteRepo, clock, idGen, { title: 'Borrador', visibility: 'private' }, cAdmin);
+    const tShared = await createTodo(todoRepo, clock, idGen, { title: 'T1', noteId: sharedNote.id, visibility: 'workspace' }, cEditor, noteRepo);
+    const tOtherPriv = await createTodo(todoRepo, clock, idGen, { title: 'T2', noteId: sharedNote.id, visibility: 'private' }, cAdmin, noteRepo);
+    const tOwnPriv = await createTodo(todoRepo, clock, idGen, { title: 'T3', noteId: sharedNote.id, visibility: 'private' }, cEditor, noteRepo);
+    await expect(updateNote(noteRepo, clock, { id: sharedNote.id, title: 'X' }, cViewer)).rejects.toThrow(ForbiddenWorkspaceActionError);
+    await expect(changeNoteVisibility(noteRepo, todoRepo, clock, sharedNote.id, 'private', cAdmin)).rejects.toThrow(ForbiddenWorkspaceActionError);
+    await changeNoteVisibility(noteRepo, todoRepo, clock, sharedNote.id, 'private', cEditor, [tShared, tOtherPriv, tOwnPriv]);
+    expect([(await todoRepo.findById(tShared.id))?.noteId, (await todoRepo.findById(tOtherPriv.id))?.noteId, (await todoRepo.findById(tOwnPriv.id))?.noteId]).toEqual([null, null, sharedNote.id]);
+    await expect(changeTodoVisibility(todoRepo, noteRepo, clock, tOwnPriv.id, 'workspace', cEditor)).rejects.toThrow(ForbiddenWorkspaceActionError);
+
+    await removeOrLeaveWorkspaceMember(agencyRepo, { workspaceId: workspace.id, targetUserId: 'u-owner' }, 'u-owner', { noteRepo, todoRepo, personalWorkspaceId: 'w-personal-u1', clock });
+    expect((await noteRepo.findById(privNote.id))?.workspaceId).toBe('w-personal-u1');
+    expect((await todoRepo.findById(tOtherPriv.id))?.workspaceId).toBe('w-personal-u1');
   });
 });

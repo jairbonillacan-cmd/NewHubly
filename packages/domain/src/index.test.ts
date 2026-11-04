@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { classifyTodoView, sortTodosForView, isOverdue, isToday, isUpcoming, isNoDate, isDoneView, toggleTodo, completeTodo, reopenTodo, updateNoteContent, pinNote, archiveNote, NoteNotFoundError, TodoNotFoundError, ConcurrencyError, type Todo, type Note } from './index.js';
+import {
+  classifyTodoView, sortTodosForView, isOverdue, isToday, isUpcoming, isNoDate, isDoneView, toggleTodo, completeTodo, reopenTodo, updateNoteContent, pinNote, archiveNote, NoteNotFoundError, TodoNotFoundError, ConcurrencyError,
+  ForbiddenWorkspaceActionError, MAX_AGENCIES_PER_OWNER, MAX_PENDING_INVITATIONS_PER_WORKSPACE, getEffectiveVisibility, normalizeInvitationEmail, emailsMatchNormalized, getInvitationStatus, canReadItem, canCreateWithVisibility, canEditItem, canDeleteItem, canChangeItemVisibility, canLinkTodoToNote, changeItemVisibility, unlinkIncompatibleTodosOnNotePrivatized, canChangeMemberRole, canRemoveOrLeaveMember, canManageInvitation,
+  type Todo, type Note,
+} from './index.js';
 
 const baseTodo: Todo = {
   id: 't-1', workspaceId: 'w-1', createdBy: 'u-1', title: 'T', detail: '', priority: 'medium',
@@ -64,5 +68,39 @@ describe('Domain logic', () => {
     expect(new NoteNotFoundError('x').message).toContain('x');
     expect(new TodoNotFoundError('y').message).toContain('y');
     expect(new ConcurrencyError(1, 2).message).toContain('esperada 1');
+  });
+
+  it('aplica reglas puras del ADR 0007: visibilidad, permisos por rol, miembros e invitaciones (#61)', () => {
+    const now = '2026-11-04T12:00:00Z', sharedNote: Note = { ...baseNote, visibility: 'workspace' };
+    expect(MAX_AGENCIES_PER_OWNER === 10 && MAX_PENDING_INVITATIONS_PER_WORKSPACE === 20 && getEffectiveVisibility(baseNote) === 'private').toBe(true);
+    expect(canReadItem('u-2', 'owner', baseNote) === false && canReadItem('u-2', 'viewer', sharedNote) === true).toBe(true);
+    expect(canCreateWithVisibility('viewer', 'private') === true && canCreateWithVisibility('viewer', 'workspace') === false).toBe(true);
+    expect(canEditItem('u-2', 'editor', sharedNote) === true && canEditItem('u-2', 'viewer', sharedNote) === false).toBe(true);
+    expect(canDeleteItem('u-2', 'editor', sharedNote) === false && canDeleteItem('u-2', 'admin', sharedNote) === true).toBe(true);
+    expect(canChangeItemVisibility('u-1', 'editor', baseNote, 'workspace') === true && canChangeItemVisibility('u-2', 'owner', baseNote, 'workspace') === false && canChangeItemVisibility('u-1', 'viewer', baseNote, 'workspace') === false).toBe(true);
+    expect(() => changeItemVisibility(baseNote, 'workspace', 'u-2', 'owner', now)).toThrow(ForbiddenWorkspaceActionError);
+    expect(changeItemVisibility(baseNote, 'workspace', 'u-1', 'editor', now).visibility).toBe('workspace');
+    expect(canLinkTodoToNote('u-1', 'workspace', baseNote, 'w-1') === false && canLinkTodoToNote('u-1', 'workspace', sharedNote, 'w-1') === true).toBe(true);
+    const unlinked = unlinkIncompatibleTodosOnNotePrivatized(baseNote, [{ ...baseTodo, id: 't-ap', noteId: 'n-1', visibility: 'private' }, { ...baseTodo, id: 't-as', noteId: 'n-1', visibility: 'workspace' }, { ...baseTodo, id: 't-op', createdBy: 'u-2', noteId: 'n-1', visibility: 'private' }], now);
+    expect(unlinked.map(t => t.noteId)).toEqual(['n-1', null, null]);
+
+    expect(canChangeMemberRole({ workspaceKind: 'personal', actorId: 'u-1', actorRole: 'owner', targetUserId: 'u-2', targetCurrentRole: 'editor', nextRole: 'admin', ownerCount: 1 }).allowed).toBe(false);
+    expect(canChangeMemberRole({ workspaceKind: 'agency', actorId: 'u-2', actorRole: 'admin', targetUserId: 'u-2', targetCurrentRole: 'admin', nextRole: 'owner', ownerCount: 1 }).allowed).toBe(false);
+    expect(canChangeMemberRole({ workspaceKind: 'agency', actorId: 'u-2', actorRole: 'admin', targetUserId: 'u-3', targetCurrentRole: 'editor', nextRole: 'owner', ownerCount: 1 }).allowed).toBe(false);
+    expect(canChangeMemberRole({ workspaceKind: 'agency', actorId: 'u-2', actorRole: 'admin', targetUserId: 'u-1', targetCurrentRole: 'owner', nextRole: 'editor', ownerCount: 2 }).allowed).toBe(false);
+    expect(canChangeMemberRole({ workspaceKind: 'agency', actorId: 'u-2', actorRole: 'admin', targetUserId: 'u-3', targetCurrentRole: 'editor', nextRole: 'viewer', ownerCount: 1 }).allowed).toBe(true);
+    expect(canChangeMemberRole({ workspaceKind: 'agency', actorId: 'u-1', actorRole: 'owner', targetUserId: 'u-1', targetCurrentRole: 'owner', nextRole: 'admin', ownerCount: 1 }).allowed).toBe(false);
+    expect(canChangeMemberRole({ workspaceKind: 'agency', actorId: 'u-1', actorRole: 'owner', targetUserId: 'u-2', targetCurrentRole: 'admin', nextRole: 'owner', ownerCount: 1 }).allowed).toBe(true);
+    expect(canChangeMemberRole({ workspaceKind: 'agency', actorId: 'u-1', actorRole: 'owner', targetUserId: 'u-1', targetCurrentRole: 'owner', nextRole: 'admin', ownerCount: 2 }).allowed).toBe(true);
+    expect(canRemoveOrLeaveMember({ workspaceKind: 'agency', actorId: 'u-1', actorRole: 'owner', targetUserId: 'u-1', targetCurrentRole: 'owner', ownerCount: 1 }).allowed).toBe(false);
+    expect(canRemoveOrLeaveMember({ workspaceKind: 'agency', actorId: 'u-1', actorRole: 'owner', targetUserId: 'u-1', targetCurrentRole: 'owner', ownerCount: 2 }).allowed).toBe(true);
+    expect(canRemoveOrLeaveMember({ workspaceKind: 'agency', actorId: 'u-2', actorRole: 'admin', targetUserId: 'u-3', targetCurrentRole: 'admin', ownerCount: 1 }).allowed).toBe(false);
+    expect(canRemoveOrLeaveMember({ workspaceKind: 'agency', actorId: 'u-3', actorRole: 'viewer', targetUserId: 'u-3', targetCurrentRole: 'viewer', ownerCount: 1 }).allowed).toBe(true);
+    expect(canManageInvitation({ workspaceKind: 'personal', actorRole: 'owner', invitedRole: 'editor' }).allowed).toBe(false);
+    expect(canManageInvitation({ workspaceKind: 'agency', actorRole: 'admin', invitedRole: 'admin' }).allowed).toBe(false);
+    expect(canManageInvitation({ workspaceKind: 'agency', actorRole: 'admin', invitedRole: 'editor', pendingCount: 20 }).allowed).toBe(false);
+    expect(canManageInvitation({ workspaceKind: 'agency', actorRole: 'owner', invitedRole: 'admin', pendingCount: 19 }).allowed).toBe(true);
+    expect(normalizeInvitationEmail('  Equipo@Agencia.ES ') === 'equipo@agencia.es' && emailsMatchNormalized('Equipo@Agencia.ES ', 'equipo@agencia.es')).toBe(true);
+    expect(getInvitationStatus({ expiresAt: '2026-11-10T00:00:00Z' }, '2026-11-04T00:00:00Z') === 'pending' && getInvitationStatus({ expiresAt: '2026-11-01T00:00:00Z' }, '2026-11-04T00:00:00Z') === 'expired').toBe(true);
   });
 });
