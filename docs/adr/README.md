@@ -10,6 +10,7 @@ Cada decisión relevante tiene un ADR breve. Un ADR aceptado no se edita: se ree
 | [0004](0004-rls.md) | RLS y acceso a datos | Aceptado |
 | [0005](0005-modelo-unico-gemini-argon.md) | Modelo único Gemini 4 Argon y protocolo de revisión | Aceptado |
 | [0006](0006-componentes-heroui-v3-oss.md) | Adopción de HeroUI v3 OSS para componentes base | Propuesto |
+| [0007](0007-roles-invitaciones-y-visibilidad-agencia.md) | Modelo de roles de agencia, invitaciones con token hasheado y visibilidad compartida en RLS | Propuesto |
 
 ## Plantilla
 
