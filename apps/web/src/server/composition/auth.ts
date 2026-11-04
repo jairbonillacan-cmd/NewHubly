@@ -26,14 +26,26 @@ export function resolveSupabaseConfig(env: NodeJS.ProcessEnv = process.env): { u
   return { url: url || "http://127.0.0.1:54321", anonKey: anonKey || "local-dev-anon-key" };
 }
 
-export type SupabaseServerClient = ReturnType<typeof createServerClient>;
-let customClientFactory: (() => Promise<SupabaseServerClient> | SupabaseServerClient) | null = null;
-export const setSupabaseServerClientFactoryForTests = (f: typeof customClientFactory): void => { customClientFactory = f; };
+export function resolveSiteUrl(env: NodeJS.ProcessEnv = process.env): string {
+  const raw = env.NEXT_PUBLIC_SITE_URL || env.SITE_URL;
+  if (!raw && env.NODE_ENV !== "development" && env.NODE_ENV !== "test") throw new Error("URL del sitio no configurada");
+  return (raw || "http://127.0.0.1:3100").replace(/\/+$/, "");
+}
 
-export async function createSupabaseServerClient(): Promise<SupabaseServerClient> {
-  if (customClientFactory) return await customClientFactory();
+export type SupabaseServerClient = ReturnType<typeof createServerClient>;
+export type SupabaseClientFactory = (cookieMethods?: ReturnType<typeof createHttpOnlyCookieMethods>) => Promise<SupabaseServerClient> | SupabaseServerClient;
+let customClientFactory: SupabaseClientFactory | null = null;
+
+export function setSupabaseServerClientFactoryForTests(f: SupabaseClientFactory | null): void {
+  if (process.env.NODE_ENV !== "test") throw new Error("Solo permitido en entorno de pruebas");
+  customClientFactory = f;
+}
+
+export async function createSupabaseServerClient(cookieMethodsOverride?: ReturnType<typeof createHttpOnlyCookieMethods>): Promise<SupabaseServerClient> {
+  if (process.env.NODE_ENV === "test" && customClientFactory) return await customClientFactory(cookieMethodsOverride);
   const { url, anonKey } = resolveSupabaseConfig();
-  return createServerClient(url, anonKey, { cookies: createHttpOnlyCookieMethods(await cookies()) });
+  const cookieMethods = cookieMethodsOverride ?? createHttpOnlyCookieMethods(await cookies());
+  return createServerClient(url, anonKey, { cookies: cookieMethods });
 }
 
 export async function getVerifiedServerSession(): Promise<{ claims: UserClaims; email: string | null }> {

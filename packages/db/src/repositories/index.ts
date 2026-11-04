@@ -165,6 +165,7 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
 
   async ensurePersonalWorkspace(defaultName = "Mi Espacio"): Promise<string> {
     return withUserContext(this.claims, async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${this.claims.sub}))`);
       const [existing] = await tx.select().from(workspaceMembers).where(eq(workspaceMembers.userId, this.claims.sub)).limit(1);
       if (existing?.workspaceId) return existing.workspaceId;
       const name = defaultName.trim() || "Mi Espacio";
