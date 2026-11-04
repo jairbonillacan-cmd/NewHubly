@@ -5,20 +5,32 @@ import { boolean, date, foreignKey, index, integer, pgTable, primaryKey, text, t
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(), slug: text("slug").notNull().unique(),
+  kind: text("kind", { enum: ["personal", "agency"] }).notNull().default("personal"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const workspaceMembers = pgTable("workspace_members", {
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
-  userId: uuid("user_id").notNull(), role: text("role").notNull().default("owner"),
+  userId: uuid("user_id").notNull(), role: text("role", { enum: ["owner", "admin", "editor", "viewer"] }).notNull().default("owner"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [primaryKey({ columns: [t.workspaceId, t.userId] })]);
+
+export const workspaceInvitations = pgTable("workspace_invitations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  email: text("email").notNull(), role: text("role", { enum: ["admin", "editor", "viewer"] }).notNull(),
+  tokenHash: text("token_hash").notNull().unique(), invitedBy: uuid("invited_by").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }), acceptedBy: uuid("accepted_by"),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("workspace_invitations_workspace_status_idx").on(t.workspaceId, t.acceptedAt, t.revokedAt, t.expiresAt)]);
 
 export const notes = pgTable("notes", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
-  createdBy: uuid("created_by").notNull(),
+  createdBy: uuid("created_by").notNull(), visibility: text("visibility", { enum: ["private", "workspace"] }).notNull().default("private"),
   title: text("title").notNull().default(""), content: text("content").notNull().default(""),
   isPinned: boolean("is_pinned").notNull().default(false), isArchived: boolean("is_archived").notNull().default(false),
   version: integer("version").notNull().default(1),
@@ -27,12 +39,14 @@ export const notes = pgTable("notes", {
 }, (t) => [
   unique("notes_workspace_id_id_unique").on(t.workspaceId, t.id),
   index("notes_workspace_created_archived_idx").on(t.workspaceId, t.createdBy, t.isArchived),
+  index("notes_workspace_visibility_archived_idx").on(t.workspaceId, t.visibility, t.isArchived),
 ]);
 
 export const todos = pgTable("todos", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
   createdBy: uuid("created_by").notNull(), noteId: uuid("note_id"),
+  visibility: text("visibility", { enum: ["private", "workspace"] }).notNull().default("private"),
   title: text("title").notNull(), detail: text("detail").notNull().default(""), dueDate: date("due_date"),
   priority: text("priority", { enum: ["low", "medium", "high"] }).notNull().default("medium"),
   isDone: boolean("is_done").notNull().default(false), doneAt: timestamp("done_at", { withTimezone: true }),
@@ -42,9 +56,12 @@ export const todos = pgTable("todos", {
   unique("todos_workspace_id_id_unique").on(t.workspaceId, t.id),
   foreignKey({ columns: [t.workspaceId, t.noteId], foreignColumns: [notes.workspaceId, notes.id], name: "todos_workspace_note_fk" }).onDelete("set null"),
   index("todos_workspace_created_done_due_idx").on(t.workspaceId, t.createdBy, t.isDone, t.dueDate),
+  index("todos_workspace_visibility_done_due_idx").on(t.workspaceId, t.visibility, t.isDone, t.dueDate),
 ]);
 
+export type WorkspaceKind = "personal" | "agency"; export type WorkspaceRole = "owner" | "admin" | "editor" | "viewer"; export type ItemVisibility = "private" | "workspace";
 export type Workspace = typeof workspaces.$inferSelect; export type NewWorkspace = typeof workspaces.$inferInsert;
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect; export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert;
+export type WorkspaceInvitation = typeof workspaceInvitations.$inferSelect; export type NewWorkspaceInvitation = typeof workspaceInvitations.$inferInsert;
 export type Note = typeof notes.$inferSelect; export type NewNote = typeof notes.$inferInsert;
 export type Todo = typeof todos.$inferSelect; export type NewTodo = typeof todos.$inferInsert;

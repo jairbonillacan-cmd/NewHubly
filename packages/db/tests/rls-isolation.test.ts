@@ -176,7 +176,7 @@ describe("Aislamiento Multi-inquilino y RLS en Docker (ADR 0003, ADR 0004 & Issu
     await db.insert(workspaceMembers).values({
       workspaceId: wsAId,
       userId: userC,
-      role: "member",
+      role: "editor",
     });
 
     // Usuario A crea una nota y un pendiente en Workspace A
