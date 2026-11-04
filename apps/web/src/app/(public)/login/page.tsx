@@ -1,5 +1,5 @@
 "use client";
-import { Button, Card, Input, Label, Tabs, TextField, ThemeToggle, tokens } from "@hubly/ui";
+import { Button, Card, Hubi, HublyWordmark, Input, Label, Tabs, TextField, ThemeToggle, tokens } from "@hubly/ui";
 import React, { useState } from "react";
 import { signInWithMagicLinkAction, signInWithPasswordAction, signUpWithPasswordAction } from "../../../actions/auth";
 
@@ -52,6 +52,10 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
           <ThemeToggle />
         </header>
         <Card aria-label="Formulario de autenticación" style={{ backgroundColor: tokens.glass.bg, border: `${tokens.border.thin} solid ${tokens.glass.border}`, boxShadow: tokens.glass.shadow, borderRadius: tokens.radius.xl, padding: tokens.space[6], display: "flex", flexDirection: "column", gap: tokens.space[5] }}>
+          <Card.Header style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: tokens.space[3], flexWrap: "wrap" }}>
+            <HublyWordmark height={24} ariaLabel="Hubly" />
+            <Hubi acabado="volumen" pose="laptop" tamano={64} decorativo />
+          </Card.Header>
           <Card.Content style={{ display: "flex", flexDirection: "column", gap: tokens.space[4] }}>
             <Tabs selectedKey={mode} onSelectionChange={(key) => { setMode(String(key) as AuthMode); setErrorMessage(null); setStatusMessage(null); }} style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
               <Tabs.ListContainer>

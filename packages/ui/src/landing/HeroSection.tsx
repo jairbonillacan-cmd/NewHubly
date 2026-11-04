@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Hubi } from "../components/brand/Hubi";
 import { tokens } from "../tokens";
 import { GlassCard } from "./GlassCard";
 
@@ -75,11 +76,13 @@ export function HeroSection({
               </GlassCard>
 
               <GlassCard aria-label="La pregunta central de Hubly">
-                <div style={{ display: "flex", alignItems: "center", gap: tokens.space[3] }}>
-                  <div style={{ width: tokens.space[8], height: tokens.space[8], borderRadius: tokens.radius.full, backgroundColor: tokens.color.surfaceBrand, color: tokens.color.surfaceBrandContrast, display: "flex", alignItems: "center", justifyContent: "center", fontSize: tokens.font.size.base, fontWeight: tokens.font.weight.bold, flexShrink: 0 }} aria-hidden="true">?</div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    <span style={{ fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.bold, textTransform: "uppercase", letterSpacing: tokens.font.tracking.wide, color: tokens.glass.textMuted }}>Pregunta central</span>
-                    <strong style={{ fontSize: tokens.font.size.sm, color: tokens.glass.textPrimary }}>«¿Qué sigue y quién lo tiene?»</strong>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.space[3] }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: tokens.space[3] }}>
+                    <Hubi acabado="volumen" pose="laptop" tamano={64} decorativo />
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <span style={{ fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.bold, textTransform: "uppercase", letterSpacing: tokens.font.tracking.wide, color: tokens.glass.textMuted }}>Pregunta central</span>
+                      <strong style={{ fontSize: tokens.font.size.sm, color: tokens.glass.textPrimary }}>«¿Qué sigue y quién lo tiene?»</strong>
+                    </div>
                   </div>
                 </div>
                 <p style={{ margin: tokens.space[0], fontSize: tokens.font.size.xs, lineHeight: tokens.font.leading.normal, color: tokens.glass.textSecondary }}>Cada miembro de la agencia y cada cliente saben exactamente quién tiene la acción en cada instante, sin reuniones de estatus ni hojas de cálculo.</p>
