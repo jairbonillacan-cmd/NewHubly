@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { createNoteSchema, updateNoteSchema, createTodoSchema, updateTodoSchema, exportDataSchema } from './index.js';
+import {
+  createNoteSchema, updateNoteSchema, createTodoSchema, updateTodoSchema, exportDataSchema,
+  workspaceRoleSchema, invitationRoleSchema, workspaceKindSchema, itemVisibilitySchema,
+  createAgencyInputSchema, inviteMemberInputSchema, acceptInvitationInputSchema,
+  changeMemberRoleInputSchema, removeMemberInputSchema, changeItemVisibilityInputSchema,
+  noteSchema, todoSchema,
+} from './index.js';
 
 describe('Contracts: Zod schemas', () => {
   it('valida notas admitiendo título vacío por defecto y rechazando longitud excesiva', () => {
@@ -26,5 +32,22 @@ describe('Contracts: Zod schemas', () => {
     expect(createTodoSchema.safeParse({ title: 'A', dueDate: '2026-04-31' }).success).toBe(false);
     expect(updateTodoSchema.safeParse({ id: 't-1', dueDate: '2026-02-31' }).success).toBe(false);
     expect(createTodoSchema.safeParse({ title: 'A', dueDate: '2024-02-29' }).success).toBe(true);
+  });
+
+  it('valida contratos de Fase 1B (roles, agencias, invitaciones y visibilidad por defecto private)', () => {
+    expect(workspaceRoleSchema.safeParse('owner').success).toBe(true);
+    expect(invitationRoleSchema.safeParse('owner').success).toBe(false);
+    expect(workspaceKindSchema.safeParse('agency').success).toBe(true);
+    expect(itemVisibilitySchema.safeParse('workspace').success).toBe(true);
+    expect(createAgencyInputSchema.safeParse({ name: 'Agencia Norte', slug: 'agencia-norte' }).success).toBe(true);
+    expect(createAgencyInputSchema.safeParse({ name: 'A', slug: 'Slug Invalido!' }).success).toBe(false);
+    const inv = inviteMemberInputSchema.safeParse({ workspaceId: 'w-1', email: '  Ana@Agencia.es ', role: 'editor' });
+    expect(inv.success && inv.data.email === 'ana@agencia.es').toBe(true);
+    expect(acceptInvitationInputSchema.safeParse({ rawToken: 'corto' }).success).toBe(false);
+    expect(changeMemberRoleInputSchema.safeParse({ workspaceId: 'w-1', targetUserId: 'u-2', nextRole: 'admin' }).success).toBe(true);
+    expect(removeMemberInputSchema.safeParse({ workspaceId: 'w-1', targetUserId: 'u-2' }).success).toBe(true);
+    expect(changeItemVisibilityInputSchema.safeParse({ workspaceId: 'w-1', itemId: 'n-1', itemType: 'note', visibility: 'workspace' }).success).toBe(true);
+    expect(noteSchema.parse({ id: 'n', workspaceId: 'w', createdBy: 'u', title: 'T', content: '', isPinned: false, isArchived: false, version: 1, createdAt: '2026-11-04', updatedAt: '2026-11-04' }).visibility).toBe('private');
+    expect(todoSchema.parse({ id: 't', workspaceId: 'w', createdBy: 'u', title: 'T', detail: '', priority: 'low', isDone: false, createdAt: '2026-11-04', updatedAt: '2026-11-04' }).visibility).toBe('private');
   });
 });
