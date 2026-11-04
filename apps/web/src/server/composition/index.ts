@@ -1,25 +1,27 @@
 import "server-only";
 import {
-  archiveNote, createNote, createTodo, createTodoFromNote, exportWorkspaceData,
+  archiveNote, changeTodoVisibility, createNote, createTodo, createTodoFromNote, exportWorkspaceData,
   listNotes, listTodosByView, pinNote, toggleTodoDone, updateNote, updateTodo,
   type AppContext, type Clock, type IdGenerator, type NoteFilter,
 } from "@hubly/application";
 import {
-  createNoteSchema, createTodoSchema, updateNoteSchema, updateTodoSchema,
-  type CreateNoteInput, type CreateTodoInput, type UpdateNoteInput, type UpdateTodoInput,
+  changeItemVisibilityInputSchema, changeMemberRoleInputSchema, createAgencyInputSchema, createNoteSchema, createTodoSchema,
+  removeMemberInputSchema, updateNoteSchema, updateTodoSchema, type CreateNoteInput, type CreateTodoInput, type UpdateNoteInput, type UpdateTodoInput,
 } from "@hubly/contracts";
-import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleWorkspaceRepository, withUserContext, type UserClaims } from "@hubly/db";
+import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleWorkspaceRepository, seedAuthUserForTests, withUserContext, type ItemVisibility, type UserClaims, type UserWorkspaceSummary, type WorkspaceInvitationRecord, type WorkspaceKind, type WorkspaceRole } from "@hubly/db";
 import {
-  DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE,
+  DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
   createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
-  getVerifiedServerSession, isValidIanaTimeZone, resolveRequestTimeZone, resolveSiteUrl,
-  resolveSupabaseConfig, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests,
+  getVerifiedServerSession, isValidIanaTimeZone, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie, resolveRequestTimeZone, resolveSiteUrl,
+  resolveSupabaseConfig, setActiveWorkspaceCookieForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests,
 } from "./auth";
+import { acceptWorkspaceInvitationByToken, issueWorkspaceInvitation, revokePendingWorkspaceInvitation } from "./invitations";
 export {
-  DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE,
-  createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
-  getVerifiedServerSession, isValidIanaTimeZone, resolveRequestTimeZone, resolveSiteUrl,
-  resolveSupabaseConfig, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests,
+  DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
+  acceptWorkspaceInvitationByToken, createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
+  getVerifiedServerSession, isValidIanaTimeZone, issueWorkspaceInvitation, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie,
+  resolveRequestTimeZone, resolveSiteUrl, resolveSupabaseConfig, revokePendingWorkspaceInvitation, seedAuthUserForTests,
+  setActiveWorkspaceCookieForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests, type UserWorkspaceSummary, type WorkspaceInvitationRecord,
 };
 
 type DbInstance = Parameters<typeof withUserContext>[2];
@@ -35,10 +37,8 @@ export function setClockNowForTests(fn: (() => Date) | null): void {
 }
 
 export interface CompositionContext extends AppContext {
-  claims: UserClaims;
-  timezone: string;
-  todayDate: string;
-  db?: DbInstance;
+  claims: UserClaims; role: WorkspaceRole; workspaceKind: WorkspaceKind; workspaceName: string; workspaceSlug: string | null;
+  timezone: string; todayDate: string; db?: DbInstance;
 }
 
 export function createSystemClock(timezone = DEFAULT_APP_TIMEZONE): Clock & { todayIsoDate: () => string } {
@@ -51,13 +51,27 @@ export function createSystemClock(timezone = DEFAULT_APP_TIMEZONE): Clock & { to
 export const systemIdGenerator: IdGenerator = { generate: () => crypto.randomUUID() };
 
 export async function ensureAuthenticatedWorkspace(workspaceId?: string, defaultName?: string): Promise<CompositionContext> {
-  const [{ claims }, timezone] = await Promise.all([getVerifiedServerSession(), resolveRequestTimeZone()]);
+  const [{ claims }, timezone, cookieWsId] = await Promise.all([getVerifiedServerSession(), resolveRequestTimeZone(), resolveActiveWorkspaceCookie()]);
   const resolvedDb = process.env.NODE_ENV === "test" ? testDbOverride : undefined;
   const wsRepo = new DrizzleWorkspaceRepository(claims, resolvedDb);
-  if (workspaceId && !(await wsRepo.findMember(workspaceId, claims.sub))) throw new Error(`No autorizado en el espacio de trabajo: ${workspaceId}`);
-  const resolvedWorkspaceId = workspaceId ?? (await wsRepo.ensurePersonalWorkspace(defaultName));
+  let resolvedWorkspaceId: string | undefined, member = null;
+  if (workspaceId) {
+    member = await wsRepo.findMember(workspaceId, claims.sub);
+    if (!member) throw new Error(`No autorizado en el espacio de trabajo: ${workspaceId}`);
+    resolvedWorkspaceId = workspaceId;
+  } else if (cookieWsId) {
+    member = await wsRepo.findMember(cookieWsId, claims.sub);
+    if (member) resolvedWorkspaceId = cookieWsId;
+    else await persistActiveWorkspaceCookie(null);
+  }
+  if (!resolvedWorkspaceId) {
+    resolvedWorkspaceId = await wsRepo.ensurePersonalWorkspace(defaultName);
+    member = await wsRepo.findMember(resolvedWorkspaceId, claims.sub);
+  }
+  const ws = await wsRepo.findById(resolvedWorkspaceId);
+  const role: WorkspaceRole = (member?.role as WorkspaceRole | undefined) ?? "owner", workspaceKind: WorkspaceKind = (ws?.kind as WorkspaceKind | undefined) ?? "personal";
   const todayDate = createSystemClock(timezone).todayIsoDate();
-  return { claims, workspaceId: resolvedWorkspaceId, userId: claims.sub, timezone, todayDate, ...(resolvedDb ? { db: resolvedDb } : {}) };
+  return { claims, workspaceId: resolvedWorkspaceId, userId: claims.sub, role, workspaceKind, workspaceName: ws?.name ?? defaultName ?? "Mi Espacio", workspaceSlug: ws?.slug ?? null, timezone, todayDate, ...(resolvedDb ? { db: resolvedDb } : {}) };
 }
 
 export const getWorkspaceContext = ensureAuthenticatedWorkspace;
@@ -65,6 +79,7 @@ export const getWorkspaceContext = ensureAuthenticatedWorkspace;
 const repos = (ctx: CompositionContext) => ({
   noteRepo: new DrizzleNoteRepository(ctx.claims, ctx.workspaceId, ctx.db),
   todoRepo: new DrizzleTodoRepository(ctx.claims, ctx.workspaceId, ctx.db),
+  wsRepo: new DrizzleWorkspaceRepository(ctx.claims, ctx.db),
   clock: createSystemClock(ctx.timezone),
 });
 
@@ -97,4 +112,40 @@ export const createTodoFromNoteUseCase = (ctx: CompositionContext) => (noteId: s
 export const exportDataUseCase = (ctx: CompositionContext) => () => {
   const { noteRepo, todoRepo, clock } = repos(ctx);
   return exportWorkspaceData(noteRepo, todoRepo, clock, ctx);
+};
+export const changeNoteVisibilityUseCase = (ctx: CompositionContext) => async (noteId: string, visibility: ItemVisibility) => {
+  const parsed = changeItemVisibilityInputSchema.parse({ workspaceId: ctx.workspaceId, itemId: noteId, itemType: "note", visibility });
+  const { noteRepo } = repos(ctx), note = await noteRepo.findById(parsed.itemId);
+  if (!note || note.workspaceId !== ctx.workspaceId) throw new Error(`Nota no encontrada: ${parsed.itemId}`);
+  if (ctx.role === "viewer" || note.createdBy !== ctx.userId) throw new Error("Solo el autor con permisos de edición puede cambiar la visibilidad");
+  const updated = await noteRepo.updateVisibility(parsed.itemId, parsed.visibility);
+  if (!updated) throw new Error("No se pudo actualizar la visibilidad de la nota");
+  return updated;
+};
+export const changeTodoVisibilityUseCase = (ctx: CompositionContext) => async (todoId: string, visibility: ItemVisibility) => {
+  const parsed = changeItemVisibilityInputSchema.parse({ workspaceId: ctx.workspaceId, itemId: todoId, itemType: "todo", visibility }), { todoRepo, noteRepo, clock } = repos(ctx);
+  return changeTodoVisibility(todoRepo, noteRepo, clock, parsed.itemId, parsed.visibility, ctx);
+};
+export const createAgencyWorkspaceUseCase = (ctx: CompositionContext) => async (input: { name: string; slug?: string | null }): Promise<UserWorkspaceSummary> => {
+  const parsed = createAgencyInputSchema.parse(input), { wsRepo } = repos(ctx), id = await wsRepo.createAgencyWorkspace(parsed.name, parsed.slug ?? null);
+  await persistActiveWorkspaceCookie(id);
+  const ws = await wsRepo.findById(id);
+  return { id, name: ws?.name ?? parsed.name, slug: ws?.slug ?? parsed.slug ?? id, kind: "agency", role: "owner" };
+};
+export const listUserWorkspacesUseCase = (ctx: CompositionContext) => () => repos(ctx).wsRepo.listUserWorkspaces();
+export const listWorkspaceMembersUseCase = (ctx: CompositionContext) => async () =>
+  (await repos(ctx).wsRepo.listMembers(ctx.workspaceId)).map((m) => ({ workspaceId: m.workspaceId, userId: m.userId, role: m.role, createdAt: m.createdAt instanceof Date ? m.createdAt.toISOString() : new Date(m.createdAt).toISOString() }));
+export const listPendingInvitationsUseCase = (ctx: CompositionContext) => () =>
+  ctx.workspaceKind === "agency" && (ctx.role === "owner" || ctx.role === "admin") ? repos(ctx).wsRepo.listPendingInvitations(ctx.workspaceId) : Promise.resolve([]);
+export const changeMemberRoleUseCase = (ctx: CompositionContext) => async (targetUserId: string, nextRole: WorkspaceRole): Promise<void> => {
+  const parsed = changeMemberRoleInputSchema.parse({ workspaceId: ctx.workspaceId, targetUserId, nextRole });
+  if (ctx.workspaceKind === "personal") throw new Error("No se pueden cambiar roles en un espacio personal");
+  await repos(ctx).wsRepo.updateMemberRole(ctx.workspaceId, parsed.targetUserId, parsed.nextRole);
+};
+export const removeOrLeaveMemberUseCase = (ctx: CompositionContext) => async (targetUserId: string): Promise<{ leftCurrentWorkspace: boolean }> => {
+  const parsed = removeMemberInputSchema.parse({ workspaceId: ctx.workspaceId, targetUserId });
+  if (ctx.workspaceKind === "personal") throw new Error("No se puede abandonar ni eliminar miembros de un espacio personal");
+  await repos(ctx).wsRepo.removeMember(ctx.workspaceId, parsed.targetUserId);
+  if (parsed.targetUserId === ctx.userId) await persistActiveWorkspaceCookie(null);
+  return { leftCurrentWorkspace: parsed.targetUserId === ctx.userId };
 };

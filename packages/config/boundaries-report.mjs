@@ -35,8 +35,8 @@ export const KNOWN_APP_ROUTES = new Map([
 // Regla 3 (#69): Lista blanca explícita de claves de preferencias de interfaz en localStorage/sessionStorage.
 export const ALLOWED_BROWSER_STORAGE_KEYS = new Set(["hubly-theme", "hubly_tz_refresh_attempted"]);
 
-// Regla 4 (#69): Placeholders neutros de interfaz permitidos únicamente en atributos placeholder="...".
-export const ALLOWED_UI_PLACEHOLDER_EMAILS = new Set(["equipo@agencia.es"]);
+// Regla 4 (#69): Placeholders neutros y correos oficiales de contacto de Hubly permitidos en interfaz y enlaces mailto:.
+export const ALLOWED_UI_PLACEHOLDER_EMAILS = new Set(["equipo@agencia.es", "privacidad@hubly.es", "legal@hubly.es", "soporte@hubly.es", "hola@hubly.es"]);
 
 export function listProjectFiles(dir, filter = {}) {
   const entries = readdirSync(dir, { withFileTypes: true });
@@ -227,11 +227,10 @@ export function findHardcodedTenantViolations(files, options = {}) {
       violations.push(`${rel}: UUID literal "${uuidMatch[0]}" prohibido en código de producción (#69)`);
     }
 
-    const withoutAllowedPlaceholders = stripped.replace(/placeholder\s*=\s*["']([^"']+)["']/g, (full, email) =>
-      allowedPlaceholders.has(email) ? 'placeholder=""' : full,
-    );
-    for (const emailMatch of withoutAllowedPlaceholders.matchAll(EMAIL_LITERAL_RE)) {
-      violations.push(`${rel}: correo electrónico literal "${emailMatch[1]}" prohibido en código de producción (#69)`);
+    for (const emailMatch of stripped.matchAll(EMAIL_LITERAL_RE)) {
+      if (!allowedPlaceholders.has(emailMatch[1])) {
+        violations.push(`${rel}: correo electrónico literal "${emailMatch[1]}" prohibido en código de producción (#69)`);
+      }
     }
 
     if (TENANT_BRANCH_RE.test(stripped)) {
