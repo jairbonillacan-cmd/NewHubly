@@ -3,13 +3,16 @@ import { Button, Card, Chip, Input, TextArea, TextField } from "@heroui/react";
 import { tokens } from "../../tokens";
 
 export type NoteSaveStatus = "saving" | "saved" | "error";
+export type ItemVisibilityValue = "private" | "workspace";
 export interface LinkedTodoSummary { id: string; title: string; isDone: boolean; }
 export interface NoteEditorCardProps {
   id: string; title: string; content: string; isPinned: boolean; isArchived: boolean;
   saveStatus: NoteSaveStatus; linkedTodos?: readonly LinkedTodoSummary[];
+  visibility?: ItemVisibilityValue; canChangeVisibility?: boolean; isReadOnly?: boolean;
   onTitleChange?: (id: string, title: string) => void; onContentChange?: (id: string, content: string) => void;
   onTogglePin?: (id: string) => void; onToggleArchive?: (id: string) => void;
   onCreateTodoFromNote?: (id: string) => void; onRetrySave?: (id: string) => void;
+  onChangeVisibility?: (next: ItemVisibilityValue) => void;
 }
 
 const SAVE_STATUS_META: Record<NoteSaveStatus, { text: string; bg: string; color: string }> = {
@@ -20,9 +23,12 @@ const SAVE_STATUS_META: Record<NoteSaveStatus, { text: string; bg: string; color
 
 export function NoteEditorCard({
   id, title, content, isPinned, isArchived, saveStatus, linkedTodos = [],
-  onTitleChange, onContentChange, onTogglePin, onToggleArchive, onCreateTodoFromNote, onRetrySave,
+  visibility = "private", canChangeVisibility = false, isReadOnly = false,
+  onTitleChange, onContentChange, onTogglePin, onToggleArchive, onCreateTodoFromNote, onRetrySave, onChangeVisibility,
 }: NoteEditorCardProps) {
   const statusMeta = SAVE_STATUS_META[saveStatus];
+  const isWorkspaceVisible = visibility === "workspace";
+  const nextVisibility: ItemVisibilityValue = isWorkspaceVisible ? "private" : "workspace";
   const controlStyle = {
     border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.md,
     backgroundColor: tokens.bento.surfaceBase, color: tokens.color.textPrimary,
@@ -32,32 +38,52 @@ export function NoteEditorCard({
   return (
     <Card id={`nota-${id}`} aria-label={`Editor de nota ${title || "sin título"}`} style={{ display: "flex", flexDirection: "column", gap: tokens.space[3], padding: tokens.space[5], backgroundColor: tokens.bento.cardBg, border: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`, borderRadius: tokens.radius.xl, boxShadow: tokens.bento.cardShadow }}>
       <Card.Header style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: tokens.space[2], flexWrap: "wrap" }}>
-        <div role="status" aria-live="polite" style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2] }}>
+        <div role="status" aria-live="polite" style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], flexWrap: "wrap" }}>
           <Chip size="sm" variant="soft" style={{ backgroundColor: statusMeta.bg, color: statusMeta.color, paddingInline: tokens.space[3], paddingBlock: tokens.space[1], borderRadius: tokens.radius.full, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold }}>
             {statusMeta.text}
           </Chip>
-          {saveStatus === "error" ? (
+          <Chip size="sm" variant="soft" style={{ backgroundColor: isWorkspaceVisible ? tokens.color.accentPrimarySubtle : tokens.bento.surfaceBase, color: isWorkspaceVisible ? tokens.color.accentPrimary : tokens.color.textSecondary, paddingInline: tokens.space[3], paddingBlock: tokens.space[1], borderRadius: tokens.radius.full, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold }}>
+            {isWorkspaceVisible ? "Compartido con agencia" : "Privado"}
+          </Chip>
+          {isReadOnly ? (
+            <Chip size="sm" variant="soft" style={{ backgroundColor: tokens.bento.surfaceBase, color: tokens.color.textSecondary, paddingInline: tokens.space[3], paddingBlock: tokens.space[1], borderRadius: tokens.radius.full, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.medium }}>
+              Solo lectura
+            </Chip>
+          ) : null}
+          {saveStatus === "error" && !isReadOnly ? (
             <Button type="button" variant="secondary" size="sm" onPress={() => onRetrySave?.(id)} onClick={() => onRetrySave?.(id)} aria-label="Reintentar guardado de nota" style={controlStyle}>Reintentar</Button>
           ) : null}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: tokens.space[2], flexWrap: "wrap" }}>
-          <Button type="button" variant="secondary" size="sm" aria-pressed={isPinned} aria-label={isPinned ? "Desfijar nota" : "Fijar nota"} onPress={() => onTogglePin?.(id)} onClick={() => onTogglePin?.(id)} style={controlStyle}>
-            {isPinned ? "Desfijar" : "Fijar"}
-          </Button>
-          <Button type="button" variant="secondary" size="sm" aria-pressed={isArchived} aria-label={isArchived ? "Restaurar nota" : "Archivar nota"} onPress={() => onToggleArchive?.(id)} onClick={() => onToggleArchive?.(id)} style={controlStyle}>
-            {isArchived ? "Restaurar" : "Archivar"}
-          </Button>
-          <Button type="button" variant="primary" size="sm" onPress={() => onCreateTodoFromNote?.(id)} onClick={() => onCreateTodoFromNote?.(id)} style={{ ...controlStyle, backgroundColor: tokens.color.accentPrimary, color: tokens.color.textOnAccent, borderColor: tokens.color.accentPrimary, borderRadius: tokens.radius.full, paddingInline: tokens.space[4], fontWeight: tokens.font.weight.semibold, cursor: "pointer" }}>
-            Crear pendiente desde esta nota
-          </Button>
-        </div>
+        {!isReadOnly ? (
+          <div style={{ display: "flex", alignItems: "center", gap: tokens.space[2], flexWrap: "wrap" }}>
+            {canChangeVisibility ? (
+              <Button
+                type="button" variant="secondary" size="sm"
+                aria-label={isWorkspaceVisible ? "Cambiar visibilidad de la nota a Privado" : "Cambiar visibilidad de la nota a Compartido con agencia"}
+                onPress={() => onChangeVisibility?.(nextVisibility)} onClick={() => onChangeVisibility?.(nextVisibility)}
+                style={controlStyle}
+              >
+                {isWorkspaceVisible ? "Pasar a privado" : "Compartir con agencia"}
+              </Button>
+            ) : null}
+            <Button type="button" variant="secondary" size="sm" aria-pressed={isPinned} aria-label={isPinned ? "Desfijar nota" : "Fijar nota"} onPress={() => onTogglePin?.(id)} onClick={() => onTogglePin?.(id)} style={controlStyle}>
+              {isPinned ? "Desfijar" : "Fijar"}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" aria-pressed={isArchived} aria-label={isArchived ? "Restaurar nota" : "Archivar nota"} onPress={() => onToggleArchive?.(id)} onClick={() => onToggleArchive?.(id)} style={controlStyle}>
+              {isArchived ? "Restaurar" : "Archivar"}
+            </Button>
+            <Button type="button" variant="primary" size="sm" onPress={() => onCreateTodoFromNote?.(id)} onClick={() => onCreateTodoFromNote?.(id)} style={{ ...controlStyle, backgroundColor: tokens.color.accentPrimary, color: tokens.color.textOnAccent, borderColor: tokens.color.accentPrimary, borderRadius: tokens.radius.full, paddingInline: tokens.space[4], fontWeight: tokens.font.weight.semibold, cursor: "pointer" }}>
+              Crear pendiente desde esta nota
+            </Button>
+          </div>
+        ) : null}
       </Card.Header>
       <Card.Content style={{ display: "flex", flexDirection: "column", gap: tokens.space[3] }}>
-        <TextField aria-label="Título de la nota" value={title} onChange={(val) => onTitleChange?.(id, val)} fullWidth>
-          <Input type="text" aria-label="Título de la nota" value={title} placeholder="Título de la nota" onChange={(e) => onTitleChange?.(id, e.currentTarget.value)} style={{ ...controlStyle, fontSize: tokens.font.size.base, fontWeight: tokens.font.weight.semibold, width: "100%" }} />
+        <TextField aria-label="Título de la nota" value={title} isReadOnly={isReadOnly} onChange={(val) => { if (!isReadOnly) onTitleChange?.(id, val); }} fullWidth>
+          <Input type="text" aria-label="Título de la nota" value={title} readOnly={isReadOnly} placeholder="Título de la nota" onChange={(e) => { if (!isReadOnly) onTitleChange?.(id, e.currentTarget.value); }} style={{ ...controlStyle, fontSize: tokens.font.size.base, fontWeight: tokens.font.weight.semibold, width: "100%" }} />
         </TextField>
-        <TextField aria-label="Contenido de la nota" value={content} onChange={(val) => onContentChange?.(id, val)} fullWidth>
-          <TextArea aria-label="Contenido de la nota" value={content} rows={4} placeholder="Escribe tu nota con formato simple…" onChange={(e) => onContentChange?.(id, e.currentTarget.value)} style={{ ...controlStyle, fontFamily: tokens.font.sans, lineHeight: tokens.font.leading.relaxed, width: "100%" }} />
+        <TextField aria-label="Contenido de la nota" value={content} isReadOnly={isReadOnly} onChange={(val) => { if (!isReadOnly) onContentChange?.(id, val); }} fullWidth>
+          <TextArea aria-label="Contenido de la nota" value={content} readOnly={isReadOnly} rows={4} placeholder="Escribe tu nota con formato simple…" onChange={(e) => { if (!isReadOnly) onContentChange?.(id, e.currentTarget.value); }} style={{ ...controlStyle, fontFamily: tokens.font.sans, lineHeight: tokens.font.leading.relaxed, width: "100%" }} />
         </TextField>
       </Card.Content>
       {linkedTodos.length > 0 ? (

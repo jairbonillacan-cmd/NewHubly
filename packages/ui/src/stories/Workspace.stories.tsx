@@ -3,6 +3,7 @@ import React from "react";
 import { NoteEditorCard } from "../components/notes/NoteEditorCard";
 import { QuickCaptureBar } from "../components/todos/QuickCaptureBar";
 import { TodoItemCard } from "../components/todos/TodoItemCard";
+import { AgencyTeamPanel } from "../components/workspace/AgencyTeamPanel";
 import { ViewSelector } from "../components/workspace/ViewSelector";
 import { WorkspaceEmptyState } from "../components/workspace/WorkspaceEmptyState";
 import { tokens } from "../tokens";
@@ -43,6 +44,8 @@ export const TarjetasDePendiente: Story = {
         dueDate="2026-11-02"
         isDone={false}
         isOverdue
+        visibility="workspace"
+        canChangeVisibility
         noteId="nota-1"
         noteTitle="Reunión de arranque mensual"
       />
@@ -53,6 +56,8 @@ export const TarjetasDePendiente: Story = {
         dueDate="2026-11-04"
         isDone={false}
         isToday
+        visibility="private"
+        canChangeVisibility
       />
       <TodoItemCard
         id="todo-hecho"
@@ -75,6 +80,8 @@ export const EditorDeNotaConAutoguardado: Story = {
         isPinned
         isArchived={false}
         saveStatus="saved"
+        visibility="workspace"
+        canChangeVisibility
         linkedTodos={[
           { id: "t-1", title: "Entregar parrilla de contenidos de la semana", isDone: false },
           { id: "t-2", title: "Definir calendario de grabación", isDone: true },
@@ -89,6 +96,31 @@ export const EditorDeNotaConAutoguardado: Story = {
         saveStatus="error"
       />
     </div>
+  ),
+};
+
+export const PanelDeAgenciaYEquipo: Story = {
+  render: () => (
+    <AgencyTeamPanel
+      workspaces={[
+        { id: "ws-personal", name: "Mi Espacio", kind: "personal", role: "owner" },
+        { id: "ws-agencia", name: "Estudio Norte", kind: "agency", role: "owner" },
+      ]}
+      activeWorkspaceId="ws-agencia"
+      currentUserRole="owner"
+      isTeamSectionOpen
+      inviteEmail="ana@estudionorte.com"
+      inviteRole="editor"
+      generatedInviteLink="/invitacion#tok_ejemplo_estudio_norte_2026"
+      members={[
+        { userId: "u-1", label: "marcos@estudionorte.com", role: "owner", isCurrentUser: true },
+        { userId: "u-2", label: "clara@estudionorte.com", role: "admin" },
+        { userId: "u-3", label: "diego@estudionorte.com", role: "editor" },
+      ]}
+      pendingInvitations={[
+        { id: "inv-1", email: "ana@estudionorte.com", role: "editor", expiresAt: "2026-11-11" },
+      ]}
+    />
   ),
 };
 

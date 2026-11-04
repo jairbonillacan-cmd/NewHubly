@@ -17,9 +17,10 @@ export * from "./landing/BentoSection";
 export * from "./landing/HeroSection";
 export * from "./landing/PillNav";
 
-// Componentes de Notas y Pendientes de Fase 1A con dirección visual y HeroUI (Issues #26 y #47)
+// Componentes de Notas, Pendientes, Agencias y Equipo de Fase 1A / 1B con dirección visual y HeroUI (Issues #26, #47 y #64)
 export * from "./components/notes/NoteEditorCard";
 export * from "./components/todos/QuickCaptureBar";
 export * from "./components/todos/TodoItemCard";
+export * from "./components/workspace/AgencyTeamPanel";
 export * from "./components/workspace/ViewSelector";
 export * from "./components/workspace/WorkspaceEmptyState";
