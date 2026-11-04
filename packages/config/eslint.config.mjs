@@ -60,6 +60,8 @@ export default defineConfig(
   },
   {
     files: ["apps/web/**/*.{ts,tsx}", "packages/ui/**/*.{ts,tsx}"],
+    // Excluye la configuración del runner de Storybook (.storybook/**), cuyos presets de viewport exigen medidas CSS literales ("1440px", "900px", "390px", "844px").
+    ignores: ["packages/ui/.storybook/**"],
     rules: {
       "no-restricted-syntax": [
         "error",
@@ -114,4 +116,3 @@ export default defineConfig(
     },
   },
 );
-

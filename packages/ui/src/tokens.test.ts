@@ -50,7 +50,7 @@ describe("tokens semánticos de @hubly/ui, paleta Grafito y azul tinta (#52) e i
   });
 
   it("instala HeroUI v3 OSS, Tailwind 4, @tailwindcss/postcss y peer dependencies con versiones exactas y sin HeroUI Pro", () => {
-    const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+    const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as { scripts?: Record<string, string>; dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
     const webPkg = JSON.parse(readFileSync(webPkgJsonPath, "utf8")) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
     const deps = pkg.dependencies ?? {};
     for (const name of ["@heroui/react", "@heroui/styles", "@internationalized/date", "@react-aria/ssr", "@react-aria/utils", "react-aria", "react-aria-components", "tailwind-variants", "tailwindcss"]) {
@@ -60,6 +60,16 @@ describe("tokens semánticos de @hubly/ui, paleta Grafito y azul tinta (#52) e i
     expect(webPkg.devDependencies?.["@tailwindcss/postcss"]).toBe(deps["tailwindcss"]);
     expect(existsSync(webPostcssConfigPath)).toBe(true);
     expect(readFileSync(webPostcssConfigPath, "utf8")).toContain("@tailwindcss/postcss");
+    expect(pkg.devDependencies?.["storybook"]).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(pkg.devDependencies?.["@storybook/react-vite"]).toBe(pkg.devDependencies?.["storybook"]);
+    expect(pkg.scripts?.["build-storybook"]).toBe("storybook build -o storybook-static");
+    const previewContent = readFileSync(resolve(currentDir, "../.storybook/preview.tsx"), "utf8");
+    expect(previewContent).toContain("../src/tokens.css");
+    expect(previewContent).toContain("desktop1440");
+    expect(previewContent).toContain("mobile390");
+    for (const story of ["Brand.stories.tsx", "Landing.stories.tsx", "Workspace.stories.tsx"]) {
+      expect(existsSync(resolve(currentDir, "stories", story))).toBe(true);
+    }
 
     const allDeps = { ...deps, ...(pkg.devDependencies ?? {}), ...(webPkg.dependencies ?? {}), ...(webPkg.devDependencies ?? {}) };
     for (const [name, version] of Object.entries(allDeps)) {
@@ -96,14 +106,13 @@ describe("tokens semánticos de @hubly/ui, paleta Grafito y azul tinta (#52) e i
       "faeee6", "361c10", "87340d", "fcc29f", "1f4f46", "173d36", "183f38", "6ec4b3",
       "8bd2c4", "58c9b4", "7ed9c7", "fdfbf7", "1c1917",
     ];
-    const hashChar = String.fromCharCode(35);
-    const retiredToken = ["--accent", "warm"].join("-");
-    const retiredPattern = new RegExp(`${hashChar}(${retiredHexCodes.join("|")})\\b|${retiredToken}\\b`, "i");
+    const retiredPattern = new RegExp(`#(${retiredHexCodes.join("|")})\\b|--accent-warm\\b`, "i");
+    const selfPath = resolve(currentDir, "tokens.test.ts");
     const filesToScan = [
       ...listFilesRecursively(resolve(repoRoot, "packages/ui/src")),
       ...listFilesRecursively(resolve(repoRoot, "apps/web/src")),
       ...listFilesRecursively(resolve(repoRoot, "docs/diseno")),
-    ];
+    ].filter((file) => resolve(file) !== selfPath);
     expect(filesToScan.length).toBeGreaterThan(10);
     for (const file of filesToScan) {
       const content = readFileSync(file, "utf8");

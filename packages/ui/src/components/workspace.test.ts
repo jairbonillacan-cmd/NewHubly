@@ -110,7 +110,7 @@ describe("Componentes UI de Notas y Pendientes con dirección visual y HeroUI (@
     expect(symbolHtml).toContain("var(--accent-primary)");
     expect(renderToStaticMarkup(createElement(HublySymbol, { decorative: true }))).toContain('aria-hidden="true"');
     expect(wordmarkHtml).not.toContain("<text");
-    const hexPattern = new RegExp(`${String.fromCharCode(35)}[0-9a-fA-F]{3,8}\\b`);
+    const hexPattern = /#[0-9a-fA-F]{3,8}\b/;
     expect(symbolHtml).not.toMatch(hexPattern);
     expect(wordmarkHtml).not.toMatch(hexPattern);
     const hubiDeco = renderToStaticMarkup(createElement(Hubi, { acabado: "volumen", pose: "laptop", tamano: 96, decorativo: true }));
@@ -119,7 +119,5 @@ describe("Componentes UI de Notas y Pendientes con dirección visual y HeroUI (@
     expect(hubiDeco).toContain('height="96"');
     expect(hubiDeco).toContain("hubly-hubi-light");
     expect(hubiDeco).toContain("hubly-hubi-dark");
-    if (false) {
-    }
   });
 });
