@@ -1,4 +1,5 @@
-import { buttonVariants, kbdVariants } from "@heroui/react";
+"use client";
+import { Button, Card, Input, Kbd, TextField } from "@heroui/react";
 import type { FormEvent, KeyboardEvent, Ref } from "react";
 import { tokens } from "../../tokens";
 
@@ -27,32 +28,37 @@ export function QuickCaptureBar({
   };
   const controlStyle = {
     border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.md,
-    backgroundColor: tokens.color.surfaceRaised, color: tokens.color.textPrimary,
+    backgroundColor: tokens.bento.cardBg, color: tokens.color.textPrimary,
     paddingBlock: tokens.space[2], paddingInline: tokens.space[3], fontSize: tokens.font.size.sm,
   } as const;
 
   return (
-    <form
-      aria-label="Captura rápida de pendiente" onSubmit={handleFormSubmit}
-      style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: tokens.space[2], padding: tokens.space[3], backgroundColor: tokens.color.surfaceRaised, border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.lg }}
-    >
-      <span className={kbdVariants().base()} aria-hidden="true" style={{ fontSize: tokens.font.size.xs, color: tokens.color.textSecondary }}>c /</span>
-      <input
-        ref={inputRef} id={inputId} type="text" value={title}
-        aria-label="Capturar pendiente rápido" placeholder="Capturar pendiente rápido… [Enter]"
-        onChange={(e) => onTitleChange?.(e.currentTarget.value)} onKeyDown={handleKeyDown}
-        style={{ ...controlStyle, flex: "1 1 auto" }}
-      />
-      <select aria-label="Prioridad del pendiente" value={priority} onChange={(e) => onPriorityChange?.(e.currentTarget.value as TodoPriorityValue)} style={controlStyle}>
-        <option value="low">Prioridad baja</option>
-        <option value="medium">Prioridad media</option>
-        <option value="high">Prioridad alta</option>
-      </select>
-      <input type="date" aria-label="Fecha límite opcional" value={dueDate ?? ""} onChange={(e) => onDueDateChange?.(e.currentTarget.value || null)} style={controlStyle} />
-      {linkedNoteTitle ? (
-        <button type="button" onClick={onClearLinkedNote} aria-label={`Quitar vínculo con nota ${linkedNoteTitle}`} style={controlStyle}>Nota: {linkedNoteTitle} ×</button>
-      ) : null}
-      <button type="submit" className={buttonVariants({ variant: "primary", size: "sm" })} style={controlStyle}>Guardar</button>
-    </form>
+    <Card variant="transparent" className="glass-panel" style={{ padding: tokens.space[4], backgroundColor: tokens.glass.bg, border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.xl, boxShadow: tokens.glass.shadow }}>
+      <Card.Content>
+        <form aria-label="Captura rápida de pendiente" onSubmit={handleFormSubmit} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: tokens.space[2] }}>
+          <Kbd aria-hidden="true" style={{ backgroundColor: tokens.bento.cardBg, color: tokens.color.accentPrimary, border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.sm, paddingInline: tokens.space[2], paddingBlock: tokens.space[1], fontSize: tokens.font.size.xs }}>
+            <Kbd.Content>c /</Kbd.Content>
+          </Kbd>
+          <TextField aria-label="Capturar pendiente rápido" value={title} onChange={(val) => onTitleChange?.(val)} fullWidth style={{ flex: "1 1 auto" }}>
+            <Input
+              ref={inputRef} id={inputId} type="text" value={title}
+              aria-label="Capturar pendiente rápido" placeholder="Capturar pendiente rápido… [Enter]"
+              onChange={(e) => onTitleChange?.(e.currentTarget.value)} onKeyDown={handleKeyDown}
+              style={{ ...controlStyle, width: "100%" }}
+            />
+          </TextField>
+          <select aria-label="Prioridad del pendiente" value={priority} onChange={(e) => onPriorityChange?.(e.currentTarget.value as TodoPriorityValue)} style={controlStyle}>
+            <option value="low">Prioridad baja</option>
+            <option value="medium">Prioridad media</option>
+            <option value="high">Prioridad alta</option>
+          </select>
+          <input type="date" aria-label="Fecha límite opcional" value={dueDate ?? ""} onChange={(e) => onDueDateChange?.(e.currentTarget.value || null)} style={controlStyle} />
+          {linkedNoteTitle ? (
+            <Button type="button" variant="secondary" size="sm" onPress={() => onClearLinkedNote?.()} onClick={() => onClearLinkedNote?.()} aria-label={`Quitar vínculo con nota ${linkedNoteTitle}`} style={controlStyle}>Nota: {linkedNoteTitle} ×</Button>
+          ) : null}
+          <Button type="submit" variant="primary" size="sm" onPress={triggerSubmit} style={{ ...controlStyle, backgroundColor: tokens.color.accentPrimary, color: tokens.color.textOnAccent, borderColor: tokens.color.accentPrimary, borderRadius: tokens.radius.full, paddingInline: tokens.space[4], fontWeight: tokens.font.weight.semibold, cursor: "pointer" }}>Guardar</Button>
+        </form>
+      </Card.Content>
+    </Card>
   );
 }

@@ -29,7 +29,7 @@ export function PillNav({
     <header role="banner" className="hubly-pill-header" style={{ position: "absolute", top: tokens.space[6], left: tokens.space[0], right: tokens.space[0], zIndex: 20, display: "flex", justifyContent: "center", paddingInline: tokens.space[4], width: "100%", boxSizing: "border-box" }}>
       <nav aria-label="Navegación principal de Hubly" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.space[3], width: "100%", maxWidth: tokens.layout.heroWidth, flexWrap: "wrap", boxSizing: "border-box" }}>
         <a href={brandHref} style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], paddingBlock: tokens.space[2], paddingInline: tokens.space[4], backgroundColor: tokens.pill.glassBg, border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`, borderRadius: tokens.radius.full, color: tokens.pill.glassText, textDecoration: "none", backdropFilter: `blur(${tokens.glass.blurMobile})`, WebkitBackdropFilter: `blur(${tokens.glass.blurMobile})` }}>
-          <span style={{ width: tokens.space[3], height: tokens.space[3], borderRadius: tokens.radius.full, backgroundColor: tokens.color.accentWarm }} aria-hidden="true" />
+          <span style={{ width: tokens.space[3], height: tokens.space[3], borderRadius: tokens.radius.full, backgroundColor: tokens.color.accentPrimary }} aria-hidden="true" />
           <strong style={{ fontSize: tokens.font.size.base, fontWeight: tokens.font.weight.bold, letterSpacing: tokens.font.tracking.tight }}>{brandName}</strong>
         </a>
 

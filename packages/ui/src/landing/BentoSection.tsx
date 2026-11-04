@@ -7,8 +7,8 @@ export function BentoSection() {
       <div style={{ width: "100%", maxWidth: tokens.layout.bentoWidth, marginInline: "auto", display: "flex", flexDirection: "column", gap: tokens.space[10], boxSizing: "border-box" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: tokens.space[3], maxWidth: tokens.layout.readingWidth }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2] }}>
-            <span style={{ width: tokens.space[2], height: tokens.space[2], borderRadius: tokens.radius.full, backgroundColor: tokens.color.accentWarm }} aria-hidden="true" />
-            <span style={{ fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.bold, textTransform: "uppercase", letterSpacing: tokens.font.tracking.widest, color: tokens.color.accentWarmText }}>
+            <span style={{ width: tokens.space[2], height: tokens.space[2], borderRadius: tokens.radius.full, backgroundColor: tokens.color.accentPrimary }} aria-hidden="true" />
+            <span style={{ fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.bold, textTransform: "uppercase", letterSpacing: tokens.font.tracking.widest, color: tokens.color.accentPrimary }}>
               Arquitectura del producto
             </span>
           </div>
@@ -28,7 +28,7 @@ export function BentoSection() {
                 <span style={{ fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.bold, textTransform: "uppercase", letterSpacing: tokens.font.tracking.wider, color: tokens.color.textMuted }}>Flujo central</span>
                 <h3 style={{ margin: tokens.space[0], fontSize: tokens.font.size["2xl"], fontWeight: tokens.font.weight.semibold, color: tokens.color.textPrimary }}>El ciclo completo de la pieza</h3>
               </div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], paddingBlock: tokens.space[1], paddingInline: tokens.space[3], backgroundColor: tokens.color.accentWarmSubtle, borderRadius: tokens.radius.full, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold, color: tokens.color.accentWarmText }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], paddingBlock: tokens.space[1], paddingInline: tokens.space[3], backgroundColor: tokens.color.accentPrimarySubtle, borderRadius: tokens.radius.full, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold, color: tokens.color.accentPrimary }}>
                 <span>7 etapas definidas</span>
               </div>
             </div>
@@ -72,7 +72,7 @@ export function BentoSection() {
             <ul style={{ listStyle: "none", margin: tokens.space[0], padding: tokens.space[0], display: "flex", flexDirection: "column", gap: tokens.space[2], fontSize: tokens.font.size.xs }}>
               <li style={{ padding: tokens.space[2], backgroundColor: tokens.bento.surfaceBase, borderRadius: tokens.radius.sm, border: `${tokens.border.thin} solid ${tokens.bento.cardBorder}` }}><strong>Borrador:</strong> Redactor / Diseñador</li>
               <li style={{ padding: tokens.space[2], backgroundColor: tokens.bento.surfaceBase, borderRadius: tokens.radius.sm, border: `${tokens.border.thin} solid ${tokens.bento.cardBorder}` }}><strong>Revisión interna:</strong> Director creativo</li>
-              <li style={{ padding: tokens.space[2], backgroundColor: tokens.color.accentWarmSubtle, color: tokens.color.accentWarmText, borderRadius: tokens.radius.sm, border: `${tokens.border.thin} solid ${tokens.color.accentWarm}` }}><strong>Aprobación:</strong> Cliente de la marca</li>
+              <li style={{ padding: tokens.space[2], backgroundColor: tokens.color.accentPrimarySubtle, color: tokens.color.accentPrimary, borderRadius: tokens.radius.sm, border: `${tokens.border.thin} solid ${tokens.color.accentPrimary}` }}><strong>Aprobación:</strong> Cliente de la marca</li>
             </ul>
           </article>
 
