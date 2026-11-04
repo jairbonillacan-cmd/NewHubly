@@ -36,9 +36,9 @@ Issues: #5, #8, #26, #35, #47, #52
 
 Ningún PR de interfaz se aprueba si no cumple los siete puntos siguientes:
 
-1. **Cuatro estados obligatorios con acción concreta (sin ilustraciones de relleno ni emojis como iconos):**
+1. **Cuatro estados obligatorios con acción concreta (sin emojis como iconos; Hubi permitido en pantalla vacía como acompañamiento):**
    - **Carga:** estructura estable con reserva de espacio que evite saltos de layout (`CLS`).
-   - **Vacío:** `EmptyState` con texto específico en español y `Button` de acción directa (ej. en **Hoy**: *«No tienes pendientes para hoy. Escribe arriba para capturar el primero o revisa Sin fecha.»*).
+   - **Vacío:** `EmptyState` con texto específico en español, `Button` de acción directa y la mascota `Hubi` (`acabado="origen"`, `pose="sentado"`, decorativa) como acompañamiento visual, nunca en sustitución del texto ni de la acción concreta (ej. en **Hoy**: *«No tienes pendientes para hoy. Escribe arriba para capturar el primero o revisa Sin fecha.»*). Hubi no se usa en los estados de carga ni de error (`Issue #53`).
    - **Error:** causa comprensible y `Button` real **«Reintentar»**.
    - **Sin permiso / sesión caducada:** explicación clara y `Button` para volver a iniciar sesión o regresar a **Hoy**.
 2. **Cero valores sueltos:** todo color, espacio, tipografía, radio, borde y alto de ventana proviene de `@hubly/ui` (validado en `pnpm lint` y `pnpm test`). Los controles interactivos usan `--border-control` ($\ge 3:1$).

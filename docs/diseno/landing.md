@@ -36,4 +36,4 @@ Verificado matemáticamente en `packages/ui/src/landing-contrast.test.ts`:
 
 ## 5. Responsividad móvil 390 px y componentes exportados
 - `.hubly-lifecycle-container`: contenedor con `overflow-x: auto` y desplazamiento táctil (`-webkit-overflow-scrolling: touch`) garantizando `scrollWidth <= 390px`.
-- Primitivas visuales base expuestas en `@hubly/ui`: `GlassCard` (panel translúcido con fallback), `ThemeToggle` (interruptor de modo claro/oscuro accesible), `LineGraphicCycle` (diagrama lineal de 7 etapas).
+- Primitivas visuales base e identidad expuestas en `@hubly/ui`: `HublyWordmark` y `HublySymbol` (logo vectorial «Secuencia» gobernado por `--text-primary` y `--accent-primary`, con firma completa en escritorio y símbolo compacto en móvil `< 640px` dentro de `PillNav`), `Hubi` (mascota reactiva a `[data-theme]` con `acabado="volumen"` y `pose="laptop"` en `HeroSection` y `/login`), `GlassCard` (panel translúcido con fallback), `ThemeToggle` (interruptor de modo claro/oscuro accesible), `LineGraphicCycle` (diagrama lineal de 7 etapas).

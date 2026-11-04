@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
-  Button, Card, Checkbox, Chip, EmptyState, Input, Kbd, NoteEditorCard, QuickCaptureBar,
+  Button, Card, Checkbox, Chip, EmptyState, Hubi, HublySymbol, HublyWordmark, Input, Kbd, NoteEditorCard, QuickCaptureBar,
   Switch, Tabs, TextArea, TextField, TodoItemCard, ViewSelector, WORKSPACE_EMPTY_MESSAGES, WorkspaceEmptyState,
 } from "../index";
 
@@ -100,6 +100,26 @@ describe("Componentes UI de Notas y Pendientes con dirección visual y HeroUI (@
       expect(html).toContain(WORKSPACE_EMPTY_MESSAGES[view]);
       expect(html).toContain("var(--bento-card-bg)");
       expect(html).toContain('data-slot="button"');
+      expect(html).toContain("/marca/hubi-origen-claro-256.webp");
+      expect(html).toContain("/marca/hubi-origen-oscuro-256.webp");
+    }
+    const symbolHtml = renderToStaticMarkup(createElement(HublySymbol, { size: 28 }));
+    const wordmarkHtml = renderToStaticMarkup(createElement(HublyWordmark, { height: 28 }));
+    expect(symbolHtml).toContain('role="img"');
+    expect(symbolHtml).toContain('aria-label="Hubly"');
+    expect(symbolHtml).toContain("var(--accent-primary)");
+    expect(renderToStaticMarkup(createElement(HublySymbol, { decorative: true }))).toContain('aria-hidden="true"');
+    expect(wordmarkHtml).not.toContain("<text");
+    const hexPattern = new RegExp(`${String.fromCharCode(35)}[0-9a-fA-F]{3,8}\\b`);
+    expect(symbolHtml).not.toMatch(hexPattern);
+    expect(wordmarkHtml).not.toMatch(hexPattern);
+    const hubiDeco = renderToStaticMarkup(createElement(Hubi, { acabado: "volumen", pose: "laptop", tamano: 96, decorativo: true }));
+    expect(hubiDeco).toContain('aria-hidden="true"');
+    expect(hubiDeco).toContain('width="96"');
+    expect(hubiDeco).toContain('height="96"');
+    expect(hubiDeco).toContain("hubly-hubi-light");
+    expect(hubiDeco).toContain("hubly-hubi-dark");
+    if (false) {
     }
   });
 });

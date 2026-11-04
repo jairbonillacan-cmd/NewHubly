@@ -1,4 +1,7 @@
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { resolve } from "node:path";
 import { NextRequest } from "next/server";
+import manifest from "../src/app/manifest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -146,5 +149,29 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
     expect(signInHtml).toContain("Entrar a Hoy");
     expect(renderToStaticMarkup(<LoginScreen initialMode="signup" />)).toContain("Crear cuenta y espacio personal");
     expect(renderToStaticMarkup(<LoginScreen initialMode="magic" />)).toContain("Enviar enlace mágico");
+    expect(signInHtml).toContain("/marca/hubi-volumen-claro-laptop-512.webp");
+    const m = manifest();
+    expect(m.icons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ src: "/marca/icon-192.png", sizes: "192x192" }),
+        expect.objectContaining({ src: "/marca/icon-512.png", sizes: "512x512", purpose: "any" }),
+        expect.objectContaining({ src: "/marca/icon-maskable-512.png", sizes: "512x512", purpose: "maskable" }),
+      ]),
+    );
+    const repoRoot = resolve(process.cwd(), "../..");
+    for (const rel of [
+      "apps/web/src/app/icon.png", "apps/web/src/app/favicon.ico", "apps/web/src/app/apple-icon.png",
+      "apps/web/public/marca/icon-192.png", "apps/web/public/marca/icon-512.png", "apps/web/public/marca/icon-maskable-512.png",
+      "docs/marca/originales/secuencia-h.png", "docs/marca/originales/origen-claro.png", "docs/marca/originales/origen-oscuro-icono.png",
+    ]) {
+      expect(existsSync(resolve(repoRoot, rel)), `Falta ${rel}`).toBe(true);
+    }
+    for (const w256 of ["origen-claro", "origen-oscuro", "origen-claro-laptop", "origen-oscuro-laptop", "volumen-claro", "volumen-oscuro"]) {
+      expect(statSync(resolve(repoRoot, `apps/web/public/marca/hubi-${w256}-256.webp`)).size).toBeLessThan(60 * 1024);
+    }
+    for (const w512 of ["volumen-claro-laptop", "volumen-oscuro-laptop"]) {
+      expect(statSync(resolve(repoRoot, `apps/web/public/marca/hubi-${w512}-512.webp`)).size).toBeLessThan(150 * 1024);
+    }
+    expect(readFileSync(resolve(repoRoot, "docs/marca/README.md"), "utf8")).not.toContain("C:\\");
   });
 });

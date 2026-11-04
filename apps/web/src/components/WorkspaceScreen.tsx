@@ -1,7 +1,7 @@
 "use client";
 import { createTodoSchema } from "@hubly/contracts";
 import {
-  NoteEditorCard,
+  HublySymbol, NoteEditorCard,
   type NoteSaveStatus,
   QuickCaptureBar,
   type QuickCapturePayload,
@@ -138,7 +138,7 @@ export function WorkspaceScreen({
       <div className="grid grid-cols-1 lg:grid-cols-12" style={{ maxWidth: tokens.layout.workspaceWidth, marginInline: "auto", gap: tokens.space[6] }}>
         <div className="lg:col-span-7 min-w-0" style={{ display: "flex", flexDirection: "column", gap: tokens.space[5] }}>
           <header style={{ display: "flex", flexDirection: "column", gap: tokens.space[3] }}>
-            <h1 style={{ margin: tokens.space[0], fontSize: tokens.font.size["2xl"], fontWeight: tokens.font.weight.semibold }}>Hoy — ¿Qué sigue?</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: tokens.space[3] }}><HublySymbol size={22} ariaLabel="Hubly" /><h1 style={{ margin: tokens.space[0], fontSize: tokens.font.size["2xl"], fontWeight: tokens.font.weight.semibold }}>Hoy — ¿Qué sigue?</h1></div>
             <ViewSelector activeView={view} counts={counts} onSelectView={setView} />
           </header>
 

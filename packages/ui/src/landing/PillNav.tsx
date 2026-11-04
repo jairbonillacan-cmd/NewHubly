@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { HublySymbol, HublyWordmark } from "../components/brand/HublyLogo";
 import { tokens } from "../tokens";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -28,9 +29,13 @@ export function PillNav({
   return (
     <header role="banner" className="hubly-pill-header" style={{ position: "absolute", top: tokens.space[6], left: tokens.space[0], right: tokens.space[0], zIndex: 20, display: "flex", justifyContent: "center", paddingInline: tokens.space[4], width: "100%", boxSizing: "border-box" }}>
       <nav aria-label="Navegación principal de Hubly" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.space[3], width: "100%", maxWidth: tokens.layout.heroWidth, flexWrap: "wrap", boxSizing: "border-box" }}>
-        <a href={brandHref} style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], paddingBlock: tokens.space[2], paddingInline: tokens.space[4], backgroundColor: tokens.pill.glassBg, border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`, borderRadius: tokens.radius.full, color: tokens.pill.glassText, textDecoration: "none", backdropFilter: `blur(${tokens.glass.blurMobile})`, WebkitBackdropFilter: `blur(${tokens.glass.blurMobile})` }}>
-          <span style={{ width: tokens.space[3], height: tokens.space[3], borderRadius: tokens.radius.full, backgroundColor: tokens.color.accentPrimary }} aria-hidden="true" />
-          <strong style={{ fontSize: tokens.font.size.base, fontWeight: tokens.font.weight.bold, letterSpacing: tokens.font.tracking.tight }}>{brandName}</strong>
+        <a href={brandHref} aria-label={brandName} style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], paddingBlock: tokens.space[2], paddingInline: tokens.space[4], backgroundColor: tokens.pill.glassBg, border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`, borderRadius: tokens.radius.full, color: tokens.pill.glassText, textDecoration: "none", backdropFilter: `blur(${tokens.glass.blurMobile})`, WebkitBackdropFilter: `blur(${tokens.glass.blurMobile})` }}>
+          <span className="hubly-brand-wordmark">
+            <HublyWordmark height={20} ariaLabel={brandName} />
+          </span>
+          <span className="hubly-brand-symbol">
+            <HublySymbol size={18} decorative />
+          </span>
         </a>
 
         <ul className="hubly-pill-links" style={{ display: "inline-flex", alignItems: "center", listStyle: "none", margin: tokens.space[0], padding: tokens.space[1], gap: tokens.space[1], backgroundColor: tokens.pill.glassBg, border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`, borderRadius: tokens.radius.full, backdropFilter: `blur(${tokens.glass.blurMobile})`, WebkitBackdropFilter: `blur(${tokens.glass.blurMobile})`, flexWrap: "wrap" }}>
