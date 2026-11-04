@@ -29,9 +29,9 @@ export function TodoItemCard({
           <Checkbox
             isSelected={isDone} onChange={() => onToggle?.(id)}
             aria-label={`Marcar "${title}" como ${isDone ? "pendiente" : "hecho"}`}
-            style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], flex: "1 1 auto" }}
+            style={{ display: "inline-flex", flexDirection: "row", alignItems: "center", gap: tokens.space[2], flex: "1 1 auto" }}
           >
-            <Checkbox.Content style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2], cursor: "pointer" }}>
+            <Checkbox.Content style={{ display: "inline-flex", flexDirection: "row", alignItems: "center", gap: tokens.space[2], cursor: "pointer" }}>
               <Checkbox.Control style={{ border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.sm, backgroundColor: isDone ? tokens.color.accentPrimary : tokens.bento.surfaceBase, color: tokens.color.textOnAccent }}>
                 <Checkbox.Indicator />
               </Checkbox.Control>

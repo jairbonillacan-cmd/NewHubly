@@ -31,7 +31,7 @@ export function NoteEditorCard({
 
   return (
     <Card id={`nota-${id}`} aria-label={`Editor de nota ${title || "sin título"}`} style={{ display: "flex", flexDirection: "column", gap: tokens.space[3], padding: tokens.space[5], backgroundColor: tokens.bento.cardBg, border: `${tokens.border.thin} solid ${tokens.bento.cardBorder}`, borderRadius: tokens.radius.xl, boxShadow: tokens.bento.cardShadow }}>
-      <Card.Header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.space[2], flexWrap: "wrap" }}>
+      <Card.Header style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: tokens.space[2], flexWrap: "wrap" }}>
         <div role="status" aria-live="polite" style={{ display: "inline-flex", alignItems: "center", gap: tokens.space[2] }}>
           <Chip size="sm" variant="soft" style={{ backgroundColor: statusMeta.bg, color: statusMeta.color, paddingInline: tokens.space[3], paddingBlock: tokens.space[1], borderRadius: tokens.radius.full, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold }}>
             {statusMeta.text}

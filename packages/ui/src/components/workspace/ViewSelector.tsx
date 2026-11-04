@@ -15,10 +15,19 @@ export interface ViewSelectorProps {
 
 export function ViewSelector({ activeView, counts = {}, onSelectView }: ViewSelectorProps) {
   return (
-    <Tabs selectedKey={activeView} onSelectionChange={(key) => onSelectView?.(String(key) as TodoViewKey)} aria-label="Vistas de pendientes">
+    <Tabs
+      selectedKey={activeView}
+      onSelectionChange={(key) => onSelectView?.(String(key) as TodoViewKey)}
+      aria-label="Vistas de pendientes"
+      style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}
+    >
       <Tabs.List
         aria-label="Vistas de pendientes"
-        style={{ display: "inline-flex", flexWrap: "wrap", gap: tokens.space[2], padding: tokens.space[1], backgroundColor: tokens.pill.glassBg, border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.full }}
+        style={{
+          display: "inline-flex", flexDirection: "row", flexWrap: "wrap", maxWidth: "100%", boxSizing: "border-box",
+          gap: tokens.space[2], padding: tokens.space[1], backgroundColor: tokens.pill.glassBg,
+          border: `${tokens.border.thin} solid ${tokens.color.borderControl}`, borderRadius: tokens.radius.xl,
+        }}
       >
         {TODO_VIEW_ITEMS.map((item) => {
           const isSelected = activeView === item.key;
@@ -27,7 +36,8 @@ export function ViewSelector({ activeView, counts = {}, onSelectView }: ViewSele
             <Tabs.Tab
               key={item.key} id={item.key}
               style={{
-                display: "inline-flex", alignItems: "center", gap: tokens.space[2], paddingBlock: tokens.space[2], paddingInline: tokens.space[4],
+                display: "inline-flex", flexDirection: "row", alignItems: "center", width: "auto", minWidth: 0, height: "auto", flex: "0 0 auto", whiteSpace: "nowrap",
+                gap: tokens.space[2], paddingBlock: tokens.space[2], paddingInline: tokens.space[4],
                 borderRadius: tokens.radius.full, border: `${tokens.border.thin} solid ${isSelected ? tokens.pill.activeBg : tokens.color.borderControl}`,
                 backgroundColor: isSelected ? tokens.pill.activeBg : tokens.bento.cardBg,
                 color: isSelected ? tokens.pill.activeText : tokens.color.textPrimary,

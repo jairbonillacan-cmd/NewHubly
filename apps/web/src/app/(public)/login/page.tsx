@@ -8,6 +8,11 @@ export interface LoginScreenProps { initialMode?: AuthMode; onAuthenticated?: (w
 
 const ctrlBorder = `${tokens.border.thin} solid ${tokens.color.borderControl}`;
 const inputStyle = { border: ctrlBorder, borderRadius: tokens.radius.md, padding: tokens.space[3], backgroundColor: tokens.color.surfaceCanvas, color: tokens.color.textPrimary, fontSize: tokens.font.size.sm } as const;
+const authTabs: ReadonlyArray<{ id: AuthMode; label: string }> = [
+  { id: "signin", label: "Contraseña" },
+  { id: "signup", label: "Crear cuenta" },
+  { id: "magic", label: "Enlace mágico" },
+];
 
 export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginScreenProps) {
   const [mode, setMode] = useState<AuthMode>(initialMode);
@@ -41,19 +46,34 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
       <div style={{ width: "100%", maxWidth: tokens.layout.readingWidth, display: "flex", flexDirection: "column", gap: tokens.space[6] }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: tokens.space[4] }}>
           <div>
-            <h1 style={{ margin: tokens.space[0], fontSize: tokens.font.size["2xl"], fontWeight: tokens.font.weight.bold, color: tokens.glass.textPrimary }}>Acceso a Hubly</h1>
-            <p style={{ margin: tokens.space[0], fontSize: tokens.font.size.sm, color: tokens.glass.textSecondary }}>¿Qué sigue y quién lo tiene? Entra a tu espacio personal.</p>
+            <h1 style={{ margin: tokens.space[0], fontSize: tokens.font.size["2xl"], fontWeight: tokens.font.weight.bold, color: tokens.color.surfaceBrandContrast }}>Acceso a Hubly</h1>
+            <p style={{ margin: tokens.space[0], fontSize: tokens.font.size.sm, color: tokens.color.surfaceBrandMuted }}>¿Qué sigue y quién lo tiene? Entra a tu espacio personal.</p>
           </div>
           <ThemeToggle />
         </header>
         <Card aria-label="Formulario de autenticación" style={{ backgroundColor: tokens.glass.bg, border: `${tokens.border.thin} solid ${tokens.glass.border}`, boxShadow: tokens.glass.shadow, borderRadius: tokens.radius.xl, padding: tokens.space[6], display: "flex", flexDirection: "column", gap: tokens.space[5] }}>
           <Card.Content style={{ display: "flex", flexDirection: "column", gap: tokens.space[4] }}>
-            <Tabs selectedKey={mode} onSelectionChange={(key) => { setMode(String(key) as AuthMode); setErrorMessage(null); setStatusMessage(null); }}>
+            <Tabs selectedKey={mode} onSelectionChange={(key) => { setMode(String(key) as AuthMode); setErrorMessage(null); setStatusMessage(null); }} style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
               <Tabs.ListContainer>
-                <Tabs.List aria-label="Método de acceso" style={{ display: "flex", gap: tokens.space[2], padding: tokens.space[1], backgroundColor: tokens.pill.glassBg, border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`, borderRadius: tokens.radius.full }}>
-                  <Tabs.Tab id="signin" style={{ borderRadius: tokens.radius.full, paddingBlock: tokens.space[2], paddingInline: tokens.space[4] }}>Contraseña</Tabs.Tab>
-                  <Tabs.Tab id="signup" style={{ borderRadius: tokens.radius.full, paddingBlock: tokens.space[2], paddingInline: tokens.space[4] }}>Crear cuenta</Tabs.Tab>
-                  <Tabs.Tab id="magic" style={{ borderRadius: tokens.radius.full, paddingBlock: tokens.space[2], paddingInline: tokens.space[4] }}>Enlace mágico</Tabs.Tab>
+                <Tabs.List aria-label="Método de acceso" style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", maxWidth: "100%", boxSizing: "border-box", gap: tokens.space[2], padding: tokens.space[1], backgroundColor: tokens.pill.glassBg, border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`, borderRadius: tokens.radius.full }}>
+                  {authTabs.map((tab) => {
+                    const isSelected = mode === tab.id;
+                    return (
+                      <Tabs.Tab
+                        key={tab.id}
+                        id={tab.id}
+                        style={{
+                          width: "auto", minWidth: 0, height: "auto", flex: "1 1 auto",
+                          borderRadius: tokens.radius.full, padding: `${tokens.space["2"]} ${tokens.space["3"]}`,
+                          backgroundColor: isSelected ? tokens.pill.activeBg : "transparent",
+                          color: isSelected ? tokens.pill.activeText : tokens.pill.glassText,
+                          fontWeight: isSelected ? tokens.font.weight.semibold : tokens.font.weight.medium,
+                        }}
+                      >
+                        {tab.label}
+                      </Tabs.Tab>
+                    );
+                  })}
                 </Tabs.List>
               </Tabs.ListContainer>
               <Tabs.Panel id={mode}>
