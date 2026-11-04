@@ -11,6 +11,7 @@ import {
   exportWorkspaceAction, pinNoteAction, saveNoteAction, toggleTodoAction,
   type WorkspaceNote, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
+import { signOutAction } from "../actions/auth";
 
 export type ScreenStatus = "loading" | "unauthenticated" | "error" | "ready";
 export type AutosaveState = NoteSaveStatus;
@@ -18,13 +19,14 @@ export interface ActionErrorState { message: string; retry: () => Promise<void>;
 export interface WorkspaceScreenProps {
   initialStatus?: ScreenStatus; errorMessage?: string; todayDate?: string; initialTimezone?: string; initialView?: WorkspaceTodoView;
   initialTodos?: WorkspaceTodo[]; initialNotes?: WorkspaceNote[]; initialActionError?: ActionErrorState | null;
-  onRetry?: () => void; onLoginRedirect?: () => void; onTimezoneRefresh?: () => void;
+  onRetry?: () => void; onLoginRedirect?: () => void; onTimezoneRefresh?: () => void; onSignOut?: () => Promise<void>;
   onSaveNote?: (note: WorkspaceNote, nextTitle: string, nextContent: string) => Promise<WorkspaceNote>;
   onCreateTodo?: (input: { title: string; priority: "low" | "medium" | "high"; dueDate: string | null; noteId: string | null }) => Promise<WorkspaceTodo>;
   onToggleTodo?: (todoId: string) => Promise<WorkspaceTodo | void>;
   onExport?: (format: "json" | "md") => Promise<{ filename: string; content: string } | void>;
 }
 
+export const TZ_REFRESH_STORAGE_KEY = "hubly_tz_refresh_attempted";
 const ctrlBorder = `${tokens.border.thin} solid ${tokens.color.borderControl}`, cardBorder = `${tokens.border.thin} solid ${tokens.bento.cardBorder}`;
 const btnStyle = { border: ctrlBorder, borderRadius: tokens.radius.full, paddingBlock: tokens.space[1], paddingInline: tokens.space[3], backgroundColor: tokens.bento.cardBg, color: tokens.color.textPrimary, fontSize: tokens.font.size.xs, fontWeight: tokens.font.weight.semibold, cursor: "pointer" } as const;
 const inputStyle = { border: ctrlBorder, borderRadius: tokens.radius.md, paddingBlock: tokens.space[2], paddingInline: tokens.space[3], backgroundColor: tokens.bento.cardBg, color: tokens.color.textPrimary, fontSize: tokens.font.size.sm } as const;
@@ -42,6 +44,22 @@ export function classifyTodoItemForView(t: WorkspaceTodo, refDate: string): Work
   return t.dueDate && t.dueDate > refDate ? "upcoming" : "no_date";
 }
 
+export function syncTimeZoneAndMaybeRefresh(
+  browserTz: string | undefined,
+  initialTimezone: string | undefined,
+  storage: Pick<Storage, "getItem" | "setItem"> | undefined,
+  onRefresh: () => void,
+  setCookie?: (cookie: string) => void,
+): boolean {
+  if (!browserTz) return false;
+  setCookie?.(`hubly_tz=${encodeURIComponent(browserTz)}; path=/; max-age=31536000; SameSite=Lax`);
+  if (!initialTimezone || initialTimezone === browserTz) return false;
+  if (storage?.getItem(TZ_REFRESH_STORAGE_KEY) === browserTz) return false;
+  storage?.setItem(TZ_REFRESH_STORAGE_KEY, browserTz);
+  onRefresh();
+  return true;
+}
+
 export async function executeProtectedAction(
   fallbackMsg: string, fn: () => Promise<void>, onSessionExpired: () => void, onActionError: (state: ActionErrorState | null) => void,
 ): Promise<void> {
@@ -56,7 +74,7 @@ export async function executeProtectedAction(
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialView = "today", initialTodos = [], initialNotes = [], initialActionError = null,
-  onRetry, onLoginRedirect, onTimezoneRefresh, onSaveNote, onCreateTodo, onToggleTodo, onExport,
+  onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [view, setView] = useState<WorkspaceTodoView>(initialView);
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
@@ -76,9 +94,12 @@ export function WorkspaceScreen({
 
   useEffect(() => {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz && typeof document !== "undefined") {
-      document.cookie = `hubly_tz=${encodeURIComponent(tz)}; path=/; max-age=31536000; SameSite=Lax`;
-      if (initialTimezone && initialTimezone !== tz) { if (onTimezoneRefresh) onTimezoneRefresh(); else window.location.reload(); }
+    if (typeof document !== "undefined" && typeof window !== "undefined") {
+      syncTimeZoneAndMaybeRefresh(
+        tz, initialTimezone, window.sessionStorage,
+        () => { if (onTimezoneRefresh) onTimezoneRefresh(); else window.location.reload(); },
+        (c) => { document.cookie = c; },
+      );
     }
     const onKeyDown = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -181,6 +202,12 @@ export function WorkspaceScreen({
     }
   });
 
+  const handleSignOut = () => runSafe("No se pudo cerrar la sesión.", async () => {
+    if (onSignOut) await onSignOut();
+    else await signOutAction();
+    redirectLogin();
+  });
+
   return (
     <main style={{ minHeight: tokens.layout.viewportHeight, backgroundColor: tokens.bento.surfaceBase, color: tokens.color.textPrimary }}>
       <header style={{ backgroundColor: tokens.color.surfaceBrand, color: tokens.color.surfaceBrandContrast, paddingBlock: tokens.space[6], paddingInline: tokens.space[4], borderBlockEnd: `${tokens.border.thin} solid ${tokens.color.borderDefault}` }}>
@@ -194,6 +221,7 @@ export function WorkspaceScreen({
               <Button type="button" variant="secondary" size="sm" onPress={() => void handleDownloadExport("json")} style={btnStyle}>Exportar JSON</Button>
               <Button type="button" variant="secondary" size="sm" onPress={() => void handleDownloadExport("md")} style={btnStyle}>Exportar Markdown</Button>
               <ThemeToggle />
+              <Button type="button" variant="ghost" size="sm" onPress={() => void handleSignOut()} style={btnStyle}>Cerrar sesión</Button>
             </div>
           </div>
           <ViewSelector activeView={view} counts={counts} onSelectView={setView} />
@@ -204,7 +232,7 @@ export function WorkspaceScreen({
         {actionError && (
           <div role="alert" className="lg:col-span-12" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.space[3], padding: tokens.space[4], backgroundColor: tokens.color.statusDangerBg, color: tokens.color.statusDangerText, border: ctrlBorder, borderRadius: tokens.radius.lg }}>
             <span>{actionError.message}</span>
-            <Button type="button" variant="secondary" size="sm" onPress={() => void actionError.retry()} onClick={() => void actionError.retry()} style={btnStyle}>Reintentar</Button>
+            <Button type="button" variant="secondary" size="sm" onPress={() => { void actionError.retry(); }} style={btnStyle}>Reintentar</Button>
           </div>
         )}
         <div className="lg:col-span-7 min-w-0" style={{ display: "flex", flexDirection: "column", gap: tokens.space[5] }}>

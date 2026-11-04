@@ -4,8 +4,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 import { createTodoAction, exportWorkspaceAction, loadWorkspaceDashboardAction, saveNoteAction } from "../src/actions";
+import { signOutAction } from "../src/actions/auth";
 import { HoyPage } from "../src/app/(workspace)/hoy/page";
-import { type ActionErrorState, WorkspaceScreen, classifyTodoItemForView, executeProtectedAction, shouldTriggerQuickCaptureShortcut } from "../src/components/WorkspaceScreen";
+import {
+  TZ_REFRESH_STORAGE_KEY, type ActionErrorState, WorkspaceScreen, classifyTodoItemForView,
+  executeProtectedAction, shouldTriggerQuickCaptureShortcut, syncTimeZoneAndMaybeRefresh,
+} from "../src/components/WorkspaceScreen";
 import { createSystemClock, isValidIanaTimeZone, setClockNowForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests, setWorkspaceDbForTests } from "../src/server/composition";
 
 describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores recuperables y HeroUI (#27 y #46)", () => {
@@ -40,7 +44,7 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     return getUserSpy;
   };
 
-  it("renderiza los 4 estados obligatorios de pantalla terminada (carga, sin sesión, error y listo/vacío) y conteos HeroUI", () => {
+  it("renderiza los 4 estados obligatorios de pantalla terminada (carga, sin sesión, error y listo/vacío), conteos HeroUI y botón Cerrar sesión", async () => {
     expect(renderToStaticMarkup(<WorkspaceScreen initialStatus="loading" />)).toContain("Cargando tu espacio de trabajo…");
     expect(renderToStaticMarkup(<WorkspaceScreen initialStatus="unauthenticated" />)).toContain("Volver a iniciar sesión");
     expect(renderToStaticMarkup(<WorkspaceScreen initialStatus="error" errorMessage="Fallo de red" />)).toContain("Reintentar");
@@ -48,10 +52,17 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     expect(emptyHtml).toContain("No tienes pendientes para hoy. Escribe arriba para capturar el primero o revisa Sin fecha.");
     expect(emptyHtml).toContain("Exportar JSON");
     expect(emptyHtml).toContain("Exportar Markdown");
+    expect(emptyHtml).toContain("Cerrar sesión");
     expect(emptyHtml).toContain("Nueva nota");
+
+    const signOutSpy = vi.fn().mockResolvedValue({ error: null });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSupabaseServerClientFactoryForTests(() => ({ auth: { signOut: signOutSpy } }) as any);
+    expect(await signOutAction()).toEqual({ ok: true });
+    expect(signOutSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("calcula Hoy en America/Mexico_City a las 19:00 local (2026-11-04T01:00:00Z = 2026-11-03 local) sin marcar como vencido", async () => {
+  it("calcula Hoy en America/Mexico_City a las 19:00 local (2026-11-04T01:00:00Z = 2026-11-03 local) y limita recarga por zona horaria a un intento por sesión", async () => {
     expect(isValidIanaTimeZone("America/Mexico_City")).toBe(true);
     expect(isValidIanaTimeZone("Zona/Invalida")).toBe(false);
     const instant = new Date("2026-11-04T01:00:00.000Z");
@@ -71,18 +82,28 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     expect(html).not.toContain("Vencido · 2026-11-03");
     expect(html).toContain("Nota de origen: Estrategia Q4");
     expect(html).toContain("Revisar presupuesto · Pendiente");
+
+    const store = new Map<string, string>();
+    const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => { store.set(k, v); } };
+    const onRefresh = vi.fn();
+    expect(syncTimeZoneAndMaybeRefresh("Europe/Madrid", "America/Mexico_City", storage, onRefresh)).toBe(true);
+    expect(store.get(TZ_REFRESH_STORAGE_KEY)).toBe("Europe/Madrid");
+    expect(syncTimeZoneAndMaybeRefresh("Europe/Madrid", "America/Mexico_City", storage, onRefresh)).toBe(false);
+    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
-  it("muestra aviso con botón Reintentar cuando falla una acción, reintenta al pulsarlo y redirige a /login ante Sesión caducada", async () => {
-    let attempts = 0, currentError: ActionErrorState | null = null;
+  it("muestra aviso con botón Reintentar (sin onClick duplicado), re-ejecuta la acción una sola vez al pulsarlo y redirige a /login ante Sesión caducada", async () => {
+    let currentError: ActionErrorState | null = null;
     const onExpired = vi.fn();
-    await executeProtectedAction("No se pudo actualizar.", async () => { attempts += 1; if (attempts === 1) throw new Error("Fallo temporal al marcar pendiente"); }, onExpired, (st) => { currentError = st; });
+    const flakyAction = vi.fn().mockRejectedValueOnce(new Error("Fallo temporal al marcar pendiente")).mockResolvedValueOnce(undefined);
+    await executeProtectedAction("No se pudo actualizar.", flakyAction, onExpired, (st) => { currentError = st; });
     expect(onExpired).not.toHaveBeenCalled();
+    expect(flakyAction).toHaveBeenCalledTimes(1);
     const alertHtml = renderToStaticMarkup(<WorkspaceScreen todayDate="2026-11-03" initialActionError={currentError} />);
     expect(alertHtml).toContain("Fallo temporal al marcar pendiente");
     expect(alertHtml).toContain("Reintentar");
     await currentError!.retry();
-    expect(attempts).toBe(2);
+    expect(flakyAction).toHaveBeenCalledTimes(2);
     expect(currentError).toBeNull();
     await executeProtectedAction("Error", async () => { throw new Error("Sesión caducada"); }, onExpired, (st) => { currentError = st; });
     expect(onExpired).toHaveBeenCalledTimes(1);
