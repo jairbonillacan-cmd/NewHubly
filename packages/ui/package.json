@@ -8,7 +8,9 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build -o storybook-static"
   },
   "dependencies": {
     "@heroui/react": "3.2.7",
@@ -23,13 +25,15 @@
   },
   "devDependencies": {
     "@hubly/config": "workspace:*",
+    "@storybook/react-vite": "10.6.5",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "postcss": "8.5.32",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "storybook": "10.6.5"
   },
   "peerDependencies": {
     "react": ">=19.0.0",

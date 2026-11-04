@@ -1,6 +1,8 @@
 packages:
   - apps/*
   - packages/*
-
+allowBuilds:
+  esbuild: false
 overrides:
-  minimatch: 11.0.3
+  glob: "14.0.2"
+  minimatch: "11.0.3"
