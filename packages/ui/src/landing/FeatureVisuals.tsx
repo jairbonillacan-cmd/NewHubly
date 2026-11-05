@@ -1,9 +1,11 @@
 "use client";
 
+import { Button, Checkbox, ToggleButton } from "@heroui/react";
 import { useState } from "react";
+import { chipClass } from "../heroui-classes";
 import { Reveal } from "./Reveal";
 
-// Ilustraciones de las tarjetas de producto (#85). Son ejemplos que se pueden tocar; no guardan nada.
+// Ilustraciones de las tarjetas de producto (#85), con componentes de HeroUI. Son ejemplos que se pueden tocar; no guardan nada.
 
 const MINI = "rounded-xl border border-(--border-default) bg-(--surface-raised) shadow-(--glass-shadow)";
 const HINT = "text-xs text-(--text-muted)";
@@ -21,16 +23,15 @@ export function TodayVisual() {
       <ul className={`m-0 w-72 list-none p-0 py-2 lg:w-90 ${MINI}`}>
         {TODAY_ITEMS.map((item, index) => (
           <li key={item.label}>
-            <label className="flex cursor-pointer items-center gap-3 px-4 py-2 text-sm hover:bg-(--surface-subtle)">
-              <input
-                type="checkbox"
-                checked={done[index]}
-                onChange={() => setDone((list) => list.map((value, i) => (i === index ? !value : value)))}
-                className="size-4 shrink-0 cursor-pointer appearance-none rounded-md border-2 border-(--border-control) transition-colors checked:border-(--accent-primary) checked:bg-(--accent-primary)"
-              />
-              <span className={`grow transition-colors ${done[index] ? "text-(--text-muted) line-through" : "text-(--text-primary)"}`}>{item.label}</span>
-              <span className={`text-xs ${item.overdue && !done[index] ? "text-(--status-danger-text)" : "text-(--text-muted)"}`}>{item.date}</span>
-            </label>
+            <Checkbox isSelected={done[index] ?? false} onChange={() => setDone((list) => list.map((value, i) => (i === index ? !value : value)))} className="w-full">
+              <Checkbox.Content className="flex w-full cursor-pointer flex-row items-center gap-3 px-4 py-2 text-left text-sm hover:bg-(--surface-subtle)">
+                <Checkbox.Control className="size-4 shrink-0 rounded-md">
+                  <Checkbox.Indicator />
+                </Checkbox.Control>
+                <span className={`grow transition-colors ${done[index] ? "text-(--text-muted) line-through" : "text-(--text-primary)"}`}>{item.label}</span>
+                <span className={`text-xs ${item.overdue && !done[index] ? "text-(--status-danger-text)" : "text-(--text-muted)"}`}>{item.date}</span>
+              </Checkbox.Content>
+            </Checkbox>
           </li>
         ))}
       </ul>
@@ -53,17 +54,12 @@ export function TeamVisual() {
     <div className="flex flex-col items-center gap-2">
       <ul className={`m-0 w-72 list-none p-0 py-2 lg:w-90 ${MINI}`}>
         {TEAM.map((person, index) => (
-          <li key={person.initials} className="flex items-center gap-3 px-4 py-2">
+          <li key={person.initials} className="flex items-center gap-3 px-4 py-1.5">
             <span aria-hidden="true" className={`flex size-8 items-center justify-center rounded-full text-xs font-bold text-(--surface-raised) ${person.tone}`}>{person.initials}</span>
             <span className="grow text-sm font-medium text-(--text-primary)">{person.name}</span>
-            <button
-              type="button"
-              onClick={() => cycle(index)}
-              aria-label={`Rol de ${person.name}: ${ROLES[roles[index] ?? 0]}. Cambiar rol`}
-              className="cursor-pointer rounded-full border-0 bg-(--surface-subtle) px-2.5 py-1 text-xs font-semibold text-(--text-secondary) transition-colors hover:bg-(--accent-primary-subtle) hover:text-(--accent-primary)"
-            >
+            <Button size="sm" variant="tertiary" onPress={() => cycle(index)} aria-label={`Rol de ${person.name}: ${ROLES[roles[index] ?? 0]}. Cambiar rol`}>
               <span key={roles[index]} className="hubly-pop inline-block">{ROLES[roles[index] ?? 0]}</span>
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
@@ -76,7 +72,6 @@ const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie"] as const;
 
 export function CalendarVisual() {
   const [slots, setSlots] = useState([true, false, false, true, false, false, true, false, false, false]);
-  const toggle = (index: number) => setSlots((list) => list.map((value, i) => (i === index ? !value : value)));
   const planned = slots.filter(Boolean).length;
   return (
     <div className="flex flex-col items-center gap-2">
@@ -86,15 +81,14 @@ export function CalendarVisual() {
             <span className="text-xs font-semibold text-(--text-muted)">{day}</span>
             {[0, 1].map((row) => {
               const index = column * 2 + row;
-              const on = slots[index];
+              const on = slots[index] ?? false;
               return (
-                <button
+                <ToggleButton
                   key={row}
-                  type="button"
-                  aria-pressed={on}
+                  isSelected={on}
+                  onChange={(next) => setSlots((list) => list.map((value, i) => (i === index ? next : value)))}
                   aria-label={`${day}, espacio ${row + 1}: ${on ? "con pieza" : "libre"}`}
-                  onClick={() => toggle(index)}
-                  className={`h-10 cursor-pointer rounded-lg border-0 transition-all hover:scale-105 lg:h-13 ${on ? "bg-(--accent-primary)" : "bg-(--surface-subtle) hover:bg-(--accent-primary-subtle)"}`}
+                  className="h-10 w-full min-w-0 rounded-lg border-0 bg-(--surface-subtle) p-0 transition-all hover:scale-105 data-[selected]:bg-(--accent-primary) lg:h-13"
                 />
               );
             })}
@@ -112,26 +106,18 @@ export function ApprovalVisual() {
   const [decision, setDecision] = useState<Decision>("pendiente");
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className={`flex w-52 flex-col gap-2.5 rounded-3xl p-3 ${MINI}`}>
+      <div className={`flex w-56 flex-col gap-2.5 rounded-3xl p-3 ${MINI}`}>
         <span aria-hidden="true" className="h-24 rounded-xl bg-(--tint-lilac) lg:h-28" />
         <span className="text-sm font-semibold text-(--text-primary)">Post del 12 de nov.</span>
         {decision === "pendiente" ? (
           <span className="flex gap-1.5">
-            <button type="button" onClick={() => setDecision("aprobado")} className="flex h-9 grow cursor-pointer items-center justify-center rounded-full border-0 bg-(--accent-primary) text-xs font-semibold text-(--text-on-accent) transition-transform active:scale-95">
-              Aprobar
-            </button>
-            <button type="button" onClick={() => setDecision("cambios")} className="flex h-9 grow cursor-pointer items-center justify-center rounded-full border border-(--border-control) bg-transparent text-xs font-semibold text-(--text-primary) transition-transform active:scale-95">
-              Cambios
-            </button>
+            <Button size="sm" variant="primary" fullWidth onPress={() => setDecision("aprobado")}>Aprobar</Button>
+            <Button size="sm" variant="outline" fullWidth onPress={() => setDecision("cambios")}>Cambios</Button>
           </span>
         ) : (
-          <button
-            type="button"
-            onClick={() => setDecision("pendiente")}
-            className={`hubly-pop flex h-9 cursor-pointer items-center justify-center rounded-full border-0 text-xs font-semibold ${decision === "aprobado" ? "bg-(--status-success-bg) text-(--status-success-text)" : "bg-(--status-warning-bg) text-(--status-warning-text)"}`}
-          >
+          <Button size="sm" variant={decision === "aprobado" ? "secondary" : "danger-soft"} fullWidth onPress={() => setDecision("pendiente")} className="hubly-pop">
             {decision === "aprobado" ? "Aprobado ✓ · deshacer" : "Cambios pedidos · deshacer"}
-          </button>
+          </Button>
         )}
       </div>
       <span className={HINT} aria-live="polite">{decision === "pendiente" ? "Así lo vería tu cliente" : "Te avisamos al instante"}</span>
@@ -147,10 +133,10 @@ const POSTS: { title: string; time: string; state: PostState }[] = [
   { title: "Historia de promo", time: "12:15", state: "reintentando" },
 ];
 
-const POST_STYLE: Record<PostState, { dot: string; text: string; label: (time: string) => string }> = {
-  publicado: { dot: "bg-(--status-success-text)", text: "text-(--text-muted)", label: (time) => `Publicado · ${time}` },
-  programado: { dot: "bg-(--accent-primary)", text: "text-(--text-muted)", label: (time) => `Programado · ${time}` },
-  reintentando: { dot: "bg-(--status-warning-text)", text: "text-(--status-warning-text)", label: () => "Falló · reintentar" },
+const POST_DOT: Record<PostState, string> = {
+  publicado: "bg-(--status-success-text)",
+  programado: "bg-(--accent-primary)",
+  reintentando: "bg-(--status-warning-text)",
 };
 
 export function PublishVisual() {
@@ -158,20 +144,19 @@ export function PublishVisual() {
   const publish = (index: number) => setStates((list) => list.map((state, i) => (i === index ? "publicado" : state)));
   return (
     <div className="flex flex-col items-center gap-2">
-      <ul className="m-0 flex w-72 list-none flex-col gap-2.5 p-0 lg:w-90">
+      <ul className="m-0 flex w-72 list-none flex-col gap-2 p-0 lg:w-90">
         {POSTS.map((post, index) => {
           const state = states[index] ?? post.state;
-          const style = POST_STYLE[state];
           return (
-            <li key={post.title} className={`flex items-center gap-3 px-4 py-3 ${MINI}`}>
-              <span aria-hidden="true" className={`size-2.5 rounded-full transition-colors ${style.dot}`} />
+            <li key={post.title} className={`flex min-h-12 items-center gap-3 py-1.5 pr-1.5 pl-4 ${MINI}`}>
+              <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full transition-colors ${POST_DOT[state]}`} />
               <span className="grow text-sm text-(--text-primary)">{post.title}</span>
               {state === "publicado" ? (
-                <span key={state} className={`hubly-pop text-xs ${style.text}`}>{style.label(post.time)}</span>
+                <span key={state} className={chipClass("success", "soft", "sm", "hubly-pop")}>Publicado · {post.time}</span>
               ) : (
-                <button type="button" onClick={() => publish(index)} className={`cursor-pointer border-0 bg-transparent p-0 text-xs underline-offset-2 hover:underline ${style.text}`}>
-                  {state === "reintentando" ? style.label(post.time) : `${style.label(post.time)} · publicar ya`}
-                </button>
+                <Button size="sm" variant={state === "reintentando" ? "danger-soft" : "ghost"} onPress={() => publish(index)}>
+                  {state === "reintentando" ? "Reintentar" : "Publicar ya"}
+                </Button>
               )}
             </li>
           );
@@ -199,7 +184,7 @@ export function ReportVisual() {
     <div className={`flex w-72 flex-col gap-3.5 px-5 py-4 lg:w-90 ${MINI}`}>
       <span className="flex items-baseline justify-between gap-2">
         <span className="text-sm font-semibold text-(--text-primary)">Reporte de noviembre</span>
-        <span className="text-xs text-(--text-muted)" aria-live="polite">{BARS[active]?.week}</span>
+        <span className={chipClass("accent", "soft", "sm")} aria-live="polite">{BARS[active]?.week}</span>
       </span>
       <Reveal efecto="hubly-bars" className="flex h-24 items-end gap-2">
         {BARS.map((bar, index) => (

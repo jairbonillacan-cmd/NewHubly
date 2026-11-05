@@ -1,3 +1,4 @@
+import { Chip } from "@heroui/react";
 import type { ReactNode } from "react";
 import { ApprovalVisual, CalendarVisual, PublishVisual, ReportVisual, TeamVisual, TodayVisual } from "./FeatureVisuals";
 import { Reveal } from "./Reveal";
@@ -10,10 +11,10 @@ const STATUS_LABEL: Record<FeatureStatus, string> = {
   proximamente: "Próximamente",
 };
 
-const STATUS_CLASS: Record<FeatureStatus, string> = {
-  disponible: "bg-(--status-success-bg) text-(--status-success-text)",
-  pronto: "bg-(--accent-primary-subtle) text-(--accent-primary)",
-  proximamente: "border border-(--border-control) bg-(--surface-raised) text-(--text-secondary)",
+const STATUS_CHIP: Record<FeatureStatus, { color: "success" | "accent" | "default"; variant: "soft" | "secondary" }> = {
+  disponible: { color: "success", variant: "soft" },
+  pronto: { color: "accent", variant: "soft" },
+  proximamente: { color: "default", variant: "secondary" },
 };
 
 export interface Feature {
@@ -57,7 +58,9 @@ export function FeatureGrid() {
                 className="flex h-full flex-col gap-3.5 rounded-3xl border border-(--border-default) bg-(--surface-raised) p-2.5 pb-6 transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-(--glass-shadow) lg:p-3.5 lg:pb-8"
               >
                 <div className={`relative flex h-56 items-center justify-center overflow-hidden rounded-2xl lg:h-72 ${feature.tint}`}>
-                  <span className={`absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_CLASS[feature.status]}`}>{STATUS_LABEL[feature.status]}</span>
+                  <Chip color={STATUS_CHIP[feature.status].color} variant={STATUS_CHIP[feature.status].variant} size="sm" className="absolute top-3 right-3 font-semibold">
+                    {STATUS_LABEL[feature.status]}
+                  </Chip>
                   {feature.visual}
                 </div>
                 <div className="flex flex-col gap-3 px-2.5 pt-1.5 lg:px-4">
@@ -68,7 +71,9 @@ export function FeatureGrid() {
                   <p className="m-0 text-base leading-relaxed text-(--text-secondary)">{feature.body}</p>
                   <ul className="m-0 mt-1 flex list-none flex-wrap gap-2 p-0">
                     {feature.chips.map((chip) => (
-                      <li key={chip} className="rounded-full bg-(--surface-subtle) px-3 py-1.5 text-sm font-medium text-(--text-secondary)">{chip}</li>
+                      <li key={chip}>
+                        <Chip variant="secondary" size="md">{chip}</Chip>
+                      </li>
                     ))}
                   </ul>
                 </div>
