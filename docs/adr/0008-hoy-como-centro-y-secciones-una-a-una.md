@@ -23,7 +23,7 @@ Mientras tanto hay muchas líneas de trabajo abiertas a la vez (agencias, diseñ
   - el dock inferior, cuyas opciones dependen de la sección activa.
 
   Todas las secciones se renderizan dentro de él.
-- **Navegación:** Hoy va primero y aparte, porque es el centro. Debajo, en el carril, el grupo «Espacios» reúne las demás secciones (Calendario, Contenido, Clientes, Anuncios, Reportes y las que vengan). Rutas en español y en minúsculas, hermanas de `/hoy` (`/calendario`, `/contenido`, `/clientes`…).
+- **Navegación:** Hoy va primero y aparte, porque es el centro. Debajo, en el carril, el grupo «Herramientas» reúne las demás secciones (Calendario, Contenido, Clientes, Anuncios, Reportes y las que vengan). Rutas en español y en minúsculas, hermanas de `/hoy` (`/calendario`, `/contenido`, `/clientes`…).
 - **Secciones que todavía no existen:** se ven en el carril atenuadas, con «Pronto», y llevan a una página «Próximamente» que dice qué harán. No muestran datos inventados. Así el carril enseña hacia dónde va el producto sin prometer fechas.
 - El espacio activo (personal o de agencia) se sigue resolviendo como hasta ahora (ADR 0003, cookie `hubly_ws` validada en el servidor). No entra en la URL en esta etapa.
 
@@ -63,4 +63,5 @@ Una sección está **bien armada** cuando cumple todo esto:
 - Las fases de `docs/PLAN.md` se mantienen; este ADR fija el orden y la definición de terminado dentro de ellas.
 - El trabajo en paralelo se reduce a propósito: antes de empezar Clientes hay que cerrar las cadenas de PR abiertas y desplegar.
 - Cada sección nueva implementa el puerto de aporte a Hoy y su configuración del dock desde su primer PR. Una sección que no aparece en Hoy no está terminada.
-- La navegación del inventario (Contenido, Aprobaciones, Resultados) se reorganiza en los «Espacios» del carril. Las aprobaciones viven dentro de Contenido y los resultados en Reportes. El nombre «Espacios» queda pendiente de confirmar por el dueño, porque convive con «Espacio personal / de agencia».
+- La navegación del inventario (Contenido, Aprobaciones, Resultados) se reorganiza en las «Herramientas» del carril. Las aprobaciones viven dentro de Contenido y los resultados en Reportes.
+- **Vocabulario:** «espacio» es solo el espacio de trabajo (personal o de agencia, ADR 0003). Cada sección del carril es una «herramienta». El dueño eligió «Herramientas» para que los dos conceptos no se confundan.
