@@ -21,6 +21,9 @@ export const tokens = {
     blur: "var(--glass-blur)", blurMobile: "var(--glass-blur-mobile)", fallbackBg: "var(--glass-fallback-bg)",
     textPrimary: "var(--glass-text-primary)", textSecondary: "var(--glass-text-secondary)", textMuted: "var(--glass-text-muted)", heroOverlayVeil: "var(--glass-hero-veil)",
   },
+  landing: {
+    tintBlue: "var(--tint-blue)", tintSand: "var(--tint-sand)", tintGreen: "var(--tint-green)", tintLilac: "var(--tint-lilac)", textFaint: "var(--text-faint)",
+  },
   pill: {
     activeBg: "var(--pill-active-bg)", activeText: "var(--pill-active-text)", glassBg: "var(--pill-glass-bg)", glassBorder: "var(--pill-glass-border)", glassText: "var(--pill-glass-text)",
   },

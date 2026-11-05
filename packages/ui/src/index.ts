@@ -9,13 +9,18 @@ export type { ButtonProps, CardProps, CheckboxProps, ChipProps, EmptyStateProps,
 export * from "./components/brand/HublyLogo";
 export * from "./components/brand/Hubi";
 
-// Primitivas visuales base y bloques compuestos de landing (Issue #8)
+// Primitivas visuales base de las páginas públicas (Issue #8)
 export * from "./landing/GlassCard";
-export * from "./landing/LineGraphicCycle";
 export * from "./landing/ThemeToggle";
-export * from "./landing/BentoSection";
-export * from "./landing/HeroSection";
 export * from "./landing/PillNav";
+
+// Bloques del landing de marketing (Issue #85)
+export * from "./landing/LandingNav";
+export * from "./landing/LandingHero";
+export * from "./landing/AppPreview";
+export * from "./landing/Reveal";
+export * from "./landing/FeatureGrid";
+export * from "./landing/LandingSections";
 
 // Componentes de Notas y Pendientes de Fase 1A con dirección visual y HeroUI (Issues #26 y #47)
 export * from "./components/notes/NoteEditorCard";
