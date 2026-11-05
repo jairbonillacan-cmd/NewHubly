@@ -40,7 +40,7 @@ La limpieza y generación de derivados se ejecuta una sola vez fuera del árbol 
 
 ## Isologo de Hubi (#101, #111)
 
-La firma activa de Hubly combina `HubiFace` con las letras de «Hubly» en `HubiWordmark`. La cara parte de los iconos maestros `origen-claro-icono.png` y `origen-oscuro-icono.png`: un solo trazado SVG, centrado en un lienzo cuadrado, con la silueta simétrica, la oreja azul y los rasgos de Origen. El contorno conserva su proporción al escalarse a 24, 28 y 32 px.
+La firma activa de Hubly combina `HubiFace` con las letras de «Hubly» en `HubiWordmark`. El trazado SVG toma como referencia la cabeza de Hubi de cuerpo completo en `origen-claro.png` y `origen-oscuro.png`. La silueta tiene una relación de ancho a alto de aproximadamente 1,47:1, incluidas las orejas. Conserva la frente casi horizontal, la barbilla ancha y la posición de los rasgos al escalarse a 24, 28 y 32 px.
 
 El tema solo cambia los colores, a través de `--text-primary` para la silueta, `--accent-primary` para la oreja azul y `--surface-canvas` para los ojos y la boca. Los iconos de instalación y las ilustraciones de cuerpo entero conservan sus propios recursos.
 

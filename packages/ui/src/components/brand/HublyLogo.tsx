@@ -113,7 +113,7 @@ export function HublyWordmark({
   );
 }
 
-/** Cara de Hubi Origen; decorativa (la etiqueta la pone quien la usa). */
+/** Cara basada en Hubi Origen de cuerpo completo; decorativa. */
 export function HubiFace({ className = "size-8" }: { className?: string }) {
   return (
     <svg
@@ -125,21 +125,21 @@ export function HubiFace({ className = "size-8" }: { className?: string }) {
       focusable="false"
       className={`hubly-hubi-face shrink-0 ${className}`}
     >
-      <path d="M39 132 C42 98 56 49 76 49 C89 49 103 68 118 102 Z" fill="var(--text-primary)" />
-      <path d="M281 132 C278 98 264 49 244 49 C231 49 217 68 202 102 Z" fill="var(--accent-primary)" />
+      <path d="M40 137 C49 107 62 66 75 66 C88 66 101 88 113 111 Z" fill="var(--text-primary)" />
+      <path d="M207 111 C222 89 235 66 247 66 C263 66 273 99 283 137 Z" fill="var(--accent-primary)" />
       <path
-        d="M160 95 C229 95 266 102 285 136 C303 166 300 202 279 230 C256 261 218 272 160 272 C102 272 64 261 41 230 C20 202 17 166 35 136 C54 102 91 95 160 95 Z"
+        d="M108 109 H207 C240 109 265 116 281 135 C292 148 298 166 298 186 C298 225 269 253 229 254 H91 C51 253 22 225 22 186 C22 165 29 148 41 133 C57 114 80 109 108 109 Z"
         fill="var(--text-primary)"
       />
       <g fill="var(--surface-canvas)">
-        <ellipse cx={108} cy={170} rx={9.5} ry={16} />
-        <ellipse cx={212} cy={170} rx={9.5} ry={16} />
+        <ellipse cx={110} cy={178} rx={8.5} ry={14} />
+        <ellipse cx={210} cy={178} rx={8.5} ry={14} />
       </g>
       <path
-        d="M139 186 C142 197 156 197 160 186 C164 197 178 197 181 186"
+        d="M140 194 C143 204 156 204 160 194 C164 204 177 204 180 194"
         fill="none"
         stroke="var(--surface-canvas)"
-        strokeWidth={9.5}
+        strokeWidth={8.5}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
