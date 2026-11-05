@@ -1,4 +1,4 @@
-import { AppPreview, DataSection, FaqSection, FeatureGrid, FinalCta, LandingFooter, LandingHero, LandingNav, PainSection } from "@hubly/ui";
+import { AudienceSection, DataSection, FaqSection, FeatureGrid, FinalCta, LandingFooter, LandingHero, LandingNav, PainSection } from "@hubly/ui";
 import type { Metadata } from "next";
 import { frauncesLatin, frauncesLatinExt } from "../fonts/fraunces";
 
@@ -15,10 +15,12 @@ const LEGAL_LINKS = [
 export default function HomePage() {
   return (
     <div className={`landing-page ${frauncesLatin.variable} ${frauncesLatinExt.variable} min-h-dvh bg-(--surface-canvas) text-(--text-primary)`}>
-      <LandingNav />
       <main>
-        <LandingHero />
-        <AppPreview />
+        <div className="bg-(image:--landing-hero)">
+          <LandingNav />
+          <LandingHero />
+        </div>
+        <AudienceSection />
         <PainSection />
         <FeatureGrid />
         <DataSection />

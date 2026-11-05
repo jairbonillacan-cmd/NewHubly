@@ -13,9 +13,10 @@ export * from "./components/brand/Hubi";
 export * from "./landing/ThemeToggle";
 export * from "./heroui-classes";
 
-// Bloques del landing de marketing (Issue #85)
+// Bloques de la landing de marketing (#101)
 export * from "./landing/LandingNav";
 export * from "./landing/LandingHero";
+export * from "./landing/AudienceSection";
 export * from "./landing/AppPreview";
 export * from "./landing/Reveal";
 export * from "./landing/FeatureGrid";
