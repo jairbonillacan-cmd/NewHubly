@@ -27,6 +27,7 @@ export const KNOWN_APP_ROUTES = new Map([
   ["/", "Página principal pública (landing)"],
   ["/hoy", "Espacio de trabajo operativo (vista Hoy)"],
   ["/login", "Inicio de sesión, registro y enlace mágico"],
+  ["/invitacion", "Aceptación de invitación a agencia por fragmento URL"],
   ["/privacidad", "Política de privacidad pública"],
   ["/terminos", "Términos del servicio públicos"],
   ["/auth/callback", "Callback de intercambio de código de autenticación"],

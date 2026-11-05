@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Hubi } from "../components/brand/Hubi";
 import { useHublyTheme } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
+import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
 import { BackgroundPicker, CaptureField, Dock, findNoteByQuery } from "./Dock";
 import { IconButton } from "./GlassPanel";
 import { HoyPanel } from "./HoyPanel";
@@ -12,7 +13,10 @@ import { NotaPanel } from "./NotaPanel";
 import { NotasPanel } from "./NotasPanel";
 import { useEspacioPreferencias, type PanelId } from "./preferencias";
 import { TopBar } from "./TopBar";
-import { relativeDateLabel, type CaptureAnalysis, type CaptureInput, type EspacioNote, type EspacioTodo, type HoyFilter, type NoteSaveState } from "./types";
+import {
+  relativeDateLabel, type CaptureAnalysis, type CaptureInput, type EspacioInvitation, type EspacioInviteRole, type EspacioMember,
+  type EspacioNote, type EspacioRole, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type HoyFilter, type NoteSaveState,
+} from "./types";
 import { Wallpaper } from "./Wallpaper";
 
 const TOAST_MS = 5000;
@@ -36,7 +40,26 @@ export interface EspacioHoyProps {
   onToggleArchive: (id: string) => void;
   onExport: (format: "json" | "md") => void;
   onSignOut: () => void;
+  /** Espacio activo y los demás de la persona; sin agencias, solo el personal (#64, #78). */
+  workspaces?: EspacioWorkspace[];
+  activeWorkspace?: EspacioWorkspace;
+  members?: EspacioMember[];
+  invitations?: EspacioInvitation[];
+  inviteLink?: string | null;
+  onSelectWorkspace?: (id: string) => void;
+  onCreateAgency?: (name: string) => Promise<boolean | void> | void;
+  onInvite?: (email: string, role: EspacioInviteRole) => void;
+  onCopyInvite?: (link: string) => void;
+  onRevokeInvite?: (id: string) => void;
+  onChangeRole?: (userId: string, role: EspacioRole) => void;
+  onRemoveMember?: (userId: string) => void;
+  onLeaveAgency?: () => void;
+  onChangeNoteVisibility?: (id: string, visibility: EspacioVisibility) => void;
+  onChangeTodoVisibility?: (id: string, visibility: EspacioVisibility) => void;
 }
+
+export const PERSONAL_WORKSPACE: EspacioWorkspace = { id: "personal", name: "Espacio personal", kind: "personal", role: "owner" };
+const noop = () => {};
 
 interface ToastState { id: number; message: string; undo?: (() => void) | undefined }
 
@@ -46,23 +69,38 @@ const isTypingTarget = (target: EventTarget | null) => {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || Boolean(el?.isContentEditable);
 };
 
-function Rail({ overdueCount, panels, onTogglePanel }: { overdueCount: number; panels: Record<PanelId, boolean>; onTogglePanel: (id: PanelId) => void }) {
+interface RailProps {
+  overdueCount: number;
+  panels: Record<PanelId, boolean>;
+  onTogglePanel: (id: PanelId) => void;
+  workspaces: EspacioWorkspace[];
+  activeId: string;
+  onSelect: (id: string) => void;
+  onCreateAgency: () => void;
+}
+
+function Rail({ overdueCount, panels, onTogglePanel, workspaces, activeId, onSelect, onCreateAgency }: RailProps) {
+  const railButton = "relative flex size-9 cursor-pointer items-center justify-center rounded-lg border-2 text-sm font-bold";
   return (
     <nav aria-label="Espacios y paneles" className="hubly-glass hubly-enter flex w-14 flex-col items-center gap-2 rounded-xl py-2.5" data-delay="1">
       <span className="text-xs font-semibold text-(--text-muted)">Espacios</span>
-      <span title="Espacio personal" className="relative flex size-9 items-center justify-center rounded-lg border-2 border-(--accent-primary) bg-(--accent-primary) text-(--text-on-accent)">
-        <Icon name="usuario" />
-        <span className="sr-only">Espacio personal (activo)</span>
-        {overdueCount > 0 && (
-          <span key={overdueCount} className="hubly-pop absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-(--status-danger-text) px-1 text-xs font-bold text-(--surface-raised)">
-            {overdueCount}
-          </span>
-        )}
-      </span>
-      <span title="Crear agencia (pronto)" className="flex size-9 items-center justify-center rounded-lg border border-dashed border-(--glass-line-strong) text-(--text-muted)">
-        <Icon name="mas" />
-        <span className="sr-only">Crear agencia, pronto</span>
-      </span>
+      {workspaces.map((ws) => {
+        const active = ws.id === activeId;
+        const name = ws.kind === "personal" ? "Espacio personal" : ws.name;
+        return (
+          <button key={ws.id} type="button" title={name} aria-current={active ? "true" : undefined} onClick={() => { if (!active) onSelect(ws.id); }}
+            className={`${railButton} ${active ? "border-(--accent-primary) bg-(--accent-primary) text-(--text-on-accent)" : "border-transparent bg-(--glass-hover) text-(--text-secondary) hover:border-(--glass-line-strong)"}`}>
+            {ws.kind === "personal" ? <Icon name="usuario" /> : <span aria-hidden="true">{ws.name.trim().charAt(0).toUpperCase() || "A"}</span>}
+            <span className="sr-only">{name}{active ? " (activo)" : ""}</span>
+            {active && overdueCount > 0 && (
+              <span key={overdueCount} className="hubly-pop absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-(--status-danger-text) px-1 text-xs font-bold text-(--surface-raised)">
+                {overdueCount}
+              </span>
+            )}
+          </button>
+        );
+      })}
+      <IconButton icon="mas" label="Crear agencia" onPress={onCreateAgency} className="border border-dashed border-(--glass-line-strong)" />
       <span aria-hidden="true" className="my-1 h-px w-7 bg-(--glass-line-strong)" />
       <span className="text-xs font-semibold text-(--text-muted)">Paneles</span>
       <IconButton icon="sol" label="Panel Hoy" pressed={panels.hoy} onPress={() => onTogglePanel("hoy")} />
@@ -75,6 +113,9 @@ function Rail({ overdueCount, panels, onTogglePanel }: { overdueCount: number; p
 /** Espacio de Hoy con paneles de cristal sobre fondo personal (propuesta B, #75). Sin datos propios: todo llega por props. */
 export function EspacioHoy(props: EspacioHoyProps) {
   const { todayDate, timezone, todos, notes, noteSaveStates, actionError, captureError, analyzeCapture, onCapture, onToggleTodo, onCreateNote, onSaveNote, onTogglePin, onToggleArchive, onExport, onSignOut } = props;
+  const activeWorkspace = props.activeWorkspace ?? PERSONAL_WORKSPACE;
+  const workspaces = props.workspaces ?? [activeWorkspace];
+  const [teamMode, setTeamMode] = useState<EquipoDialogMode | null>(null);
   const [prefs, setPrefs] = useEspacioPreferencias();
   const [theme, setTheme] = useHublyTheme();
   const [filter, setFilter] = useState<HoyFilter>(null);
@@ -185,6 +226,8 @@ export function EspacioHoy(props: EspacioHoyProps) {
       ? { id: "libre", label: "Salir del modo enfoque", icon: "libre", run: () => setPrefs({ distribucion: "libre" }) }
       : { id: "enfoque", label: "Modo enfoque", icon: "enfoque", run: () => setPrefs({ distribucion: "enfoque" }) },
     { id: "tema", label: theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro", icon: "sol", run: () => setTheme(theme === "dark" ? "light" : "dark") },
+    { id: "agencia", label: "Crear agencia", icon: "mas", run: () => setTimeout(() => setTeamMode("crear"), 0) },
+    ...(activeWorkspace.kind === "agency" ? [{ id: "equipo", label: "Equipo e invitaciones", icon: "equipo" as const, run: () => setTimeout(() => setTeamMode("equipo"), 0) }] : []),
     { id: "json", label: "Exportar en JSON", icon: "descargar", run: () => onExport("json") },
     { id: "md", label: "Exportar en Markdown", icon: "descargar", run: () => onExport("md") },
   ];
@@ -239,11 +282,24 @@ export function EspacioHoy(props: EspacioHoyProps) {
           onOpenBackground={openBackground}
           onExport={onExport}
           onSignOut={onSignOut}
+          workspaces={workspaces}
+          activeWorkspace={activeWorkspace}
+          onSelectWorkspace={props.onSelectWorkspace ?? noop}
+          onCreateAgency={() => setTeamMode("crear")}
+          onOpenTeam={() => setTeamMode("equipo")}
         />
       </div>
 
       <div className="absolute top-18 left-3 z-20 hidden lg:block">
-        <Rail overdueCount={overdueCount} panels={prefs.paneles} onTogglePanel={(id) => setPrefs({ distribucion: layout === "enfoque" ? "libre" : layout, paneles: { [id]: !prefs.paneles[id] } })} />
+        <Rail
+          overdueCount={overdueCount}
+          panels={prefs.paneles}
+          onTogglePanel={(id) => setPrefs({ distribucion: layout === "enfoque" ? "libre" : layout, paneles: { [id]: !prefs.paneles[id] } })}
+          workspaces={workspaces}
+          activeId={activeWorkspace.id}
+          onSelect={props.onSelectWorkspace ?? noop}
+          onCreateAgency={() => setTeamMode("crear")}
+        />
       </div>
 
       {actionError && (
@@ -263,6 +319,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
             recentlyDone={recentlyDone}
             freshIds={freshIds}
             onToggle={(id) => void toggleTodo(id)}
+            onChangeVisibility={props.onChangeTodoVisibility}
             onClearFilter={() => setFilter(null)}
             className={`max-h-160 lg:max-h-none ${hoyClass}`}
           />
@@ -275,6 +332,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
             onSave={onSaveNote}
             onTogglePin={onTogglePin}
             onToggleArchive={onToggleArchive}
+            onChangeVisibility={props.onChangeNoteVisibility}
             onCreateTodoFromNote={linkCaptureToNote}
             onCreateNote={() => void createNote()}
             onClose={() => setPrefs({ paneles: { nota: false } })}
@@ -327,6 +385,23 @@ export function EspacioHoy(props: EspacioHoyProps) {
           )}
         </div>
       )}
+
+      <EquipoDialog
+        mode={teamMode}
+        onClose={() => setTeamMode(null)}
+        workspace={activeWorkspace}
+        members={props.members ?? []}
+        invitations={props.invitations ?? []}
+        inviteLink={props.inviteLink ?? null}
+        onCreateAgency={(name) => { void Promise.resolve(props.onCreateAgency?.(name)).then((ok) => { if (ok !== false) setTeamMode(null); }); }}
+        onInvite={props.onInvite ?? noop}
+        onCopyInvite={(link) => { props.onCopyInvite?.(link); showToast("Enlace copiado"); }}
+        onRevokeInvite={props.onRevokeInvite ?? noop}
+        onChangeRole={props.onChangeRole ?? noop}
+        onRemoveMember={props.onRemoveMember ?? noop}
+        onLeave={() => { setTeamMode(null); props.onLeaveAgency?.(); }}
+        onExportOwn={() => onExport("json")}
+      />
 
       <CommandPalette
         isOpen={paletteOpen}

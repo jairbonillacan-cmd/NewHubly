@@ -4,7 +4,8 @@ import { createSupabaseServerClient, enforceHttpOnlyCookieOptions } from "./serv
 
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  if (!path.startsWith("/hoy") && !path.startsWith("/login") && !path.startsWith("/auth")) {
+  // /invitacion lee la sesión en el servidor: hay que refrescarla aquí, porque un componente de servidor no puede escribir cookies.
+  if (!path.startsWith("/hoy") && !path.startsWith("/login") && !path.startsWith("/auth") && !path.startsWith("/invitacion")) {
     return NextResponse.next({ request });
   }
   let response = NextResponse.next({ request });
