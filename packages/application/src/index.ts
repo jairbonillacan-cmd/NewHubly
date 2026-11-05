@@ -13,6 +13,7 @@ import {
   changeMemberRoleInputSchema, createAgencyInputSchema, inviteMemberInputSchema, removeMemberInputSchema, revokeInvitationInputSchema,
   type ChangeMemberRoleInput, type CreateAgencyInput, type CreateNoteInput, type CreateTodoInput, type ExportData,
   type InviteMemberInput, type RemoveMemberInput, type RevokeInvitationInput, type UpdateNoteInput, type UpdateTodoInput,
+  DEFAULT_USER_PREFERENCES, updateUserPreferencesSchema, userPreferencesSchema, type UpdateUserPreferencesInput, type UserPreferences,
 } from '@hubly/contracts';
 
 export interface Clock { now(): Date; todayString(): string; }
@@ -286,3 +287,22 @@ export async function changeTodoVisibility(todoRepo: TodoRepository, noteRepo: N
   const updated = changeItemVisibility(todo, nextVisibility, ctx.userId, role, now);
   await todoRepo.save(updated); return updated;
 }
+
+// Preferencias visuales por persona (#83). La tabla solo deja leer y escribir las propias (RLS); aquí se validan y se completan.
+export interface UserPreferencesRepository {
+  get(userId: string): Promise<UserPreferences | null>;
+  upsert(userId: string, preferences: UserPreferences): Promise<UserPreferences>;
+}
+
+export async function getUserPreferences(repo: UserPreferencesRepository, ctx: Pick<AppContext, 'userId'>): Promise<UserPreferences> {
+  const stored = await repo.get(ctx.userId);
+  const parsed = stored ? userPreferencesSchema.safeParse(stored) : null;
+  return parsed?.success ? parsed.data : { ...DEFAULT_USER_PREFERENCES, visiblePanels: [...DEFAULT_USER_PREFERENCES.visiblePanels] };
+}
+
+export async function saveUserPreferences(repo: UserPreferencesRepository, patch: UpdateUserPreferencesInput, ctx: Pick<AppContext, 'userId'>): Promise<UserPreferences> {
+  const changes = updateUserPreferencesSchema.parse(patch);
+  const current = await getUserPreferences(repo, ctx);
+  return repo.upsert(ctx.userId, userPreferencesSchema.parse({ ...current, ...changes }));
+}
+
