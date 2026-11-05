@@ -112,6 +112,15 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     const sanitized = Object.assign(new Error("An error occurred in the Server Components render."), { digest: "1234567" });
     await executeProtectedAction("No se pudo guardar la nota.", async () => { throw sanitized; }, onExpired, (st) => { currentError = st; });
     expect(currentError!.message).toBe("No se pudo guardar la nota.");
+    // La redirección de una Server Action a /login es la sesión caducada, no un error que mostrar (revisión de #94).
+    const redirectToLogin = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/login;307;" });
+    await executeProtectedAction("No se pudo guardar la nota.", async () => { throw redirectToLogin; }, onExpired, (st) => { currentError = st; });
+    expect(onExpired).toHaveBeenCalledTimes(2);
+    expect(currentError).toBeNull();
+    const redirectElsewhere = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;push;/hoy;307;" });
+    await executeProtectedAction("No se pudo guardar la nota.", async () => { throw redirectElsewhere; }, onExpired, (st) => { currentError = st; });
+    expect(onExpired).toHaveBeenCalledTimes(2);
+    expect(currentError).toBeNull();
   });
 
   it("evalúa atajos globales 'c' y '/', clasifica vistas y valida Server Actions con fecha de exportación local", async () => {
