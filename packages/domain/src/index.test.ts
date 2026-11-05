@@ -104,3 +104,28 @@ describe('Domain logic', () => {
     expect(getInvitationStatus({ expiresAt: '2026-11-10T00:00:00Z' }, '2026-11-04T00:00:00Z') === 'pending' && getInvitationStatus({ expiresAt: '2026-11-01T00:00:00Z' }, '2026-11-04T00:00:00Z') === 'expired').toBe(true);
   });
 });
+
+describe('Captura inteligente (#80)', () => {
+  it('detecta fecha, prioridad y nota, y guarda el título sin esas palabras', async () => {
+    const { parseQuickCapture } = await import('./index.js');
+    expect(parseQuickCapture('Llamar a Lumen mañana !alta @aurora', '2026-11-04')).toEqual({
+      title: 'Llamar a Lumen', dueDate: '2026-11-05', dueKeyword: 'mañana', priority: 'high', noteQuery: 'aurora',
+    });
+    expect(parseQuickCapture('  revisar copys hoy  !baja ', '2026-11-04')).toMatchObject({ title: 'revisar copys', dueDate: '2026-11-04', priority: 'low', noteQuery: null });
+    expect(parseQuickCapture('Pedir fotos', '2026-11-04')).toEqual({ title: 'Pedir fotos', dueDate: null, dueKeyword: null, priority: null, noteQuery: null });
+  });
+
+  it('cruza fin de mes y de año al calcular «mañana», y acepta «manana» sin tilde', async () => {
+    const { parseQuickCapture, addDaysToDateString } = await import('./index.js');
+    expect(parseQuickCapture('cierre mañana', '2026-12-31').dueDate).toBe('2027-01-01');
+    expect(parseQuickCapture('cierre manana', '2026-02-28').dueDate).toBe('2026-03-01');
+    expect(addDaysToDateString('2028-02-28', 1)).toBe('2028-02-29');
+  });
+
+  it('no confunde palabras que solo contienen las claves ni una arroba sola', async () => {
+    const { parseQuickCapture } = await import('./index.js');
+    expect(parseQuickCapture('ahora mañanera @ !altamente', '2026-11-04')).toEqual({
+      title: 'ahora mañanera @ !altamente', dueDate: null, dueKeyword: null, priority: null, noteQuery: null,
+    });
+  });
+});

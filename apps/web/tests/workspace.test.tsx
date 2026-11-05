@@ -49,11 +49,15 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     expect(renderToStaticMarkup(<WorkspaceScreen initialStatus="unauthenticated" />)).toContain("Volver a iniciar sesión");
     expect(renderToStaticMarkup(<WorkspaceScreen initialStatus="error" errorMessage="Fallo de red" />)).toContain("Reintentar");
     const emptyHtml = renderToStaticMarkup(<WorkspaceScreen initialStatus="ready" todayDate="2026-11-04" />);
-    expect(emptyHtml).toContain("No tienes pendientes para hoy. Escribe arriba para capturar el primero o revisa Sin fecha.");
-    expect(emptyHtml).toContain("Exportar JSON");
-    expect(emptyHtml).toContain("Exportar Markdown");
-    expect(emptyHtml).toContain("Cerrar sesión");
+    // Espacio con paneles de cristal (#75): exportar y cerrar sesión viven en el menú de cuenta, que se abre al pulsarlo.
+    expect(emptyHtml).toContain("No tienes pendientes para hoy.");
+    expect(emptyHtml).toContain('aria-label="Menú de tu cuenta"');
+    expect(emptyHtml).toContain("Buscar o ejecutar");
+    expect(emptyHtml).toContain("Capturar pendiente");
     expect(emptyHtml).toContain("Nueva nota");
+    expect(emptyHtml).toContain("0 vencidos");
+    expect(emptyHtml).toContain("0 para hoy");
+    expect(emptyHtml).toContain("Todo guardado");
 
     const signOutSpy = vi.fn().mockResolvedValue({ error: null });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,9 +81,11 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     expect(dashboard.timezone).toBe("America/Mexico_City");
 
     const html = renderToStaticMarkup(await HoyPage());
-    expect(html).toContain("Espacio personal · 2026-11-03");
-    expect(html).toContain("Hoy · 2026-11-03");
-    expect(html).not.toContain("Vencido · 2026-11-03");
+    // El pendiente con fecha del día local (3 nov) cae en «Hoy» y no en «Vencidos».
+    expect(html).toContain("3 de noviembre");
+    expect(html).toContain("Hoy · 1");
+    expect(html).not.toContain("Vencidos ·");
+    expect(html).toContain("1 para hoy");
     expect(html).toContain("Nota de origen: Estrategia Q4");
     expect(html).toContain("Revisar presupuesto · Pendiente");
 

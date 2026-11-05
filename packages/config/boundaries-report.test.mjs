@@ -260,6 +260,8 @@ describe("Reglas de CI de higiene de rutas y fronteras de cliente (#69)", () => 
     expect(findBrowserStorageAndTokenViolations(allCodeFiles, { repoRoot })).toEqual([]);
     expect(ALLOWED_BROWSER_STORAGE_KEYS.has("hubly-theme")).toBe(true);
     expect(ALLOWED_BROWSER_STORAGE_KEYS.has("hubly_tz_refresh_attempted")).toBe(true);
+    // Preferencias del espacio (fondo, opacidad, distribución y paneles) mientras llega user_preferences (#77, #83).
+    expect(ALLOWED_BROWSER_STORAGE_KEYS.has("hubly-espacio")).toBe(true);
 
     const violations = findBrowserStorageAndTokenViolations(
       [

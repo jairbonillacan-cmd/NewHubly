@@ -152,3 +152,37 @@ export const updateNoteContent = (n: Note, title: string, content: string, now: 
   ({ ...n, title, content, version: n.version + 1, updatedAt: now });
 export const pinNote = (n: Note, isPinned: boolean, now: string): Note => ({ ...n, isPinned, updatedAt: now });
 export const archiveNote = (n: Note, isArchived: boolean, now: string): Note => ({ ...n, isArchived, updatedAt: now });
+
+// Captura inteligente (#80): «hoy» y «mañana» dan la fecha, «!alta», «!media» y «!baja» la prioridad, y «@texto» busca una nota.
+export interface QuickCaptureAnalysis {
+  title: string;
+  dueDate: string | null;
+  dueKeyword: 'hoy' | 'mañana' | null;
+  priority: Priority | null;
+  noteQuery: string | null;
+}
+
+const CAPTURE_PRIORITY: Record<string, Priority> = { '!alta': 'high', '!media': 'medium', '!baja': 'low' };
+
+export const addDaysToDateString = (date: string, days: number): string => {
+  const [y, m, d] = date.split('-').map(Number);
+  const next = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days));
+  return next.toISOString().slice(0, 10);
+};
+
+export function parseQuickCapture(text: string, todayDate: string): QuickCaptureAnalysis {
+  let dueKeyword: QuickCaptureAnalysis['dueKeyword'] = null;
+  let priority: Priority | null = null;
+  let noteQuery: string | null = null;
+  const kept: string[] = [];
+  for (const word of text.trim().split(/\s+/).filter(Boolean)) {
+    const lower = word.toLowerCase();
+    if (lower === 'hoy') dueKeyword = 'hoy';
+    else if (lower === 'mañana' || lower === 'manana') dueKeyword = 'mañana';
+    else if (CAPTURE_PRIORITY[lower]) priority = CAPTURE_PRIORITY[lower] ?? null;
+    else if (lower.startsWith('@') && lower.length > 1) noteQuery = word.slice(1);
+    else kept.push(word);
+  }
+  const dueDate = dueKeyword === 'hoy' ? todayDate : dueKeyword === 'mañana' ? addDaysToDateString(todayDate, 1) : null;
+  return { title: kept.join(' '), dueDate, dueKeyword, priority, noteQuery };
+}

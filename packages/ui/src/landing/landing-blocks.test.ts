@@ -1,13 +1,23 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import {
-  BentoSection,
+  AppPreview,
+  DataSection,
+  FaqSection,
+  FeatureGrid,
+  FinalCta,
   GlassCard,
-  HeroSection,
-  LIFECYCLE_STAGES,
-  LineGraphicCycle,
+  LANDING_FAQ,
+  LANDING_FEATURES,
+  LANDING_NAV_LINKS,
+  LandingFooter,
+  LandingHero,
+  LandingNav,
+  PainSection,
   PillNav,
   ThemeToggle,
 } from "../index";
@@ -15,74 +25,68 @@ import {
 const currentDir = fileURLToPath(new URL(".", import.meta.url));
 const tokensCssPath = resolve(currentDir, "../tokens.css");
 
-function extractAllStrings(node: unknown): string[] {
-  if (typeof node === "string") return [node];
-  if (Array.isArray(node)) return node.flatMap(extractAllStrings);
-  if (typeof node === "object" && node !== null) {
-    const obj = node as Record<string, unknown>;
-    const children = obj.props && typeof obj.props === "object" ? Object.values(obj.props) : Object.values(obj);
-    return children.flatMap(extractAllStrings);
-  }
-  return [];
-}
+const render = (component: () => unknown) => renderToStaticMarkup(createElement(component as () => null));
 
-describe("Bloques UI reutilizables de landing (@hubly/ui)", () => {
-  it("exporta todos los componentes requeridos del Issue #8", () => {
-    expect(typeof GlassCard).toBe("function");
-    expect(typeof PillNav).toBe("function");
-    expect(typeof HeroSection).toBe("function");
-    expect(typeof BentoSection).toBe("function");
-    expect(typeof LineGraphicCycle).toBe("function");
-    expect(typeof ThemeToggle).toBe("function");
-    expect(LIFECYCLE_STAGES).toHaveLength(7);
-  });
-
-  it("HeroSection utiliza el titular de la Variante 2 y marca visiblemente el ejemplo", () => {
-    const allStrings = extractAllStrings(HeroSection({})).join(" ");
-    expect(allStrings).toContain("Cada pieza de contenido.");
-    expect(allStrings).toContain("Sabe qué sigue y quién la tiene.");
-    expect(allStrings).toContain("Ejemplo");
-    expect(allStrings).toContain("Campaña Primavera");
-    expect(allStrings).toContain("Auditoría (próximamente)");
-  });
-
-  it("BentoSection y HeroSection no contienen jerga interna ni métricas inventadas (Constitución #3)", () => {
-    const heroStrings = extractAllStrings(HeroSection({})).join(" ");
-    const bentoStrings = extractAllStrings(BentoSection()).join(" ");
-    const combined = `${heroStrings} ${bentoStrings}`;
-    const forbidden = [
-      "Constitución #1", "Constitución #2", "Constitución #5",
-      "Fase 1A · Entrada diaria · Listo", "Honestidad operativa",
-      "Sin datos simulados ni métricas inventadas",
-      "Trazabilidad editorial para agencias", "NewHubly",
-    ];
-    for (const term of forbidden) {
-      expect(combined).not.toContain(term);
+describe("Bloques del landing de marketing (@hubly/ui, #85)", () => {
+  it("exporta los bloques del landing y conserva las primitivas de las páginas legales", () => {
+    for (const block of [LandingNav, LandingHero, AppPreview, PainSection, FeatureGrid, DataSection, FaqSection, FinalCta, LandingFooter, GlassCard, PillNav, ThemeToggle]) {
+      expect(typeof block).toBe("function");
     }
-    expect(bentoStrings).not.toMatch(/0\s*·?\s*Preguntas/i);
-    expect(bentoStrings).toContain("Sin preguntas en el limbo");
-    expect(bentoStrings).toContain("Estado único y visible");
   });
 
-  it("BentoSection tiene una cuadrícula equilibrada sin tarjetas aisladas ni overflowX oculto en section (Issue #8)", () => {
-    const bentoTree = BentoSection();
-    const jsonStr = JSON.stringify(bentoTree);
-    expect(bentoTree.props.style.overflowX).toBeUndefined();
-    expect(jsonStr).toContain("hubly-bento-card-12");
-    expect(jsonStr).toContain("hubly-bento-card-6");
-    expect(jsonStr).toContain("Los datos son de tu agencia");
+  it("la barra apunta a secciones que existen en la página", () => {
+    const sectionIds = ["producto", "privacidad", "preguntas"];
+    expect(LANDING_NAV_LINKS.map((link) => link.href.slice(1))).toEqual(sectionIds);
+    const html = [FeatureGrid, DataSection, FaqSection].map(render).join("");
+    for (const id of sectionIds) expect(html).toContain(`id="${id}"`);
   });
 
-  it("aplica minmax(0, 1fr), min-width: 0 y espaciado móvil anti-solapamiento en tokens.css y bloques", () => {
+  it("solo marca como disponible lo que existe hoy y etiqueta el resto (Constitución #3)", () => {
+    const available = LANDING_FEATURES.filter((feature) => feature.status === "disponible").map((feature) => feature.id);
+    expect(available).toEqual(["hoy"]);
+    const html = render(FeatureGrid);
+    expect(html).toContain("Ya disponible");
+    expect(html).toContain("Muy pronto");
+    expect(html).toContain("Próximamente");
+  });
+
+  it("los ejemplos de la app se marcan como ilustrativos", () => {
+    expect(render(AppPreview)).toContain("Ejemplo ilustrativo");
+    expect(render(FeatureGrid)).toContain("Ejemplo ilustrativo");
+  });
+
+  it("no promete precios, cifras ni testimonios, ni usa frases genéricas (#56)", () => {
+    const html = [LandingHero, AppPreview, PainSection, FeatureGrid, DataSection, FaqSection, FinalCta].map(render).join(" ");
+    expect(html).not.toMatch(/gratis|\$\s?\d|\+\d[\d,.]*\s|testimonio|lorem ipsum|potencia tu|todo en un solo lugar|sin fricción/i);
+    expect(LANDING_FAQ).toHaveLength(4);
+  });
+
+  it("el modo claro es el predeterminado: el oscuro solo se activa con [data-theme=\"dark\"], no por la preferencia del sistema", () => {
     const css = readFileSync(tokensCssPath, "utf8");
-    expect(css).toContain(".hubly-bento-card {");
-    expect(css).toMatch(/\.hubly-bento-card\s*\{[^}]*min-width:\s*0;/);
-    expect(css).toMatch(/\.hubly-hero-grid\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
-    expect(css).toMatch(/\.hubly-bento-grid\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
-    const lineGraphicTree = LineGraphicCycle({});
-    expect(lineGraphicTree.props.className).toBe("hubly-lifecycle-container");
-    expect(lineGraphicTree.props.children.props.className).toBe("hubly-lifecycle-track");
-    expect(JSON.stringify(HeroSection({}))).toContain("hubly-hero-content");
-    expect(JSON.stringify(PillNav({}))).toContain("hubly-pill-links");
+    expect(css).not.toContain("prefers-color-scheme");
+    expect(css).toContain(':root[data-theme="dark"] {');
+  });
+
+  it("las animaciones se apagan con movimiento reducido y no ocultan nada sin JavaScript", () => {
+    const css = readFileSync(tokensCssPath, "utf8");
+    expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(css).toMatch(/\.hubly-motion \.hubly-reveal:not\(\[data-visible="true"\]\)/);
+    expect(css).not.toMatch(/^\.hubly-reveal:not/m);
+  });
+
+  it("la firma del landing usa la cara de Hubi en claro y oscuro", () => {
+    const html = render(LandingNav);
+    expect(html).toContain("/marca/hubi-cara-claro-128.webp");
+    expect(html).toContain("/marca/hubi-cara-oscuro-128.webp");
+  });
+
+  it("los colores y medidas del landing salen de tokens, con tintes definidos en claro y oscuro", () => {
+    const css = readFileSync(tokensCssPath, "utf8");
+    for (const token of ["--tint-blue", "--tint-sand", "--tint-green", "--tint-lilac", "--text-faint"]) {
+      expect(css.split(`${token}:`).length - 1).toBe(2);
+    }
+    const sources = ["LandingNav.tsx", "LandingHero.tsx", "AppPreview.tsx", "FeatureGrid.tsx", "FeatureVisuals.tsx", "LandingSections.tsx", "Reveal.tsx"].map((file) => readFileSync(resolve(currentDir, file), "utf8")).join("\n");
+    expect(sources).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(sources).not.toContain("style={{");
   });
 });
