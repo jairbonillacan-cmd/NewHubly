@@ -76,6 +76,9 @@ function EspacioDemo({ todos: initialTodos = TODOS, notes: initialNotes = NOTES,
       onTogglePin={(id) => patchNote(id, { isPinned: !notes.find((n) => n.id === id)?.isPinned })}
       onToggleArchive={(id) => patchNote(id, { isArchived: !notes.find((n) => n.id === id)?.isArchived })}
       onExport={() => undefined}
+      // En la historia «Tu imagen» se muestra con una URL local; en la app la sube el servidor tras validarla (#84).
+      onUploadWallpaper={async (file) => ({ ok: true as const, url: URL.createObjectURL(file) })}
+      onRemoveWallpaper={async () => undefined}
       onSignOut={() => undefined}
       {...(agencia ? {
         workspaces: [PERSONAL, AGENCIA], activeWorkspace: AGENCIA, members: MIEMBROS, invitations: INVITACIONES, inviteLink: "/invitacion#ejemplo",

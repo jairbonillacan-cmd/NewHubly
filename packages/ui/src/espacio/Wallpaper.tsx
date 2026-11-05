@@ -16,10 +16,11 @@ const WALLPAPER_BG: Record<WallpaperId, string> = {
   patron: "bg-(--wallpaper-patron)",
   tinta: "bg-(--wallpaper-tinta)",
   grafito: "bg-(--wallpaper-grafito)",
+  imagen: "bg-(--wallpaper-grafito)",
 };
 
 /** Fondo personal del espacio: contornos, patrón H o color liso. Solo lo ve la persona (#75, sección 3). */
-export function Wallpaper({ fondo, preview }: { fondo: WallpaperId; preview?: "light" | "dark" }) {
+export function Wallpaper({ fondo, imagenUrl, preview }: { fondo: WallpaperId; imagenUrl?: string | null | undefined; preview?: "light" | "dark" }) {
   if (preview) {
     const background = fondo === "tinta" ? "bg-(--landing-swatch-mist)" : preview === "dark" ? "bg-(--landing-swatch-dark)" : "bg-(--landing-swatch-light)";
     return (
@@ -37,6 +38,13 @@ export function Wallpaper({ fondo, preview }: { fondo: WallpaperId; preview?: "l
 
   return (
     <div aria-hidden="true" className={`hubly-wallpaper pointer-events-none fixed inset-0 -z-10 ${WALLPAPER_BG[fondo]}`}>
+      {fondo === "imagen" && imagenUrl && (
+        <>
+          <img src={imagenUrl} alt="" className="absolute inset-0 size-full object-cover" />
+          {/* Velo para que el texto sobre el cristal se lea igual con una foto clara que con una oscura (#84). */}
+          <span className="absolute inset-0 bg-(--wallpaper-image-veil)" />
+        </>
+      )}
       <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" className={`absolute inset-0 size-full ${fondo === "contornos" ? "opacity-100" : "opacity-0"}`}>
         {CONTOUR_PATHS.map((path, index) => (
           <path key={index} d={path.d} fill="none" stroke={path.accent ? "var(--wallpaper-line-accent)" : "var(--wallpaper-line)"} strokeWidth="1.2" />
