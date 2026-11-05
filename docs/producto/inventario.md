@@ -4,7 +4,7 @@ Describe qué necesita una agencia, no cómo debe verse la solución. La experie
 
 ## Navegación propuesta
 
-**Hoy**, **Contenido**, **Clientes**, **Aprobaciones**, **Resultados** y **Ajustes**. Lienzo y Vega la validan en un ADR.
+**Hoy**, **Contenido**, **Clientes**, **Aprobaciones**, **Resultados** y **Ajustes**. Hoy es el centro y cada sección lo alimenta; se construyen una a una ([ADR 0009](../adr/0009-hoy-como-centro-y-secciones-una-a-una.md)).
 
 ## Principios de producto
 
