@@ -67,13 +67,10 @@ export async function executeProtectedAction(
   try { await fn(); } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("Sesión caducada") || msg.includes("No hay una sesión activa")) { onSessionExpired(); return; }
-    // Una Server Action que llama a redirect() rechaza su promesa con digest «NEXT_REDIRECT;…;<ruta>;…» mientras Next navega.
-    // No es un fallo: hacia /login es la sesión caducada (#92); hacia otra ruta, Next ya se encarga.
+    // Una Server Action que llama a redirect() rechaza su promesa con un digest «NEXT_REDIRECT;…» mientras Next navega.
+    // Es la sesión caducada (#92): se avisa y no se muestra como fallo.
     const digest = (err as { digest?: unknown } | null)?.digest;
-    if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) {
-      if (digest.split(";")[2] === "/login") onSessionExpired();
-      return;
-    }
+    if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) { onSessionExpired(); return; }
     // En producción Next sustituye el mensaje de los errores del servidor por uno genérico en inglés y añade «digest».
     // Ese texto no ayuda a la persona: se muestra el mensaje propio de la acción (#92).
     const sanitizedByServer = typeof (err as { digest?: unknown } | null)?.digest === "string";
