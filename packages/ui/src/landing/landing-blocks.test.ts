@@ -42,7 +42,7 @@ describe("Bloques del landing de marketing (@hubly/ui, #85)", () => {
 
   it("solo marca como disponible lo que existe hoy y etiqueta el resto (Constitución #3)", () => {
     const available = LANDING_FEATURES.filter((feature) => feature.status === "disponible").map((feature) => feature.id);
-    expect(available).toEqual(["hoy"]);
+    expect(available).toEqual(["hoy", "captura"]);
     const html = render(FeatureGrid);
     expect(html).toContain("Ya disponible");
     expect(html).toContain("Muy pronto");
