@@ -89,6 +89,8 @@
   --landing-hero: linear-gradient(170deg, var(--landing-mist) 0%, #E8EEFA 38%, var(--surface-canvas) 78%);
   --landing-end: #0E1A3A; --landing-end-border: var(--landing-end); --landing-on-end: #FFFFFF;
   --landing-end-muted: #DCE5F8; --landing-shadow: var(--glass-shadow);
+  --landing-swatch-light: #E9ECF2; --landing-swatch-dark: #0B0D12; --landing-swatch-mist: #DCE5F8;
+  --landing-swatch-light-line: #52699B; --landing-swatch-dark-line: #6F98FF;
   --landing-width: 75rem; --landing-preview-width: 65rem;
   --landing-panel-radius: 2rem; --landing-window-radius: 2.25rem; --landing-end-radius: 2.5rem;
   --landing-hero-size: clamp(2.625rem, 5.3vw, 4.75rem);

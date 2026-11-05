@@ -19,7 +19,22 @@ const WALLPAPER_BG: Record<WallpaperId, string> = {
 };
 
 /** Fondo personal del espacio: contornos, patrón H o color liso. Solo lo ve la persona (#75, sección 3). */
-export function Wallpaper({ fondo }: { fondo: WallpaperId }) {
+export function Wallpaper({ fondo, preview }: { fondo: WallpaperId; preview?: "light" | "dark" }) {
+  if (preview) {
+    const background = fondo === "tinta" ? "bg-(--landing-swatch-mist)" : preview === "dark" ? "bg-(--landing-swatch-dark)" : "bg-(--landing-swatch-light)";
+    return (
+      <div aria-hidden="true" className={`pointer-events-none absolute inset-0 -z-10 ${background}`}>
+        {fondo === "contornos" && (
+          <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" className={`size-full ${preview === "dark" ? "text-(--landing-swatch-dark-line)" : "text-(--landing-swatch-light-line)"}`}>
+            {CONTOUR_PATHS.map(({ d, accent }, index) => (
+              <path key={index} d={d} fill="none" stroke="currentColor" strokeOpacity={accent ? 0.75 : 0.3} strokeWidth="3" />
+            ))}
+          </svg>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div aria-hidden="true" className={`hubly-wallpaper pointer-events-none fixed inset-0 -z-10 ${WALLPAPER_BG[fondo]}`}>
       <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" className={`absolute inset-0 size-full ${fondo === "contornos" ? "opacity-100" : "opacity-0"}`}>
