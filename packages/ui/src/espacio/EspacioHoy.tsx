@@ -6,7 +6,7 @@ import { Hubi } from "../components/brand/Hubi";
 import { useHublyTheme, type HublyTheme } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
-import { BackgroundPicker, CaptureField, Dock, findNoteByQuery } from "./Dock";
+import { BackgroundPicker, CaptureField, Dock, findNoteByQuery, type WallpaperImageControls } from "./Dock";
 import { IconButton } from "./GlassPanel";
 import { HoyPanel } from "./HoyPanel";
 import { Icon } from "./icons";
@@ -34,6 +34,10 @@ export interface EspacioHoyProps {
   initialTheme?: HublyTheme | undefined;
   /** Se llama cuando la persona cambia de tema desde el menú de cuenta o la paleta. */
   onThemeChange?: ((theme: HublyTheme) => void) | undefined;
+  /** «Tu imagen» (#84): URL firmada inicial y acciones de subir y quitar. Sin acciones, el mosaico sale como no disponible. */
+  wallpaperImageUrl?: string | null | undefined;
+  onUploadWallpaper?: WallpaperImageControls["onUpload"] | undefined;
+  onRemoveWallpaper?: (() => Promise<void>) | undefined;
   timezone?: string | undefined;
   todos: EspacioTodo[];
   notes: EspacioNote[];
@@ -130,6 +134,22 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [teamMode, setTeamMode] = useState<EquipoDialogMode | null>(null);
   const [prefs, setPrefs] = useEspacioPreferencias(props.initialPreferences, props.onPreferencesChange);
   const [theme, setTheme] = useHublyTheme();
+  const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(props.wallpaperImageUrl ?? null);
+  const imagenControls: WallpaperImageControls | undefined = props.onUploadWallpaper && props.onRemoveWallpaper
+    ? {
+        url: wallpaperUrl,
+        onUpload: async (file) => {
+          const result = await props.onUploadWallpaper!(file);
+          if (result.ok) setWallpaperUrl(result.url);
+          return result;
+        },
+        onRemove: async () => {
+          await props.onRemoveWallpaper!();
+          setWallpaperUrl(null);
+          setPrefs({ fondo: "contornos" });
+        },
+      }
+    : undefined;
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
 
@@ -295,7 +315,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
 
   return (
     <div ref={rootRef} className="relative isolate min-h-dvh text-(--text-primary) lg:h-dvh lg:overflow-hidden">
-      <Wallpaper fondo={prefs.fondo} />
+      <Wallpaper fondo={prefs.fondo === "imagen" && !wallpaperUrl ? "contornos" : prefs.fondo} imagenUrl={wallpaperUrl} />
 
       <div className="sticky top-0 z-30 p-3 lg:absolute lg:inset-x-3 lg:top-3 lg:p-0">
         <TopBar
@@ -380,7 +400,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
       </main>
 
       <div className="absolute inset-x-0 bottom-4 z-20 hidden justify-center px-24 lg:flex">
-        <Dock ref={desktopCapture} prefs={prefs} onPrefs={setPrefs} pickerOpen={pickerOpen === "desktop"} onPickerOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} {...captureProps} />
+        <Dock ref={desktopCapture} imagen={imagenControls} prefs={prefs} onPrefs={setPrefs} pickerOpen={pickerOpen === "desktop"} onPickerOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} {...captureProps} />
       </div>
 
       <div className="hubly-glass fixed inset-x-2 bottom-2 z-30 flex flex-col gap-2 rounded-2xl p-2 lg:hidden">
@@ -393,6 +413,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
             </Button>
           ))}
           <BackgroundPicker
+            imagen={imagenControls}
             prefs={prefs}
             onChange={setPrefs}
             isOpen={pickerOpen === "mobile"}

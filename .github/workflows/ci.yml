@@ -126,7 +126,44 @@ jobs:
           EOF
         env:
           PGPASSWORD: postgres
-      - run: psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20261103000000_initial_schema.sql -f supabase/migrations/20261104000000_fase1b_agency_roles_invitations_visibility.sql -f supabase/migrations/20261105000000_user_preferences.sql
+      # Storage mínimo para probar las políticas de «Tu imagen» (#84, ADR 0008); la API de Storage no corre en CI.
+      - name: Bootstrap Supabase storage
+        run: |
+          psql -h 127.0.0.1 -p 54322 -U supabase_admin -d postgres -v ON_ERROR_STOP=1 << 'EOF'
+          CREATE SCHEMA IF NOT EXISTS storage;
+          CREATE TABLE IF NOT EXISTS storage.buckets (id text PRIMARY KEY, name text NOT NULL, owner uuid, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());
+          ALTER TABLE storage.buckets ADD COLUMN IF NOT EXISTS public boolean DEFAULT false;
+          ALTER TABLE storage.buckets ADD COLUMN IF NOT EXISTS file_size_limit bigint;
+          ALTER TABLE storage.buckets ADD COLUMN IF NOT EXISTS allowed_mime_types text[];
+          CREATE TABLE IF NOT EXISTS storage.objects (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), bucket_id text REFERENCES storage.buckets (id), name text, owner uuid, metadata jsonb, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());
+          CREATE OR REPLACE FUNCTION storage.foldername(name text) RETURNS text[] LANGUAGE plpgsql IMMUTABLE AS $f$
+          DECLARE _parts text[];
+          BEGIN
+            SELECT string_to_array(name, '/') INTO _parts;
+            RETURN _parts[1:array_length(_parts, 1) - 1];
+          END
+          $f$;
+          ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+          GRANT USAGE ON SCHEMA storage TO postgres, authenticated;
+          GRANT ALL ON storage.buckets, storage.objects TO postgres;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
+          GRANT SELECT ON storage.buckets TO authenticated;
+          GRANT EXECUTE ON FUNCTION storage.foldername(text) TO authenticated;
+          DO $$
+          BEGIN
+            -- Como en Supabase: quien aplica las migraciones puede crear políticas sobre storage.objects.
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') AND (SELECT tableowner FROM pg_tables WHERE schemaname = 'storage' AND tablename = 'objects') = 'supabase_storage_admin' THEN
+              GRANT supabase_storage_admin TO postgres;
+            ELSE
+              ALTER TABLE storage.objects OWNER TO postgres;
+              ALTER TABLE storage.buckets OWNER TO postgres;
+            END IF;
+          END
+          $$;
+          EOF
+        env:
+          PGPASSWORD: postgres
+      - run: psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20261103000000_initial_schema.sql -f supabase/migrations/20261104000000_fase1b_agency_roles_invitations_visibility.sql -f supabase/migrations/20261105000000_user_preferences.sql -f supabase/migrations/20261106000000_user_wallpapers_storage.sql
         env:
           PGPASSWORD: postgres
       - run: pnpm test

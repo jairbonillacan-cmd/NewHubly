@@ -6,7 +6,8 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   archiveNoteAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction, createAgencyWorkspaceAction,
   createNoteAction, createTodoAction, createTodoFromNoteAction, exportWorkspaceAction, inviteWorkspaceMemberAction, loadWorkspaceDashboardAction,
-  pinNoteAction, removeOrLeaveWorkspaceMemberAction, revokeWorkspaceInvitationAction, saveNoteAction, saveUserPreferencesAction, selectActiveWorkspaceAction, toggleTodoAction,
+  pinNoteAction, removeOrLeaveWorkspaceMemberAction, removeWallpaperAction, revokeWorkspaceInvitationAction, saveNoteAction, saveUserPreferencesAction, selectActiveWorkspaceAction, toggleTodoAction,
+  uploadWallpaperAction,
   type WorkspaceInvitationSummary, type WorkspaceMemberSummary, type WorkspaceNote, type WorkspaceSummary, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
 import { signOutAction } from "../actions/auth";
@@ -22,6 +23,8 @@ export interface WorkspaceScreenProps {
   initialMembers?: WorkspaceMemberSummary[]; initialPendingInvitations?: WorkspaceInvitationSummary[];
   /** Preferencias visuales guardadas (#83); sin ellas el espacio usa las de por defecto. */
   initialPreferences?: UserPreferences;
+  /** URL firmada de «Tu imagen» si es el fondo elegido (#84). */
+  initialWallpaperImageUrl?: string | null;
   onSavePreferences?: (patch: Partial<UserPreferences>) => Promise<unknown>;
   onRetry?: () => void; onLoginRedirect?: () => void; onTimezoneRefresh?: () => void; onSignOut?: () => Promise<void>;
   onSaveNote?: (note: WorkspaceNote, nextTitle: string, nextContent: string) => Promise<WorkspaceNote>;
@@ -92,7 +95,7 @@ const toEspacioWorkspace = (w: WorkspaceSummary): EspacioWorkspace => ({ id: w.i
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialTodos = [], initialNotes = [], initialActionError = null,
-  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, onSavePreferences,
+  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, onSavePreferences,
   onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
@@ -269,6 +272,17 @@ export function WorkspaceScreen({
       {...(initialPreferences ? { initialPreferences: toEspacioPreferencias(initialPreferences), initialTheme: themeToApply(initialPreferences.theme) } : {})}
       onPreferencesChange={(prefs) => persistPreferences(fromEspacioPreferencias(prefs))}
       onThemeChange={(theme) => persistPreferences({ theme }, 0)}
+      wallpaperImageUrl={initialWallpaperImageUrl}
+      onUploadWallpaper={async (file) => {
+        const form = new FormData();
+        form.set("imagen", file);
+        try {
+          return await uploadWallpaperAction(form);
+        } catch {
+          return { ok: false as const, message: "No se pudo subir tu imagen. Inténtalo de nuevo." };
+        }
+      }}
+      onRemoveWallpaper={() => runSafe("No se pudo quitar tu imagen.", async () => { await removeWallpaperAction(); })}
       timezone={initialTimezone}
       todos={todos.map((t) => toEspacioTodo(t, activeWs, currentUserId))}
       notes={notes.map((n) => toEspacioNote(n, activeWs, currentUserId))}

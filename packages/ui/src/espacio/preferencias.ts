@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 
-export type WallpaperId = "contornos" | "patron" | "tinta" | "grafito";
+export type WallpaperId = "contornos" | "patron" | "tinta" | "grafito" | "imagen";
 export type LayoutId = "libre" | "lado" | "enfoque";
 export type PanelId = "hoy" | "nota" | "notas";
 

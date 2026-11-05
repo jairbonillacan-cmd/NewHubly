@@ -2,7 +2,7 @@
 
 import { Button, Chip, Dropdown, Kbd, Popover, Slider, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { forwardRef, useState, type FormEvent } from "react";
-import type { Selection } from "react-aria-components";
+import { FileTrigger, type Selection } from "react-aria-components";
 import { useHublyTheme } from "../landing/ThemeToggle";
 import { Icon, type IconName } from "./icons";
 import { WALLPAPERS, type EspacioPreferencias, type LayoutId, type PanelId, type PreferenciasPatch } from "./preferencias";
@@ -17,7 +17,74 @@ const LAYOUTS: { id: LayoutId; label: string; icon: IconName }[] = [
 ];
 const DOCK_BUTTON = "size-10 shrink-0 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
 
+/** «Tu imagen» (#84): URL firmada actual y acciones del servidor. Sin esto, el selector la muestra como no disponible. */
+export interface WallpaperImageControls {
+  url: string | null;
+  onUpload: (file: File) => Promise<{ ok: true; url: string } | { ok: false; message: string }>;
+  onRemove: () => Promise<void>;
+}
+
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+/** Mosaico «Tu imagen»: elegirla si ya existe, subir o cambiarla, y quitarla. El servidor vuelve a validar todo. */
+function TuImagenTile({ controls, selected, onSelect }: { controls: WallpaperImageControls; selected: boolean; onSelect: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const upload = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    // Aviso inmediato; la validación de verdad (firma binaria y tamaño) la hace el servidor.
+    if (!IMAGE_TYPES.includes(file.type)) return setError("Elige una imagen JPEG, PNG o WebP.");
+    if (file.size > IMAGE_MAX_BYTES) return setError("La imagen pesa más de 5 MB.");
+    setBusy(true);
+    setError(null);
+    const result = await controls.onUpload(file);
+    setBusy(false);
+    if (result.ok) onSelect();
+    else setError(result.message);
+  };
+  return (
+    <div className="col-span-3 flex flex-col gap-2 rounded-xl border border-dashed border-(--glass-line-strong) p-2">
+      <div className="flex items-center gap-2">
+        {controls.url ? (
+          <ToggleButton
+            isSelected={selected}
+            onChange={onSelect}
+            aria-label="Usar tu imagen como fondo"
+            className="h-12 w-16 min-w-0 shrink-0 overflow-hidden rounded-lg border-2 border-transparent bg-transparent p-0 data-[selected]:border-(--accent-primary)"
+          >
+            <img src={controls.url} alt="" className="size-full object-cover" />
+          </ToggleButton>
+        ) : (
+          <span aria-hidden="true" className="flex h-12 w-16 shrink-0 items-center justify-center rounded-lg bg-(--glass-hover) text-(--text-muted)">
+            <Icon name="imagen" />
+          </span>
+        )}
+        <span className="flex min-w-0 grow flex-col">
+          <span className="text-xs font-semibold text-(--text-primary)">Tu imagen</span>
+          <span className="text-xs text-(--text-muted)">JPEG, PNG o WebP · hasta 5 MB · sin datos de ubicación</span>
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <FileTrigger acceptedFileTypes={IMAGE_TYPES} onSelect={(files) => void upload(files)}>
+          <Button size="sm" variant="secondary" isDisabled={busy}>
+            {busy ? "Subiendo…" : controls.url ? "Cambiar imagen" : "Subir imagen"}
+          </Button>
+        </FileTrigger>
+        {controls.url && (
+          <Button size="sm" variant="ghost" isDisabled={busy} onPress={() => { setError(null); void controls.onRemove(); }}>
+            Quitar
+          </Button>
+        )}
+      </div>
+      {error && <p role="alert" className="hubly-pop m-0 text-xs text-(--status-danger-text)">{error}</p>}
+    </div>
+  );
+}
+
 export interface BackgroundPickerProps {
+  imagen?: WallpaperImageControls | undefined;
   prefs: EspacioPreferencias;
   onChange: (patch: PreferenciasPatch) => void;
   isOpen: boolean;
@@ -27,7 +94,7 @@ export interface BackgroundPickerProps {
 }
 
 /** Selector de fondo y opacidad de los paneles (#75, sección 3). «Tu imagen» llega con Storage (#84). */
-export function BackgroundPicker({ prefs, onChange, isOpen, onOpenChange, triggerClassName, triggerLabel }: BackgroundPickerProps) {
+export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange, triggerClassName, triggerLabel }: BackgroundPickerProps) {
   const [theme] = useHublyTheme();
   return (
     <Popover isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -58,12 +125,16 @@ export function BackgroundPicker({ prefs, onChange, isOpen, onOpenChange, trigge
                 </ToggleButton>
               );
             })}
-            <span className="flex flex-col gap-1.5 p-1 text-xs text-(--text-muted)">
-              <span className="flex h-14 items-center justify-center rounded-lg border border-dashed border-(--glass-line-strong)">
-                <Icon name="imagen" />
+            {imagen ? (
+              <TuImagenTile controls={imagen} selected={prefs.fondo === "imagen"} onSelect={() => onChange({ fondo: "imagen" })} />
+            ) : (
+              <span className="flex flex-col gap-1.5 p-1 text-xs text-(--text-muted)">
+                <span className="flex h-14 items-center justify-center rounded-lg border border-dashed border-(--glass-line-strong)">
+                  <Icon name="imagen" />
+                </span>
+                Tu imagen · pronto
               </span>
-              Tu imagen · pronto
-            </span>
+            )}
           </div>
           <Slider
             aria-label="Opacidad de los paneles"
@@ -206,6 +277,7 @@ export const CaptureField = forwardRef<HTMLInputElement, CaptureFieldProps>(func
 });
 
 export interface DockProps extends CaptureFieldProps {
+  imagen?: WallpaperImageControls | undefined;
   prefs: EspacioPreferencias;
   onPrefs: (patch: PreferenciasPatch) => void;
   pickerOpen: boolean;
@@ -213,10 +285,10 @@ export interface DockProps extends CaptureFieldProps {
 }
 
 /** Dock flotante de escritorio (#75): fondo, paneles, distribución y captura. */
-export const Dock = forwardRef<HTMLInputElement, DockProps>(function Dock({ prefs, onPrefs, pickerOpen, onPickerOpenChange, ...capture }, ref) {
+export const Dock = forwardRef<HTMLInputElement, DockProps>(function Dock({ imagen, prefs, onPrefs, pickerOpen, onPickerOpenChange, ...capture }, ref) {
   return (
     <div className="hubly-glass hubly-enter flex w-full max-w-4xl items-center gap-1.5 rounded-2xl p-2" data-delay="3">
-      <BackgroundPicker prefs={prefs} onChange={onPrefs} isOpen={pickerOpen} onOpenChange={onPickerOpenChange} />
+      <BackgroundPicker imagen={imagen} prefs={prefs} onChange={onPrefs} isOpen={pickerOpen} onOpenChange={onPickerOpenChange} />
       <PanelsMenu prefs={prefs} onChange={onPrefs} />
       <LayoutSwitch value={prefs.distribucion} onChange={(distribucion) => onPrefs({ distribucion })} />
       <span aria-hidden="true" className="mx-1 h-7 w-px bg-(--glass-line-strong)" />

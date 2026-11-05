@@ -15,8 +15,11 @@ import {
   getVerifiedServerSession, isValidIanaTimeZone, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie, resolveRequestTimeZone, resolveSiteUrl,
   resolveSupabaseConfig, setActiveWorkspaceCookieForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests,
 } from "./auth";
+import { WALLPAPER_BUCKET, removeUserWallpaper, signUserWallpaper, uploadUserWallpaper, wallpaperObjectPath } from "./wallpaper-storage";
+import { WALLPAPER_MAX_BYTES, WallpaperImageError, sanitizeWallpaperImage } from "./wallpaper-image";
 import { acceptWorkspaceInvitationByToken, acceptWorkspaceInvitationSafely, classifyInvitationError, currentSessionEmail, issueWorkspaceInvitation, revokePendingWorkspaceInvitation, type AcceptInvitationResult } from "./invitations";
 export {
+  WALLPAPER_BUCKET, WALLPAPER_MAX_BYTES, WallpaperImageError, removeUserWallpaper, sanitizeWallpaperImage, signUserWallpaper, uploadUserWallpaper, wallpaperObjectPath,
   DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
   acceptWorkspaceInvitationByToken, acceptWorkspaceInvitationSafely, classifyInvitationError, currentSessionEmail, type AcceptInvitationResult, createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
   getVerifiedServerSession, isValidIanaTimeZone, issueWorkspaceInvitation, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie,

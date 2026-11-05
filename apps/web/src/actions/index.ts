@@ -6,7 +6,8 @@ import {
   changeTodoVisibilityUseCase, createAgencyWorkspaceUseCase, createNoteUseCase, createTodoFromNoteUseCase,
   createTodoUseCase, ensureAuthenticatedWorkspace, exportDataUseCase, getUserPreferencesUseCase, issueWorkspaceInvitation, listNotesUseCase,
   listPendingInvitationsUseCase, listTodosUseCase, listUserWorkspacesUseCase, listWorkspaceMembersUseCase,
-  persistActiveWorkspaceCookie, pinNoteUseCase, removeOrLeaveMemberUseCase, revokePendingWorkspaceInvitation, saveUserPreferencesUseCase,
+  WallpaperImageError, persistActiveWorkspaceCookie, pinNoteUseCase, removeOrLeaveMemberUseCase, removeUserWallpaper, revokePendingWorkspaceInvitation, saveUserPreferencesUseCase,
+  signUserWallpaper, uploadUserWallpaper,
   toggleTodoUseCase, updateNoteUseCase, updateTodoUseCase, type AcceptInvitationResult, type UserWorkspaceSummary, type WorkspaceInvitationRecord,
 } from "../server/composition";
 
@@ -20,6 +21,8 @@ export interface WorkspaceDashboardData {
   notes: WorkspaceNote[]; todos: WorkspaceTodo[]; todayDate: string; timezone: string; currentUserId: string;
   activeWorkspace: WorkspaceSummary; workspaces: WorkspaceSummary[]; members: WorkspaceMemberSummary[]; pendingInvitations: WorkspaceInvitationSummary[];
   preferences: UserPreferences;
+  /** URL firmada (1 h) de «Tu imagen» si es el fondo elegido; null en otro caso (#84). */
+  wallpaperImageUrl: string | null;
 }
 
 const autosaveNoteSchema = updateNoteSchema.required({ expectedVersion: true });
@@ -34,7 +37,8 @@ export async function loadWorkspaceDashboardAction(workspaceId?: string): Promis
   const seen = new Set<string>();
   const todos = [...todayTodos, ...upcomingTodos, ...noDateTodos, ...doneTodos].filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)));
   const activeWorkspace: WorkspaceSummary = { id: ctx.workspaceId, name: ctx.workspaceName, slug: ctx.workspaceSlug ?? ctx.workspaceId, kind: ctx.workspaceKind, role: ctx.role };
-  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences };
+  const wallpaperImageUrl = preferences.wallpaper === "imagen" ? await signUserWallpaper(ctx.userId) : null;
+  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences, wallpaperImageUrl };
 }
 
 export async function createTodoAction(input: CreateTodoInput, workspaceId?: string): Promise<WorkspaceTodo> {
@@ -107,5 +111,29 @@ export async function changeTodoVisibilityAction(input: { todoId: string; visibi
 /** Guarda las preferencias visuales de la persona de la sesión (#83). Solo puede tocar las suyas: lo impone RLS. */
 export async function saveUserPreferencesAction(patch: UpdateUserPreferencesInput): Promise<UserPreferences> {
   return saveUserPreferencesUseCase(await ensureAuthenticatedWorkspace())(updateUserPreferencesSchema.parse(patch));
+}
+
+export type UploadWallpaperResult = { ok: true; url: string } | { ok: false; message: string };
+
+/** Sube «Tu imagen» (#84): valida tipo real y tamaño, quita metadatos y la elige como fondo. Devuelve el error como dato,
+ *  porque en producción Next.js oculta el mensaje de los errores lanzados (#92). */
+export async function uploadWallpaperAction(formData: FormData): Promise<UploadWallpaperResult> {
+  const file = formData.get("imagen");
+  if (!(file instanceof File)) return { ok: false, message: "Elige una imagen JPEG, PNG o WebP." };
+  const ctx = await ensureAuthenticatedWorkspace();
+  try {
+    const url = await uploadUserWallpaper(ctx.userId, new Uint8Array(await file.arrayBuffer()));
+    await saveUserPreferencesUseCase(ctx)({ wallpaper: "imagen" });
+    return { ok: true, url };
+  } catch (err) {
+    return { ok: false, message: err instanceof WallpaperImageError || err instanceof Error ? err.message : "No se pudo subir tu imagen." };
+  }
+}
+
+/** Quita «Tu imagen» y vuelve al fondo «Contornos». */
+export async function removeWallpaperAction(): Promise<UserPreferences> {
+  const ctx = await ensureAuthenticatedWorkspace();
+  await removeUserWallpaper(ctx.userId);
+  return saveUserPreferencesUseCase(ctx)({ wallpaper: "contornos" });
 }
 
