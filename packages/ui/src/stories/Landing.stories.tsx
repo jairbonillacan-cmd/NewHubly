@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React from "react";
+import { AudienceSection } from "../landing/AudienceSection";
 import { AppPreview } from "../landing/AppPreview";
 import { FeatureGrid } from "../landing/FeatureGrid";
 import { LandingHero } from "../landing/LandingHero";
@@ -21,7 +22,7 @@ export const PaginaCompleta: Story = {
     <div className="bg-(--surface-canvas) text-(--text-primary)">
       <LandingNav />
       <LandingHero />
-      <AppPreview />
+      <AudienceSection />
       <PainSection />
       <FeatureGrid />
       <DataSection />
@@ -31,6 +32,11 @@ export const PaginaCompleta: Story = {
     </div>
   ),
 };
+
+export const Hero: Story = { render: () => <LandingHero /> };
+export const VistaDeHoy: Story = { render: () => <AppPreview /> };
+export const AQuienVaDirigido: Story = { render: () => <AudienceSection /> };
+export const ElProblema: Story = { render: () => <PainSection /> };
 
 export const TarjetasDeProducto: Story = {
   render: () => (

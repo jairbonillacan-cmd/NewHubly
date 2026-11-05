@@ -4,34 +4,7 @@ import { HubiWordmark } from "../components/brand/HublyLogo";
 import { buttonLinkClass } from "../heroui-classes";
 import { Reveal } from "./Reveal";
 
-const PAIN_LINES = [
-  "Las ideas, en un grupo de WhatsApp.",
-  "La parrilla, en un Excel que nadie actualiza.",
-  "Los cambios del cliente, en un audio de cuatro minutos.",
-] as const;
-
-/** Lo que vive hoy una agencia, en frases grandes, y la respuesta de Hubly. */
-export function PainSection() {
-  return (
-    <section aria-label="El problema" className="mx-auto flex max-w-7xl flex-col gap-3 px-4 pt-24 lg:items-center lg:gap-3.5 lg:pt-36 lg:text-center">
-      {PAIN_LINES.map((line, index) => (
-        <Reveal key={line} retraso={index as 0 | 1 | 2}>
-          <p className="m-0 text-2xl leading-snug font-semibold tracking-(--tracking-tight) text-(--text-faint) lg:text-4xl lg:leading-tight">{line}</p>
-        </Reveal>
-      ))}
-      <Reveal retraso={3}>
-        <p className="m-0 text-2xl leading-snug font-semibold tracking-(--tracking-tight) text-(--text-muted) lg:text-4xl lg:leading-tight">
-          Y la pregunta de siempre: ¿quién tiene esto?
-        </p>
-      </Reveal>
-      <Reveal retraso={5} className="mt-4 lg:mt-7">
-        <p className="m-0 text-2xl leading-snug font-bold tracking-(--tracking-tight) text-(--text-primary) lg:text-4xl lg:leading-tight">
-          En Hubly, <span className="text-(--accent-primary)">cada pieza dice qué sigue y quién la tiene.</span>
-        </p>
-      </Reveal>
-    </section>
-  );
-}
+export { PainSection } from "./PainSection";
 
 const DATA_POINTS = [
   { title: "Privado hasta que lo compartas", body: "Nadie más ve tus notas si no lo decides tú.", icon: "M7 10V7a5 5 0 0 1 10 0v3M6 10h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z" },
