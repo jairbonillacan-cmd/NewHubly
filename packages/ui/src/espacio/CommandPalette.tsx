@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { Button, Kbd } from "@heroui/react";
 import { Dialog, Modal, ModalOverlay } from "react-aria-components";
 import { Icon, type IconName } from "./icons";
 import type { EspacioNote, EspacioTodo } from "./types";
@@ -114,7 +115,9 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
               placeholder="Busca notas y pendientes, o escribe una acción"
               className="h-14 min-w-0 grow border-0 bg-transparent text-base text-(--text-primary) outline-none placeholder:text-(--text-muted)"
             />
-            <button type="button" onClick={close} className="cursor-pointer rounded border border-(--glass-line-strong) bg-transparent px-1.5 text-xs font-semibold text-(--text-muted)">Esc</button>
+            <Button size="sm" variant="ghost" onPress={close} aria-label="Cerrar (Esc)">
+              <Kbd><Kbd.Content>Esc</Kbd.Content></Kbd>
+            </Button>
           </div>
           <ul ref={listRef} id={listId} role="listbox" aria-label="Resultados" className="m-0 max-h-96 list-none overflow-y-auto p-2">
             {groups.map(({ group, items }) =>

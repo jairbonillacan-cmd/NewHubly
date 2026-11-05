@@ -1,6 +1,6 @@
 "use client";
 
-import { Checkbox, Disclosure } from "@heroui/react";
+import { Button, Checkbox, Chip, Disclosure, Kbd } from "@heroui/react";
 import { Hubi } from "../components/brand/Hubi";
 import { GlassPanel, IconButton } from "./GlassPanel";
 import {
@@ -15,11 +15,7 @@ const GROUP_COLOR: Record<TodoGroupId, string> = {
   proximos: "text-(--text-muted)",
   sin_fecha: "text-(--text-muted)",
 };
-const PRIORITY_CHIP = {
-  high: "bg-(--status-warning-bg) text-(--status-warning-text)",
-  medium: "bg-(--glass-hover) text-(--text-secondary)",
-  low: "text-(--text-muted)",
-} as const;
+const PRIORITY_COLOR = { high: "warning", medium: "default", low: "default" } as const;
 
 export interface HoyPanelProps {
   todos: EspacioTodo[];
@@ -53,7 +49,7 @@ function TodoRow({ todo, note, todayDate, fresh, onToggle, onChangeVisibility }:
             {todo.visibility === "workspace" && <span className="text-xs text-(--accent-primary)">Compartido con la agencia</span>}
           </span>
           {todo.priority !== "low" && (
-            <span className={`hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold sm:inline ${PRIORITY_CHIP[todo.priority]}`}>{PRIORITY_LABEL[todo.priority]}</span>
+            <Chip color={PRIORITY_COLOR[todo.priority]} variant="soft" size="sm" className="hidden shrink-0 sm:inline-flex">{PRIORITY_LABEL[todo.priority]}</Chip>
           )}
           <span className={`w-14 shrink-0 text-right text-xs font-medium ${overdue ? "text-(--status-danger-text)" : "text-(--text-muted)"}`}>
             {relativeDateLabel(todo.dueDate, todayDate)}
@@ -91,9 +87,9 @@ export function HoyPanel({ todos, notes, todayDate, filter, recentlyDone, freshI
       className={className}
       actions={
         filter && (
-          <button type="button" onClick={onClearFilter} className="hubly-pop h-7 cursor-pointer rounded-md border border-(--glass-line-strong) bg-transparent px-2 text-xs text-(--text-secondary) hover:bg-(--glass-hover)">
+          <Button size="sm" variant="tertiary" onPress={onClearFilter} className="hubly-pop">
             Quitar filtro ×
-          </button>
+          </Button>
         )
       }
     >
@@ -101,7 +97,7 @@ export function HoyPanel({ todos, notes, todayDate, filter, recentlyDone, freshI
         <div className="hubly-pop flex items-center gap-4 px-4 pt-4 pb-2">
           <Hubi acabado="volumen" tamano={64} decorativo className="hubly-float" />
           <p className="m-0 text-sm leading-relaxed text-(--text-secondary)">
-            No tienes pendientes para hoy. Captura el primero abajo o pulsa <kbd className="rounded border border-(--glass-line-strong) px-1.5 text-xs">C</kbd>.
+            No tienes pendientes para hoy. Captura el primero abajo o pulsa <Kbd><Kbd.Content>C</Kbd.Content></Kbd>.
           </p>
         </div>
       )}

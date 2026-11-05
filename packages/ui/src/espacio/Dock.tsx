@@ -1,6 +1,6 @@
 "use client";
 
-import { Dropdown, Popover, Slider, ToggleButton, ToggleButtonGroup } from "@heroui/react";
+import { Button, Chip, Dropdown, Kbd, Popover, Slider, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { forwardRef, useState, type FormEvent } from "react";
 import type { Selection } from "react-aria-components";
 import { useHublyTheme } from "../landing/ThemeToggle";
@@ -15,7 +15,7 @@ const LAYOUTS: { id: LayoutId; label: string; icon: IconName }[] = [
   { id: "lado", label: "Lado a lado", icon: "lado" },
   { id: "enfoque", label: "Modo enfoque", icon: "enfoque" },
 ];
-const DOCK_BUTTON = "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-(--text-secondary) transition-colors hover:bg-(--glass-hover) hover:text-(--text-primary)";
+const DOCK_BUTTON = "size-10 shrink-0 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
 
 export interface BackgroundPickerProps {
   prefs: EspacioPreferencias;
@@ -32,10 +32,10 @@ export function BackgroundPicker({ prefs, onChange, isOpen, onOpenChange, trigge
   return (
     <Popover isOpen={isOpen} onOpenChange={onOpenChange}>
       <Popover.Trigger>
-        <button type="button" aria-label="Fondo" title="Fondo" className={triggerClassName ?? DOCK_BUTTON}>
+        <Button variant="ghost" isIconOnly={!triggerLabel} aria-label="Fondo" className={triggerClassName ?? DOCK_BUTTON}>
           <Icon name="imagen" className="size-5" />
           {triggerLabel && <span className="text-xs">{triggerLabel}</span>}
-        </button>
+        </Button>
       </Popover.Trigger>
       <Popover.Content placement="top" className="hubly-pop-surface w-80 rounded-2xl p-4 text-(--text-primary)">
         <Popover.Dialog aria-label="Elegir fondo" className="flex flex-col gap-4 outline-none">
@@ -47,16 +47,15 @@ export function BackgroundPicker({ prefs, onChange, isOpen, onOpenChange, trigge
             {WALLPAPERS.map((wallpaper) => {
               const label = theme === "dark" ? wallpaper.oscuro : wallpaper.claro;
               return (
-                <button
+                <ToggleButton
                   key={wallpaper.id}
-                  type="button"
-                  aria-pressed={prefs.fondo === wallpaper.id}
-                  onClick={() => onChange({ fondo: wallpaper.id })}
-                  className="flex cursor-pointer flex-col gap-1.5 rounded-xl border-2 border-transparent bg-transparent p-1 text-xs text-(--text-secondary) transition-transform hover:-translate-y-0.5 aria-pressed:border-(--accent-primary) aria-pressed:text-(--text-primary)"
+                  isSelected={prefs.fondo === wallpaper.id}
+                  onChange={() => onChange({ fondo: wallpaper.id })}
+                  className="h-auto min-w-0 flex-col items-stretch gap-1.5 rounded-xl border-2 border-transparent bg-transparent p-1 text-xs font-normal text-(--text-secondary) transition-transform data-[hovered]:-translate-y-0.5 data-[selected]:border-(--accent-primary) data-[selected]:bg-transparent data-[selected]:text-(--text-primary)"
                 >
                   <WallpaperSwatch fondo={wallpaper.id} />
                   {label}
-                </button>
+                </ToggleButton>
               );
             })}
             <span className="flex flex-col gap-1.5 p-1 text-xs text-(--text-muted)">
@@ -163,10 +162,10 @@ export const CaptureField = forwardRef<HTMLInputElement, CaptureFieldProps>(func
   const [text, setText] = useState("");
   const analysis = text.trim() ? analyze(text) : null;
   const queryNote = findNoteByQuery(notes, analysis?.noteQuery ?? null);
-  const chips: { label: string; tone: string }[] = [];
-  if (analysis?.dueKeyword) chips.push({ label: analysis.dueKeyword === "hoy" ? "Hoy" : "Mañana", tone: "bg-(--accent-primary-subtle) text-(--accent-primary)" });
-  if (analysis?.priority) chips.push({ label: PRIORITY_LABEL[analysis.priority], tone: "bg-(--status-warning-bg) text-(--status-warning-text)" });
-  if (analysis?.noteQuery) chips.push(queryNote ? { label: `Nota: ${queryNote.title}`, tone: "bg-(--status-success-bg) text-(--status-success-text)" } : { label: `Sin nota «${analysis.noteQuery}»`, tone: "bg-(--glass-hover) text-(--text-muted)" });
+  const chips: { label: string; color: "accent" | "warning" | "success" | "default" }[] = [];
+  if (analysis?.dueKeyword) chips.push({ label: analysis.dueKeyword === "hoy" ? "Hoy" : "Mañana", color: "accent" });
+  if (analysis?.priority) chips.push({ label: PRIORITY_LABEL[analysis.priority], color: "warning" });
+  if (analysis?.noteQuery) chips.push(queryNote ? { label: `Nota: ${queryNote.title}`, color: "success" } : { label: `Sin nota «${analysis.noteQuery}»`, color: "default" });
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -189,18 +188,18 @@ export const CaptureField = forwardRef<HTMLInputElement, CaptureFieldProps>(func
           className="min-w-0 grow border-0 bg-transparent text-base text-(--text-primary) outline-none placeholder:text-(--text-muted) lg:text-sm"
         />
         {linkedNote && (
-          <button type="button" onClick={onUnlinkNote} title="Quitar vínculo" className="hubly-pop shrink-0 cursor-pointer rounded-full border-0 bg-(--status-success-bg) px-2 py-0.5 text-xs font-semibold text-(--status-success-text)">
+          <Button size="sm" variant="secondary" onPress={onUnlinkNote} aria-label={`Quitar el vínculo con la nota ${linkedNote.title || "sin título"}`} className="hubly-pop h-6 shrink-0 text-(--status-success-text)">
             Nota: {linkedNote.title || "sin título"} ×
-          </button>
+          </Button>
         )}
         {chips.map((chip) => (
-          <span key={chip.label} className={`hubly-pop hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold sm:inline ${chip.tone}`}>{chip.label}</span>
+          <Chip key={chip.label} color={chip.color} variant="soft" size="sm" className="hubly-pop hidden shrink-0 sm:inline-flex">{chip.label}</Chip>
         ))}
-        <kbd className="hidden shrink-0 rounded border border-(--glass-line-strong) px-1.5 text-xs font-semibold text-(--text-muted) lg:inline">C</kbd>
+        <Kbd className="hidden shrink-0 lg:inline-flex"><Kbd.Content>C</Kbd.Content></Kbd>
       </label>
-      <button type="submit" className="h-11 shrink-0 cursor-pointer rounded-xl border-0 bg-(--accent-primary) px-4 text-sm font-semibold text-(--text-on-accent) transition-transform hover:bg-(--accent-primary-hover) active:scale-95">
+      <Button type="submit" variant="primary" className="h-11 shrink-0">
         Agregar
-      </button>
+      </Button>
       {error && <span id="captura-error" role="alert" className="sr-only">{error}</span>}
     </form>
   );
