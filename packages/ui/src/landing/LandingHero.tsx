@@ -1,3 +1,5 @@
+import { buttonLinkClass } from "../heroui-classes";
+
 const HERO_POINTS = [
   { title: "Tu día en una lista", note: "Lo vencido primero", tone: "bg-(--tint-blue) text-(--accent-primary)", icon: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2" },
   { title: "Cada quien con lo suyo", note: "Tu equipo, muy pronto", tone: "bg-(--tint-green) text-(--status-success-text)", icon: "M9 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7M2.5 20c.8-3.5 3.3-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5c2 .6 3.2 2.5 3.5 5.5" },
@@ -26,7 +28,7 @@ export function LandingHero() {
       <div className="hubly-enter mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row" data-delay="2">
         <a
           href="/login"
-          className="group inline-flex h-13 items-center justify-center gap-2.5 rounded-full bg-(--accent-primary) px-7 text-base font-semibold text-(--text-on-accent) no-underline transition-transform hover:bg-(--accent-primary-hover) active:scale-95"
+          className={buttonLinkClass("primary", "lg", "group")}
         >
           Crear cuenta
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="transition-transform group-hover:translate-x-1">
@@ -35,7 +37,7 @@ export function LandingHero() {
         </a>
         <a
           href="#producto"
-          className="inline-flex h-13 items-center justify-center rounded-full border border-(--border-default) bg-(--surface-raised) px-7 text-base font-semibold text-(--text-primary) no-underline transition-transform hover:bg-(--surface-subtle) active:scale-95"
+          className={buttonLinkClass("secondary", "lg")}
         >
           Ver cómo funciona
         </a>

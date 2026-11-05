@@ -10,7 +10,6 @@ import {
   FaqSection,
   FeatureGrid,
   FinalCta,
-  GlassCard,
   LANDING_FAQ,
   LANDING_FEATURES,
   LANDING_NAV_LINKS,
@@ -18,18 +17,18 @@ import {
   LandingHero,
   LandingNav,
   PainSection,
-  PillNav,
+  LegalPage,
   ThemeToggle,
 } from "../index";
 
 const currentDir = fileURLToPath(new URL(".", import.meta.url));
 const tokensCssPath = resolve(currentDir, "../tokens.css");
 
-const render = (component: () => unknown) => renderToStaticMarkup(createElement(component as () => null));
+const render = (component: (props: never) => unknown) => renderToStaticMarkup(createElement(component as () => null));
 
 describe("Bloques del landing de marketing (@hubly/ui, #85)", () => {
   it("exporta los bloques del landing y conserva las primitivas de las páginas legales", () => {
-    for (const block of [LandingNav, LandingHero, AppPreview, PainSection, FeatureGrid, DataSection, FaqSection, FinalCta, LandingFooter, GlassCard, PillNav, ThemeToggle]) {
+    for (const block of [LandingNav, LandingHero, AppPreview, PainSection, FeatureGrid, DataSection, FaqSection, FinalCta, LandingFooter, LegalPage, ThemeToggle]) {
       expect(typeof block).toBe("function");
     }
   });

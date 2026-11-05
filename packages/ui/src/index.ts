@@ -9,10 +9,9 @@ export type { ButtonProps, CardProps, CheckboxProps, ChipProps, EmptyStateProps,
 export * from "./components/brand/HublyLogo";
 export * from "./components/brand/Hubi";
 
-// Primitivas visuales base de las páginas públicas (Issue #8)
-export * from "./landing/GlassCard";
+// Tema y clases de HeroUI para enlaces con aspecto de botón y etiquetas
 export * from "./landing/ThemeToggle";
-export * from "./landing/PillNav";
+export * from "./heroui-classes";
 
 // Bloques del landing de marketing (Issue #85)
 export * from "./landing/LandingNav";
@@ -21,13 +20,7 @@ export * from "./landing/AppPreview";
 export * from "./landing/Reveal";
 export * from "./landing/FeatureGrid";
 export * from "./landing/LandingSections";
+export * from "./landing/LegalPage";
 
 // Espacio de Hoy con paneles de cristal sobre fondo personal (propuesta B, #75)
 export * from "./espacio";
-
-// Componentes de Notas y Pendientes de Fase 1A con dirección visual y HeroUI (Issues #26 y #47)
-export * from "./components/notes/NoteEditorCard";
-export * from "./components/todos/QuickCaptureBar";
-export * from "./components/todos/TodoItemCard";
-export * from "./components/workspace/ViewSelector";
-export * from "./components/workspace/WorkspaceEmptyState";

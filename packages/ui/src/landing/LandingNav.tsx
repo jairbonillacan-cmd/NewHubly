@@ -1,14 +1,21 @@
 import { HubiWordmark } from "../components/brand/HublyLogo";
+import { buttonLinkClass } from "../heroui-classes";
 import { ThemeToggle } from "./ThemeToggle";
 
-export const LANDING_NAV_LINKS = [
+export interface NavLink {
+  href: string;
+  label: string;
+  current?: boolean;
+}
+
+export const LANDING_NAV_LINKS: readonly NavLink[] = [
   { href: "#producto", label: "Producto" },
   { href: "#privacidad", label: "Privacidad" },
   { href: "#preguntas", label: "Preguntas" },
-] as const;
+];
 
-/** Barra flotante de cristal del landing (#85): logo, secciones, tema, Entrar y Crear cuenta. */
-export function LandingNav() {
+/** Barra flotante de cristal (#85): logo, secciones, tema, Entrar y Crear cuenta, con botones de HeroUI. */
+export function LandingNav({ links = LANDING_NAV_LINKS }: { links?: readonly NavLink[] }) {
   return (
     <header className="sticky top-3 z-30 px-3 pt-3 lg:top-5 lg:px-6 lg:pt-5">
       <nav
@@ -18,10 +25,10 @@ export function LandingNav() {
         <a href="/" aria-label="Hubly, inicio" className="group flex items-center text-(--text-primary)">
           <HubiWordmark className="transition-transform group-hover:-rotate-3" />
         </a>
-        <ul className="m-0 hidden list-none gap-7 p-0 text-sm text-(--text-secondary) lg:flex">
-          {LANDING_NAV_LINKS.map((link) => (
+        <ul className="m-0 hidden list-none gap-1 p-0 lg:flex">
+          {links.map((link) => (
             <li key={link.href}>
-              <a href={link.href} className="no-underline hover:text-(--accent-primary)">
+              <a href={link.href} aria-current={link.current ? "page" : undefined} className={buttonLinkClass("ghost", "sm", "text-(--text-secondary) aria-[current=page]:text-(--accent-primary)")}>
                 {link.label}
               </a>
             </li>
@@ -31,13 +38,10 @@ export function LandingNav() {
         <span className="hidden lg:inline-flex">
           <ThemeToggle variante="icono" />
         </span>
-        <a href="/login" className="flex h-11 items-center px-3 text-sm font-semibold text-(--text-primary) no-underline">
+        <a href="/login" className={buttonLinkClass("ghost", "md")}>
           Entrar
         </a>
-        <a
-          href="/login"
-          className="flex h-11 items-center rounded-xl bg-(--accent-primary) px-4 text-sm font-semibold text-(--text-on-accent) no-underline transition-transform hover:bg-(--accent-primary-hover) active:scale-95"
-        >
+        <a href="/login" className={buttonLinkClass("primary", "md")}>
           Crear cuenta
         </a>
       </nav>

@@ -67,7 +67,7 @@ describe("tokens semánticos de @hubly/ui, paleta Grafito y azul tinta (#52) e i
     expect(previewContent).toContain("../src/tokens.css");
     expect(previewContent).toContain("desktop1440");
     expect(previewContent).toContain("mobile390");
-    for (const story of ["Brand.stories.tsx", "Landing.stories.tsx", "Workspace.stories.tsx"]) {
+    for (const story of ["Brand.stories.tsx", "Landing.stories.tsx", "Espacio.stories.tsx"]) {
       expect(existsSync(resolve(currentDir, "stories", story))).toBe(true);
     }
 

@@ -1,5 +1,7 @@
+import { Accordion } from "@heroui/react";
 import { Hubi } from "../components/brand/Hubi";
 import { HubiWordmark } from "../components/brand/HublyLogo";
+import { buttonLinkClass } from "../heroui-classes";
 import { Reveal } from "./Reveal";
 
 const PAIN_LINES = [
@@ -76,19 +78,21 @@ export function FaqSection() {
           Lo que nos preguntan.
         </h2>
       </div>
-      <div>
-        {LANDING_FAQ.map((item, index) => (
-          <details key={item.q} open={index === 0} className="group border-t border-(--border-default)">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 py-5 text-base font-semibold text-(--text-primary) hover:text-(--accent-primary) lg:py-6 lg:text-lg [&::-webkit-details-marker]:hidden">
-              {item.q}
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 transition-transform duration-300 group-open:rotate-45">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </summary>
-            <p className="hubly-pop m-0 pr-10 pb-6 text-base leading-relaxed text-(--text-secondary)">{item.a}</p>
-          </details>
+      <Accordion defaultExpandedKeys={[LANDING_FAQ[0].q]} className="w-full">
+        {LANDING_FAQ.map((item) => (
+          <Accordion.Item key={item.q} id={item.q} className="border-t border-(--border-default)">
+            <Accordion.Heading>
+              <Accordion.Trigger className="py-5 text-base font-semibold text-(--text-primary) lg:py-6 lg:text-lg">
+                {item.q}
+                <Accordion.Indicator />
+              </Accordion.Trigger>
+            </Accordion.Heading>
+            <Accordion.Panel>
+              <Accordion.Body className="pr-10 pb-6 text-base leading-relaxed text-(--text-secondary)">{item.a}</Accordion.Body>
+            </Accordion.Panel>
+          </Accordion.Item>
         ))}
-      </div>
+      </Accordion>
     </section>
   );
 }
@@ -102,10 +106,10 @@ export function FinalCta() {
         </h2>
         <p className="m-0 max-w-xl text-base leading-relaxed text-(--text-secondary) lg:text-lg">Crea tu cuenta y ten tus pendientes en orden en un minuto.</p>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-          <a href="/login" className="inline-flex h-13 items-center justify-center rounded-full bg-(--accent-primary) px-7 text-base font-semibold text-(--text-on-accent) no-underline transition-transform hover:bg-(--accent-primary-hover) active:scale-95">
+          <a href="/login" className={buttonLinkClass("primary", "lg")}>
             Crear cuenta
           </a>
-          <a href="/login" className="inline-flex h-13 items-center justify-center rounded-full border border-(--border-default) bg-(--surface-raised) px-7 text-base font-semibold text-(--text-primary) no-underline">
+          <a href="/login" className={buttonLinkClass("secondary", "lg")}>
             Ya tengo cuenta
           </a>
         </div>
@@ -118,7 +122,12 @@ export function FinalCta() {
   );
 }
 
-export function LandingFooter() {
+export const DEFAULT_FOOTER_LINKS: readonly { href: string; label: string }[] = [
+  { href: "/privacidad", label: "Privacidad" },
+  { href: "/terminos", label: "Términos" },
+];
+
+export function LandingFooter({ links = DEFAULT_FOOTER_LINKS }: { links?: readonly { href: string; label: string }[] }) {
   return (
     <footer className="border-t border-(--border-default) px-4 py-8 lg:px-6">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 text-sm text-(--text-muted)">
@@ -127,9 +136,10 @@ export function LandingFooter() {
         </a>
         <span>© 2026</span>
         <span className="grow" />
-        <a href="/privacidad" className="flex min-h-11 items-center text-(--text-muted) no-underline hover:text-(--accent-primary)">Privacidad</a>
-        <a href="/terminos" className="flex min-h-11 items-center text-(--text-muted) no-underline hover:text-(--accent-primary)">Términos</a>
-        <a href="/login" className="flex min-h-11 items-center text-(--text-muted) no-underline hover:text-(--accent-primary)">Entrar</a>
+        {links.map((link) => (
+          <a key={link.href} href={link.href} className={buttonLinkClass("ghost", "sm", "text-(--text-muted)")}>{link.label}</a>
+        ))}
+        <a href="/login" className={buttonLinkClass("ghost", "sm", "text-(--text-muted)")}>Entrar</a>
       </div>
     </footer>
   );

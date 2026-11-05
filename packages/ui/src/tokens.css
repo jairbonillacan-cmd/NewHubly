@@ -208,21 +208,6 @@ body {
 @media (prefers-reduced-transparency: reduce) { .glass-panel { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--glass-fallback-bg); } }
 @media (max-width: 640px) { .glass-panel { backdrop-filter: blur(var(--glass-blur-mobile)); -webkit-backdrop-filter: blur(var(--glass-blur-mobile)); } }
 
-/* Barra de píldora y encabezado de páginas legales sin desbordamiento horizontal (scrollWidth <= 390px, Issue #8) */
-@media (max-width: 768px) {
-  .hubly-pill-header { top: var(--space-3) !important; }
-  .hubly-pill-links { order: 3; width: 100%; justify-content: space-between; flex-wrap: nowrap !important; overflow-x: auto; }
-  .hubly-pill-link { padding-inline: var(--space-2) !important; padding-block: var(--space-1) !important; white-space: nowrap; }
-  .hubly-hero-content { padding-top: calc(var(--space-12) * 3.5) !important; }
-}
-
-/* Identidad: logo Secuencia (firma en escritorio, símbolo en < 640px) y mascota Hubi por tema (Issue #53) */
-.hubly-brand-wordmark { display: inline-flex; align-items: center; }
-.hubly-brand-symbol { display: none; }
-@media (max-width: 640px) {
-  .hubly-brand-wordmark { display: none !important; }
-  .hubly-brand-symbol { display: inline-flex !important; align-items: center; }
-}
 .hubly-hubi { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; }
 .hubly-hubi-img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .hubly-hubi-light { display: block; }
