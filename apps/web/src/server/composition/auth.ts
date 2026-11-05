@@ -6,6 +6,7 @@ import type { UserClaims } from "@hubly/db";
 export const GENERIC_AUTH_ERROR = "No se pudo iniciar sesión";
 export const GENERIC_MAGIC_LINK_MESSAGE = "Si el correo es válido, te enviamos un mensaje";
 export const HUBLY_TIMEZONE_COOKIE = "hubly_tz";
+export const HUBLY_WORKSPACE_COOKIE = "hubly_ws";
 export const DEFAULT_APP_TIMEZONE = "America/Mexico_City";
 
 export function isValidIanaTimeZone(tz: string | null | undefined): tz is string {
@@ -14,9 +15,30 @@ export function isValidIanaTimeZone(tz: string | null | undefined): tz is string
 }
 
 let testTimeZoneResolver: (() => string | Promise<string>) | null = null;
+let testWorkspaceCookie: string | null = null;
+
 export function setTimeZoneResolverForTests(fn: (() => string | Promise<string>) | null): void {
   if (process.env.NODE_ENV !== "test") throw new Error("Solo permitido en entorno de pruebas");
   testTimeZoneResolver = fn;
+}
+
+export function setActiveWorkspaceCookieForTests(workspaceId: string | null): void {
+  if (process.env.NODE_ENV !== "test") throw new Error("Solo permitido en entorno de pruebas");
+  testWorkspaceCookie = workspaceId;
+}
+
+export async function resolveActiveWorkspaceCookie(): Promise<string | null> {
+  if (process.env.NODE_ENV === "test") return testWorkspaceCookie;
+  try { return (await cookies()).get(HUBLY_WORKSPACE_COOKIE)?.value?.trim() || null; } catch { return null; }
+}
+
+export async function persistActiveWorkspaceCookie(workspaceId: string | null): Promise<void> {
+  if (process.env.NODE_ENV === "test") testWorkspaceCookie = workspaceId;
+  try {
+    const store = await cookies();
+    if (workspaceId) store.set(HUBLY_WORKSPACE_COOKIE, workspaceId, enforceHttpOnlyCookieOptions({ maxAge: 60 * 60 * 24 * 30 }));
+    else store.set(HUBLY_WORKSPACE_COOKIE, "", enforceHttpOnlyCookieOptions({ maxAge: 0 }));
+  } catch { /* sin contexto HTTP en pruebas unitarias */ }
 }
 
 export async function resolveRequestTimeZone(): Promise<string> {
@@ -68,6 +90,7 @@ let customClientFactory: SupabaseClientFactory | null = null;
 export function setSupabaseServerClientFactoryForTests(f: SupabaseClientFactory | null): void {
   if (process.env.NODE_ENV !== "test") throw new Error("Solo permitido en entorno de pruebas");
   customClientFactory = f;
+  if (f === null) testWorkspaceCookie = null;
 }
 
 export async function createSupabaseServerClient(cookieMethodsOverride?: ReturnType<typeof createHttpOnlyCookieMethods>): Promise<SupabaseServerClient> {

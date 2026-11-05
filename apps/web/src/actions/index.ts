@@ -1,24 +1,39 @@
 "use server";
 import type { NoteFilter } from "@hubly/application";
 import { createNoteSchema, createTodoSchema, exportDataSchema, updateNoteSchema, updateTodoSchema, type CreateNoteInput, type CreateTodoInput, type ExportData, type UpdateNoteInput, type UpdateTodoInput } from "@hubly/contracts";
-import { archiveNoteUseCase, createNoteUseCase, createTodoFromNoteUseCase, createTodoUseCase, ensureAuthenticatedWorkspace, exportDataUseCase, listNotesUseCase, listTodosUseCase, pinNoteUseCase, toggleTodoUseCase, updateNoteUseCase, updateTodoUseCase } from "../server/composition";
+import {
+  acceptWorkspaceInvitationByToken, archiveNoteUseCase, changeMemberRoleUseCase, changeNoteVisibilityUseCase,
+  changeTodoVisibilityUseCase, createAgencyWorkspaceUseCase, createNoteUseCase, createTodoFromNoteUseCase,
+  createTodoUseCase, ensureAuthenticatedWorkspace, exportDataUseCase, issueWorkspaceInvitation, listNotesUseCase,
+  listPendingInvitationsUseCase, listTodosUseCase, listUserWorkspacesUseCase, listWorkspaceMembersUseCase,
+  persistActiveWorkspaceCookie, pinNoteUseCase, removeOrLeaveMemberUseCase, revokePendingWorkspaceInvitation,
+  toggleTodoUseCase, updateNoteUseCase, updateTodoUseCase, type UserWorkspaceSummary, type WorkspaceInvitationRecord,
+} from "../server/composition";
 
 export type WorkspaceNote = Awaited<ReturnType<ReturnType<typeof listNotesUseCase>>>[number];
 export type WorkspaceTodo = Awaited<ReturnType<ReturnType<typeof listTodosUseCase>>>[number];
 export type WorkspaceTodoView = Parameters<ReturnType<typeof listTodosUseCase>>[0];
-export interface WorkspaceDashboardData { notes: WorkspaceNote[]; todos: WorkspaceTodo[]; todayDate: string; timezone: string; }
+export type WorkspaceSummary = UserWorkspaceSummary;
+export type WorkspaceMemberSummary = Awaited<ReturnType<ReturnType<typeof listWorkspaceMembersUseCase>>>[number];
+export type WorkspaceInvitationSummary = WorkspaceInvitationRecord;
+export interface WorkspaceDashboardData {
+  notes: WorkspaceNote[]; todos: WorkspaceTodo[]; todayDate: string; timezone: string; currentUserId: string;
+  activeWorkspace: WorkspaceSummary; workspaces: WorkspaceSummary[]; members: WorkspaceMemberSummary[]; pendingInvitations: WorkspaceInvitationSummary[];
+}
 
 const autosaveNoteSchema = updateNoteSchema.required({ expectedVersion: true });
 
 export async function loadWorkspaceDashboardAction(workspaceId?: string): Promise<WorkspaceDashboardData> {
   const ctx = await ensureAuthenticatedWorkspace(workspaceId);
   const listView = listTodosUseCase(ctx);
-  const [notes, todayTodos, upcomingTodos, noDateTodos, doneTodos] = await Promise.all([
+  const [notes, todayTodos, upcomingTodos, noDateTodos, doneTodos, userWorkspaces, members, pendingInvitations] = await Promise.all([
     listNotesUseCase(ctx)(), listView("today"), listView("upcoming"), listView("no_date"), listView("done"),
+    listUserWorkspacesUseCase(ctx)(), listWorkspaceMembersUseCase(ctx)(), listPendingInvitationsUseCase(ctx)(),
   ]);
   const seen = new Set<string>();
   const todos = [...todayTodos, ...upcomingTodos, ...noDateTodos, ...doneTodos].filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)));
-  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone };
+  const activeWorkspace: WorkspaceSummary = { id: ctx.workspaceId, name: ctx.workspaceName, slug: ctx.workspaceSlug ?? ctx.workspaceId, kind: ctx.workspaceKind, role: ctx.role };
+  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations };
 }
 
 export async function createTodoAction(input: CreateTodoInput, workspaceId?: string): Promise<WorkspaceTodo> {
@@ -56,4 +71,33 @@ export async function exportWorkspaceAction(workspaceId?: string): Promise<{ jso
   const res = await exportDataUseCase(ctx)();
   const validated = exportDataSchema.parse(res.json), date = ctx.todayDate;
   return { jsonFilename: `hubly-export-${date}.json`, mdFilename: `hubly-export-${date}.md`, jsonContent: JSON.stringify(validated, null, 2), markdownContent: res.markdown, data: validated };
+}
+export async function createAgencyWorkspaceAction(input: { name: string; slug?: string | null }): Promise<WorkspaceSummary> {
+  return createAgencyWorkspaceUseCase(await ensureAuthenticatedWorkspace())(input);
+}
+export async function selectActiveWorkspaceAction(workspaceId: string): Promise<WorkspaceSummary> {
+  const ctx = await ensureAuthenticatedWorkspace(workspaceId);
+  await persistActiveWorkspaceCookie(ctx.workspaceId);
+  return { id: ctx.workspaceId, name: ctx.workspaceName, slug: ctx.workspaceSlug ?? ctx.workspaceId, kind: ctx.workspaceKind, role: ctx.role };
+}
+export async function inviteWorkspaceMemberAction(input: { workspaceId?: string; email: string; role: "admin" | "editor" | "viewer" }): Promise<{ invitation: WorkspaceInvitationSummary; invitationPath: string }> {
+  return issueWorkspaceInvitation(await ensureAuthenticatedWorkspace(input.workspaceId), { email: input.email, role: input.role });
+}
+export async function revokeWorkspaceInvitationAction(input: { workspaceId?: string; invitationId: string }): Promise<void> {
+  return revokePendingWorkspaceInvitation(await ensureAuthenticatedWorkspace(input.workspaceId), input.invitationId);
+}
+export async function acceptWorkspaceInvitationAction(input: { token: string }): Promise<{ workspaceId: string }> {
+  return acceptWorkspaceInvitationByToken(input.token);
+}
+export async function changeWorkspaceMemberRoleAction(input: { workspaceId?: string; targetUserId: string; role: "owner" | "admin" | "editor" | "viewer" }): Promise<void> {
+  return changeMemberRoleUseCase(await ensureAuthenticatedWorkspace(input.workspaceId))(input.targetUserId, input.role);
+}
+export async function removeOrLeaveWorkspaceMemberAction(input: { workspaceId?: string; targetUserId: string }): Promise<{ leftCurrentWorkspace: boolean }> {
+  return removeOrLeaveMemberUseCase(await ensureAuthenticatedWorkspace(input.workspaceId))(input.targetUserId);
+}
+export async function changeNoteVisibilityAction(input: { noteId: string; visibility: "private" | "workspace" }, workspaceId?: string): Promise<WorkspaceNote> {
+  return changeNoteVisibilityUseCase(await ensureAuthenticatedWorkspace(workspaceId))(input.noteId, input.visibility);
+}
+export async function changeTodoVisibilityAction(input: { todoId: string; visibility: "private" | "workspace" }, workspaceId?: string): Promise<WorkspaceTodo> {
+  return changeTodoVisibilityUseCase(await ensureAuthenticatedWorkspace(workspaceId))(input.todoId, input.visibility);
 }

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   ALLOWED_BROWSER_STORAGE_KEYS,
+  ALLOWED_UI_PLACEHOLDER_EMAILS,
   KNOWN_APP_ROUTES,
   evaluateCruise,
   findBrowserStorageAndTokenViolations,
@@ -290,12 +291,16 @@ describe("Reglas de CI de higiene de rutas y fronteras de cliente (#69)", () => 
     expect(violations[3]).toContain('Server Action ("use server") no puede exponer ni manipular el campo de token "access_token"');
   });
 
-  it("Regla 4 (Nada fijo de un cliente en código): prohíbe UUIDs literales, correos y condicionales por cliente fuera de pruebas", () => {
+  it("Regla 4 (Nada fijo de un cliente en código): prohíbe UUIDs literales, correos y condicionales por cliente fuera de pruebas y permite correos oficiales de contacto de Hubly", () => {
     expect(findHardcodedTenantViolations(allCodeFiles, { repoRoot })).toEqual([]);
+    for (const official of ["equipo@agencia.es", "privacidad@hubly.es", "legal@hubly.es", "soporte@hubly.es", "hola@hubly.es"]) {
+      expect(ALLOWED_UI_PLACEHOLDER_EMAILS.has(official)).toBe(true);
+    }
 
     const violations = findHardcodedTenantViolations(
       [
         { path: "apps/web/src/app/(public)/login/page.tsx", content: '<Input placeholder="equipo@agencia.es" />' },
+        { path: "apps/web/src/app/(public)/privacidad/page.tsx", content: '<a href="mailto:privacidad@hubly.es">privacidad@hubly.es</a><a href="mailto:legal@hubly.es">legal@hubly.es</a><a href="mailto:soporte@hubly.es">hola@hubly.es</a>' },
         { path: "apps/web/tests/fixture.test.ts", content: 'const id = "550e8400-e29b-41d4-a716-446655440000"; const e = "a@b.com";' },
         { path: "packages/application/src/bad-uuid.ts", content: 'const FIXED = "550e8400-e29b-41d4-a716-446655440000";' },
         { path: "packages/application/src/bad-email.ts", content: 'const VIP = "vip@cliente.com";' },

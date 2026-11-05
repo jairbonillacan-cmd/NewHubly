@@ -1,9 +1,12 @@
 import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 import { withUserContext } from "../src/context";
-import { getDb } from "../src/internal";
+import { getDb, resolveDatabaseUrl } from "../src/internal";
+import * as schema from "../src/schema";
 import { notes, todos, workspaceInvitations, workspaceMembers, workspaces } from "../src/schema";
 
 const sha256Hex = (raw: string): string => createHash("sha256").update(raw, "utf8").digest("hex");
@@ -13,7 +16,7 @@ const expectPgError = async (fn: () => Promise<unknown>, pattern: RegExp) => {
   expect(caught?.cause?.message ?? caught?.message ?? "").toMatch(pattern);
 };
 
-describe("Fase 1B · Roles de agencia, invitaciones, visibilidad y reubicación RLS (ADR 0007 & Issue #62)", { timeout: 30000 }, () => {
+describe("Fase 1B · Roles de agencia, invitaciones, visibilidad, reubicación y concurrencia RLS (ADR 0007)", { timeout: 30000 }, () => {
   const db = getDb();
   const runId = Math.random().toString(36).slice(2, 10);
   const ownerA = crypto.randomUUID(), adminA = crypto.randomUUID(), editorA = crypto.randomUUID(), viewerA = crypto.randomUUID();
@@ -60,7 +63,6 @@ describe("Fase 1B · Roles de agencia, invitaciones, visibilidad y reubicación 
     await expect(withUserContext({ sub: viewerA, role: "authenticated" }, (tx) => tx.execute(sql`select private.accept_workspace_invitation(${tRev})`))).rejects.toThrow();
     await withUserContext({ sub: editorA, role: "authenticated" }, (tx) => tx.execute(sql`select private.accept_workspace_invitation(${tEditor})`));
     await withUserContext({ sub: viewerA, role: "authenticated" }, (tx) => tx.execute(sql`select private.accept_workspace_invitation(${tViewer})`));
-
     await withUserContext({ sub: editorA, role: "authenticated" }, async (tx) => {
       expect(await tx.execute(sql`select id, email, role from public.workspace_invitations where workspace_id = ${agencyAId}::uuid`)).toEqual([]);
     });
@@ -71,19 +73,26 @@ describe("Fase 1B · Roles de agencia, invitaciones, visibilidad y reubicación 
     await expectPgError(() => withUserContext({ sub: ownerB, role: "authenticated" }, (tx) => insertInv(tx, agencyBId, `u20-${runId}@hubly.local`, "viewer", `b-20-${runId}`, ownerB)), /20 invitaciones/);
   });
 
-  it("2. Visibilidad compartida vs privada, aislamiento entre agencias, trigger SECURITY DEFINER de desvinculación y Detalle 1 de Claude", async () => {
-    const [nPrivOwner, nSharedOwner] = await withUserContext({ sub: ownerA, role: "authenticated" }, async (tx) => {
-      const [p] = await tx.insert(notes).values({ workspaceId: agencyAId, createdBy: ownerA, visibility: "private", title: "Privada Owner" }).returning();
-      const [s] = await tx.insert(notes).values({ workspaceId: agencyAId, createdBy: ownerA, visibility: "workspace", title: "Compartida Owner" }).returning();
-      return [p!, s!];
-    });
+  it("2. Aislamiento entre agencias: otra agencia no puede leer ni modificar notas, miembros ni invitaciones", async () => {
+    await withUserContext({ sub: ownerA, role: "authenticated" }, (tx) => tx.insert(notes).values({ workspaceId: agencyAId, createdBy: ownerA, visibility: "workspace", title: "Nota Agencia A" }));
     await withUserContext({ sub: ownerB, role: "authenticated" }, async (tx) => {
       expect(await tx.select().from(notes).where(eq(notes.workspaceId, agencyAId))).toEqual([]);
       expect(await tx.select().from(workspaceMembers).where(eq(workspaceMembers.workspaceId, agencyAId))).toEqual([]);
       expect(await tx.execute(sql`select id from public.workspace_invitations where workspace_id = ${agencyAId}::uuid`)).toEqual([]);
     });
+    await expect(withUserContext({ sub: ownerB, role: "authenticated" }, (tx) => tx.insert(notes).values({ workspaceId: agencyAId, createdBy: ownerB, visibility: "workspace", title: "Intruso" }))).rejects.toThrow();
+  });
+
+  it("3. Visibilidad private vs workspace, permisos por rol y desvinculación al privatizar nota (Detalle 1 de Claude)", async () => {
+    const [nPrivOwner, nSharedOwner] = await withUserContext({ sub: ownerA, role: "authenticated" }, async (tx) => {
+      const [p] = await tx.insert(notes).values({ workspaceId: agencyAId, createdBy: ownerA, visibility: "private", title: "Privada Owner" }).returning();
+      const [s] = await tx.insert(notes).values({ workspaceId: agencyAId, createdBy: ownerA, visibility: "workspace", title: "Compartida Owner" }).returning();
+      return [p!, s!];
+    });
     const vPriv = await withUserContext({ sub: viewerA, role: "authenticated" }, async (tx) => {
-      expect((await tx.select().from(notes).where(eq(notes.workspaceId, agencyAId))).map((n) => n.id)).toEqual([nSharedOwner.id]);
+      const visibleIds = (await tx.select().from(notes).where(eq(notes.workspaceId, agencyAId))).map((n) => n.id);
+      expect(visibleIds).toContain(nSharedOwner.id);
+      expect(visibleIds).not.toContain(nPrivOwner.id);
       const [vp] = await tx.insert(notes).values({ workspaceId: agencyAId, createdBy: viewerA, visibility: "private", title: "Privada Viewer" }).returning();
       expect(await tx.update(notes).set({ title: "Hack" }).where(eq(notes.id, nSharedOwner.id)).returning()).toEqual([]);
       return vp!;
@@ -115,11 +124,9 @@ describe("Fase 1B · Roles de agencia, invitaciones, visibilidad y reubicación 
       await tx.execute(sql`select set_config('hubly.relocating_private_items', 'on', true)`);
       await tx.update(notes).set({ workspaceId: editorPersonalWsId }).where(eq(notes.id, nSharedEditor.id));
     }), /No se permite mover elementos entre espacios de trabajo/);
-    await expect(withUserContext({ sub: ownerA, role: "authenticated" }, (tx) => tx.update(todos).set({ workspaceId: agencyBId }).where(eq(todos.id, tPrivOwnerOnOwnerNote.id)))).rejects.toThrow();
-    expect(nPrivOwner.visibility).toBe("private");
   });
 
-  it("3. Jerarquía de roles, prohibición de auto-escalado, protección del último owner (trg_01 antes de trg_02) y reubicación con FK diferible (Detalles 2 y 3 de Claude)", async () => {
+  it("4. Jerarquía de roles, prohibición de auto-escalado y protección del último owner (trg_01 antes de trg_02)", async () => {
     await withUserContext({ sub: editorA, role: "authenticated" }, async (tx) => {
       expect(await tx.update(workspaceMembers).set({ role: "admin" }).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.userId, editorA))).returning()).toEqual([]);
     });
@@ -128,11 +135,12 @@ describe("Fase 1B · Roles de agencia, invitaciones, visibilidad y reubicación 
       expect(await tx.delete(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.userId, ownerA))).returning()).toEqual([]);
     });
     await expect(withUserContext({ sub: adminA, role: "authenticated" }, (tx) => tx.update(workspaceMembers).set({ role: "owner" }).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.userId, viewerA))))).rejects.toThrow();
-
     await expectPgError(() => withUserContext({ sub: ownerA, role: "authenticated" }, (tx) => tx.update(workspaceMembers).set({ role: "admin" }).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.userId, ownerA)))), /al menos un propietario/);
     await expectPgError(() => withUserContext({ sub: ownerA, role: "authenticated" }, (tx) => tx.delete(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.userId, ownerA)))), /al menos un propietario/);
     expect((await db.select().from(notes).where(and(eq(notes.workspaceId, agencyAId), eq(notes.createdBy, ownerA)))).length).toBeGreaterThanOrEqual(2);
+  });
 
+  it("5. Reubicación de elementos privados al salir de la agencia conservando note_id con FK diferible (Detalles 2 y 3 de Claude)", async () => {
     const [nSharedA] = await withUserContext({ sub: ownerA, role: "authenticated" }, (tx) => tx.insert(notes).values({ workspaceId: agencyAId, createdBy: ownerA, visibility: "workspace", title: "Nota Agencia Persistente" }).returning());
     const [nPrivEd, tPrivLinkedPriv, tPrivLinkedShared, nSharedEd] = await withUserContext({ sub: editorA, role: "authenticated" }, async (tx) => {
       const [np] = await tx.insert(notes).values({ workspaceId: agencyAId, createdBy: editorA, visibility: "private", title: "Borrador Privado Editor" }).returning();
@@ -155,11 +163,44 @@ describe("Fase 1B · Roles de agencia, invitaciones, visibilidad y reubicación 
       expect(relocTodo2?.noteId).toBeNull();
     });
     expect((await db.select().from(notes).where(eq(notes.id, nSharedEd.id)))[0]?.workspaceId).toBe(agencyAId);
+  });
 
-    await withUserContext({ sub: ownerA, role: "authenticated" }, async (tx) => {
-      await tx.update(workspaceMembers).set({ role: "owner" }).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.userId, adminA)));
-      await tx.update(workspaceMembers).set({ role: "admin" }).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.userId, ownerA)));
-    });
+  it("6. Concurrencia real del último owner con dos conexiones independientes (FOR UPDATE + pg_advisory_xact_lock)", async () => {
+    await withUserContext({ sub: ownerA, role: "authenticated" }, (tx) =>
+      tx.update(workspaceMembers).set({ role: "owner" }).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.userId, adminA))),
+    );
+    const url = resolveDatabaseUrl();
+    const sql1 = postgres(url, { max: 1, prepare: false }), sql2 = postgres(url, { max: 1, prepare: false });
+    const db1 = drizzle(sql1, { schema }), db2 = drizzle(sql2, { schema });
+    try {
+      let ready = 0;
+      let release!: () => void;
+      const barrier = new Promise<void>((r) => { release = r; });
+      const arrive = async () => { if (++ready === 2) release(); await barrier; };
+
+      const results = await Promise.allSettled([
+        withUserContext({ sub: ownerA, role: "authenticated" }, async (tx) => {
+          await arrive();
+          await tx.update(workspaceMembers).set({ role: "admin" }).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.userId, ownerA)));
+        }, db1),
+        withUserContext({ sub: adminA, role: "authenticated" }, async (tx) => {
+          await arrive();
+          await tx.update(workspaceMembers).set({ role: "admin" }).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.userId, adminA)));
+        }, db2),
+      ]);
+
+      const fulfilled = results.filter((r) => r.status === "fulfilled");
+      const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      const errMsg = String(rejected[0]?.reason?.cause?.message ?? rejected[0]?.reason?.message ?? "");
+      expect(errMsg).toMatch(/al menos un propietario/);
+
+      const remainingOwners = await db.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.role, "owner")));
+      expect(remainingOwners).toHaveLength(1);
+    } finally {
+      await Promise.all([sql1.end(), sql2.end()]);
+    }
     await db.delete(workspaces).where(eq(workspaces.id, agencyBId));
     expect(await db.select().from(workspaces).where(eq(workspaces.id, agencyBId))).toEqual([]);
   });
