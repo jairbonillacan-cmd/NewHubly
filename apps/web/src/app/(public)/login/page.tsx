@@ -1,5 +1,5 @@
 "use client";
-import { Alert, Button, Hubi, HublyWordmark, Icon, Input, Label, TextField, ThemeToggle, Wallpaper } from "@hubly/ui";
+import { Alert, Button, Hubi, HubiWordmark, Icon, Input, Label, TextField, ThemeToggle, Wallpaper } from "@hubly/ui";
 import React from "react";
 import { signInWithMagicLinkAction, signInWithPasswordAction, signUpWithPasswordAction } from "../../../actions/auth";
 
@@ -109,7 +109,7 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
           <span aria-hidden="true">←</span>
         </a>
         <a href="/" aria-label="Hubly, inicio" className="flex min-h-11 items-center px-2">
-          <HublyWordmark height={24} decorative />
+          <HubiWordmark />
         </a>
         <div className="flex items-center gap-2 [&>button]:size-11">
           <a href="/" className="hidden min-h-11 items-center px-2 text-sm font-semibold text-(--glass-text-secondary) sm:inline-flex">← Volver al inicio</a>
