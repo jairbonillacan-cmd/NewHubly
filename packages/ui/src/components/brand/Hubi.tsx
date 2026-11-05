@@ -12,7 +12,7 @@ export interface HubiProps {
   className?: string;
   style?: CSSProperties;
   sizing?: "fixed" | "css";
-  prioridad?: "alta" | "diferida";
+  priority?: "high" | "deferred";
 }
 
 const HUBI_ASSET_MAP: Record<HubiFinish, Record<HubiPose, { light: string; dark: string }>> = {
@@ -47,7 +47,7 @@ export function Hubi({
   className,
   style,
   sizing = "fixed",
-  prioridad,
+  priority,
 }: HubiProps) {
   const isDecorative = decorativo ?? !alt;
   const resolvedAlt = isDecorative ? "" : (alt ?? "Hubi, mascota de Hubly");
@@ -65,8 +65,8 @@ export function Hubi({
         width={tamano}
         height={tamano}
         decoding="async"
-        loading={prioridad === "diferida" ? "lazy" : undefined}
-        fetchPriority={prioridad === "alta" ? "high" : undefined}
+        loading={priority === "deferred" ? "lazy" : undefined}
+        fetchPriority={priority === "high" ? "high" : undefined}
         className="hubly-hubi-img hubly-hubi-light"
       />
       <img
@@ -75,8 +75,8 @@ export function Hubi({
         width={tamano}
         height={tamano}
         decoding="async"
-        loading={prioridad === "diferida" ? "lazy" : undefined}
-        fetchPriority={prioridad === "alta" ? "high" : undefined}
+        loading={priority === "deferred" ? "lazy" : undefined}
+        fetchPriority={priority === "high" ? "high" : undefined}
         className="hubly-hubi-img hubly-hubi-dark"
       />
     </span>

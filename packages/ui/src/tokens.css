@@ -4,6 +4,8 @@
 @import "@heroui/styles";
 @source "../../../packages/ui/src/**/*.{ts,tsx}";
 @source "../../../apps/web/src/**/*.{ts,tsx}";
+@source not "./landing/{AppPreview,AudienceSection,FaqAccordion,FeatureGrid,FeatureVisuals,LandingHero,LandingSections,PainSection,RoadmapSection,SectionIntro,ShortcutsSection,StatusBadge,WorkspaceSection}.tsx";
+@source not "./stories/Landing.stories.tsx";
 
 :root {
   color-scheme: light;

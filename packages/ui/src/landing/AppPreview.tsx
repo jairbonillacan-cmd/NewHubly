@@ -11,9 +11,9 @@ export function AppPreview() {
   return (
     <figure className="relative mx-auto mt-18 max-w-(--landing-preview-width) lg:mt-24" data-landing-section="vista-hoy">
       <div className="pointer-events-none absolute -top-17 right-2 z-1 lg:-top-27 lg:right-5">
-        <Hubi acabado="volumen" pose="laptop" tamano={216} decorativo prioridad="alta" className="size-27 lg:size-44" sizing="css" />
+        <Hubi acabado="volumen" pose="laptop" tamano={216} decorativo priority="high" className="size-27 lg:size-44" sizing="css" />
       </div>
-      <div aria-hidden="true" className="glass-panel rounded-(--landing-window-radius) p-2 shadow-(--landing-shadow) lg:p-4">
+      <div aria-hidden="true" className="glass-panel rounded-(--landing-window-radius)! p-2 shadow-(--landing-shadow)! lg:p-4">
         <div className="grid gap-3 rounded-(--landing-panel-radius) bg-(--landing-soft) p-3.5 text-left lg:grid-cols-[1.45fr_1fr] lg:gap-4 lg:p-5">
           <div className="min-w-0 rounded-3xl bg-(--landing-card) p-3.5 lg:p-5">
             <div className="flex flex-wrap items-center gap-2">

@@ -58,7 +58,7 @@ export function CaptureVisual() {
 
 export function TeamVisual() {
   return (
-    <div className="relative mx-auto grid w-full max-w-sm gap-2 text-xs lg:py-9">
+    <div className="relative mx-auto grid w-full max-w-sm gap-2 text-xs lg:pt-9 lg:pb-17">
       <p className={`${CARD} w-fit justify-self-end font-semibold lg:absolute lg:top-0 lg:right-0`}>
         <span className={ACCENT}>Privado</span><span className="pl-2">Con la agencia</span>
       </p>
