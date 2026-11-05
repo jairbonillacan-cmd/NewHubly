@@ -20,6 +20,7 @@ export const tokens = {
     bg: "var(--glass-bg)", border: "var(--glass-border)", borderStrong: "var(--glass-border-strong)", shadow: "var(--glass-shadow)",
     blur: "var(--glass-blur)", blurMobile: "var(--glass-blur-mobile)", fallbackBg: "var(--glass-fallback-bg)",
     textPrimary: "var(--glass-text-primary)", textSecondary: "var(--glass-text-secondary)", textMuted: "var(--glass-text-muted)", heroOverlayVeil: "var(--glass-hero-veil)",
+    accessBarRadius: "var(--glass-radius-access-bar)", accessCardRadius: "var(--glass-radius-access-card)",
   },
   landing: {
     tintBlue: "var(--tint-blue)", tintSand: "var(--tint-sand)", tintGreen: "var(--tint-green)", tintLilac: "var(--tint-lilac)", textFaint: "var(--text-faint)",
@@ -56,7 +57,7 @@ export const tokens = {
   focus: { ringColor: "var(--focus-ring-color)", ringWidth: "var(--focus-ring-width)", ringOffset: "var(--focus-ring-offset)" },
   layout: {
     readingWidth: "var(--container-reading)", workspaceWidth: "var(--container-workspace)", heroWidth: "var(--container-hero)",
-    bentoWidth: "var(--container-bento)", heroMinHeight: "var(--measure-hero-min-height)", viewportHeight: "var(--measure-viewport-height)",
+    bentoWidth: "var(--container-bento)", heroMinHeight: "var(--measure-hero-min-height)", viewportHeight: "var(--measure-viewport-height)", accessWidth: "var(--container-access)",
   },
 } as const;
 
