@@ -26,7 +26,7 @@ El dueño decidió **no añadir dependencias** de procesamiento de imágenes (de
    - Tipo real por firma binaria: JPEG `FF D8 FF`, PNG `89 50 4E 47 0D 0A 1A 0A` y WebP `RIFF…WEBP`. Lo demás se rechaza, incluidos SVG y GIF.
    - Además se recorre la estructura de cada formato. Un archivo truncado o mal formado se rechaza.
 4. **Limpieza de metadatos sin volver a comprimir** (la imagen no pierde calidad):
-   - **JPEG:** se quitan APP1 (EXIF y XMP), APP13 (IPTC/Photoshop), el resto de APPn y COM. Se conservan APP0 (JFIF), APP2 `ICC_PROFILE` (color) y APP14 (Adobe). Desde SOS se copia tal cual.
+   - **JPEG:** se quitan APP1 (EXIF y XMP), APP13 (IPTC/Photoshop), el resto de APPn y COM, también entre los barridos de un JPEG progresivo. Se conservan APP0 (JFIF), APP2 `ICC_PROFILE` (color) y APP14 (Adobe). Los datos de entropía de cada SOS se copian byte a byte (incluidos `FF 00` y los RST `FF D0`–`FF D7`); al llegar a EOI termina la salida y se descarta todo lo que venga después.
    - **PNG:** se quitan `eXIf`, `tEXt`, `zTXt`, `iTXt` y `tIME`. Se conservan los fragmentos de imagen y el perfil de color.
    - **WebP:** se quitan los fragmentos `EXIF` y `XMP `, se apagan sus banderas en `VP8X` y se recalcula el tamaño del `RIFF`.
 5. **Entrega con URL firmada de una hora**, creada en el servidor con la sesión de la persona al cargar `/hoy` y al subir. La imagen nunca tiene URL pública.
