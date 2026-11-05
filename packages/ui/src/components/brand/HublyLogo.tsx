@@ -113,6 +113,16 @@ export function HublyWordmark({
   );
 }
 
+/** Cara de Hubi según el tema activo; decorativa (la etiqueta la pone quien la usa). */
+export function HubiFace({ className = "size-8" }: { className?: string }) {
+  return (
+    <span aria-hidden="true" className={`hubly-hubi-face relative inline-block shrink-0 ${className}`}>
+      <img src="/marca/hubi-cara-claro-128.webp" alt="" width={64} height={64} className={`hubly-hubi-light ${className}`} />
+      <img src="/marca/hubi-cara-oscuro-128.webp" alt="" width={64} height={64} className={`hubly-hubi-dark ${className}`} />
+    </span>
+  );
+}
+
 export interface HubiWordmarkProps {
   /** «md» para barras de navegación, «sm» para pies de página. */
   tamano?: "md" | "sm";
@@ -129,10 +139,7 @@ export function HubiWordmark({ tamano = "md", className }: HubiWordmarkProps) {
   const size = HUBI_WORDMARK_SIZE[tamano];
   return (
     <span role="img" aria-label="Hubly" className={`hubly-hubi-wordmark inline-flex items-center gap-2 ${className ?? ""}`}>
-      <span aria-hidden="true" className={`hubly-hubi-face relative inline-block shrink-0 ${size.face}`}>
-        <img src="/marca/hubi-cara-claro-128.webp" alt="" width={64} height={64} className={`hubly-hubi-light ${size.face}`} />
-        <img src="/marca/hubi-cara-oscuro-128.webp" alt="" width={64} height={64} className={`hubly-hubi-dark ${size.face}`} />
-      </span>
+      <HubiFace className={size.face} />
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="436 -4 768 272" aria-hidden="true" className={`w-auto shrink-0 ${size.letters}`}>
         <WordmarkLetters />
       </svg>
