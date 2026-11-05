@@ -1,13 +1,11 @@
 "use client";
-import { Button, Card, Hubi, HublyWordmark, Input, Label, Tabs, TextField, ThemeToggle, tokens } from "@hubly/ui";
+import { Alert, Button, Card, Hubi, HubiWordmark, Input, Label, Tabs, TextField, ThemeToggle, Wallpaper } from "@hubly/ui";
 import React, { useEffect, useState } from "react";
 import { signInWithMagicLinkAction, signInWithPasswordAction, signUpWithPasswordAction } from "../../../actions/auth";
 
 export type AuthMode = "signin" | "signup" | "magic";
 export interface LoginScreenProps { initialMode?: AuthMode; onAuthenticated?: (workspaceId: string | null) => void; }
 
-const ctrlBorder = `${tokens.border.thin} solid ${tokens.color.borderControl}`;
-const inputStyle = { border: ctrlBorder, borderRadius: tokens.radius.md, padding: tokens.space[3], backgroundColor: tokens.color.surfaceCanvas, color: tokens.color.textPrimary, fontSize: tokens.font.size.sm } as const;
 const authTabs: ReadonlyArray<{ id: AuthMode; label: string }> = [
   { id: "signin", label: "Contraseña" },
   { id: "signup", label: "Crear cuenta" },
@@ -49,73 +47,73 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
   };
 
   return (
-    <main style={{ minHeight: tokens.layout.viewportHeight, backgroundColor: tokens.color.surfaceBrand, color: tokens.glass.textPrimary, paddingBlock: tokens.space[10], paddingInline: tokens.space[4], display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: tokens.layout.readingWidth, display: "flex", flexDirection: "column", gap: tokens.space[6] }}>
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: tokens.space[4] }}>
-          <div>
-            <h1 style={{ margin: tokens.space[0], fontSize: tokens.font.size["2xl"], fontWeight: tokens.font.weight.bold, color: tokens.color.surfaceBrandContrast }}>Acceso a Hubly</h1>
-            <p style={{ margin: tokens.space[0], fontSize: tokens.font.size.sm, color: tokens.color.surfaceBrandMuted }}>¿Qué sigue y quién lo tiene? Entra a tu espacio personal.</p>
+    <main className="relative isolate flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-10 text-(--text-primary)">
+      <Wallpaper fondo="contornos" />
+      <header className="hubly-enter flex w-full max-w-md items-center justify-between gap-4">
+        <a href="/" aria-label="Hubly, volver al inicio" className="flex items-center text-(--text-primary)">
+          <HubiWordmark />
+        </a>
+        <ThemeToggle variante="icono" />
+      </header>
+      <Card aria-label="Formulario de autenticación" className="hubly-glass hubly-enter w-full max-w-md gap-5 p-6" data-delay="1">
+        <Card.Header className="flex flex-row items-center justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <Card.Title className="text-2xl font-bold tracking-(--tracking-tight)">Acceso a Hubly</Card.Title>
+            <Card.Description>¿Qué sigue y quién lo tiene? Entra a tu espacio personal.</Card.Description>
           </div>
-          <ThemeToggle />
-        </header>
-        <Card aria-label="Formulario de autenticación" style={{ backgroundColor: tokens.glass.bg, border: `${tokens.border.thin} solid ${tokens.glass.border}`, boxShadow: tokens.glass.shadow, borderRadius: tokens.radius.xl, padding: tokens.space[6], display: "flex", flexDirection: "column", gap: tokens.space[5] }}>
-          <Card.Header style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: tokens.space[3], flexWrap: "wrap" }}>
-            <HublyWordmark height={24} ariaLabel="Hubly" />
-            <Hubi acabado="volumen" pose="laptop" tamano={64} decorativo />
-          </Card.Header>
-          <Card.Content style={{ display: "flex", flexDirection: "column", gap: tokens.space[4] }}>
-            <Tabs selectedKey={mode} onSelectionChange={(key) => { setMode(String(key) as AuthMode); setErrorMessage(null); setStatusMessage(null); }} style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
-              <Tabs.ListContainer>
-                <Tabs.List aria-label="Método de acceso" style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", maxWidth: "100%", boxSizing: "border-box", gap: tokens.space[2], padding: tokens.space[1], backgroundColor: tokens.pill.glassBg, border: `${tokens.border.thin} solid ${tokens.pill.glassBorder}`, borderRadius: tokens.radius.full }}>
-                  {authTabs.map((tab) => {
-                    const isSelected = mode === tab.id;
-                    return (
-                      <Tabs.Tab
-                        key={tab.id}
-                        id={tab.id}
-                        style={{
-                          width: "auto", minWidth: 0, height: "auto", flex: "1 1 auto",
-                          borderRadius: tokens.radius.full, padding: `${tokens.space["2"]} ${tokens.space["3"]}`,
-                          backgroundColor: isSelected ? tokens.pill.activeBg : "transparent",
-                          color: isSelected ? tokens.pill.activeText : tokens.pill.glassText,
-                          fontWeight: isSelected ? tokens.font.weight.semibold : tokens.font.weight.medium,
-                        }}
-                      >
-                        {tab.label}
-                      </Tabs.Tab>
-                    );
-                  })}
-                </Tabs.List>
-              </Tabs.ListContainer>
-              <Tabs.Panel id={mode}>
-                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: tokens.space[4], paddingTop: tokens.space[3] }}>
-                  <TextField name="email" type="email" isRequired value={email} onChange={setEmail} style={{ display: "flex", flexDirection: "column", gap: tokens.space[1] }}>
-                    <Label style={{ fontSize: tokens.font.size.sm, color: tokens.glass.textPrimary }}>Correo electrónico</Label>
-                    <Input placeholder="equipo@agencia.es" autoComplete="email" style={inputStyle} />
+          <Hubi acabado="volumen" pose="laptop" tamano={72} decorativo className="hubly-float shrink-0" />
+        </Card.Header>
+        <Card.Content>
+          <Tabs selectedKey={mode} onSelectionChange={(key) => { setMode(String(key) as AuthMode); setErrorMessage(null); setStatusMessage(null); }} className="w-full min-w-0">
+            <Tabs.ListContainer>
+              <Tabs.List aria-label="Método de acceso" className="w-full">
+                {authTabs.map((tab) => (
+                  <Tabs.Tab key={tab.id} id={tab.id} className="grow px-1.5 text-xs whitespace-nowrap sm:px-2 sm:text-sm">
+                    {tab.label}
+                    <Tabs.Indicator />
+                  </Tabs.Tab>
+                ))}
+              </Tabs.List>
+            </Tabs.ListContainer>
+            <Tabs.Panel id={mode}>
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-4">
+                <TextField name="email" type="email" isRequired value={email} onChange={setEmail} className="flex flex-col gap-1">
+                  <Label>Correo electrónico</Label>
+                  <Input placeholder="equipo@agencia.es" autoComplete="email" />
+                </TextField>
+                {mode !== "magic" && (
+                  <TextField name="password" type="password" isRequired value={password} onChange={setPassword} className="flex flex-col gap-1">
+                    <Label>Contraseña</Label>
+                    <Input placeholder="Mínimo 8 caracteres" minLength={8} autoComplete={mode === "signin" ? "current-password" : "new-password"} />
                   </TextField>
-                  {mode !== "magic" && (
-                    <TextField name="password" type="password" isRequired value={password} onChange={setPassword} style={{ display: "flex", flexDirection: "column", gap: tokens.space[1] }}>
-                      <Label style={{ fontSize: tokens.font.size.sm, color: tokens.glass.textPrimary }}>Contraseña</Label>
-                      <Input placeholder="Mínimo 8 caracteres" minLength={8} autoComplete={mode === "signin" ? "current-password" : "new-password"} style={inputStyle} />
-                    </TextField>
-                  )}
-                  {mode === "signup" && (
-                    <TextField name="workspaceName" type="text" value={workspaceName} onChange={setWorkspaceName} style={{ display: "flex", flexDirection: "column", gap: tokens.space[1] }}>
-                      <Label style={{ fontSize: tokens.font.size.sm, color: tokens.glass.textPrimary }}>Nombre de tu espacio personal</Label>
-                      <Input style={inputStyle} />
-                    </TextField>
-                  )}
-                  {errorMessage && <p role="alert" style={{ margin: tokens.space[0], padding: tokens.space[3], borderRadius: tokens.radius.sm, backgroundColor: tokens.color.statusDangerBg, color: tokens.color.statusDangerText, fontSize: tokens.font.size.sm }}>{errorMessage}</p>}
-                  {statusMessage && <p role="status" style={{ margin: tokens.space[0], padding: tokens.space[3], borderRadius: tokens.radius.sm, backgroundColor: tokens.color.statusSuccessBg, color: tokens.color.statusSuccessText, fontSize: tokens.font.size.sm }}>{statusMessage}</p>}
-                  <Button type="submit" variant="primary" isDisabled={submitting} fullWidth style={{ borderRadius: tokens.radius.full, paddingBlock: tokens.space[3], paddingInline: tokens.space[5], backgroundColor: tokens.color.accentPrimary, color: tokens.color.textOnAccent, fontWeight: tokens.font.weight.semibold }}>
-                    {submitting ? "Procesando…" : mode === "signin" ? "Entrar a Hoy" : mode === "signup" ? "Crear cuenta y espacio personal" : "Enviar enlace mágico"}
-                  </Button>
-                </form>
-              </Tabs.Panel>
-            </Tabs>
-          </Card.Content>
-        </Card>
-      </div>
+                )}
+                {mode === "signup" && (
+                  <TextField name="workspaceName" type="text" value={workspaceName} onChange={setWorkspaceName} className="flex flex-col gap-1">
+                    <Label>Nombre de tu espacio personal</Label>
+                    <Input />
+                  </TextField>
+                )}
+                {errorMessage && (
+                  <Alert status="danger" role="alert" className="hubly-pop">
+                    <Alert.Indicator />
+                    <Alert.Content><Alert.Description>{errorMessage}</Alert.Description></Alert.Content>
+                  </Alert>
+                )}
+                {statusMessage && (
+                  <Alert status="success" role="status" className="hubly-pop">
+                    <Alert.Indicator />
+                    <Alert.Content><Alert.Description>{statusMessage}</Alert.Description></Alert.Content>
+                  </Alert>
+                )}
+                <Button type="submit" variant="primary" size="lg" isDisabled={submitting} fullWidth>
+                  {submitting ? "Procesando…" : mode === "signin" ? "Entrar a Hoy" : mode === "signup" ? "Crear cuenta y espacio personal" : "Enviar enlace mágico"}
+                </Button>
+              </form>
+            </Tabs.Panel>
+          </Tabs>
+        </Card.Content>
+      </Card>
+      <a href="/" className="hubly-enter text-sm text-(--text-secondary) no-underline hover:text-(--accent-primary)" data-delay="2">← Volver al inicio</a>
     </main>
   );
 }
