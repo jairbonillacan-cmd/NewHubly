@@ -2,10 +2,11 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 import {
   acceptWorkspaceInvitationAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction,
-  createAgencyWorkspaceAction, createNoteAction, createTodoAction, inviteWorkspaceMemberAction, listNotesAction,
+  createAgencyWorkspaceAction, createNoteAction, createTodoAction, exportWorkspaceAction, inviteWorkspaceMemberAction, listNotesAction,
   loadWorkspaceDashboardAction, removeOrLeaveWorkspaceMemberAction, revokeWorkspaceInvitationAction, saveNoteAction, selectActiveWorkspaceAction,
 } from "../src/actions";
-import { ensureAuthenticatedWorkspace, issueWorkspaceInvitation, resolveActiveWorkspaceCookie, seedAuthUserForTests, setActiveWorkspaceCookieForTests, setSupabaseServerClientFactoryForTests } from "../src/server/composition";
+import { ensureAuthenticatedWorkspace, issueWorkspaceInvitation, resolveActiveWorkspaceCookie, setActiveWorkspaceCookieForTests, setSupabaseServerClientFactoryForTests } from "../src/server/composition";
+import { seedAuthUserForTests } from "../src/server/composition/testing";
 
 describe("Server Actions Fase 1B · Agencia activa, equipo, invitaciones y visibilidad (#63)", { timeout: 30000 }, () => {
   const runId = Math.random().toString(36).slice(2, 10);
@@ -78,6 +79,10 @@ describe("Server Actions Fase 1B · Agencia activa, equipo, invitaciones y visib
     await expect(createNoteAction({ title: "Intento", visibility: "workspace" }, agency.id)).rejects.toThrow();
     const viewerPriv = await createNoteAction({ title: "Apunte Viewer", visibility: "private" }, agency.id);
     await expect(changeNoteVisibilityAction({ noteId: viewerPriv.id, visibility: "workspace" }, agency.id)).rejects.toThrow();
+    // La exportación solo incluye lo creado por quien exporta, aunque RLS le deje leer lo compartido por otros (ADR 0007).
+    const viewerExport = await exportWorkspaceAction(agency.id);
+    expect(viewerExport.data.notes.map((n) => n.id)).toEqual([viewerPriv.id]);
+    expect(viewerExport.markdownContent).not.toContain("Pauta Mensual");
     actAs(editor);
     expect((await saveNoteAction({ id: ownerShared.id, title: "Pauta v2", content: "Editada", expectedVersion: 1 }, agency.id)).version).toBe(2);
     const editorSharedTodo = await createTodoAction({ title: "Publicar copy", noteId: ownerShared.id, visibility: "workspace" }, agency.id);

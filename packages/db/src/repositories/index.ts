@@ -39,14 +39,6 @@ const mapInvitationRow = (r: Record<string, unknown>): WorkspaceInvitationRecord
   revokedAt: toOptIso(r.revoked_at ?? r.revokedAt), createdAt: toIso((r.created_at ?? r.createdAt) as Date | string),
 });
 
-export async function seedAuthUserForTests(id: string, email: string, confirmed = true): Promise<void> {
-  if (process.env.NODE_ENV !== "test") throw new Error("Solo permitido en entorno de pruebas");
-  await withUserContext({ sub: id, role: "authenticated" }, async (tx) => {
-    await tx.execute(sql`reset role`);
-    await tx.execute(sql`insert into auth.users (id, email, email_confirmed_at) values (${id}::uuid, ${email}, ${confirmed ? sql`now()` : sql`null`}) on conflict (id) do update set email = excluded.email, email_confirmed_at = excluded.email_confirmed_at`);
-  });
-}
-
 export class DrizzleNoteRepository implements NoteRepository {
   private readVersions = new Map<string, number>();
   constructor(private readonly claims: UserClaims, private readonly workspaceId: string, private readonly db?: DbInstance) {}

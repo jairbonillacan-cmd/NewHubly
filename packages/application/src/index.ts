@@ -173,7 +173,9 @@ export async function createTodoFromNote(tRepo: TodoRepository, nRepo: NoteRepos
 }
 
 export async function exportWorkspaceData(nRepo: NoteRepository, tRepo: TodoRepository, c: Clock, ctx: AppContext): Promise<{ json: ExportData; markdown: string }> {
-  const [notes, todos] = await Promise.all([nRepo.findByWorkspace(ctx.workspaceId, ctx.userId), tRepo.findByWorkspace(ctx.workspaceId, ctx.userId)]);
+  // Solo los elementos propios: en una agencia RLS deja leer lo compartido por otros, pero la exportación es de la persona (ADR 0007).
+  const [allNotes, allTodos] = await Promise.all([nRepo.findByWorkspace(ctx.workspaceId, ctx.userId), tRepo.findByWorkspace(ctx.workspaceId, ctx.userId)]);
+  const notes = allNotes.filter((n) => n.createdBy === ctx.userId), todos = allTodos.filter((t) => t.createdBy === ctx.userId);
   const json: ExportData = { version: 1, exportedAt: c.now().toISOString(), workspaceId: ctx.workspaceId, notes, todos };
   const prios: Record<string, string> = { high: 'ALTA', medium: 'NORMAL', low: 'BAJA' };
   const mdNotes = notes.map(n => {

@@ -8,7 +8,7 @@ import {
   changeItemVisibilityInputSchema, changeMemberRoleInputSchema, createAgencyInputSchema, createNoteSchema, createTodoSchema,
   removeMemberInputSchema, updateNoteSchema, updateTodoSchema, type CreateNoteInput, type CreateTodoInput, type UpdateNoteInput, type UpdateTodoInput,
 } from "@hubly/contracts";
-import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleWorkspaceRepository, seedAuthUserForTests, withUserContext, type ItemVisibility, type UserClaims, type UserWorkspaceSummary, type WorkspaceInvitationRecord, type WorkspaceKind, type WorkspaceRole } from "@hubly/db";
+import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleWorkspaceRepository, withUserContext, type ItemVisibility, type UserClaims, type UserWorkspaceSummary, type WorkspaceInvitationRecord, type WorkspaceKind, type WorkspaceRole } from "@hubly/db";
 import {
   DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
   createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
@@ -20,7 +20,7 @@ export {
   DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
   acceptWorkspaceInvitationByToken, createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
   getVerifiedServerSession, isValidIanaTimeZone, issueWorkspaceInvitation, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie,
-  resolveRequestTimeZone, resolveSiteUrl, resolveSupabaseConfig, revokePendingWorkspaceInvitation, seedAuthUserForTests,
+  resolveRequestTimeZone, resolveSiteUrl, resolveSupabaseConfig, revokePendingWorkspaceInvitation,
   setActiveWorkspaceCookieForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests, type UserWorkspaceSummary, type WorkspaceInvitationRecord,
 };
 
@@ -69,7 +69,8 @@ export async function ensureAuthenticatedWorkspace(workspaceId?: string, default
     member = await wsRepo.findMember(resolvedWorkspaceId, claims.sub);
   }
   const ws = await wsRepo.findById(resolvedWorkspaceId);
-  const role: WorkspaceRole = (member?.role as WorkspaceRole | undefined) ?? "owner", workspaceKind: WorkspaceKind = (ws?.kind as WorkspaceKind | undefined) ?? "personal";
+  if (!member) throw new Error(`No autorizado en el espacio de trabajo: ${resolvedWorkspaceId}`);
+  const role: WorkspaceRole = member.role as WorkspaceRole, workspaceKind: WorkspaceKind = (ws?.kind as WorkspaceKind | undefined) ?? "personal";
   const todayDate = createSystemClock(timezone).todayIsoDate();
   return { claims, workspaceId: resolvedWorkspaceId, userId: claims.sub, role, workspaceKind, workspaceName: ws?.name ?? defaultName ?? "Mi Espacio", workspaceSlug: ws?.slug ?? null, timezone, todayDate, ...(resolvedDb ? { db: resolvedDb } : {}) };
 }
