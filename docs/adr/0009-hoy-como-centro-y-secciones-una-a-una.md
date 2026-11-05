@@ -1,4 +1,4 @@
-# 0008. Hoy como centro de la app y construcción por secciones, una a una
+# 0009. Hoy como centro de la app y construcción por secciones, una a una
 
 Estado: Propuesto
 Fecha: 2026-11-05

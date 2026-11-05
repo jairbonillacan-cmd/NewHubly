@@ -11,7 +11,7 @@ Cada decisión relevante tiene un ADR breve. Un ADR aceptado no se edita: se ree
 | [0005](0005-modelo-unico-gemini-argon.md) | Modelo único Gemini 4 Argon y protocolo de revisión | Aceptado |
 | [0006](0006-componentes-heroui-v3-oss.md) | Adopción de HeroUI v3 OSS para componentes base | Propuesto |
 | [0007](0007-roles-invitaciones-y-visibilidad-agencia.md) | Modelo de roles de agencia, invitaciones con token hasheado y visibilidad compartida en RLS | Propuesto |
-| [0008](0008-hoy-como-centro-y-secciones-una-a-una.md) | Hoy como centro de la app y construcción por secciones, una a una | Propuesto |
+| [0009](0009-hoy-como-centro-y-secciones-una-a-una.md) | Hoy como centro de la app y construcción por secciones, una a una | Propuesto |
 
 ## Plantilla
 
