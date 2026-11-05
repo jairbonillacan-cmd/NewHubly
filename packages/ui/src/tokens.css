@@ -88,6 +88,8 @@
   --glass-rgb: 255 255 255; --panel-alpha: 0.78; --glass-line: rgba(17, 19, 22, 0.08); --glass-line-strong: rgba(17, 19, 22, 0.14);
   --glass-panel-shadow: 0 0.5rem 1.5rem rgba(17, 19, 22, 0.10); --pop-bg: rgba(255, 255, 255, 0.96); --pop-shadow: 0 1rem 2.5rem rgba(17, 19, 22, 0.16);
   --glass-hover: rgba(17, 19, 22, 0.05); --glass-field: rgba(17, 19, 22, 0.04); --glass-blur-panel: 18px;
+  /* Acceso (#100) */
+  --glass-radius-access-bar: 0.875rem; --glass-radius-access-card: 1.125rem; --container-access: 27.5rem;
 }
 
 :root[data-theme="dark"] {
