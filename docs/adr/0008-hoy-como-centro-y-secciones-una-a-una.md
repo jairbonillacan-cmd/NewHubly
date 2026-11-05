@@ -17,21 +17,28 @@ Mientras tanto hay muchas líneas de trabajo abiertas a la vez (agencias, diseñ
 
 ### 1. Nombres y rutas
 - **Hoy** es el centro de la app y vive en `/hoy`. Es la pantalla de llegada después de iniciar sesión. No se usa `/dashboard` ni otro nombre genérico: Hoy responde a «¿qué sigue y quién lo tiene?», que es la promesa del producto.
-- **Tu espacio** es el marco común (barra superior, selector de espacio, carril, dock y paleta de comandos). Todas las secciones se renderizan dentro de él.
-- **Navegación:** Hoy · Contenido · Clientes · Aprobaciones · Resultados · Ajustes. Rutas en español y en minúsculas, hermanas de `/hoy`: `/contenido`, `/clientes`, `/aprobaciones`, `/resultados` y `/ajustes`. Una sección aparece en la navegación solo cuando existe; antes no se muestra.
+- **Tu espacio** es el marco común. Sus tres barras son **fijas** y solo se desplaza el contenido (#105):
+  - la barra superior, con el selector de espacio de trabajo, buscar, enfoque, avisos, tema, ayuda, ajustes y el perfil;
+  - el carril izquierdo, retraíble entre compacto y completo;
+  - el dock inferior, cuyas opciones dependen de la sección activa.
+
+  Todas las secciones se renderizan dentro de él.
+- **Navegación:** Hoy va primero y aparte, porque es el centro. Debajo, en el carril, el grupo «Espacios» reúne las demás secciones (Calendario, Contenido, Clientes, Anuncios, Reportes y las que vengan). Rutas en español y en minúsculas, hermanas de `/hoy` (`/calendario`, `/contenido`, `/clientes`…).
+- **Secciones que todavía no existen:** se ven en el carril atenuadas, con «Pronto», y llevan a una página «Próximamente» que dice qué harán. No muestran datos inventados. Así el carril enseña hacia dónde va el producto sin prometer fechas.
 - El espacio activo (personal o de agencia) se sigue resolviendo como hasta ahora (ADR 0003, cookie `hubly_ws` validada en el servidor). No entra en la URL en esta etapa.
 
 ### 2. Toda sección alimenta Hoy
 - Cada sección aporta a Hoy lo que le toca hacer a la persona, con qué sigue, quién lo tiene y la fecha. Por ejemplo: «te toca revisar esta pieza», «el cliente pidió cambios» o «falló una publicación».
 - Ese aporte entra por un **puerto de la capa de aplicación** (`packages/application`), no con consultas directas desde la pantalla. Así Hoy no conoce el detalle de cada sección (ADR 0002).
 - Cada sección aporta también sus elementos a la búsqueda y a la paleta de comandos.
+- **Cada sección entrega su configuración del dock** (`DockConfig`): contexto, acciones con su tecla, la entrada central, «Te esperan», ritmo, vistas y sugerencia. El dock es un componente único que no conoce ninguna sección (#105).
 
 ### 3. Una sección a la vez
 Orden de construcción:
 
 | # | Sección |
 |---|---|
-| 0 | **Núcleo:** Tu espacio, Hoy, búsqueda y paleta, preferencias |
+| 0 | **Núcleo:** el marco fijo de Tu espacio (#105), Hoy, búsqueda y paleta, preferencias |
 | 1 | **Notas y pendientes** |
 | 2 | **Equipo:** agencias, roles e invitaciones (en Ajustes y en el selector de espacio) |
 | 3 | **Clientes** |
@@ -43,7 +50,7 @@ Orden de construcción:
 Una sección está **bien armada** cuando cumple todo esto:
 1. Está desplegada y el dueño la usa de verdad.
 2. Tiene pruebas contra Postgres real, incluido el aislamiento por RLS.
-3. Está integrada con Hoy, con la búsqueda y la paleta, y con las secciones anteriores.
+3. Está integrada con Hoy, con la búsqueda y la paleta, con su configuración del dock y con las secciones anteriores.
 4. Está revisada (con el APROBADO de Claude en `riesgo:alto`) y aprobada por el dueño.
 5. El issue de cierre explica qué quedó fuera.
 
@@ -55,4 +62,5 @@ Una sección está **bien armada** cuando cumple todo esto:
 - `/hoy` no cambia de ruta. Lo que hoy cuelga de ella (notas y pendientes) pasa a ser la primera sección que alimenta Hoy, no Hoy entero.
 - Las fases de `docs/PLAN.md` se mantienen; este ADR fija el orden y la definición de terminado dentro de ellas.
 - El trabajo en paralelo se reduce a propósito: antes de empezar Clientes hay que cerrar las cadenas de PR abiertas y desplegar.
-- Cada sección nueva implementa el puerto de aporte a Hoy desde su primer PR. Una sección que no aparece en Hoy no está terminada.
+- Cada sección nueva implementa el puerto de aporte a Hoy y su configuración del dock desde su primer PR. Una sección que no aparece en Hoy no está terminada.
+- La navegación del inventario (Contenido, Aprobaciones, Resultados) se reorganiza en los «Espacios» del carril. Las aprobaciones viven dentro de Contenido y los resultados en Reportes. El nombre «Espacios» queda pendiente de confirmar por el dueño, porque convive con «Espacio personal / de agencia».
