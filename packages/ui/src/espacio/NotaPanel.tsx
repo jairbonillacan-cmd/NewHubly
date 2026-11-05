@@ -1,5 +1,6 @@
 "use client";
 
+import { Button, ToggleButton } from "@heroui/react";
 import { useEffect, useRef, useState } from "react";
 import { GlassPanel } from "./GlassPanel";
 import { Icon } from "./icons";
@@ -50,9 +51,9 @@ export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, o
       <GlassPanel id="panel-nota" title="Nota abierta" icon="nota" onClose={onClose} className={className} retraso={1}>
         <div className="flex flex-col items-start gap-3 px-5 py-6">
           <p className="m-0 text-sm leading-relaxed text-(--text-secondary)">Abre una nota desde «Notas» o crea una nueva para apuntar acuerdos e ideas.</p>
-          <button type="button" onClick={onCreateNote} className="flex h-9 cursor-pointer items-center gap-2 rounded-lg border-0 bg-(--accent-primary) px-3.5 text-sm font-semibold text-(--text-on-accent) transition-transform hover:bg-(--accent-primary-hover) active:scale-95">
+          <Button variant="primary" size="sm" onPress={onCreateNote}>
             <Icon name="mas" /> Nueva nota
-          </button>
+          </Button>
         </div>
       </GlassPanel>
     );
@@ -69,9 +70,9 @@ export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, o
       actions={
         <span aria-live="polite" className={`text-xs ${saveState === "error" ? "text-(--status-danger-text)" : "text-(--text-muted)"}`}>
           {saveState === "error" ? (
-            <button type="button" onClick={() => onSave(note.id, title, content)} className="cursor-pointer border-0 bg-transparent p-0 text-xs text-(--status-danger-text) underline">
+            <Button size="sm" variant="danger-soft" onPress={() => onSave(note.id, title, content)}>
               {SAVE_LABEL.error} · Reintentar
-            </button>
+            </Button>
           ) : (
             SAVE_LABEL[saveState]
           )}
@@ -116,19 +117,19 @@ export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, o
         )}
         <div className="flex flex-wrap gap-2">
           {note.canChangeVisibility && onChangeVisibility && (
-            <button type="button" onClick={() => onChangeVisibility(note.id, note.visibility === "workspace" ? "private" : "workspace")} className="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-(--glass-line-strong) bg-transparent px-3 text-xs text-(--text-secondary) transition-colors hover:bg-(--glass-hover)">
+            <Button size="sm" variant="outline" onPress={() => onChangeVisibility(note.id, note.visibility === "workspace" ? "private" : "workspace")}>
               <Icon name={note.visibility === "workspace" ? "candado" : "compartir"} className="size-3.5" /> {note.visibility === "workspace" ? "Hacer privada" : "Compartir con la agencia"}
-            </button>
+            </Button>
           )}
-          <button type="button" onClick={() => onCreateTodoFromNote(note.id)} className="h-8 cursor-pointer rounded-lg border border-(--glass-line-strong) bg-(--glass-hover) px-3 text-xs font-medium text-(--text-primary) transition-transform hover:bg-(--accent-primary-subtle) active:scale-95">
+          <Button size="sm" variant="secondary" onPress={() => onCreateTodoFromNote(note.id)}>
             Crear pendiente desde esta nota
-          </button>
-          <button type="button" aria-pressed={note.isPinned} onClick={() => onTogglePin(note.id)} className="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-(--glass-line-strong) bg-transparent px-3 text-xs text-(--text-secondary) transition-colors aria-pressed:border-(--accent-primary) aria-pressed:text-(--accent-primary)">
+          </Button>
+          <ToggleButton size="sm" variant="ghost" isSelected={note.isPinned} onChange={() => onTogglePin(note.id)} className="data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary)">
             <Icon name="pin" className="size-3.5" /> {note.isPinned ? "Fijada" : "Fijar"}
-          </button>
-          <button type="button" aria-pressed={note.isArchived} onClick={() => onToggleArchive(note.id)} className="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-(--glass-line-strong) bg-transparent px-3 text-xs text-(--text-secondary) transition-colors hover:bg-(--glass-hover)">
+          </ToggleButton>
+          <ToggleButton size="sm" variant="ghost" isSelected={note.isArchived} onChange={() => onToggleArchive(note.id)}>
             <Icon name="archivar" className="size-3.5" /> {note.isArchived ? "Desarchivar" : "Archivar"}
-          </button>
+          </ToggleButton>
         </div>
       </div>
     </GlassPanel>

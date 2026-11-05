@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@heroui/react";
 import { GlassPanel, IconButton } from "./GlassPanel";
 import type { EspacioNote } from "./types";
 
@@ -17,15 +18,16 @@ export interface NotasPanelProps {
 function NoteButton({ note, active, onOpen }: { note: EspacioNote; active: boolean; onOpen: (id: string) => void }) {
   return (
     <li>
-      <button
-        type="button"
-        aria-current={active ? "true" : undefined}
-        onClick={() => onOpen(note.id)}
-        className="flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-lg border-0 bg-transparent px-3 py-2 text-left transition-colors hover:bg-(--glass-hover) aria-[current=true]:bg-(--accent-primary-subtle)"
+      <Button
+        variant="ghost"
+        fullWidth
+        onPress={() => onOpen(note.id)}
+        {...(active ? { "aria-label": `${note.title || "Nota sin título"} (abierta)` } : {})}
+        className={`h-auto flex-col items-start gap-0.5 px-3 py-2 text-left ${active ? "bg-(--accent-primary-subtle)" : ""}`}
       >
         <span className="text-sm font-semibold text-(--text-primary)">{note.title || "Nota sin título"}</span>
-        {note.content && <span className="line-clamp-1 text-xs text-(--text-muted)">{note.content}</span>}
-      </button>
+        {note.content && <span className="line-clamp-1 w-full text-xs font-normal text-(--text-muted)">{note.content}</span>}
+      </Button>
     </li>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Dropdown } from "@heroui/react";
+import { Avatar, Button, Chip, Dropdown, Kbd, ToggleButton } from "@heroui/react";
 import type { Key, Selection } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { useHublyTheme } from "../landing/ThemeToggle";
@@ -29,10 +29,10 @@ export interface TopBarProps {
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
 const ITEM = "flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover) data-[disabled]:cursor-default data-[disabled]:opacity-60";
 
-const SAVE_CHIP: Record<NoteSaveState, { label: string; className: string }> = {
-  saved: { label: "Todo guardado", className: "bg-(--status-success-bg) text-(--status-success-text)" },
-  saving: { label: "Guardando…", className: "bg-(--glass-hover) text-(--text-secondary)" },
-  error: { label: "Sin guardar", className: "bg-(--status-danger-bg) text-(--status-danger-text)" },
+const SAVE_CHIP: Record<NoteSaveState, { label: string; color: "success" | "default" | "danger" }> = {
+  saved: { label: "Todo guardado", color: "success" },
+  saving: { label: "Guardando…", color: "default" },
+  error: { label: "Sin guardar", color: "danger" },
 };
 
 function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAgency, onOpenTeam }: Pick<TopBarProps, "workspaces" | "activeWorkspace" | "onSelectWorkspace" | "onCreateAgency" | "onOpenTeam">) {
@@ -86,8 +86,10 @@ function AccountMenu({ timezone, onOpenBackground, onExport, onSignOut }: Pick<T
   };
   return (
     <Dropdown>
-      <Dropdown.Trigger aria-label="Menú de tu cuenta" className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-(--glass-line-strong) bg-(--glass-hover) text-(--text-primary) transition-transform hover:scale-105">
-        <Icon name="usuario" />
+      <Dropdown.Trigger aria-label="Menú de tu cuenta" className="size-9 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0 transition-transform data-[hovered]:scale-105">
+        <Avatar size="sm" color="accent" variant="soft">
+          <Avatar.Fallback><Icon name="usuario" /></Avatar.Fallback>
+        </Avatar>
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom end" className={MENU}>
         <p className="m-0 px-2.5 pt-2 pb-1 text-sm font-semibold">Tu cuenta</p>
@@ -116,25 +118,25 @@ function AccountMenu({ timezone, onOpenBackground, onExport, onSignOut }: Pick<T
 }
 
 function FilterBadges({ overdueCount, todayCount, filter, onFilter }: Pick<TopBarProps, "overdueCount" | "todayCount" | "filter" | "onFilter">) {
-  const badge = "h-7 shrink-0 cursor-pointer rounded-full border-2 px-2.5 text-xs font-semibold transition-transform active:scale-95";
+  const badge = "h-7 min-w-0 rounded-full border-2 border-transparent px-2.5 text-xs font-semibold";
   return (
     <div role="group" aria-label="Filtrar el panel Hoy" className="flex items-center gap-2">
-      <button
-        type="button"
-        aria-pressed={filter === "vencidos"}
-        onClick={() => onFilter(filter === "vencidos" ? null : "vencidos")}
-        className={`${badge} bg-(--status-danger-bg) text-(--status-danger-text) ${filter === "vencidos" ? "border-(--status-danger-text)" : "border-transparent"}`}
+      <ToggleButton
+        size="sm"
+        isSelected={filter === "vencidos"}
+        onChange={(on) => onFilter(on ? "vencidos" : null)}
+        className={`${badge} bg-(--status-danger-bg) text-(--status-danger-text) data-[selected]:border-(--status-danger-text) data-[selected]:bg-(--status-danger-bg)`}
       >
         <span key={overdueCount} className="hubly-pop inline-block">{overdueCount} {overdueCount === 1 ? "vencido" : "vencidos"}</span>
-      </button>
-      <button
-        type="button"
-        aria-pressed={filter === "hoy"}
-        onClick={() => onFilter(filter === "hoy" ? null : "hoy")}
-        className={`${badge} bg-(--accent-primary-subtle) text-(--accent-primary) ${filter === "hoy" ? "border-(--accent-primary)" : "border-transparent"}`}
+      </ToggleButton>
+      <ToggleButton
+        size="sm"
+        isSelected={filter === "hoy"}
+        onChange={(on) => onFilter(on ? "hoy" : null)}
+        className={`${badge} bg-(--accent-primary-subtle) text-(--accent-primary) data-[selected]:border-(--accent-primary) data-[selected]:bg-(--accent-primary-subtle)`}
       >
         <span key={todayCount} className="hubly-pop inline-block">{todayCount} para hoy</span>
-      </button>
+      </ToggleButton>
     </div>
   );
 }
@@ -158,20 +160,17 @@ export function TopBar(props: TopBarProps) {
         <div className="hidden lg:block">
           <FilterBadges {...props} />
         </div>
-        <span aria-live="polite" className={`hidden h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold lg:flex ${save.className}`}>
-          {saveState === "saved" && <Icon name="check" className="size-3" strokeWidth={2.5} />}
-          {save.label}
+        <span aria-live="polite" className="hidden lg:inline-flex">
+          <Chip color={save.color} variant="soft" size="sm">
+            {saveState === "saved" && <Icon name="check" className="size-3" strokeWidth={2.5} />}
+            {save.label}
+          </Chip>
         </span>
-        <button
-          type="button"
-          onClick={onOpenPalette}
-          aria-label="Buscar o ejecutar (Ctrl K)"
-          className="flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-(--glass-line) bg-(--glass-field) px-2.5 text-sm text-(--text-muted) transition-colors hover:text-(--text-primary) lg:w-60"
-        >
+        <Button variant="tertiary" size="sm" onPress={onOpenPalette} aria-label="Buscar o ejecutar (Ctrl K)" className="text-(--text-muted) lg:w-60 lg:justify-start">
           <Icon name="buscar" />
           <span className="hidden grow text-left lg:inline">Buscar o ejecutar…</span>
-          <kbd className="hidden rounded border border-(--glass-line-strong) px-1.5 text-xs font-semibold lg:inline">Ctrl K</kbd>
-        </button>
+          <Kbd className="hidden lg:inline-flex"><Kbd.Abbr keyValue="ctrl" /><Kbd.Content>K</Kbd.Content></Kbd>
+        </Button>
         <AccountMenu {...props} />
       </header>
       <div className="flex items-center justify-between gap-2 px-1 lg:hidden">

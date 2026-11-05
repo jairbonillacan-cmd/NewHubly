@@ -1,5 +1,6 @@
 "use client";
 
+import { Button, Tooltip } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Hubi } from "../components/brand/Hubi";
 import { useHublyTheme } from "../landing/ThemeToggle";
@@ -88,8 +89,9 @@ function Rail({ overdueCount, panels, onTogglePanel, workspaces, activeId, onSel
         const active = ws.id === activeId;
         const name = ws.kind === "personal" ? "Espacio personal" : ws.name;
         return (
-          <button key={ws.id} type="button" title={name} aria-current={active ? "true" : undefined} onClick={() => { if (!active) onSelect(ws.id); }}
-            className={`${railButton} ${active ? "border-(--accent-primary) bg-(--accent-primary) text-(--text-on-accent)" : "border-transparent bg-(--glass-hover) text-(--text-secondary) hover:border-(--glass-line-strong)"}`}>
+          <Tooltip key={ws.id} delay={400}>
+          <Button isIconOnly variant={active ? "primary" : "tertiary"} onPress={() => { if (!active) onSelect(ws.id); }}
+            className={`${railButton} ${active ? "border-(--accent-primary)" : "border-transparent data-[hovered]:border-(--glass-line-strong)"}`}>
             {ws.kind === "personal" ? <Icon name="usuario" /> : <span aria-hidden="true">{ws.name.trim().charAt(0).toUpperCase() || "A"}</span>}
             <span className="sr-only">{name}{active ? " (activo)" : ""}</span>
             {active && overdueCount > 0 && (
@@ -97,7 +99,9 @@ function Rail({ overdueCount, panels, onTogglePanel, workspaces, activeId, onSel
                 {overdueCount}
               </span>
             )}
-          </button>
+          </Button>
+          <Tooltip.Content placement="right">{name}{active ? " · activo" : ""}</Tooltip.Content>
+          </Tooltip>
         );
       })}
       <IconButton icon="mas" label="Crear agencia" onPress={onCreateAgency} className="border border-dashed border-(--glass-line-strong)" />
@@ -305,7 +309,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
       {actionError && (
         <div role="alert" className="hubly-pop hubly-glass relative z-30 mx-3 mb-3 flex items-center justify-between gap-3 rounded-xl border-(--status-danger-text) px-4 py-3 text-sm text-(--status-danger-text) lg:absolute lg:top-18 lg:right-3 lg:left-20 lg:mx-0">
           <span>{actionError.message}</span>
-          <button type="button" onClick={actionError.onRetry} className="h-8 cursor-pointer rounded-lg border border-(--status-danger-text) bg-transparent px-3 text-xs font-semibold text-(--status-danger-text)">Reintentar</button>
+          <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
 
@@ -359,10 +363,10 @@ export function EspacioHoy(props: EspacioHoyProps) {
         <CaptureField ref={mobileCapture} {...captureProps} />
         <nav aria-label="Navegación del espacio" className="grid grid-cols-4">
           {mobileNav.map((item) => (
-            <button key={item.label} type="button" onClick={item.run} className="flex min-h-11 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border-0 bg-transparent text-xs text-(--text-secondary) active:bg-(--glass-hover)">
+            <Button key={item.label} variant="ghost" onPress={item.run} className="h-auto min-h-11 flex-col gap-0.5 text-xs text-(--text-secondary)">
               <Icon name={item.icon} className="size-5" />
               {item.label}
-            </button>
+            </Button>
           ))}
           <BackgroundPicker
             prefs={prefs}
@@ -370,7 +374,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
             isOpen={pickerOpen === "mobile"}
             onOpenChange={(open) => setPickerOpen(open ? "mobile" : null)}
             triggerLabel="Fondo"
-            triggerClassName="flex min-h-11 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border-0 bg-transparent text-(--text-secondary) active:bg-(--glass-hover)"
+            triggerClassName="h-auto min-h-11 w-full flex-col gap-0.5 text-xs text-(--text-secondary)"
           />
         </nav>
       </div>
@@ -379,9 +383,9 @@ export function EspacioHoy(props: EspacioHoyProps) {
         <div role="status" key={toast.id} className="hubly-pop hubly-pop-surface fixed bottom-36 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-(--text-primary) lg:bottom-28">
           <span className="max-w-64 truncate">{toast.message}</span>
           {toast.undo && (
-            <button type="button" onClick={() => { toast.undo?.(); setToast(null); }} className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-sm font-semibold text-(--accent-primary)">
+            <Button size="sm" variant="ghost" onPress={() => { toast.undo?.(); setToast(null); }} className="text-(--accent-primary)">
               <Icon name="deshacer" className="size-3.5" /> Deshacer
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -439,9 +443,9 @@ export function EspacioEstado({ title, message, busy, action }: EspacioEstadoPro
         {title && <h1 className="m-0 text-xl font-bold">{title}</h1>}
         <p className="m-0 text-sm leading-relaxed text-(--text-secondary)">{message}</p>
         {action && (
-          <button type="button" onClick={action.onPress} className="h-10 cursor-pointer rounded-xl border-0 bg-(--accent-primary) px-5 text-sm font-semibold text-(--text-on-accent) transition-transform hover:bg-(--accent-primary-hover) active:scale-95">
+          <Button variant="primary" onPress={action.onPress}>
             {action.label}
-          </button>
+          </Button>
         )}
       </div>
     </main>

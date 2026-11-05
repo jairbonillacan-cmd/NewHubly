@@ -1,3 +1,4 @@
+import { Button, ToggleButton, Tooltip } from "@heroui/react";
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "./icons";
 
@@ -38,17 +39,29 @@ export function GlassPanel({ id, title, icon, actions, onClose, children, classN
   );
 }
 
-export function IconButton({ icon, label, onPress, pressed, className }: { icon: IconName; label: string; onPress: () => void; pressed?: boolean; className?: string }) {
+/** Botón de icono del espacio: Button de HeroUI (o ToggleButton si alterna) con Tooltip que repite la etiqueta. */
+export function IconButton({ icon, label, onPress, pressed, className }: { icon: IconName; label: string; onPress: () => void; pressed?: boolean | undefined; className?: string | undefined }) {
+  const tone = "text-(--text-secondary) data-[hovered]:text-(--text-primary)";
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      aria-pressed={pressed}
-      onClick={onPress}
-      className={`flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-(--text-secondary) transition-colors hover:bg-(--glass-hover) hover:text-(--text-primary) aria-pressed:bg-(--accent-primary-subtle) aria-pressed:text-(--accent-primary) ${className ?? ""}`}
-    >
-      <Icon name={icon} />
-    </button>
+    <Tooltip delay={400}>
+      {pressed === undefined ? (
+        <Button isIconOnly size="sm" variant="ghost" aria-label={label} onPress={onPress} className={`${tone} ${className ?? ""}`}>
+          <Icon name={icon} />
+        </Button>
+      ) : (
+        <ToggleButton
+          isIconOnly
+          size="sm"
+          variant="ghost"
+          aria-label={label}
+          isSelected={pressed}
+          onChange={onPress}
+          className={`${tone} data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary) ${className ?? ""}`}
+        >
+          <Icon name={icon} />
+        </ToggleButton>
+      )}
+      <Tooltip.Content placement="right">{label}</Tooltip.Content>
+    </Tooltip>
   );
 }
