@@ -255,7 +255,8 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
 
 type StoredPreferences = Awaited<ReturnType<UserPreferencesRepository["get"]>> & object;
 const mapPreferencesRow = (r: UserPreferencesRow): StoredPreferences => ({
-  wallpaper: r.wallpaper, panelOpacity: r.panelOpacity, layoutMode: r.layoutMode, visiblePanels: r.visiblePanels, theme: r.theme,
+  wallpaper: r.wallpaper, panelOpacity: r.panelOpacity, layoutMode: r.layoutMode, theme: r.theme,
+  visiblePanels: typeof r.visiblePanels === "string" ? JSON.parse(r.visiblePanels) : r.visiblePanels,
 });
 
 /** Preferencias por persona (#83). Siempre con el contexto del usuario: RLS solo deja ver y escribir la fila propia. */
@@ -270,13 +271,21 @@ export class DrizzleUserPreferencesRepository implements UserPreferencesReposito
   }
 
   upsert(userId: string, prefs: StoredPreferences): Promise<StoredPreferences> {
+    // SQL explícito con ::jsonb: con postgres.js, drizzle puede mandar el jsonb como texto y el check de array lo rechazaría.
+    const panels = JSON.stringify(prefs.visiblePanels);
     return unwrapPg(withUserContext(this.claims, async (tx) => {
-      const values = { wallpaper: prefs.wallpaper, panelOpacity: prefs.panelOpacity, layoutMode: prefs.layoutMode, visiblePanels: prefs.visiblePanels, theme: prefs.theme, updatedAt: new Date() };
-      const [row] = await tx.insert(userPreferences).values({ userId, ...values })
-        .onConflictDoUpdate({ target: userPreferences.userId, set: values })
-        .returning();
+      const [row] = await tx.execute<Record<string, unknown>>(sql`
+        insert into public.user_preferences (user_id, wallpaper, panel_opacity, layout_mode, visible_panels, theme, updated_at)
+        values (${userId}::uuid, ${prefs.wallpaper}, ${prefs.panelOpacity}, ${prefs.layoutMode}, ${panels}::jsonb, ${prefs.theme}, now())
+        on conflict (user_id) do update set
+          wallpaper = excluded.wallpaper, panel_opacity = excluded.panel_opacity, layout_mode = excluded.layout_mode,
+          visible_panels = excluded.visible_panels, theme = excluded.theme, updated_at = now()
+        returning wallpaper, panel_opacity, layout_mode, visible_panels, theme`);
       if (!row) throw new Error("No se pudieron guardar tus preferencias");
-      return mapPreferencesRow(row);
+      const visiblePanels = typeof row.visible_panels === "string" ? JSON.parse(row.visible_panels) : row.visible_panels;
+      return {
+        wallpaper: row.wallpaper, panelOpacity: Number(row.panel_opacity), layoutMode: row.layout_mode, visiblePanels, theme: row.theme,
+      } as StoredPreferences;
     }, this.db));
   }
 }
