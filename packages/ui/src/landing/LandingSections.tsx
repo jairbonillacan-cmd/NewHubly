@@ -59,7 +59,7 @@ export function FaqSection() {
         <h2 id="preguntas-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-5xl">Lo que nos preguntan.</h2>
         <p className="max-w-sm leading-relaxed text-(--text-secondary)">Respuestas cortas y honestas. Si algo no está listo, lo decimos.</p>
         <div className="mt-2 hidden lg:block">
-          <Hubi acabado="volumen" tamano={144} decorativo prioridad="diferida" className="size-36" sizing="css" />
+          <Hubi acabado="volumen" tamano={144} decorativo priority="deferred" className="size-36" sizing="css" />
         </div>
       </div>
       <LandingFaq />
@@ -80,7 +80,7 @@ export function FinalCta() {
           </div>
         </div>
         <div className="justify-self-center">
-          <Hubi acabado="volumen" pose="laptop" tamano={280} decorativo prioridad="diferida" className="size-45 lg:size-70" sizing="css" />
+          <Hubi acabado="volumen" pose="laptop" tamano={280} decorativo priority="deferred" className="size-45 lg:size-70" sizing="css" />
         </div>
       </div>
     </section>
