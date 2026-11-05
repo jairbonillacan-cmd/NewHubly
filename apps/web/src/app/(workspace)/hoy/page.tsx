@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { loadWorkspaceDashboardAction } from "../../../actions";
 import { WorkspaceScreen } from "../../../components/WorkspaceScreen";
 
@@ -9,6 +9,8 @@ export async function HoyPage({ todayDate }: { todayDate?: string } = {}) {
     const { notes, todos, todayDate: serverToday, timezone } = await loadWorkspaceDashboardAction();
     return <WorkspaceScreen initialStatus="ready" todayDate={todayDate ?? serverToday} initialTimezone={timezone} initialNotes={notes} initialTodos={todos} />;
   } catch (err) {
+    // La redirección a /login por sesión caducada (#92) no es un fallo: se deja pasar.
+    unstable_rethrow(err);
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("Sesión caducada")) redirect("/login");
     return <WorkspaceScreen initialStatus="error" {...(todayDate ? { todayDate } : {})} errorMessage="No se pudo cargar tu espacio de trabajo." />;

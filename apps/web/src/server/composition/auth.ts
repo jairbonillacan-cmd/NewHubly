@@ -100,8 +100,14 @@ export async function createSupabaseServerClient(cookieMethodsOverride?: ReturnT
   return createServerClient(url, anonKey, { cookies: cookieMethods });
 }
 
+/** Sin sesión válida. El mensaje se conserva para el servidor y las pruebas; el cliente no lo ve en producción (#92). */
+export class SessionExpiredError extends Error {
+  constructor() { super("Sesión caducada"); this.name = "SessionExpiredError"; }
+}
+export const isSessionExpiredError = (err: unknown): boolean => err instanceof SessionExpiredError || (err instanceof Error && err.message === "Sesión caducada");
+
 export async function getVerifiedServerSession(): Promise<{ claims: UserClaims; email: string | null }> {
   const { data, error } = await (await createSupabaseServerClient()).auth.getUser();
-  if (error || !data?.user?.id) throw new Error("Sesión caducada");
+  if (error || !data?.user?.id) throw new SessionExpiredError();
   return { claims: { sub: data.user.id, role: "authenticated" }, email: data.user.email ?? null };
 }
