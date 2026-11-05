@@ -51,3 +51,20 @@ describe('Contracts: Zod schemas', () => {
     expect(todoSchema.parse({ id: 't', workspaceId: 'w', createdBy: 'u', title: 'T', detail: '', priority: 'low', isDone: false, createdAt: '2026-11-04', updatedAt: '2026-11-04' }).visibility).toBe('private');
   });
 });
+
+describe('Preferencias por persona (#83)', () => {
+  it('acepta las preferencias por defecto y valida rangos, valores y paneles repetidos', async () => {
+    const { DEFAULT_USER_PREFERENCES, userPreferencesSchema, updateUserPreferencesSchema } = await import('./index');
+    expect(userPreferencesSchema.parse(DEFAULT_USER_PREFERENCES)).toEqual(DEFAULT_USER_PREFERENCES);
+    expect(DEFAULT_USER_PREFERENCES.theme).toBe('light');
+    expect(updateUserPreferencesSchema.safeParse({ panelOpacity: 59 }).success).toBe(false);
+    expect(updateUserPreferencesSchema.safeParse({ panelOpacity: 99 }).success).toBe(false);
+    expect(updateUserPreferencesSchema.safeParse({ panelOpacity: 70.5 }).success).toBe(false);
+    expect(updateUserPreferencesSchema.safeParse({ wallpaper: 'mi-foto' }).success).toBe(false);
+    expect(updateUserPreferencesSchema.safeParse({ layoutMode: 'libre' }).success).toBe(false);
+    expect(updateUserPreferencesSchema.safeParse({ visiblePanels: ['today', 'today'] }).success).toBe(false);
+    expect(updateUserPreferencesSchema.safeParse({}).success).toBe(false);
+    expect(updateUserPreferencesSchema.parse({ wallpaper: 'tinta', visiblePanels: [] })).toEqual({ wallpaper: 'tinta', visiblePanels: [] });
+  });
+});
+

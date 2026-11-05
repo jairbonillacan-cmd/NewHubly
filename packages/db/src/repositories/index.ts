@@ -2,9 +2,9 @@ import "server-only";
 import { and, asc, desc, eq, ilike, isNull, lte, or, sql } from "drizzle-orm";
 import type { ItemVisibility, Note as DomainNote, Todo as DomainTodo, WorkspaceKind, WorkspaceRole } from "@hubly/domain";
 import { ConcurrencyError, sortTodosForView } from "@hubly/domain";
-import type { NoteFilter, NoteRepository, TodoFilter, TodoRepository } from "@hubly/application";
+import type { NoteFilter, NoteRepository, TodoFilter, TodoRepository, UserPreferencesRepository } from "@hubly/application";
 import { withUserContext, type UserClaims } from "../context";
-import { notes, todos, workspaceMembers, workspaces, type Workspace, type WorkspaceMember } from "../schema";
+import { notes, todos, userPreferences, workspaceMembers, workspaces, type UserPreferencesRow, type Workspace, type WorkspaceMember } from "../schema";
 
 type DbInstance = Parameters<typeof withUserContext>[2];
 export interface NoteSearchFilter extends NoteFilter { query?: string; }
@@ -252,3 +252,41 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     return unwrapPg(withUserContext(this.claims, async (tx) => (await tx.execute<{ workspace_id: string }>(sql`select private.accept_workspace_invitation(${rawToken}) as workspace_id`))[0]?.workspace_id ?? (() => { throw new Error("No se pudo aceptar la invitación"); })(), this.db));
   }
 }
+
+type StoredPreferences = Awaited<ReturnType<UserPreferencesRepository["get"]>> & object;
+const mapPreferencesRow = (r: UserPreferencesRow): StoredPreferences => ({
+  wallpaper: r.wallpaper, panelOpacity: r.panelOpacity, layoutMode: r.layoutMode, theme: r.theme,
+  visiblePanels: typeof r.visiblePanels === "string" ? JSON.parse(r.visiblePanels) : r.visiblePanels,
+});
+
+/** Preferencias por persona (#83). Siempre con el contexto del usuario: RLS solo deja ver y escribir la fila propia. */
+export class DrizzleUserPreferencesRepository implements UserPreferencesRepository {
+  constructor(private readonly claims: UserClaims, private readonly db?: DbInstance) {}
+
+  get(userId: string): Promise<StoredPreferences | null> {
+    return withUserContext(this.claims, async (tx) => {
+      const [row] = await tx.select().from(userPreferences).where(eq(userPreferences.userId, userId)).limit(1);
+      return row ? mapPreferencesRow(row) : null;
+    }, this.db);
+  }
+
+  upsert(userId: string, prefs: StoredPreferences): Promise<StoredPreferences> {
+    // SQL explícito con ::jsonb: con postgres.js, drizzle puede mandar el jsonb como texto y el check de array lo rechazaría.
+    const panels = JSON.stringify(prefs.visiblePanels);
+    return unwrapPg(withUserContext(this.claims, async (tx) => {
+      const [row] = await tx.execute<Record<string, unknown>>(sql`
+        insert into public.user_preferences (user_id, wallpaper, panel_opacity, layout_mode, visible_panels, theme, updated_at)
+        values (${userId}::uuid, ${prefs.wallpaper}, ${prefs.panelOpacity}, ${prefs.layoutMode}, ${panels}::jsonb, ${prefs.theme}, now())
+        on conflict (user_id) do update set
+          wallpaper = excluded.wallpaper, panel_opacity = excluded.panel_opacity, layout_mode = excluded.layout_mode,
+          visible_panels = excluded.visible_panels, theme = excluded.theme, updated_at = now()
+        returning wallpaper, panel_opacity, layout_mode, visible_panels, theme`);
+      if (!row) throw new Error("No se pudieron guardar tus preferencias");
+      const visiblePanels = typeof row.visible_panels === "string" ? JSON.parse(row.visible_panels) : row.visible_panels;
+      return {
+        wallpaper: row.wallpaper, panelOpacity: Number(row.panel_opacity), layoutMode: row.layout_mode, visiblePanels, theme: row.theme,
+      } as StoredPreferences;
+    }, this.db));
+  }
+}
+

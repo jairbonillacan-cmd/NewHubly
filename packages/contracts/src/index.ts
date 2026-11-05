@@ -86,6 +86,21 @@ export const changeMemberRoleInputSchema = z.object({ workspaceId: z.string().mi
 export const removeMemberInputSchema = z.object({ workspaceId: z.string().min(1, 'El ID de agencia es obligatorio'), targetUserId: z.string().min(1, 'El ID de usuario es obligatorio') });
 export const changeItemVisibilityInputSchema = z.object({ workspaceId: z.string().min(1, 'El ID de espacio es obligatorio'), itemId: z.string().min(1, 'El ID del elemento es obligatorio'), itemType: z.enum(['note', 'todo'] as const, { message: 'Tipo de elemento inválido' }), visibility: itemVisibilitySchema });
 
+// Preferencias visuales por persona del espacio de Hoy (#83). Mismos valores que los check de public.user_preferences.
+export const wallpaperSchema = z.enum(['contornos', 'patron', 'tinta', 'grafito'] as const, { message: 'Fondo inválido' });
+export const layoutModeSchema = z.enum(['free', 'side_by_side', 'focus'] as const, { message: 'Distribución inválida' });
+export const preferencePanelSchema = z.enum(['today', 'open_note', 'pinned_notes'] as const, { message: 'Panel inválido' });
+export const themePreferenceSchema = z.enum(['light', 'dark', 'system'] as const, { message: 'Tema inválido' });
+export const userPreferencesSchema = z.object({
+  wallpaper: wallpaperSchema,
+  panelOpacity: z.number().int('La opacidad debe ser un número entero').min(60, 'La opacidad mínima es 60').max(98, 'La opacidad máxima es 98'),
+  layoutMode: layoutModeSchema,
+  visiblePanels: z.array(preferencePanelSchema).max(3).refine((panels) => new Set(panels).size === panels.length, 'Paneles repetidos'),
+  theme: themePreferenceSchema,
+});
+export const updateUserPreferencesSchema = userPreferencesSchema.partial().refine((patch) => Object.keys(patch).length > 0, 'No hay preferencias que guardar');
+export const DEFAULT_USER_PREFERENCES: UserPreferences = { wallpaper: 'contornos', panelOpacity: 80, layoutMode: 'free', visiblePanels: ['today', 'open_note', 'pinned_notes'], theme: 'light' };
+
 export type CreateNoteInput = z.input<typeof createNoteSchema>; export type UpdateNoteInput = z.input<typeof updateNoteSchema>;
 export type CreateTodoInput = z.input<typeof createTodoSchema>; export type UpdateTodoInput = z.input<typeof updateTodoSchema>;
 export type ExportData = z.infer<typeof exportDataSchema>;
@@ -96,3 +111,4 @@ export type CreateAgencyInput = z.input<typeof createAgencyInputSchema>; export 
 export type AcceptInvitationInput = z.input<typeof acceptInvitationInputSchema>; export type RevokeInvitationInput = z.input<typeof revokeInvitationInputSchema>;
 export type ChangeMemberRoleInput = z.input<typeof changeMemberRoleInputSchema>; export type RemoveMemberInput = z.input<typeof removeMemberInputSchema>;
 export type ChangeItemVisibilityInput = z.input<typeof changeItemVisibilityInputSchema>;
+export type UserPreferences = z.infer<typeof userPreferencesSchema>; export type UpdateUserPreferencesInput = z.input<typeof updateUserPreferencesSchema>;

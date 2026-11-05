@@ -3,7 +3,7 @@
 import { Button, Tooltip } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Hubi } from "../components/brand/Hubi";
-import { useHublyTheme } from "../landing/ThemeToggle";
+import { useHublyTheme, type HublyTheme } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
 import { BackgroundPicker, CaptureField, Dock, findNoteByQuery } from "./Dock";
@@ -12,7 +12,7 @@ import { HoyPanel } from "./HoyPanel";
 import { Icon } from "./icons";
 import { NotaPanel } from "./NotaPanel";
 import { NotasPanel } from "./NotasPanel";
-import { useEspacioPreferencias, type PanelId } from "./preferencias";
+import { useEspacioPreferencias, type EspacioPreferencias, type PanelId } from "./preferencias";
 import { TopBar } from "./TopBar";
 import {
   relativeDateLabel, type CaptureAnalysis, type CaptureInput, type EspacioInvitation, type EspacioInviteRole, type EspacioMember,
@@ -26,6 +26,14 @@ const DESKTOP_MIN_WIDTH = 1024;
 
 export interface EspacioHoyProps {
   todayDate: string;
+  /** Preferencias guardadas de la persona (#83). Sin ellas se usan las de por defecto. */
+  initialPreferences?: EspacioPreferencias | undefined;
+  /** Se llama con las preferencias completas cada vez que cambian (fondo, opacidad, distribución o paneles). */
+  onPreferencesChange?: ((prefs: EspacioPreferencias) => void) | undefined;
+  /** Tema guardado de la persona; si llega, manda sobre el del navegador al entrar. */
+  initialTheme?: HublyTheme | undefined;
+  /** Se llama cuando la persona cambia de tema desde el menú de cuenta o la paleta. */
+  onThemeChange?: ((theme: HublyTheme) => void) | undefined;
   timezone?: string | undefined;
   todos: EspacioTodo[];
   notes: EspacioNote[];
@@ -120,8 +128,24 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const activeWorkspace = props.activeWorkspace ?? PERSONAL_WORKSPACE;
   const workspaces = props.workspaces ?? [activeWorkspace];
   const [teamMode, setTeamMode] = useState<EquipoDialogMode | null>(null);
-  const [prefs, setPrefs] = useEspacioPreferencias();
+  const [prefs, setPrefs] = useEspacioPreferencias(props.initialPreferences, props.onPreferencesChange);
   const [theme, setTheme] = useHublyTheme();
+  const onThemeChangeRef = useRef(props.onThemeChange);
+  onThemeChangeRef.current = props.onThemeChange;
+
+  // El tema guardado en el servidor manda al entrar; después, cualquier cambio de data-theme (menú de cuenta o paleta) se guarda.
+  useEffect(() => {
+    if (props.initialTheme && document.documentElement.getAttribute("data-theme") !== props.initialTheme) setTheme(props.initialTheme);
+    let last = document.documentElement.getAttribute("data-theme");
+    const observer = new MutationObserver(() => {
+      const current = document.documentElement.getAttribute("data-theme");
+      if (current !== last && (current === "light" || current === "dark")) onThemeChangeRef.current?.(current);
+      last = current;
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+    // Solo al montar: initialTheme es el valor con el que se cargó la página.
+  }, []);
   const [filter, setFilter] = useState<HoyFilter>(null);
   const [openNoteId, setOpenNoteId] = useState<string | null>(() => notes.find((n) => n.isPinned && !n.isArchived)?.id ?? notes.find((n) => !n.isArchived)?.id ?? null);
   const [linkedNoteId, setLinkedNoteId] = useState<string | null>(null);
