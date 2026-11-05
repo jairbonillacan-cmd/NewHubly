@@ -93,6 +93,10 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
     const unauthRes = await middleware(new NextRequest("http://localhost:3100/hoy"));
     expect(unauthRes.status).toBe(307);
     expect(unauthRes.headers.get("location")).toBe("http://localhost:3100/login");
+    // Una Server Action sin sesión no se redirige en el middleware: la acción misma redirige con NEXT_REDIRECT (#92).
+    const actionRes = await middleware(new NextRequest("http://localhost:3100/hoy", { method: "POST", headers: { "next-action": "abc123" } }));
+    expect(actionRes.status).toBe(200);
+    expect(actionRes.headers.get("location")).toBeNull();
 
     setSupabaseServerClientFactoryForTests((cookieMethods) => ({
       auth: {
