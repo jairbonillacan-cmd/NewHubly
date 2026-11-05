@@ -38,6 +38,12 @@ La limpieza y generación de derivados se ejecuta una sola vez fuera del árbol 
   - Barra horizontal central de la `H`: `var(--accent-primary)`.
   - Cero valores hexadecimales incrustados en el SVG.
 
+## Isologo de Hubi (#101, #111)
+
+La firma activa de Hubly combina `HubiFace` con las letras de «Hubly» en `HubiWordmark`. La cara parte de los iconos maestros `origen-claro-icono.png` y `origen-oscuro-icono.png`: un solo trazado SVG, centrado en un lienzo cuadrado, con la silueta simétrica, la oreja azul y los rasgos de Origen. El contorno conserva su proporción al escalarse a 24, 28 y 32 px.
+
+El tema solo cambia los colores, a través de `--text-primary` para la silueta, `--accent-primary` para la oreja azul y `--surface-canvas` para los ojos y la boca. Los iconos de instalación y las ilustraciones de cuerpo entero conservan sus propios recursos.
+
 ## Fraunces para la landing (#101)
 
 Los WOFF2 de [Fraunces](https://github.com/undercasetype/Fraunces) proceden de Google Fonts CSS2 (revisión de distribución `v38`, versión interna `1.000` en el commit `b76b70a41`). La licencia [SIL OFL 1.1](fraunces-OFL.txt) se conserva junto a este documento.

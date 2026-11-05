@@ -212,8 +212,8 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
     expect(renderToStaticMarkup(<LoginScreen initialMode="signup" />)).toMatch(/<button[^>]*type="submit"[^>]*>Crear cuenta<\/button>/);
     expect(renderToStaticMarkup(<LoginScreen initialMode="magic" />)).toMatch(/<button[^>]*type="submit"[^>]*>Enviar enlace<\/button>/);
     expect(signInHtml).not.toContain("¿La olvidaste?");
-    expect(signInHtml).toContain("/marca/hubi-cara-claro-128.webp");
-    expect(signInHtml).toContain("/marca/hubi-cara-oscuro-128.webp");
+    expect(signInHtml).toContain('role="img" aria-label="Hubly"');
+    expect(signInHtml).toContain('class="hubly-hubi-face ');
     expect(signInHtml).not.toMatch(/viewBox="0 0 (?:380 220|1210 264)"/);
     expect(signInHtml).toContain("/marca/hubi-volumen-claro-laptop-512.webp");
     const m = manifest();

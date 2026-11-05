@@ -113,13 +113,37 @@ export function HublyWordmark({
   );
 }
 
-/** Cara de Hubi según el tema activo; decorativa (la etiqueta la pone quien la usa). */
+/** Cara de Hubi Origen; decorativa (la etiqueta la pone quien la usa). */
 export function HubiFace({ className = "size-8" }: { className?: string }) {
   return (
-    <span aria-hidden="true" className={`hubly-hubi-face relative inline-block shrink-0 ${className}`}>
-      <img src="/marca/hubi-cara-claro-128.webp" alt="" width={64} height={64} className={`hubly-hubi-light ${className}`} />
-      <img src="/marca/hubi-cara-oscuro-128.webp" alt="" width={64} height={64} className={`hubly-hubi-dark ${className}`} />
-    </span>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 320 320"
+      width={32}
+      height={32}
+      aria-hidden="true"
+      focusable="false"
+      className={`hubly-hubi-face shrink-0 ${className}`}
+    >
+      <path d="M39 132 C42 98 56 49 76 49 C89 49 103 68 118 102 Z" fill="var(--text-primary)" />
+      <path d="M281 132 C278 98 264 49 244 49 C231 49 217 68 202 102 Z" fill="var(--accent-primary)" />
+      <path
+        d="M160 95 C229 95 266 102 285 136 C303 166 300 202 279 230 C256 261 218 272 160 272 C102 272 64 261 41 230 C20 202 17 166 35 136 C54 102 91 95 160 95 Z"
+        fill="var(--text-primary)"
+      />
+      <g fill="var(--surface-canvas)">
+        <ellipse cx={108} cy={170} rx={9.5} ry={16} />
+        <ellipse cx={212} cy={170} rx={9.5} ry={16} />
+      </g>
+      <path
+        d="M139 186 C142 197 156 197 160 186 C164 197 178 197 181 186"
+        fill="none"
+        stroke="var(--surface-canvas)"
+        strokeWidth={9.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -134,7 +158,7 @@ const HUBI_WORDMARK_SIZE = {
   sm: { face: "size-6", letters: "h-4" },
 } as const;
 
-/** Firma del landing (#85): la cara de Hubi según el tema activo junto a las letras de «Hubly». */
+/** Firma de Hubly (#101): la cara de Hubi junto a las letras de «Hubly». */
 export function HubiWordmark({ tamano = "md", className }: HubiWordmarkProps) {
   const size = HUBI_WORDMARK_SIZE[tamano];
   return (
