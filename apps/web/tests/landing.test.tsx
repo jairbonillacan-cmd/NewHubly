@@ -11,7 +11,7 @@ describe("Landing pública de Hubly en apps/web (#85)", () => {
     expect(html).toContain("glass-panel");
     expect(html).toContain("Deja de preguntar");
     expect(html).toContain("«¿quién tiene esto?»");
-    expect(html).toContain("Las ideas, en un grupo de WhatsApp.");
+    expect(html).toContain("Hoy, cada cosa vive en un lado distinto.");
     expect(html).toContain("Lo que Hubly hace por tu agencia.");
     expect(html).toContain("Tus datos son tuyos.");
     expect(html).toContain("Lo que nos preguntan.");
