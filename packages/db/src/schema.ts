@@ -1,5 +1,5 @@
 import "server-only";
-import { boolean, date, foreignKey, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, foreignKey, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 // Fuente de verdad: migraciones SQL (supabase/migrations). No usar drizzle-kit push ni generate.
 
 export const workspaces = pgTable("workspaces", {
@@ -59,9 +59,21 @@ export const todos = pgTable("todos", {
   index("todos_workspace_visibility_done_due_idx").on(t.workspaceId, t.visibility, t.isDone, t.dueDate),
 ]);
 
+// Preferencias visuales por persona (#83). La referencia a auth.users vive en la migración (esquema auth, fuera de Drizzle).
+export const userPreferences = pgTable("user_preferences", {
+  userId: uuid("user_id").primaryKey(),
+  wallpaper: text("wallpaper", { enum: ["contornos", "patron", "tinta", "grafito"] }).notNull().default("contornos"),
+  panelOpacity: integer("panel_opacity").notNull().default(80),
+  layoutMode: text("layout_mode", { enum: ["free", "side_by_side", "focus"] }).notNull().default("free"),
+  visiblePanels: jsonb("visible_panels").$type<Array<"today" | "open_note" | "pinned_notes">>().notNull(),
+  theme: text("theme", { enum: ["light", "dark", "system"] }).notNull().default("light"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type WorkspaceKind = "personal" | "agency"; export type WorkspaceRole = "owner" | "admin" | "editor" | "viewer"; export type ItemVisibility = "private" | "workspace";
 export type Workspace = typeof workspaces.$inferSelect; export type NewWorkspace = typeof workspaces.$inferInsert;
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect; export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert;
 export type WorkspaceInvitation = typeof workspaceInvitations.$inferSelect; export type NewWorkspaceInvitation = typeof workspaceInvitations.$inferInsert;
 export type Note = typeof notes.$inferSelect; export type NewNote = typeof notes.$inferInsert;
 export type Todo = typeof todos.$inferSelect; export type NewTodo = typeof todos.$inferInsert;
+export type UserPreferencesRow = typeof userPreferences.$inferSelect;

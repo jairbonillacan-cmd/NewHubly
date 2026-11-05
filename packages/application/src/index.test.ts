@@ -131,3 +131,27 @@ describe('Application: Use cases', () => {
     expect((await todoRepo.findById(tOtherPriv.id))?.workspaceId).toBe('w-personal-u1');
   });
 });
+
+describe('Preferencias por persona (#83)', () => {
+  it('devuelve los valores por defecto sin registro y guarda cambios parciales sobre lo existente', async () => {
+    const { getUserPreferences, saveUserPreferences } = await import('./index.js');
+    const store = new Map<string, unknown>();
+    const repo = {
+      get: async (userId: string) => (store.get(userId) as never) ?? null,
+      upsert: async (userId: string, prefs: never) => { store.set(userId, prefs); return prefs; },
+    };
+    expect(await getUserPreferences(repo, { userId: 'u-1' })).toEqual({ wallpaper: 'contornos', panelOpacity: 80, layoutMode: 'free', visiblePanels: ['today', 'open_note', 'pinned_notes'], theme: 'light' });
+    await saveUserPreferences(repo, { wallpaper: 'tinta', panelOpacity: 64 }, { userId: 'u-1' });
+    const saved = await saveUserPreferences(repo, { theme: 'dark' }, { userId: 'u-1' });
+    expect(saved).toMatchObject({ wallpaper: 'tinta', panelOpacity: 64, theme: 'dark', layoutMode: 'free' });
+    expect(await getUserPreferences(repo, { userId: 'u-2' })).toMatchObject({ wallpaper: 'contornos' });
+    await expect(saveUserPreferences(repo, { panelOpacity: 20 }, { userId: 'u-1' })).rejects.toThrow();
+  });
+
+  it('ignora un registro guardado que ya no cumple el contrato y vuelve a los valores por defecto', async () => {
+    const { getUserPreferences } = await import('./index.js');
+    const repo = { get: async () => ({ wallpaper: 'borrado', panelOpacity: 80, layoutMode: 'free', visiblePanels: [], theme: 'light' }) as never, upsert: async (_u: string, p: never) => p };
+    expect((await getUserPreferences(repo, { userId: 'u-1' })).wallpaper).toBe('contornos');
+  });
+});
+

@@ -5,7 +5,7 @@ const connectionString = process.env.DATABASE_URL || "postgresql://postgres:post
 
 describe("Catálogo RLS y Seguridad (ADR 0004, ADR 0007, Issue #23 & #62)", () => {
   const sql = postgres(connectionString);
-  const tables = ["workspaces", "workspace_members", "workspace_invitations", "notes", "todos"];
+  const tables = ["workspaces", "workspace_members", "workspace_invitations", "notes", "todos", "user_preferences"];
   afterAll(async () => { await sql.end(); });
 
   it("el 100% de tablas de negocio en public tienen RLS activado y forzado", async () => {

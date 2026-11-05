@@ -1,14 +1,14 @@
 import "server-only";
 import {
   archiveNote, changeTodoVisibility, createNote, createTodo, createTodoFromNote, exportWorkspaceData,
-  listNotes, listTodosByView, pinNote, toggleTodoDone, updateNote, updateTodo,
+  getUserPreferences, listNotes, listTodosByView, pinNote, saveUserPreferences, toggleTodoDone, updateNote, updateTodo,
   type AppContext, type Clock, type IdGenerator, type NoteFilter,
 } from "@hubly/application";
 import {
   changeItemVisibilityInputSchema, changeMemberRoleInputSchema, createAgencyInputSchema, createNoteSchema, createTodoSchema,
-  removeMemberInputSchema, updateNoteSchema, updateTodoSchema, type CreateNoteInput, type CreateTodoInput, type UpdateNoteInput, type UpdateTodoInput,
+  removeMemberInputSchema, updateNoteSchema, updateTodoSchema, type CreateNoteInput, type CreateTodoInput, type UpdateNoteInput, type UpdateTodoInput, type UpdateUserPreferencesInput,
 } from "@hubly/contracts";
-import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleWorkspaceRepository, withUserContext, type ItemVisibility, type UserClaims, type UserWorkspaceSummary, type WorkspaceInvitationRecord, type WorkspaceKind, type WorkspaceRole } from "@hubly/db";
+import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleUserPreferencesRepository, DrizzleWorkspaceRepository, withUserContext, type ItemVisibility, type UserClaims, type UserWorkspaceSummary, type WorkspaceInvitationRecord, type WorkspaceKind, type WorkspaceRole } from "@hubly/db";
 import {
   DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
   createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
@@ -150,3 +150,9 @@ export const removeOrLeaveMemberUseCase = (ctx: CompositionContext) => async (ta
   if (parsed.targetUserId === ctx.userId) await persistActiveWorkspaceCookie(null);
   return { leftCurrentWorkspace: parsed.targetUserId === ctx.userId };
 };
+// Preferencias visuales por persona (#83): no dependen del espacio activo, solo del usuario de la sesión.
+export const getUserPreferencesUseCase = (ctx: CompositionContext) => () =>
+  getUserPreferences(new DrizzleUserPreferencesRepository(ctx.claims, ctx.db), ctx);
+export const saveUserPreferencesUseCase = (ctx: CompositionContext) => (patch: UpdateUserPreferencesInput) =>
+  saveUserPreferences(new DrizzleUserPreferencesRepository(ctx.claims, ctx.db), patch, ctx);
+

@@ -46,3 +46,13 @@ describe("Agencias en el espacio de Hoy (#64, #78)", () => {
     expect(hoyHtml).toContain("Compartir con la agencia: Publicar copy");
   });
 });
+
+describe("Preferencias del espacio sin almacenamiento del navegador (#83)", () => {
+  it("el espacio ya no lee ni escribe localStorage para sus preferencias", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const source = readFileSync(fileURLToPath(new URL("./preferencias.ts", import.meta.url)), "utf8");
+    expect(source).not.toMatch(/localStorage\s*\./);
+    expect(source).not.toContain("hubly-espacio");
+  });
+});

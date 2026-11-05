@@ -2,9 +2,9 @@ import "server-only";
 import { and, asc, desc, eq, ilike, isNull, lte, or, sql } from "drizzle-orm";
 import type { ItemVisibility, Note as DomainNote, Todo as DomainTodo, WorkspaceKind, WorkspaceRole } from "@hubly/domain";
 import { ConcurrencyError, sortTodosForView } from "@hubly/domain";
-import type { NoteFilter, NoteRepository, TodoFilter, TodoRepository } from "@hubly/application";
+import type { NoteFilter, NoteRepository, TodoFilter, TodoRepository, UserPreferencesRepository } from "@hubly/application";
 import { withUserContext, type UserClaims } from "../context";
-import { notes, todos, workspaceMembers, workspaces, type Workspace, type WorkspaceMember } from "../schema";
+import { notes, todos, userPreferences, workspaceMembers, workspaces, type UserPreferencesRow, type Workspace, type WorkspaceMember } from "../schema";
 
 type DbInstance = Parameters<typeof withUserContext>[2];
 export interface NoteSearchFilter extends NoteFilter { query?: string; }
@@ -252,3 +252,32 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     return unwrapPg(withUserContext(this.claims, async (tx) => (await tx.execute<{ workspace_id: string }>(sql`select private.accept_workspace_invitation(${rawToken}) as workspace_id`))[0]?.workspace_id ?? (() => { throw new Error("No se pudo aceptar la invitación"); })(), this.db));
   }
 }
+
+type StoredPreferences = Awaited<ReturnType<UserPreferencesRepository["get"]>> & object;
+const mapPreferencesRow = (r: UserPreferencesRow): StoredPreferences => ({
+  wallpaper: r.wallpaper, panelOpacity: r.panelOpacity, layoutMode: r.layoutMode, visiblePanels: r.visiblePanels, theme: r.theme,
+});
+
+/** Preferencias por persona (#83). Siempre con el contexto del usuario: RLS solo deja ver y escribir la fila propia. */
+export class DrizzleUserPreferencesRepository implements UserPreferencesRepository {
+  constructor(private readonly claims: UserClaims, private readonly db?: DbInstance) {}
+
+  get(userId: string): Promise<StoredPreferences | null> {
+    return withUserContext(this.claims, async (tx) => {
+      const [row] = await tx.select().from(userPreferences).where(eq(userPreferences.userId, userId)).limit(1);
+      return row ? mapPreferencesRow(row) : null;
+    }, this.db);
+  }
+
+  upsert(userId: string, prefs: StoredPreferences): Promise<StoredPreferences> {
+    return unwrapPg(withUserContext(this.claims, async (tx) => {
+      const values = { wallpaper: prefs.wallpaper, panelOpacity: prefs.panelOpacity, layoutMode: prefs.layoutMode, visiblePanels: prefs.visiblePanels, theme: prefs.theme, updatedAt: new Date() };
+      const [row] = await tx.insert(userPreferences).values({ userId, ...values })
+        .onConflictDoUpdate({ target: userPreferences.userId, set: values })
+        .returning();
+      if (!row) throw new Error("No se pudieron guardar tus preferencias");
+      return mapPreferencesRow(row);
+    }, this.db));
+  }
+}
+

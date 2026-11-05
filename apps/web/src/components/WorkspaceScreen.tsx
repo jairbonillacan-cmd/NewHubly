@@ -1,15 +1,16 @@
 "use client";
 import { parseQuickCapture } from "@hubly/application";
-import { createTodoSchema } from "@hubly/contracts";
+import { createTodoSchema, type UserPreferences } from "@hubly/contracts";
 import { EspacioEstado, EspacioHoy, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   archiveNoteAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction, createAgencyWorkspaceAction,
   createNoteAction, createTodoAction, createTodoFromNoteAction, exportWorkspaceAction, inviteWorkspaceMemberAction, loadWorkspaceDashboardAction,
-  pinNoteAction, removeOrLeaveWorkspaceMemberAction, revokeWorkspaceInvitationAction, saveNoteAction, selectActiveWorkspaceAction, toggleTodoAction,
+  pinNoteAction, removeOrLeaveWorkspaceMemberAction, revokeWorkspaceInvitationAction, saveNoteAction, saveUserPreferencesAction, selectActiveWorkspaceAction, toggleTodoAction,
   type WorkspaceInvitationSummary, type WorkspaceMemberSummary, type WorkspaceNote, type WorkspaceSummary, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
 import { signOutAction } from "../actions/auth";
+import { fromEspacioPreferencias, themeToApply, toEspacioPreferencias } from "./preferences";
 
 export type ScreenStatus = "loading" | "unauthenticated" | "error" | "ready";
 export type AutosaveState = NoteSaveState;
@@ -19,6 +20,9 @@ export interface WorkspaceScreenProps {
   initialTodos?: WorkspaceTodo[]; initialNotes?: WorkspaceNote[]; initialActionError?: ActionErrorState | null;
   currentUserId?: string; initialActiveWorkspace?: WorkspaceSummary; initialWorkspaces?: WorkspaceSummary[];
   initialMembers?: WorkspaceMemberSummary[]; initialPendingInvitations?: WorkspaceInvitationSummary[];
+  /** Preferencias visuales guardadas (#83); sin ellas el espacio usa las de por defecto. */
+  initialPreferences?: UserPreferences;
+  onSavePreferences?: (patch: Partial<UserPreferences>) => Promise<unknown>;
   onRetry?: () => void; onLoginRedirect?: () => void; onTimezoneRefresh?: () => void; onSignOut?: () => Promise<void>;
   onSaveNote?: (note: WorkspaceNote, nextTitle: string, nextContent: string) => Promise<WorkspaceNote>;
   onCreateTodo?: (input: { title: string; priority: "low" | "medium" | "high"; dueDate: string | null; noteId: string | null }) => Promise<WorkspaceTodo>;
@@ -27,6 +31,7 @@ export interface WorkspaceScreenProps {
 }
 
 export const TZ_REFRESH_STORAGE_KEY = "hubly_tz_refresh_attempted";
+export const PREFERENCES_SAVE_DELAY_MS = 600;
 
 export function shouldTriggerQuickCaptureShortcut(key: string, targetTag?: string, isContentEditable?: boolean): boolean {
   if (key !== "c" && key !== "/") return false;
@@ -87,7 +92,7 @@ const toEspacioWorkspace = (w: WorkspaceSummary): EspacioWorkspace => ({ id: w.i
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialTodos = [], initialNotes = [], initialActionError = null,
-  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [],
+  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, onSavePreferences,
   onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
@@ -97,6 +102,9 @@ export function WorkspaceScreen({
   const [members, setMembers] = useState<WorkspaceMemberSummary[]>(initialMembers);
   const [invitations, setInvitations] = useState<WorkspaceInvitationSummary[]>(initialPendingInvitations);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const prefsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingPrefs = useRef<Partial<UserPreferences>>({});
+  useEffect(() => () => { if (prefsTimer.current) clearTimeout(prefsTimer.current); }, []);
   const wsId = activeWs?.id;
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<ActionErrorState | null>(initialActionError);
@@ -237,6 +245,18 @@ export function WorkspaceScreen({
     setTodos((prev) => prev.map((t) => (t.id === todoId ? saved : t)));
   });
 
+  // El slider de opacidad cambia muchas veces seguidas: se guarda una sola vez cuando la persona se detiene.
+  // Los cambios se acumulan en un solo envío, así un cambio de tema no descarta un cambio de fondo pendiente.
+  const persistPreferences = (patch: Partial<UserPreferences>, delayMs = PREFERENCES_SAVE_DELAY_MS) => {
+    pendingPrefs.current = { ...pendingPrefs.current, ...patch };
+    if (prefsTimer.current) clearTimeout(prefsTimer.current);
+    prefsTimer.current = setTimeout(() => {
+      const toSave = pendingPrefs.current;
+      pendingPrefs.current = {};
+      void runSafe("No se pudieron guardar tus preferencias.", async () => { await (onSavePreferences ?? saveUserPreferencesAction)(toSave); });
+    }, delayMs);
+  };
+
   const handleSignOut = () => runSafe("No se pudo cerrar la sesión.", async () => {
     if (onSignOut) await onSignOut();
     else await signOutAction();
@@ -246,6 +266,9 @@ export function WorkspaceScreen({
   return (
     <EspacioHoy
       todayDate={todayDate}
+      {...(initialPreferences ? { initialPreferences: toEspacioPreferencias(initialPreferences), initialTheme: themeToApply(initialPreferences.theme) } : {})}
+      onPreferencesChange={(prefs) => persistPreferences(fromEspacioPreferencias(prefs))}
+      onThemeChange={(theme) => persistPreferences({ theme }, 0)}
       timezone={initialTimezone}
       todos={todos.map((t) => toEspacioTodo(t, activeWs, currentUserId))}
       notes={notes.map((n) => toEspacioNote(n, activeWs, currentUserId))}
