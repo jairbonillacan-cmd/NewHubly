@@ -1,0 +1,4 @@
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@reference "tailwindcss/theme.css";
+@source "../../../../packages/ui/src/landing";
+@source not "../../../../packages/ui/src/landing/*.test.ts";

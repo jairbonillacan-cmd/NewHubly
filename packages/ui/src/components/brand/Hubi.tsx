@@ -11,6 +11,8 @@ export interface HubiProps {
   decorativo?: boolean;
   className?: string;
   style?: CSSProperties;
+  sizing?: "fixed" | "css";
+  priority?: "high" | "deferred";
 }
 
 const HUBI_ASSET_MAP: Record<HubiFinish, Record<HubiPose, { light: string; dark: string }>> = {
@@ -44,6 +46,8 @@ export function Hubi({
   decorativo,
   className,
   style,
+  sizing = "fixed",
+  priority,
 }: HubiProps) {
   const isDecorative = decorativo ?? !alt;
   const resolvedAlt = isDecorative ? "" : (alt ?? "Hubi, mascota de Hubly");
@@ -53,7 +57,7 @@ export function Hubi({
     <span
       className={className ? `hubly-hubi ${className}` : "hubly-hubi"}
       aria-hidden={isDecorative ? "true" : undefined}
-      style={{ width: tamano, height: tamano, ...style }}
+      style={sizing === "css" ? style : { width: tamano, height: tamano, ...style }}
     >
       <img
         src={pair.light}
@@ -61,6 +65,8 @@ export function Hubi({
         width={tamano}
         height={tamano}
         decoding="async"
+        loading={priority === "deferred" ? "lazy" : undefined}
+        fetchPriority={priority === "high" ? "high" : undefined}
         className="hubly-hubi-img hubly-hubi-light"
       />
       <img
@@ -69,6 +75,8 @@ export function Hubi({
         width={tamano}
         height={tamano}
         decoding="async"
+        loading={priority === "deferred" ? "lazy" : undefined}
+        fetchPriority={priority === "high" ? "high" : undefined}
         className="hubly-hubi-img hubly-hubi-dark"
       />
     </span>
