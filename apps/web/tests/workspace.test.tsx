@@ -8,7 +8,7 @@ import { signOutAction } from "../src/actions/auth";
 import { HoyPage } from "../src/app/(workspace)/hoy/page";
 import {
   TZ_REFRESH_STORAGE_KEY, type ActionErrorState, WorkspaceScreen, classifyTodoItemForView,
-  executeProtectedAction, shouldTriggerQuickCaptureShortcut, syncTimeZoneAndMaybeRefresh,
+  executeProtectedAction, itemPermissions, shouldTriggerQuickCaptureShortcut, syncTimeZoneAndMaybeRefresh,
 } from "../src/components/WorkspaceScreen";
 import { createSystemClock, isValidIanaTimeZone, setClockNowForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests, setWorkspaceDbForTests } from "../src/server/composition";
 
@@ -151,5 +151,28 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     expect(exp.jsonFilename).toBe("hubly-export-2026-11-03.json");
     expect(exp.mdFilename).toBe("hubly-export-2026-11-03.md");
     expect(exp.markdownContent).toContain("## Estrategia Q4 [Fijada]");
+  });
+});
+
+describe("Agencias en Hoy: permisos de interfaz por elemento (#64, #78)", () => {
+  const agency = { id: "ag-1", name: "Agencia Pulso", slug: "pulso", kind: "agency" as const, role: "viewer" as const };
+  it("solo el autor con rol distinto de lectura cambia la visibilidad; el lector no edita lo ajeno", () => {
+    expect(itemPermissions(undefined, "u1", "u1")).toEqual({});
+    expect(itemPermissions({ ...agency, kind: "personal" }, "u1", "u1")).toEqual({});
+    expect(itemPermissions({ ...agency, role: "editor" }, "u1", "u1")).toEqual({ canChangeVisibility: true, readOnly: false });
+    expect(itemPermissions({ ...agency, role: "editor" }, "u1", "u2")).toEqual({ canChangeVisibility: false, readOnly: false });
+    expect(itemPermissions(agency, "u1", "u1")).toEqual({ canChangeVisibility: false, readOnly: false });
+    expect(itemPermissions(agency, "u1", "u2")).toEqual({ canChangeVisibility: false, readOnly: true });
+    // Sin usuario conocido, falla cerrado (observación 5 de la revisión de #86).
+    expect(itemPermissions({ ...agency, role: "owner" }, "", "u2")).toEqual({ canChangeVisibility: false, readOnly: false });
+  });
+
+  it("pinta la agencia activa y la lista de espacios que llega del servidor", () => {
+    const html = renderToStaticMarkup(
+      <WorkspaceScreen todayDate="2026-11-05" currentUserId="u1" initialActiveWorkspace={agency}
+        initialWorkspaces={[{ id: "p-1", name: "Mi Espacio", slug: "mi-espacio", kind: "personal", role: "owner" }, agency]} />,
+    );
+    expect(html).toContain("Cambiar de espacio (actual: Agencia Pulso)");
+    expect(html).toContain("Espacio personal");
   });
 });

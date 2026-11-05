@@ -46,5 +46,9 @@ describe("CSP con nonce y cabeceras estrictas (#91)", () => {
       expect(res.headers.get("referrer-policy"), url).toBe("strict-origin-when-cross-origin");
     }
     expect((await middleware(new NextRequest("http://localhost:3100/hoy"))).status).toBe(307);
+    // En /invitacion manda no-referrer: el token del enlace no debe salir en ningún Referer (#64).
+    const inv = await middleware(new NextRequest("http://localhost:3100/invitacion"));
+    expect(inv.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(inv.headers.get("content-security-policy")).toMatch(/'nonce-/);
   });
 });

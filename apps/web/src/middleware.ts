@@ -3,12 +3,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { buildContentSecurityPolicy, createNonce, staticSecurityHeaders } from "./security-headers";
 import { createSupabaseServerClient, enforceHttpOnlyCookieOptions } from "./server/composition/auth";
 
-const needsSession = (path: string) => path.startsWith("/hoy") || path.startsWith("/login") || path.startsWith("/auth");
+// /invitacion lee la sesión en el servidor: hay que refrescarla aquí, porque un componente de servidor no puede escribir cookies.
+const needsSession = (path: string) =>
+  path.startsWith("/hoy") || path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/invitacion");
 
 /** Añade la CSP con nonce y las cabeceras fijas a cualquier respuesta, también a las redirecciones (#91). */
-function withSecurityHeaders(response: NextResponse, csp: string): NextResponse {
+function withSecurityHeaders(response: NextResponse, csp: string, path: string): NextResponse {
   response.headers.set("Content-Security-Policy", csp);
   for (const [name, value] of Object.entries(staticSecurityHeaders(process.env.NODE_ENV === "production"))) response.headers.set(name, value);
+  // El enlace de invitación lleva el token en el fragmento: en esa página no se envía Referer a nadie (#64).
+  if (path.startsWith("/invitacion")) response.headers.set("Referrer-Policy", "no-referrer");
   return response;
 }
 
@@ -22,7 +26,7 @@ export async function updateSession(request: NextRequest) {
   const next = () => NextResponse.next({ request: { headers: requestHeaders } });
 
   const path = request.nextUrl.pathname;
-  if (!needsSession(path)) return withSecurityHeaders(next(), csp);
+  if (!needsSession(path)) return withSecurityHeaders(next(), csp, path);
 
   let response = next();
   const supabase = await createSupabaseServerClient({
@@ -41,9 +45,9 @@ export async function updateSession(request: NextRequest) {
   // respuesta inesperada. Se deja pasar y la propia acción redirige a /login con una respuesta que Next entiende (#92).
   const isServerAction = request.method === "POST" && request.headers.has("next-action");
   if (path.startsWith("/hoy") && !isServerAction && (error || !data?.user?.id)) {
-    return withSecurityHeaders(NextResponse.redirect(new URL("/login", request.url)), csp);
+    return withSecurityHeaders(NextResponse.redirect(new URL("/login", request.url)), csp, path);
   }
-  return withSecurityHeaders(response, csp);
+  return withSecurityHeaders(response, csp, path);
 }
 
 export function middleware(request: NextRequest) {

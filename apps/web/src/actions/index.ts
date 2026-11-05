@@ -2,12 +2,12 @@
 import type { NoteFilter } from "@hubly/application";
 import { createNoteSchema, createTodoSchema, exportDataSchema, updateNoteSchema, updateTodoSchema, type CreateNoteInput, type CreateTodoInput, type ExportData, type UpdateNoteInput, type UpdateTodoInput } from "@hubly/contracts";
 import {
-  acceptWorkspaceInvitationByToken, archiveNoteUseCase, changeMemberRoleUseCase, changeNoteVisibilityUseCase,
+  acceptWorkspaceInvitationSafely, archiveNoteUseCase, changeMemberRoleUseCase, changeNoteVisibilityUseCase,
   changeTodoVisibilityUseCase, createAgencyWorkspaceUseCase, createNoteUseCase, createTodoFromNoteUseCase,
   createTodoUseCase, ensureAuthenticatedWorkspace, exportDataUseCase, issueWorkspaceInvitation, listNotesUseCase,
   listPendingInvitationsUseCase, listTodosUseCase, listUserWorkspacesUseCase, listWorkspaceMembersUseCase,
   persistActiveWorkspaceCookie, pinNoteUseCase, removeOrLeaveMemberUseCase, revokePendingWorkspaceInvitation,
-  toggleTodoUseCase, updateNoteUseCase, updateTodoUseCase, type UserWorkspaceSummary, type WorkspaceInvitationRecord,
+  toggleTodoUseCase, updateNoteUseCase, updateTodoUseCase, type AcceptInvitationResult, type UserWorkspaceSummary, type WorkspaceInvitationRecord,
 } from "../server/composition";
 
 export type WorkspaceNote = Awaited<ReturnType<ReturnType<typeof listNotesUseCase>>>[number];
@@ -86,8 +86,9 @@ export async function inviteWorkspaceMemberAction(input: { workspaceId?: string;
 export async function revokeWorkspaceInvitationAction(input: { workspaceId?: string; invitationId: string }): Promise<void> {
   return revokePendingWorkspaceInvitation(await ensureAuthenticatedWorkspace(input.workspaceId), input.invitationId);
 }
-export async function acceptWorkspaceInvitationAction(input: { token: string }): Promise<{ workspaceId: string }> {
-  return acceptWorkspaceInvitationByToken(input.token);
+/** Devuelve un resultado con código en vez de lanzar: así el aviso en español llega también en producción. */
+export async function acceptWorkspaceInvitationAction(input: { token: string }): Promise<AcceptInvitationResult> {
+  return acceptWorkspaceInvitationSafely(input.token);
 }
 export async function changeWorkspaceMemberRoleAction(input: { workspaceId?: string; targetUserId: string; role: "owner" | "admin" | "editor" | "viewer" }): Promise<void> {
   return changeMemberRoleUseCase(await ensureAuthenticatedWorkspace(input.workspaceId))(input.targetUserId, input.role);
