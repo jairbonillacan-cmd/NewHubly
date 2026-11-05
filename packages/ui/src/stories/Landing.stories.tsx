@@ -1,18 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React from "react";
-import { FeatureGrid } from "../landing/FeatureGrid";
-import { GlassCard } from "../landing/GlassCard";
 import { AppPreview } from "../landing/AppPreview";
+import { FeatureGrid } from "../landing/FeatureGrid";
 import { LandingHero } from "../landing/LandingHero";
 import { LandingNav } from "../landing/LandingNav";
 import { DataSection, FaqSection, FinalCta, LandingFooter, PainSection } from "../landing/LandingSections";
-import { PillNav } from "../landing/PillNav";
-import { ThemeToggle } from "../landing/ThemeToggle";
-import { tokens } from "../tokens";
+import { LegalPage } from "../landing/LegalPage";
 
 const meta: Meta<typeof LandingHero> = {
   title: "Landing/Marketing",
   component: LandingHero,
+  parameters: { layout: "fullscreen" },
 };
 
 export default meta;
@@ -35,29 +33,32 @@ export const PaginaCompleta: Story = {
 };
 
 export const TarjetasDeProducto: Story = {
-  render: () => <FeatureGrid />,
-};
-
-export const NavegacionPildoraLegal: Story = {
   render: () => (
-    <div style={{ position: "relative", minHeight: tokens.space[12], paddingBlock: tokens.space[10], backgroundColor: tokens.color.surfaceBrand, borderRadius: tokens.radius.xl }}>
-      <PillNav activeSection="inicio" />
+    <div className="bg-(--surface-canvas) pb-16">
+      <FeatureGrid />
     </div>
   ),
 };
 
-export const TarjetaLiquidGlassYSelectorTema: Story = {
+export const PreguntasFrecuentes: Story = {
   render: () => (
-    <div style={{ padding: tokens.space[8], backgroundColor: tokens.color.surfaceBrand, borderRadius: tokens.radius.xl, display: "flex", flexDirection: "column", gap: tokens.space[4] }}>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <ThemeToggle />
-      </div>
-      <GlassCard aria-label="Tarjeta de cristal de demostración">
-        <strong style={{ fontSize: tokens.font.size.base, color: tokens.glass.textPrimary }}>Panel de cristal neutro frío</strong>
-        <p style={{ margin: tokens.space[0], fontSize: tokens.font.size.sm, color: tokens.glass.textSecondary }}>
-          Superficie translúcida gobernada por tokens semánticos con contraste verificado WCAG 2.2 AA en modo claro y oscuro.
-        </p>
-      </GlassCard>
+    <div className="bg-(--surface-canvas) pb-16">
+      <FaqSection />
     </div>
+  ),
+};
+
+export const PaginaLegal: Story = {
+  render: () => (
+    <LegalPage
+      eyebrow="Privacidad y soberanía de datos"
+      title="Política de Privacidad"
+      intro="Cómo protegemos, aislamos y garantizamos la portabilidad de la información de tu agencia en Hubly."
+      current="/privacidad"
+      sections={[
+        { id: "soberania", title: "1. Titularidad y soberanía de los datos", body: "Tus datos pertenecen íntegramente a tu agencia y a tus usuarios." },
+        { id: "portabilidad", title: "2. Portabilidad y exportación abierta", body: "Descarga tus notas y pendientes en .json y .md cuando quieras." },
+      ]}
+    />
   ),
 };

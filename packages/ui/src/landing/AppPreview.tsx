@@ -1,5 +1,6 @@
 "use client";
 
+import { Button, Checkbox, Chip } from "@heroui/react";
 import { useState, type FormEvent } from "react";
 import { Hubi } from "../components/brand/Hubi";
 
@@ -52,12 +53,12 @@ export function AppPreview() {
           <span className="hidden text-sm text-(--text-muted) sm:inline">› Hoy</span>
           <span className="grow" />
           <span aria-live="polite" className="flex gap-2">
-            <span key={`v${overdue}`} className="hubly-pop rounded-full bg-(--status-danger-bg) px-2.5 py-1 text-xs font-semibold text-(--status-danger-text)">
+            <Chip key={`v${overdue}`} color="danger" variant="soft" size="sm" className="hubly-pop">
               {overdue} {overdue === 1 ? "vencido" : "vencidos"}
-            </span>
-            <span key={`h${today}`} className="hubly-pop rounded-full bg-(--accent-primary-subtle) px-2.5 py-1 text-xs font-semibold text-(--accent-primary)">
+            </Chip>
+            <Chip key={`h${today}`} color="accent" variant="soft" size="sm" className="hubly-pop">
               {today} para hoy
-            </span>
+            </Chip>
           </span>
         </div>
         <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:p-6">
@@ -66,21 +67,18 @@ export function AppPreview() {
             <ul className="m-0 list-none p-0 py-1">
               {todos.map((todo) => (
                 <li key={todo.id} className="hubly-pop">
-                  <label className="flex cursor-pointer items-center gap-3.5 px-5 py-3 hover:bg-(--surface-subtle)">
-                    <input
-                      type="checkbox"
-                      checked={todo.done}
-                      onChange={() => toggle(todo.id)}
-                      className="size-4.5 shrink-0 cursor-pointer appearance-none rounded-md border-2 border-(--border-control) transition-colors checked:border-(--accent-primary) checked:bg-(--accent-primary)"
-                    />
-                    <span className={`grow text-sm font-medium transition-colors lg:text-base ${todo.done ? "text-(--text-muted) line-through" : "text-(--text-primary)"}`}>{todo.title}</span>
-                    <span
-                      className={`hidden rounded-full px-2.5 py-0.5 text-xs font-semibold sm:inline ${todo.priority === "Alta" ? "bg-(--status-warning-bg) text-(--status-warning-text)" : "bg-(--surface-subtle) text-(--text-secondary)"}`}
-                    >
-                      {todo.priority}
-                    </span>
-                    <span className={`w-11 text-right text-sm font-medium ${todo.date === "Ayer" && !todo.done ? "text-(--status-danger-text)" : "text-(--text-muted)"}`}>{todo.date}</span>
-                  </label>
+                  <Checkbox isSelected={todo.done} onChange={() => toggle(todo.id)} className="w-full">
+                    <Checkbox.Content className="flex w-full cursor-pointer flex-row items-center gap-3.5 px-5 py-3 text-left hover:bg-(--surface-subtle)">
+                      <Checkbox.Control className="size-4.5 shrink-0 rounded-md">
+                        <Checkbox.Indicator />
+                      </Checkbox.Control>
+                      <span className={`grow text-sm font-medium transition-colors lg:text-base ${todo.done ? "text-(--text-muted) line-through" : "text-(--text-primary)"}`}>{todo.title}</span>
+                      <Chip color={todo.priority === "Alta" ? "warning" : "default"} variant="soft" size="sm" className="hidden sm:inline-flex">
+                        {todo.priority}
+                      </Chip>
+                      <span className={`w-11 text-right text-sm font-medium ${todo.date === "Ayer" && !todo.done ? "text-(--status-danger-text)" : "text-(--text-muted)"}`}>{todo.date}</span>
+                    </Checkbox.Content>
+                  </Checkbox>
                 </li>
               ))}
             </ul>
@@ -89,17 +87,18 @@ export function AppPreview() {
             <div className="hidden flex-col gap-2.5 rounded-2xl border border-(--border-default) bg-(--surface-raised) px-5 py-4 lg:flex">
               <span className="text-base font-bold text-(--text-primary)">Junta con Café Aurora</span>
               <span className="text-sm leading-relaxed text-(--text-secondary)">Quedamos en 12 piezas para noviembre, tono cercano. Las promos van en historias.</span>
-              <button
-                type="button"
-                disabled={noteUsed}
-                onClick={() => {
+              <Button
+                variant={noteUsed ? "ghost" : "outline"}
+                size="sm"
+                isDisabled={noteUsed}
+                onPress={() => {
                   add(NOTE_TODO, "Alta");
                   setNoteUsed(true);
                 }}
-                className="cursor-pointer self-start rounded-full border border-(--border-control) bg-transparent px-3 py-1.5 text-sm font-medium text-(--text-primary) transition-colors hover:bg-(--surface-subtle) disabled:cursor-default disabled:border-(--status-success-bg) disabled:bg-(--status-success-bg) disabled:text-(--status-success-text)"
+                className="self-start"
               >
                 {noteUsed ? "Pendiente creado ✓" : "Crear pendiente de esta nota"}
-              </button>
+              </Button>
             </div>
             <form onSubmit={submit} className="flex items-center gap-2.5 rounded-2xl border border-(--border-default) bg-(--surface-raised) py-2.5 pr-2.5 pl-5 focus-within:border-(--accent-primary)">
               <label htmlFor="hubly-preview-capture" className="sr-only">
@@ -113,12 +112,9 @@ export function AppPreview() {
                 maxLength={60}
                 className="min-w-0 grow border-0 bg-transparent text-base text-(--text-primary) outline-none placeholder:text-(--text-muted) lg:text-sm"
               />
-              <button
-                type="submit"
-                className="flex h-10 shrink-0 cursor-pointer items-center rounded-full border-0 bg-(--accent-primary) px-4 text-sm font-semibold text-(--text-on-accent) transition-transform hover:bg-(--accent-primary-hover) active:scale-95"
-              >
+              <Button type="submit" variant="primary" size="sm" className="shrink-0">
                 Agregar
-              </button>
+              </Button>
             </form>
           </div>
         </div>

@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   description: "Hubly junta las ideas, los pendientes y las aprobaciones de cada cliente de tu agencia. Abres y ya sabes qué sigue y quién lo tiene.",
 };
 
+const LEGAL_LINKS = [
+  { href: "/privacidad", label: "Privacidad" },
+  { href: "/terminos", label: "Términos" },
+] as const;
+
 export default function HomePage() {
   return (
     <div className="min-h-dvh bg-(--surface-canvas) text-(--text-primary)">
@@ -19,7 +24,7 @@ export default function HomePage() {
         <FaqSection />
         <FinalCta />
       </main>
-      <LandingFooter />
+      <LandingFooter links={LEGAL_LINKS} />
     </div>
   );
 }
