@@ -14,12 +14,14 @@ import {
   DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
   createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
   SessionExpiredError, getVerifiedServerSession, isSessionExpiredError, isValidIanaTimeZone, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie, resolveRequestTimeZone, resolveSiteUrl,
-  resolveSupabaseConfig, setActiveWorkspaceCookieForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests,
+  resolveSupabaseConfig, setActiveWorkspaceCookieForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests, type SupabaseServerClient,
 } from "./auth";
 import { WALLPAPER_BUCKET, removeUserWallpaper, signUserWallpaper, uploadUserWallpaper, wallpaperObjectPath } from "./wallpaper-storage";
 import { WALLPAPER_MAX_BYTES, WallpaperImageError, sanitizeWallpaperImage } from "./wallpaper-image";
+import { EMAIL_LINK_ERRORS, SIGNUP_FLOW, destinationAfterEmailLink, isEmailLinkType, workspaceNameFromMetadata, type EmailLinkType } from "./email-link";
 import { acceptWorkspaceInvitationByToken, acceptWorkspaceInvitationSafely, classifyInvitationError, currentSessionEmail, issueWorkspaceInvitation, revokePendingWorkspaceInvitation, type AcceptInvitationResult } from "./invitations";
 export {
+  EMAIL_LINK_ERRORS, SIGNUP_FLOW, isEmailLinkType, type EmailLinkType,
   WALLPAPER_BUCKET, WALLPAPER_MAX_BYTES, WallpaperImageError, removeUserWallpaper, sanitizeWallpaperImage, signUserWallpaper, uploadUserWallpaper, wallpaperObjectPath,
   DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
   acceptWorkspaceInvitationByToken, acceptWorkspaceInvitationSafely, classifyInvitationError, currentSessionEmail, type AcceptInvitationResult, createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
@@ -53,6 +55,16 @@ export function createSystemClock(timezone = DEFAULT_APP_TIMEZONE): Clock & { to
 }
 
 export const systemIdGenerator: IdGenerator = { generate: () => crypto.randomUUID() };
+
+/**
+ * Último paso de un enlace de correo, con la sesión ya abierta: crea el espacio personal con el nombre elegido al
+ * registrarse (si aún no existe) y devuelve adónde ir.
+ */
+export async function completeEmailLinkSignIn(supabase: SupabaseServerClient, flow: string | null): Promise<string> {
+  const { data } = await supabase.auth.getUser();
+  await ensureAuthenticatedWorkspace(undefined, workspaceNameFromMetadata(data?.user?.user_metadata));
+  return destinationAfterEmailLink(flow);
+}
 
 export async function ensureAuthenticatedWorkspace(workspaceId?: string, defaultName?: string): Promise<CompositionContext> {
   const [{ claims }, timezone, cookieWsId] = await Promise.all([

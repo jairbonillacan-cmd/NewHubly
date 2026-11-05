@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React, { useState } from "react";
 import { EspacioEstado, EspacioHoy } from "../espacio/EspacioHoy";
+import { BienvenidaDialog } from "../espacio/BienvenidaDialog";
 import type { CaptureAnalysis, CaptureInput, EspacioInvitation, EspacioMember, EspacioNote, EspacioTodo, EspacioWorkspace, NoteSaveState } from "../espacio/types";
 
 const TODAY = "2026-11-04";
@@ -111,4 +112,15 @@ export const Agencia: Story = {
     todos: TODOS.map((t, i) => ({ ...t, visibility: i % 2 === 0 ? "workspace" : "private", canChangeVisibility: true })),
     notes: NOTES.map((n, i) => ({ ...n, visibility: i === 0 ? "workspace" : "private", canChangeVisibility: true })),
   },
+};
+
+/** Primera entrada después de confirmar la cuenta: la bienvenida sobre el espacio (?bienvenida=1). */
+export const Bienvenida: Story = {
+  args: { todos: [], notes: [] },
+  render: (args) => (
+    <>
+      <EspacioDemo {...args} />
+      <BienvenidaDialog isOpen onClose={() => {}} workspaceName="Mi espacio" />
+    </>
+  ),
 };

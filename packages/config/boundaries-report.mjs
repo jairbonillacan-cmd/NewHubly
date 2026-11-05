@@ -31,6 +31,7 @@ export const KNOWN_APP_ROUTES = new Map([
   ["/privacidad", "Política de privacidad pública"],
   ["/terminos", "Términos del servicio públicos"],
   ["/auth/callback", "Callback de intercambio de código de autenticación"],
+  ["/auth/confirm", "Enlaces de los correos de Auth (token validado en el servidor)"],
 ]);
 
 // Regla 3 (#69): Lista blanca explícita de claves de preferencias de interfaz en localStorage/sessionStorage.
