@@ -17,6 +17,7 @@ import {
   LandingHero,
   LandingNav,
   PainSection,
+  RoadmapSection,
   LegalPage,
   ThemeToggle,
 } from "../index";
@@ -34,9 +35,9 @@ describe("Bloques del landing de marketing (@hubly/ui, #85)", () => {
   });
 
   it("la barra apunta a secciones que existen en la página", () => {
-    const sectionIds = ["producto", "privacidad", "preguntas"];
+    const sectionIds = ["producto", "lo-que-viene", "privacidad", "preguntas"];
     expect(LANDING_NAV_LINKS.map((link) => link.href.slice(1))).toEqual(sectionIds);
-    const html = [FeatureGrid, DataSection, FaqSection].map(render).join("");
+    const html = [FeatureGrid, RoadmapSection, DataSection, FaqSection].map(render).join("");
     for (const id of sectionIds) expect(html).toContain(`id="${id}"`);
   });
 
