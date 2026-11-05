@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GlassPanel } from "./GlassPanel";
 import { Icon } from "./icons";
-import type { EspacioNote, EspacioTodo, NoteSaveState } from "./types";
+import type { EspacioNote, EspacioTodo, EspacioVisibility, NoteSaveState } from "./types";
 
 const AUTOSAVE_DELAY_MS = 700;
 
@@ -16,6 +16,7 @@ export interface NotaPanelProps {
   onToggleArchive: (id: string) => void;
   onCreateTodoFromNote: (id: string) => void;
   onCreateNote: () => void;
+  onChangeVisibility?: ((id: string, visibility: EspacioVisibility) => void) | undefined;
   onClose?: (() => void) | undefined;
   className?: string | undefined;
 }
@@ -23,7 +24,7 @@ export interface NotaPanelProps {
 const SAVE_LABEL: Record<NoteSaveState, string> = { saved: "Guardado", saving: "Guardando…", error: "No se guardó" };
 
 /** Panel «Nota abierta» (#75): edición con guardado automático, pendiente desde la nota, fijar y archivar. */
-export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, onToggleArchive, onCreateTodoFromNote, onCreateNote, onClose, className }: NotaPanelProps) {
+export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, onToggleArchive, onCreateTodoFromNote, onCreateNote, onChangeVisibility, onClose, className }: NotaPanelProps) {
   const [title, setTitle] = useState(note?.title ?? "");
   const [content, setContent] = useState(note?.content ?? "");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,8 +38,9 @@ export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, o
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
+  const readOnly = Boolean(note?.readOnly);
   const schedule = (nextTitle: string, nextContent: string) => {
-    if (!noteId) return;
+    if (!noteId || readOnly) return;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => onSave(noteId, nextTitle, nextContent), AUTOSAVE_DELAY_MS);
   };
@@ -77,10 +79,18 @@ export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, o
       }
     >
       <div key={note.id} className="hubly-pop flex h-full flex-col gap-3 px-5 py-4">
+        {note.visibility && (
+          <p className="m-0 flex items-center gap-1.5 text-xs text-(--text-muted)">
+            <Icon name={note.visibility === "workspace" ? "equipo" : "candado"} className="size-3.5" />
+            {note.visibility === "workspace" ? "Compartida con la agencia" : "Privada: solo tú la ves"}
+            {readOnly && " · Solo lectura"}
+          </p>
+        )}
         <label className="sr-only" htmlFor="nota-titulo">Título de la nota</label>
         <input
           id="nota-titulo"
           value={title}
+          readOnly={readOnly}
           onChange={(event) => { setTitle(event.target.value); schedule(event.target.value, content); }}
           placeholder="Título"
           className="w-full border-0 bg-transparent p-0 text-lg font-semibold text-(--text-primary) outline-none placeholder:text-(--text-muted)"
@@ -89,6 +99,7 @@ export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, o
         <textarea
           id="nota-contenido"
           value={content}
+          readOnly={readOnly}
           onChange={(event) => { setContent(event.target.value); schedule(title, event.target.value); }}
           placeholder="Escribe aquí…"
           rows={6}
@@ -104,6 +115,11 @@ export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, o
           </ul>
         )}
         <div className="flex flex-wrap gap-2">
+          {note.canChangeVisibility && onChangeVisibility && (
+            <button type="button" onClick={() => onChangeVisibility(note.id, note.visibility === "workspace" ? "private" : "workspace")} className="flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-(--glass-line-strong) bg-transparent px-3 text-xs text-(--text-secondary) transition-colors hover:bg-(--glass-hover)">
+              <Icon name={note.visibility === "workspace" ? "candado" : "compartir"} className="size-3.5" /> {note.visibility === "workspace" ? "Hacer privada" : "Compartir con la agencia"}
+            </button>
+          )}
           <button type="button" onClick={() => onCreateTodoFromNote(note.id)} className="h-8 cursor-pointer rounded-lg border border-(--glass-line-strong) bg-(--glass-hover) px-3 text-xs font-medium text-(--text-primary) transition-transform hover:bg-(--accent-primary-subtle) active:scale-95">
             Crear pendiente desde esta nota
           </button>

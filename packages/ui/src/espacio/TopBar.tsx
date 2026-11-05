@@ -5,7 +5,7 @@ import type { Key, Selection } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { useHublyTheme } from "../landing/ThemeToggle";
 import { Icon } from "./icons";
-import { longDateLabel, type HoyFilter, type NoteSaveState } from "./types";
+import { ROLE_LABEL, longDateLabel, type EspacioWorkspace, type HoyFilter, type NoteSaveState } from "./types";
 
 export interface TopBarProps {
   todayDate: string;
@@ -19,6 +19,11 @@ export interface TopBarProps {
   onOpenBackground: () => void;
   onExport: (format: "json" | "md") => void;
   onSignOut: () => void;
+  workspaces: EspacioWorkspace[];
+  activeWorkspace: EspacioWorkspace;
+  onSelectWorkspace: (id: string) => void;
+  onCreateAgency: () => void;
+  onOpenTeam: () => void;
 }
 
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
@@ -30,26 +35,37 @@ const SAVE_CHIP: Record<NoteSaveState, { label: string; className: string }> = {
   error: { label: "Sin guardar", className: "bg-(--status-danger-bg) text-(--status-danger-text)" },
 };
 
-function SpaceMenu() {
+function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAgency, onOpenTeam }: Pick<TopBarProps, "workspaces" | "activeWorkspace" | "onSelectWorkspace" | "onCreateAgency" | "onOpenTeam">) {
+  const isAgency = activeWorkspace.kind === "agency";
+  const label = isAgency ? activeWorkspace.name : "Espacio personal";
+  const onAction = (key: Key) => {
+    if (key === "crear-agencia") onCreateAgency();
+    else if (key === "equipo") onOpenTeam();
+    else if (typeof key === "string" && key.startsWith("ws:")) onSelectWorkspace(key.slice(3));
+  };
   return (
     <Dropdown>
-      <Dropdown.Trigger aria-label="Cambiar de espacio" className="flex h-9 min-w-0 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-sm font-semibold whitespace-nowrap text-(--text-primary) hover:bg-(--glass-hover)">
-        <span aria-hidden="true" className="hidden size-5 items-center justify-center rounded-md bg-(--accent-primary) text-(--text-on-accent) sm:flex"><Icon name="usuario" className="size-3.5" /></span>
-        Espacio personal
+      <Dropdown.Trigger aria-label={`Cambiar de espacio (actual: ${label})`} className="flex h-9 min-w-0 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-sm font-semibold whitespace-nowrap text-(--text-primary) hover:bg-(--glass-hover)">
+        <span aria-hidden="true" className="hidden size-5 items-center justify-center rounded-md bg-(--accent-primary) text-(--text-on-accent) sm:flex"><Icon name={isAgency ? "equipo" : "usuario"} className="size-3.5" /></span>
+        <span className="max-w-40 truncate">{label}</span>
         <Icon name="chevrones" className="size-3.5 text-(--text-muted)" />
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom start" className={MENU}>
-        <Dropdown.Menu aria-label="Tus espacios" disabledKeys={["crear-agencia", "invitacion"]}>
-          <Dropdown.Item id="personal" textValue="Espacio personal" className={ITEM}>
-            <span className="grow">Espacio personal</span>
-            <Icon name="check" className="size-4 text-(--accent-primary)" />
-          </Dropdown.Item>
-          <Dropdown.Item id="crear-agencia" textValue="Crear agencia" className={ITEM}>
-            <Icon name="mas" /> <span className="grow">Crear agencia</span> <span className="text-xs text-(--text-muted)">Pronto</span>
-          </Dropdown.Item>
-          <Dropdown.Item id="invitacion" textValue="Aceptar una invitación" className={ITEM}>
-            <Icon name="sobre" /> <span className="grow">Aceptar una invitación</span> <span className="text-xs text-(--text-muted)">Pronto</span>
-          </Dropdown.Item>
+        <Dropdown.Menu aria-label="Tus espacios" onAction={onAction}>
+          <Dropdown.Section aria-label="Espacios" className="border-b border-(--glass-line) pb-1.5">
+            {workspaces.map((ws) => (
+              <Dropdown.Item key={ws.id} id={`ws:${ws.id}`} textValue={ws.kind === "personal" ? "Espacio personal" : ws.name} className={ITEM}>
+                <Icon name={ws.kind === "personal" ? "usuario" : "equipo"} />
+                <span className="grow truncate">{ws.kind === "personal" ? "Espacio personal" : ws.name}</span>
+                {ws.kind === "agency" && <span className="text-xs text-(--text-muted)">{ROLE_LABEL[ws.role]}</span>}
+                {ws.id === activeWorkspace.id && <Icon name="check" className="size-4 text-(--accent-primary)" />}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Section>
+          <Dropdown.Section aria-label="Agencias" className="pt-1.5">
+            {isAgency ? <Dropdown.Item id="equipo" textValue="Equipo e invitaciones" className={ITEM}><Icon name="equipo" /> <span className="grow">Equipo e invitaciones</span></Dropdown.Item> : null}
+            <Dropdown.Item id="crear-agencia" textValue="Crear agencia" className={ITEM}><Icon name="mas" /> <span className="grow">Crear agencia</span></Dropdown.Item>
+          </Dropdown.Section>
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown>
@@ -134,7 +150,7 @@ export function TopBar(props: TopBarProps) {
           <HubiFace className="size-7" />
         </a>
         <span aria-hidden="true" className="hidden h-5 w-px bg-(--glass-line-strong) lg:block" />
-        <SpaceMenu />
+        <SpaceMenu {...props} />
         <span aria-hidden="true" className="hidden text-sm text-(--text-muted) lg:inline">›</span>
         <h1 className="m-0 hidden text-sm font-semibold lg:block">Hoy</h1>
         <span className="hidden text-sm text-(--text-muted) first-letter:uppercase xl:inline">{longDateLabel(todayDate)}</span>

@@ -6,8 +6,15 @@ export const dynamic = "force-dynamic";
 
 export async function HoyPage({ todayDate }: { todayDate?: string } = {}) {
   try {
-    const { notes, todos, todayDate: serverToday, timezone } = await loadWorkspaceDashboardAction();
-    return <WorkspaceScreen initialStatus="ready" todayDate={todayDate ?? serverToday} initialTimezone={timezone} initialNotes={notes} initialTodos={todos} />;
+    const data = await loadWorkspaceDashboardAction();
+    return (
+      <WorkspaceScreen
+        initialStatus="ready" todayDate={todayDate ?? data.todayDate} initialTimezone={data.timezone}
+        initialNotes={data.notes} initialTodos={data.todos} currentUserId={data.currentUserId}
+        initialActiveWorkspace={data.activeWorkspace} initialWorkspaces={data.workspaces}
+        initialMembers={data.members} initialPendingInvitations={data.pendingInvitations}
+      />
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("Sesión caducada")) redirect("/login");
