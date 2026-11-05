@@ -30,7 +30,7 @@ describe("CSP con nonce y cabeceras estrictas (#91)", () => {
   });
 
   it("HSTS solo en producción", () => {
-    expect(staticSecurityHeaders(true)["Strict-Transport-Security"]).toContain("max-age=63072000");
+    expect(staticSecurityHeaders(true)["Strict-Transport-Security"]).toBe("max-age=63072000; includeSubDomains");
     expect(staticSecurityHeaders(false)["Strict-Transport-Security"]).toBeUndefined();
   });
 

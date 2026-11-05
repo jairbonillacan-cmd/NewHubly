@@ -51,6 +51,7 @@ export function staticSecurityHeaders(isProduction: boolean): Record<string, str
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
     "Cross-Origin-Opener-Policy": "same-origin",
-    ...(isProduction ? { "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload" } : {}),
+    // Sin «preload»: inscribir el dominio en la lista de precarga de los navegadores es una decisión del dueño y difícil de revertir.
+    ...(isProduction ? { "Strict-Transport-Security": "max-age=63072000; includeSubDomains" } : {}),
   };
 }
