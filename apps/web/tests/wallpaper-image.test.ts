@@ -105,3 +105,79 @@ describe("«Tu imagen»: tipo real y limpieza de metadatos sin dependencias (#84
     expect(() => sanitizeWallpaperImage(huge)).toThrow(/5 MB/);
   });
 });
+
+// JPEG construidos byte a byte para comprobar los barridos y la cola tras EOI (#84, hallazgo 1 de Claude).
+const jpegStart = () => bytes(
+  [0xff, 0xd8],
+  jpegSegment(0xe0, bytes("JFIF\0", [1, 1, 0, 0, 1, 0, 1, 0, 0])),
+  jpegSegment(0xdb, bytes([0, ...new Array(64).fill(1)])),
+  jpegSegment(0xc2, bytes([8, 0, 1, 0, 1, 1, 1, 0x11, 0])),
+);
+const firstScanHeader = () => jpegSegment(0xda, bytes([1, 1, 0, 0, 0x3f, 0]));
+const secondScanHeader = () => jpegSegment(0xda, bytes([1, 1, 0, 1, 0x3f, 0]));
+const firstScanData = bytes([0x11, 0x22, 0xff, 0x00, 0x33]);
+const secondScanData = bytes([0x44, 0x55, 0xff, 0xd3, 0x66]);
+const cleanJpeg = () => bytes(jpegStart(), firstScanHeader(), scanData, [0xff, 0xd9]);
+
+describe("«Tu imagen»: JPEG progresivos, marcadores entre barridos y cola tras EOI (#84)", () => {
+  it("quita el APP1 Exif entre dos barridos y conserva los dos escaneos íntegros", () => {
+    const image = bytes(
+      jpegStart(),
+      firstScanHeader(),
+      firstScanData,
+      jpegSegment(0xe1, bytes("Exif\0\0", "GPSLatitude=19.43;Model=CamaraX")),
+      secondScanHeader(),
+      secondScanData,
+      [0xff, 0xd9],
+    );
+    const out = sanitizeWallpaperImage(image).bytes;
+    const expected = bytes(jpegStart(), firstScanHeader(), firstScanData, secondScanHeader(), secondScanData, [0xff, 0xd9]);
+    expect(text(out)).not.toContain("Exif");
+    expect(text(out)).not.toContain("GPSLatitude");
+    expect([...out]).toEqual([...expected]);
+    expect(text(out)).toContain(text(firstScanData));
+    expect(text(out)).toContain(text(secondScanData));
+  });
+
+  it("quita un COM después del primer escaneo", () => {
+    const image = bytes(jpegStart(), firstScanHeader(), scanData, jpegSegment(0xfe, bytes("comentario tras el escaneo")), [0xff, 0xd9]);
+    const out = sanitizeWallpaperImage(image).bytes;
+    expect(text(out)).not.toContain("comentario tras el escaneo");
+    expect([...out]).toEqual([...cleanJpeg()]);
+  });
+
+  it("descarta los bytes basura después de EOI y termina exactamente en FF D9", () => {
+    const garbage = bytes("<html><script>alert('pegado tras EOI')</script></html>");
+    const out = sanitizeWallpaperImage(bytes(cleanJpeg(), garbage)).bytes;
+    expect(text(out)).not.toContain("pegado tras EOI");
+    expect([...out.subarray(-2)]).toEqual([0xff, 0xd9]);
+    expect([...out]).toEqual([...cleanJpeg()]);
+  });
+
+  it("conserva byte a byte los FF 00 y los RST FF D0–FF D7 de los datos de entropía", () => {
+    const entropy = bytes([
+      0x01, 0xff, 0x00, 0x02,
+      0xff, 0xd0, 0xff, 0xd1, 0xff, 0xd2, 0xff, 0xd3,
+      0xff, 0xd4, 0xff, 0xd5, 0xff, 0xd6, 0xff, 0xd7,
+      0x03, 0xff, 0x00, 0x04,
+    ]);
+    const image = bytes(jpegStart(), firstScanHeader(), entropy, [0xff, 0xd9]);
+    const out = sanitizeWallpaperImage(image).bytes;
+    expect(text(out)).toContain(text(entropy));
+    expect([...out]).toEqual([...image]);
+  });
+
+  it("rechaza un JPEG sin EOI", () => {
+    const image = bytes(jpegStart(), firstScanHeader(), scanData);
+    expect(() => sanitizeWallpaperImage(image)).toThrow(WallpaperImageError);
+    expect(() => sanitizeWallpaperImage(image)).toThrow("El archivo no es una imagen JPEG, PNG o WebP válida.");
+  });
+
+  it("conserva el APP2 «ICC_PROFILE» entre dos escaneos", () => {
+    const icc = jpegSegment(0xe2, bytes("ICC_PROFILE\0", [1, 1, 9, 9]));
+    const image = bytes(jpegStart(), firstScanHeader(), firstScanData, icc, secondScanHeader(), secondScanData, [0xff, 0xd9]);
+    const out = sanitizeWallpaperImage(image).bytes;
+    expect(text(out)).toContain("ICC_PROFILE");
+    expect([...out]).toEqual([...image]);
+  });
+});

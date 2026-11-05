@@ -39,7 +39,10 @@ const concat = (parts: Uint8Array[]): Uint8Array => {
 };
 
 // JPEG: se conservan JFIF (APP0), el perfil de color ICC (APP2 «ICC_PROFILE») y Adobe (APP14); fuera EXIF/XMP (APP1),
-// IPTC/Photoshop (APP13), el resto de APPn y los comentarios (COM). Desde el inicio del escaneo (SOS) se copia tal cual.
+// IPTC/Photoshop (APP13), el resto de APPn y los comentarios (COM). Dentro de un escaneo (SOS), los datos de entropía
+// (incluidos FF 00 y los RST FF D0–FF D7) se copian byte a byte hasta el siguiente marcador real; ese marcador vuelve al
+// bucle de segmentos y pasa por el mismo filtro. Al llegar a EOI se añade EOI y se descarta todo lo que venga después.
+// Si el archivo acaba sin EOI, no es un JPEG válido.
 function stripJpeg(bytes: Uint8Array): Uint8Array {
   const parts: Uint8Array[] = [bytes.subarray(0, 2)];
   let offset = 2;
@@ -66,8 +69,27 @@ function stripJpeg(bytes: Uint8Array): Uint8Array {
     if (length < 2 || end > bytes.length) throw invalid();
     const segment = bytes.subarray(offset, end);
     if (marker === 0xda) {
-      parts.push(bytes.subarray(offset));
-      return concat(parts);
+      parts.push(segment);
+      offset = end;
+      const dataStart = offset;
+      while (offset < bytes.length) {
+        if (bytes[offset] !== 0xff) {
+          offset += 1;
+          continue;
+        }
+        const next = bytes[offset + 1];
+        if (next === undefined) throw invalid();
+        // FF 00 es el relleno de un byte de datos y FF D0–FF D7 es un reinicio: ambos son datos del escaneo.
+        if (next === 0x00 || (next >= 0xd0 && next <= 0xd7)) {
+          offset += 2;
+          continue;
+        }
+        // Cualquier otro FF xx es un marcador real (o relleno FF FF): aquí acaban los datos de entropía.
+        break;
+      }
+      if (offset >= bytes.length) throw invalid();
+      parts.push(bytes.subarray(dataStart, offset));
+      continue;
     }
     const isApp = marker >= 0xe0 && marker <= 0xef;
     const keep = !isApp && marker !== 0xfe
