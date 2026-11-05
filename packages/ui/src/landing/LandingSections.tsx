@@ -1,136 +1,88 @@
 import { Hubi } from "../components/brand/Hubi";
-import { HubiWordmark } from "../components/brand/HublyLogo";
-import { Reveal } from "./Reveal";
+import { Icon } from "../espacio/icons";
+import { LandingFaq } from "./FaqAccordion";
 
-const PAIN_LINES = [
-  "Las ideas, en un grupo de WhatsApp.",
-  "La parrilla, en un Excel que nadie actualiza.",
-  "Los cambios del cliente, en un audio de cuatro minutos.",
-] as const;
-
-/** Lo que vive hoy una agencia, en frases grandes, y la respuesta de Hubly. */
-export function PainSection() {
-  return (
-    <section aria-label="El problema" className="mx-auto flex max-w-7xl flex-col gap-3 px-4 pt-24 lg:items-center lg:gap-3.5 lg:pt-36 lg:text-center">
-      {PAIN_LINES.map((line, index) => (
-        <Reveal key={line} retraso={index as 0 | 1 | 2}>
-          <p className="m-0 text-2xl leading-snug font-semibold tracking-(--tracking-tight) text-(--text-faint) lg:text-4xl lg:leading-tight">{line}</p>
-        </Reveal>
-      ))}
-      <Reveal retraso={3}>
-        <p className="m-0 text-2xl leading-snug font-semibold tracking-(--tracking-tight) text-(--text-muted) lg:text-4xl lg:leading-tight">
-          Y la pregunta de siempre: ¿quién tiene esto?
-        </p>
-      </Reveal>
-      <Reveal retraso={5} className="mt-4 lg:mt-7">
-        <p className="m-0 text-2xl leading-snug font-bold tracking-(--tracking-tight) text-(--text-primary) lg:text-4xl lg:leading-tight">
-          En Hubly, <span className="text-(--accent-primary)">cada pieza dice qué sigue y quién la tiene.</span>
-        </p>
-      </Reveal>
-    </section>
-  );
-}
+export { PainSection } from "./PainSection";
+export { LandingFooter, DEFAULT_FOOTER_LINKS } from "./LandingFooter";
+export { LANDING_FAQ } from "./FaqAccordion";
 
 const DATA_POINTS = [
-  { title: "Privado hasta que lo compartas", body: "Nadie más ve tus notas si no lo decides tú.", icon: "M7 10V7a5 5 0 0 1 10 0v3M6 10h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z" },
-  { title: "Te lo llevas cuando quieras", body: "Exportas todo en JSON o Markdown.", icon: "M12 4v11M7 10l5 5 5-5M5 20h14" },
-  { title: "Tu hora, tu «hoy»", body: "Lo que vence hoy, vence en tu día.", icon: "M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16M12 8v4l3 2" },
+  ["Privado hasta que lo compartas", "Nadie más ve tus notas si no lo decides tú. Lo comprobamos contra la base de datos real."],
+  ["Te lo llevas cuando quieras", "Exportas todo en JSON o Markdown, en un clic."],
+  ["Tu hora, tu «hoy»", "Lo que vence hoy, vence en tu día, estés donde estés."],
 ] as const;
 
 export function DataSection() {
   return (
-    <section id="privacidad" aria-labelledby="privacidad-titulo" className="mx-auto w-full max-w-6xl scroll-mt-28 px-4 pt-16 lg:px-6 lg:pt-24">
-      <Reveal className="grid gap-6 rounded-3xl border border-(--border-default) bg-(--surface-subtle) px-6 py-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.6fr)] lg:items-center lg:gap-14 lg:px-16 lg:py-14">
-        <h2 id="privacidad-titulo" className="m-0 text-3xl leading-tight font-bold tracking-(--tracking-tighter) text-(--text-primary) lg:text-5xl">
-          Tus datos son tuyos.
-        </h2>
-        <ul className="m-0 grid list-none gap-6 p-0 md:grid-cols-3 lg:gap-7">
-          {DATA_POINTS.map((point) => (
-            <li key={point.title} className="group flex flex-col gap-2">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-(--accent-primary) transition-transform group-hover:-translate-y-0.5 group-hover:scale-110">
-                <path d={point.icon} />
-              </svg>
-              <span className="text-base font-semibold text-(--text-primary) lg:text-lg">{point.title}</span>
-              <span className="text-sm leading-normal text-(--text-secondary) lg:text-base">{point.body}</span>
-            </li>
-          ))}
-        </ul>
-      </Reveal>
+    <section id="privacidad" aria-labelledby="privacidad-titulo" data-landing-section="privacidad" className="mx-auto max-w-(--landing-width) scroll-mt-6 px-4 pt-20 lg:pt-28">
+      <div className="grid items-center gap-8 rounded-(--landing-panel-radius) bg-(--landing-paper) px-5 py-12 lg:grid-cols-2 lg:gap-12 lg:px-12">
+        <div>
+          <p className="mb-3 text-xs font-bold tracking-(--tracking-widest) text-(--landing-accent-text) uppercase">Privacidad</p>
+          <h2 id="privacidad-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-5xl">Tus datos son tuyos.</h2>
+          <ol className="mt-6 grid gap-4">
+            {DATA_POINTS.map(([title, body], index) => (
+              <li key={title} className="grid grid-cols-[auto_1fr] gap-3">
+                <span aria-hidden="true" className="grid size-8 place-items-center rounded-full bg-(--landing-ice) text-sm font-semibold text-(--landing-accent-text)">{index + 1}</span>
+                <div>
+                  <h3 className="landing-display text-xl leading-tight font-medium">{title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-(--text-secondary)">{body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div aria-hidden="true" className="min-w-0 rounded-3xl bg-(--landing-card) p-5 shadow-(--landing-shadow) lg:p-7">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-(--landing-ice) text-(--landing-accent-text)"><Icon name="descargar" className="size-5" /></span>
+            <p className="text-lg font-semibold">Exportar mis datos</p>
+          </div>
+          <p className="mt-3 text-sm text-(--text-secondary)">Todas tus notas y pendientes, con sus fechas y vínculos.</p>
+          <div className="mt-4 flex flex-wrap gap-2 text-sm font-semibold text-(--landing-accent-text)">
+            {["JSON", "Markdown"].map((format) => <span key={format} className="rounded-full bg-(--landing-ice) px-3 py-2">{format}</span>)}
+          </div>
+          <ul className="mt-4 grid gap-1.5 font-mono text-xs text-(--text-secondary)">
+            {["json", "md"].map((extension) => (
+              <li key={extension} className="rounded-xl bg-(--landing-row) px-3 py-2 wrap-anywhere">hubly-export-AAAA-MM-DD.{extension}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </section>
   );
 }
 
-export const LANDING_FAQ = [
-  { q: "¿Para quién es Hubly?", a: "Para agencias y equipos de redes que hoy se coordinan entre chats, hojas y notas sueltas. También si trabajas solo." },
-  { q: "¿Qué puedo usar hoy?", a: "Tu espacio personal: notas, pendientes y la vista Hoy. Lo de equipo, clientes y aprobaciones lo vamos sacando por partes." },
-  { q: "¿Mi cliente tiene que crear cuenta?", a: "No. Cuando llegue la aprobación, le mandas un enlace y listo." },
-  { q: "¿Me puedo llevar mis datos?", a: "Sí, cuando quieras, en JSON o Markdown." },
-] as const;
-
 export function FaqSection() {
   return (
-    <section id="preguntas" aria-labelledby="preguntas-titulo" className="mx-auto grid w-full max-w-6xl scroll-mt-28 gap-4 px-4 pt-20 lg:grid-cols-[22rem_minmax(0,1fr)] lg:gap-16 lg:px-6 lg:pt-28">
-      <div className="flex flex-col gap-3">
-        <span className="text-xs font-bold tracking-(--tracking-widest) text-(--accent-primary) uppercase">Preguntas</span>
-        <h2 id="preguntas-titulo" className="m-0 text-3xl leading-tight font-bold tracking-(--tracking-tighter) text-(--text-primary) lg:text-5xl">
-          Lo que nos preguntan.
-        </h2>
+    <section id="preguntas" aria-labelledby="preguntas-titulo" data-landing-section="preguntas" className="mx-auto grid max-w-(--landing-width) scroll-mt-6 gap-6 px-4 pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] lg:gap-14 lg:pt-28">
+      <div className="grid content-start gap-3">
+        <p className="text-xs font-bold tracking-(--tracking-widest) text-(--landing-accent-text) uppercase">Preguntas</p>
+        <h2 id="preguntas-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-5xl">Lo que nos preguntan.</h2>
+        <p className="max-w-sm leading-relaxed text-(--text-secondary)">Respuestas cortas y honestas. Si algo no está listo, lo decimos.</p>
+        <div className="mt-2 hidden lg:block">
+          <Hubi acabado="volumen" tamano={144} decorativo priority="deferred" className="size-36" sizing="css" />
+        </div>
       </div>
-      <div>
-        {LANDING_FAQ.map((item, index) => (
-          <details key={item.q} open={index === 0} className="group border-t border-(--border-default)">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 py-5 text-base font-semibold text-(--text-primary) hover:text-(--accent-primary) lg:py-6 lg:text-lg [&::-webkit-details-marker]:hidden">
-              {item.q}
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 transition-transform duration-300 group-open:rotate-45">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </summary>
-            <p className="hubly-pop m-0 pr-10 pb-6 text-base leading-relaxed text-(--text-secondary)">{item.a}</p>
-          </details>
-        ))}
-      </div>
+      <LandingFaq />
     </section>
   );
 }
 
 export function FinalCta() {
   return (
-    <section aria-labelledby="cta-titulo" className="mx-auto w-full max-w-6xl px-4 pt-16 pb-16 lg:px-6 lg:pt-28 lg:pb-24">
-      <Reveal className="relative flex flex-col gap-4 overflow-hidden rounded-3xl bg-(--tint-blue) px-6 pt-8 pb-40 lg:min-h-100 lg:justify-center lg:px-18 lg:py-0">
-        <h2 id="cta-titulo" className="m-0 max-w-xl text-4xl leading-none font-bold tracking-(--tracking-tightest) text-(--text-primary) lg:text-6xl">
-          Empieza con tu día de hoy.
-        </h2>
-        <p className="m-0 max-w-xl text-base leading-relaxed text-(--text-secondary) lg:text-lg">Crea tu cuenta y ten tus pendientes en orden en un minuto.</p>
-        <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-          <a href="/login" className="inline-flex h-13 items-center justify-center rounded-full bg-(--accent-primary) px-7 text-base font-semibold text-(--text-on-accent) no-underline transition-transform hover:bg-(--accent-primary-hover) active:scale-95">
-            Crear cuenta
-          </a>
-          <a href="/login" className="inline-flex h-13 items-center justify-center rounded-full border border-(--border-default) bg-(--surface-raised) px-7 text-base font-semibold text-(--text-primary) no-underline">
-            Ya tengo cuenta
-          </a>
+    <section aria-labelledby="cta-titulo" data-landing-section="cierre" className="mx-auto max-w-(--landing-width) px-4 pt-16 pb-12 lg:pt-24 lg:pb-18">
+      <div className="grid items-center gap-4 rounded-(--landing-end-radius) border border-(--landing-end-border) bg-(--landing-end) px-6 py-11 text-(--landing-on-end) lg:grid-cols-[minmax(0,1.7fr)_1fr] lg:gap-8 lg:px-14 lg:py-9">
+        <div>
+          <h2 id="cta-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-6xl">Empieza con tu día de hoy.</h2>
+          <p className="mt-4 text-(--landing-end-muted) lg:text-lg">Crea tu cuenta y ten tus pendientes en orden en un minuto.</p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <a href="/login" className="inline-flex min-h-12 items-center justify-center rounded-full bg-(--landing-on-end) px-6 font-semibold text-(--landing-end) hover:underline">Crear cuenta</a>
+            <a href="/login" className="inline-flex min-h-12 items-center justify-center rounded-full border border-(--landing-on-end) px-6 font-semibold hover:underline">Ya tengo cuenta</a>
+          </div>
         </div>
-        <span className="hubly-float pointer-events-none absolute right-3 -bottom-3 lg:right-16">
-          <span className="lg:hidden"><Hubi acabado="volumen" pose="laptop" tamano={150} decorativo /></span>
-          <span className="hidden lg:block"><Hubi acabado="volumen" pose="laptop" tamano={320} decorativo /></span>
-        </span>
-      </Reveal>
-    </section>
-  );
-}
-
-export function LandingFooter() {
-  return (
-    <footer className="border-t border-(--border-default) px-4 py-8 lg:px-6">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 text-sm text-(--text-muted)">
-        <a href="/" aria-label="Hubly, inicio" className="flex items-center text-(--text-primary)">
-          <HubiWordmark tamano="sm" />
-        </a>
-        <span>© 2026</span>
-        <span className="grow" />
-        <a href="/privacidad" className="flex min-h-11 items-center text-(--text-muted) no-underline hover:text-(--accent-primary)">Privacidad</a>
-        <a href="/terminos" className="flex min-h-11 items-center text-(--text-muted) no-underline hover:text-(--accent-primary)">Términos</a>
-        <a href="/login" className="flex min-h-11 items-center text-(--text-muted) no-underline hover:text-(--accent-primary)">Entrar</a>
+        <div className="justify-self-center">
+          <Hubi acabado="volumen" pose="laptop" tamano={280} decorativo priority="deferred" className="size-45 lg:size-70" sizing="css" />
+        </div>
       </div>
-    </footer>
+    </section>
   );
 }

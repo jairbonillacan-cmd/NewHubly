@@ -1,4 +1,5 @@
 import "server-only";
+import { redirect } from "next/navigation";
 import {
   archiveNote, changeTodoVisibility, createNote, createTodo, createTodoFromNote, exportWorkspaceData,
   getUserPreferences, listNotes, listTodosByView, pinNote, saveUserPreferences, toggleTodoDone, updateNote, updateTodo,
@@ -12,7 +13,7 @@ import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleUserPreferencesRep
 import {
   DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
   createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
-  getVerifiedServerSession, isValidIanaTimeZone, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie, resolveRequestTimeZone, resolveSiteUrl,
+  SessionExpiredError, getVerifiedServerSession, isSessionExpiredError, isValidIanaTimeZone, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie, resolveRequestTimeZone, resolveSiteUrl,
   resolveSupabaseConfig, setActiveWorkspaceCookieForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests,
 } from "./auth";
 import { WALLPAPER_BUCKET, removeUserWallpaper, signUserWallpaper, uploadUserWallpaper, wallpaperObjectPath } from "./wallpaper-storage";
@@ -22,7 +23,7 @@ export {
   WALLPAPER_BUCKET, WALLPAPER_MAX_BYTES, WallpaperImageError, removeUserWallpaper, sanitizeWallpaperImage, signUserWallpaper, uploadUserWallpaper, wallpaperObjectPath,
   DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
   acceptWorkspaceInvitationByToken, acceptWorkspaceInvitationSafely, classifyInvitationError, currentSessionEmail, type AcceptInvitationResult, createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
-  getVerifiedServerSession, isValidIanaTimeZone, issueWorkspaceInvitation, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie,
+  SessionExpiredError, getVerifiedServerSession, isSessionExpiredError, isValidIanaTimeZone, issueWorkspaceInvitation, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie,
   resolveRequestTimeZone, resolveSiteUrl, resolveSupabaseConfig, revokePendingWorkspaceInvitation,
   setActiveWorkspaceCookieForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests, type UserWorkspaceSummary, type WorkspaceInvitationRecord,
 };
@@ -54,7 +55,11 @@ export function createSystemClock(timezone = DEFAULT_APP_TIMEZONE): Clock & { to
 export const systemIdGenerator: IdGenerator = { generate: () => crypto.randomUUID() };
 
 export async function ensureAuthenticatedWorkspace(workspaceId?: string, defaultName?: string): Promise<CompositionContext> {
-  const [{ claims }, timezone, cookieWsId] = await Promise.all([getVerifiedServerSession(), resolveRequestTimeZone(), resolveActiveWorkspaceCookie()]);
+  const [{ claims }, timezone, cookieWsId] = await Promise.all([
+    // En producción Next oculta el mensaje de los errores de una Server Action; una redirección sí llega al cliente (#92).
+    getVerifiedServerSession().catch((err: unknown) => { if (isSessionExpiredError(err)) redirect("/login"); throw err; }),
+    resolveRequestTimeZone(), resolveActiveWorkspaceCookie(),
+  ]);
   const resolvedDb = process.env.NODE_ENV === "test" ? testDbOverride : undefined;
   const wsRepo = new DrizzleWorkspaceRepository(claims, resolvedDb);
   let resolvedWorkspaceId: string | undefined, member = null;

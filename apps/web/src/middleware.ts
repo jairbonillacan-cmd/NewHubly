@@ -20,7 +20,10 @@ export async function updateSession(request: NextRequest) {
     },
   });
   const { data, error } = await supabase.auth.getUser();
-  if (path.startsWith("/hoy") && (error || !data?.user?.id)) {
+  // Una Server Action (POST con cabecera «next-action») no se redirige aquí: el cliente recibiría el HTML de /login como
+  // respuesta inesperada. Se deja pasar y la propia acción redirige a /login con una respuesta que Next entiende (#92).
+  const isServerAction = request.method === "POST" && request.headers.has("next-action");
+  if (path.startsWith("/hoy") && !isServerAction && (error || !data?.user?.id)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   return response;

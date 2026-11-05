@@ -1,18 +1,23 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React from "react";
-import { FeatureGrid } from "../landing/FeatureGrid";
-import { GlassCard } from "../landing/GlassCard";
+import "../landing/landing.css";
+import "./landing-fonts.css";
+import { RoadmapSection } from "../landing/RoadmapSection";
+import { ShortcutsSection } from "../landing/ShortcutsSection";
+import { WorkspaceSection } from "../landing/WorkspaceSection";
+import { AudienceSection } from "../landing/AudienceSection";
 import { AppPreview } from "../landing/AppPreview";
+import { FeatureGrid } from "../landing/FeatureGrid";
 import { LandingHero } from "../landing/LandingHero";
 import { LandingNav } from "../landing/LandingNav";
 import { DataSection, FaqSection, FinalCta, LandingFooter, PainSection } from "../landing/LandingSections";
-import { PillNav } from "../landing/PillNav";
-import { ThemeToggle } from "../landing/ThemeToggle";
-import { tokens } from "../tokens";
+import { LegalPage } from "../landing/LegalPage";
 
 const meta: Meta<typeof LandingHero> = {
   title: "Landing/Marketing",
   component: LandingHero,
+  parameters: { layout: "fullscreen" },
+  decorators: [(Story) => <div className="landing-page landing-story"><Story /></div>],
 };
 
 export default meta;
@@ -21,11 +26,16 @@ type Story = StoryObj<typeof LandingHero>;
 export const PaginaCompleta: Story = {
   render: () => (
     <div className="bg-(--surface-canvas) text-(--text-primary)">
-      <LandingNav />
-      <LandingHero />
-      <AppPreview />
+      <div className="bg-(image:--landing-hero)">
+        <LandingNav />
+        <LandingHero />
+      </div>
+      <AudienceSection />
       <PainSection />
       <FeatureGrid />
+      <WorkspaceSection />
+      <ShortcutsSection />
+      <RoadmapSection />
       <DataSection />
       <FaqSection />
       <FinalCta />
@@ -34,30 +44,46 @@ export const PaginaCompleta: Story = {
   ),
 };
 
-export const TarjetasDeProducto: Story = {
-  render: () => <FeatureGrid />,
-};
+export const Navegacion: Story = { render: () => <LandingNav /> };
+export const Hero: Story = { render: () => <div className="bg-(image:--landing-hero)"><LandingHero /></div> };
+export const VistaDeHoy: Story = { render: () => <AppPreview /> };
+export const AQuienVaDirigido: Story = { render: () => <AudienceSection /> };
+export const ElProblema: Story = { render: () => <PainSection /> };
 
-export const NavegacionPildoraLegal: Story = {
+export const TarjetasDeProducto: Story = {
   render: () => (
-    <div style={{ position: "relative", minHeight: tokens.space[12], paddingBlock: tokens.space[10], backgroundColor: tokens.color.surfaceBrand, borderRadius: tokens.radius.xl }}>
-      <PillNav activeSection="inicio" />
+    <div className="bg-(--surface-canvas) pb-16">
+      <FeatureGrid />
     </div>
   ),
 };
 
-export const TarjetaLiquidGlassYSelectorTema: Story = {
+export const PreguntasFrecuentes: Story = {
   render: () => (
-    <div style={{ padding: tokens.space[8], backgroundColor: tokens.color.surfaceBrand, borderRadius: tokens.radius.xl, display: "flex", flexDirection: "column", gap: tokens.space[4] }}>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <ThemeToggle />
-      </div>
-      <GlassCard aria-label="Tarjeta de cristal de demostración">
-        <strong style={{ fontSize: tokens.font.size.base, color: tokens.glass.textPrimary }}>Panel de cristal neutro frío</strong>
-        <p style={{ margin: tokens.space[0], fontSize: tokens.font.size.sm, color: tokens.glass.textSecondary }}>
-          Superficie translúcida gobernada por tokens semánticos con contraste verificado WCAG 2.2 AA en modo claro y oscuro.
-        </p>
-      </GlassCard>
+    <div className="bg-(--surface-canvas) pb-16">
+      <FaqSection />
     </div>
+  ),
+};
+
+export const Fondos: Story = { render: () => <WorkspaceSection /> };
+export const Atajos: Story = { render: () => <ShortcutsSection /> };
+export const Etapas: Story = { render: () => <RoadmapSection /> };
+export const Privacidad: Story = { render: () => <DataSection /> };
+export const Cierre: Story = { render: () => <FinalCta /> };
+export const Pie: Story = { render: () => <LandingFooter /> };
+
+export const PaginaLegal: Story = {
+  render: () => (
+    <LegalPage
+      eyebrow="Privacidad y soberanía de datos"
+      title="Política de Privacidad"
+      intro="Cómo protegemos, aislamos y garantizamos la portabilidad de la información de tu agencia en Hubly."
+      current="/privacidad"
+      sections={[
+        { id: "soberania", title: "1. Titularidad y soberanía de los datos", body: "Tus datos pertenecen íntegramente a tu agencia y a tus usuarios." },
+        { id: "portabilidad", title: "2. Portabilidad y exportación abierta", body: "Descarga tus notas y pendientes en .json y .md cuando quieras." },
+      ]}
+    />
   ),
 };

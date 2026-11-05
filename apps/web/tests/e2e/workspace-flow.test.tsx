@@ -35,9 +35,9 @@ describe("Flujo E2E Completo Fase 1A contra Postgres real en Docker (#28 y #46)"
   afterEach(() => { setSupabaseServerClientFactoryForTests(null); });
 
   it("ejecuta flujo diario en Hoy en zona horaria local, persiste datos tras recarga completa de HoyPage y verifica aislamiento RLS", async () => {
-    // 0. Sin sesión activa cualquier Server Action rechaza con 'Sesión caducada'
+    // 0. Sin sesión activa cualquier Server Action redirige a /login (#92)
     actAs(null);
-    await expect(listNotesAction()).rejects.toThrow("Sesión caducada");
+    await expect(listNotesAction()).rejects.toEqual(expect.objectContaining({ digest: expect.stringMatching(/^NEXT_REDIRECT;[a-z]+;\/login;/) }));
 
     // 1. Primer inicio de sesión de Usuario A: alta automática del espacio personal y carga inicial real desde HoyPage
     actAs(userA);

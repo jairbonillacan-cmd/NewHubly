@@ -71,7 +71,14 @@ export async function executeProtectedAction(
   try { await fn(); } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("Sesión caducada") || msg.includes("No hay una sesión activa")) { onSessionExpired(); return; }
-    onActionError({ message: msg || fallbackMsg, retry: () => executeProtectedAction(fallbackMsg, fn, onSessionExpired, onActionError) });
+    // Una Server Action que llama a redirect() rechaza su promesa con un digest «NEXT_REDIRECT;…» mientras Next navega.
+    // Es la sesión caducada (#92): se avisa y no se muestra como fallo.
+    const digest = (err as { digest?: unknown } | null)?.digest;
+    if (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT")) { onSessionExpired(); return; }
+    // En producción Next sustituye el mensaje de los errores del servidor por uno genérico en inglés y añade «digest».
+    // Ese texto no ayuda a la persona: se muestra el mensaje propio de la acción (#92).
+    const sanitizedByServer = typeof (err as { digest?: unknown } | null)?.digest === "string";
+    onActionError({ message: sanitizedByServer || !msg ? fallbackMsg : msg, retry: () => executeProtectedAction(fallbackMsg, fn, onSessionExpired, onActionError) });
   }
 }
 
@@ -107,7 +114,13 @@ export function WorkspaceScreen({
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const prefsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPrefs = useRef<Partial<UserPreferences>>({});
-  useEffect(() => () => { if (prefsTimer.current) clearTimeout(prefsTimer.current); }, []);
+  // Al salir de la pantalla o cerrar la pestaña, el cambio pendiente se envía en vez de perderse.
+  const flushRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    const onPageHide = () => { void flushRef.current(); };
+    window.addEventListener("pagehide", onPageHide);
+    return () => { window.removeEventListener("pagehide", onPageHide); void flushRef.current(); };
+  }, []);
   const wsId = activeWs?.id;
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<ActionErrorState | null>(initialActionError);
@@ -250,17 +263,22 @@ export function WorkspaceScreen({
 
   // El slider de opacidad cambia muchas veces seguidas: se guarda una sola vez cuando la persona se detiene.
   // Los cambios se acumulan en un solo envío, así un cambio de tema no descarta un cambio de fondo pendiente.
+  const flushPreferences = async () => {
+    if (prefsTimer.current) { clearTimeout(prefsTimer.current); prefsTimer.current = null; }
+    const toSave = pendingPrefs.current;
+    if (Object.keys(toSave).length === 0) return;
+    pendingPrefs.current = {};
+    await runSafe("No se pudieron guardar tus preferencias.", async () => { await (onSavePreferences ?? saveUserPreferencesAction)(toSave); });
+  };
   const persistPreferences = (patch: Partial<UserPreferences>, delayMs = PREFERENCES_SAVE_DELAY_MS) => {
     pendingPrefs.current = { ...pendingPrefs.current, ...patch };
     if (prefsTimer.current) clearTimeout(prefsTimer.current);
-    prefsTimer.current = setTimeout(() => {
-      const toSave = pendingPrefs.current;
-      pendingPrefs.current = {};
-      void runSafe("No se pudieron guardar tus preferencias.", async () => { await (onSavePreferences ?? saveUserPreferencesAction)(toSave); });
-    }, delayMs);
+    prefsTimer.current = setTimeout(() => { void flushPreferences(); }, delayMs);
   };
+  flushRef.current = flushPreferences;
 
   const handleSignOut = () => runSafe("No se pudo cerrar la sesión.", async () => {
+    await flushPreferences();
     if (onSignOut) await onSignOut();
     else await signOutAction();
     redirectLogin();
