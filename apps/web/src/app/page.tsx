@@ -1,5 +1,6 @@
 import { AppPreview, DataSection, FaqSection, FeatureGrid, FinalCta, LandingFooter, LandingHero, LandingNav, PainSection } from "@hubly/ui";
 import type { Metadata } from "next";
+import { frauncesLatin, frauncesLatinExt } from "../fonts/fraunces";
 
 export const metadata: Metadata = {
   title: "Hubly · Sabe qué sigue y quién lo tiene",
@@ -13,7 +14,7 @@ const LEGAL_LINKS = [
 
 export default function HomePage() {
   return (
-    <div className="min-h-dvh bg-(--surface-canvas) text-(--text-primary)">
+    <div className={`landing-page ${frauncesLatin.variable} ${frauncesLatinExt.variable} min-h-dvh bg-(--surface-canvas) text-(--text-primary)`}>
       <LandingNav />
       <main>
         <LandingHero />

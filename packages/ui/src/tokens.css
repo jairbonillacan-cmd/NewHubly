@@ -80,6 +80,18 @@
   --radius-xl: 1rem; --radius-2xl: 1.5rem; --radius-full: 9999px;
   --container-hero: 80rem; --container-bento: 76rem; --measure-hero-min-height: 92vh;
   /* Landing de marketing (#85): tintes suaves de las tarjetas de producto y texto tenue para frases grandes (>= 3:1 en texto grande) */
+  --landing-mist: var(--wallpaper-tinta); --landing-ice: var(--accent-primary-subtle);
+  --landing-paper: #E9EAED; --landing-soft: #F1F2F4;
+  --landing-card: var(--surface-raised); --landing-row: var(--surface-canvas);
+  --landing-accent-text: var(--accent-primary); --landing-ink: var(--text-primary);
+  --landing-on-ink: var(--text-on-accent); --landing-phone: var(--text-primary);
+  --landing-note: #FFF6C9; --landing-on-note: #4A3F12; --landing-key: #C9D3EE;
+  --landing-hero: linear-gradient(170deg, var(--landing-mist) 0%, #E8EEFA 38%, var(--surface-canvas) 78%);
+  --landing-end: #0E1A3A; --landing-end-border: var(--landing-end); --landing-on-end: #FFFFFF;
+  --landing-end-muted: #DCE5F8; --landing-shadow: var(--glass-shadow);
+  --landing-width: 75rem; --landing-preview-width: 65rem;
+  --landing-panel-radius: 2rem; --landing-window-radius: 2.25rem; --landing-end-radius: 2.5rem;
+  --landing-hero-size: clamp(2.625rem, 5.3vw, 4.75rem);
   --tint-blue: #EEF2FB; --tint-sand: #F7F1E7; --tint-green: #EAF4EE; --tint-lilac: #F2EEF8; --text-faint: #8A8D96;
   /* Espacio con paneles de cristal sobre fondo personal (#75, #76): fondos, cristal, menús flotantes y dock */
   --wallpaper-contornos: #E9ECF2; --wallpaper-patron: #F1F2F4; --wallpaper-tinta: #DCE5F8; --wallpaper-grafito: #F4F4F5;
@@ -123,6 +135,15 @@
   --glass-hero-veil: linear-gradient(180deg, rgba(12, 13, 15, 0.84) 0%, rgba(12, 13, 15, 0.88) 60%, rgba(12, 13, 15, 0.96) 100%);
   --pill-active-bg: #6F98FF; --pill-active-text: #0C0D0F;
   --pill-glass-bg: rgba(22, 24, 28, 0.84); --pill-glass-border: rgba(255, 255, 255, 0.22); --pill-glass-text: #E8E8EB;
+  --landing-mist: var(--accent-primary-subtle); --landing-ice: #151B2B;
+  --landing-paper: var(--surface-raised); --landing-soft: #22252B;
+  --landing-card: #1C1F25; --landing-row: #24272E;
+  --landing-accent-text: var(--accent-primary-hover); --landing-ink: var(--text-primary);
+  --landing-on-ink: var(--text-on-accent); --landing-phone: #3A3D45;
+  --landing-note: #3A3412; --landing-on-note: #F5E7A6; --landing-key: #36456E;
+  --landing-hero: linear-gradient(170deg, #142247 0%, #10172C 38%, var(--surface-canvas) 78%);
+  --landing-end: #13214A; --landing-end-border: #24356A;
+  --landing-shadow: 0 1.5rem 3rem -0.5rem rgb(0 0 0 / 0.55);
   --tint-blue: #1A2238; --tint-sand: #2A2419; --tint-green: #17261E; --tint-lilac: #221D2E; --text-faint: #7A7E88;
   --wallpaper-contornos: #0B0D12; --wallpaper-patron: #101115; --wallpaper-tinta: #0E1A3A; --wallpaper-grafito: #16181C;
   --wallpaper-line: rgba(232, 232, 235, 0.09); --wallpaper-line-accent: rgba(111, 152, 255, 0.34);
@@ -130,6 +151,18 @@
   --glass-rgb: 16 17 21; --panel-alpha: 0.80; --glass-line: rgba(255, 255, 255, 0.09); --glass-line-strong: rgba(255, 255, 255, 0.15);
   --glass-panel-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.35); --pop-bg: rgba(20, 22, 26, 0.96); --pop-shadow: 0 1.125rem 2.75rem rgba(0, 0, 0, 0.5);
   --glass-hover: rgba(255, 255, 255, 0.06); --glass-field: rgba(255, 255, 255, 0.06);
+}
+
+
+/* La familia se resuelve en el contenedor que recibe las variables de next/font. */
+:where(.landing-page) {
+  --font-display: var(--font-fraunces-latin, Georgia), var(--font-fraunces-latin-ext, Georgia), serif;
+}
+
+.landing-display {
+  font-family: var(--font-display, Georgia, serif);
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 100, "WONK" 0;
 }
 
 /* Derivación del tema de HeroUI v3 OSS desde tokens semánticos de @hubly/ui (ADR 0006 / Constitución #6).

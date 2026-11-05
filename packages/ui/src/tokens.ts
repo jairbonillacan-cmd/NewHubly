@@ -33,7 +33,7 @@ export const tokens = {
     activeBg: "var(--pill-active-bg)", activeText: "var(--pill-active-text)", glassBg: "var(--pill-glass-bg)", glassBorder: "var(--pill-glass-border)", glassText: "var(--pill-glass-text)",
   },
   font: {
-    sans: "var(--font-sans)", mono: "var(--font-mono)",
+    sans: "var(--font-sans)", display: "var(--font-display)", mono: "var(--font-mono)",
     size: {
       xs: "var(--text-xs)", sm: "var(--text-sm)", base: "var(--text-base)", lg: "var(--text-lg)", xl: "var(--text-xl)",
       "2xl": "var(--text-2xl)", "3xl": "var(--text-3xl)", "4xl": "var(--text-4xl)", "5xl": "var(--text-5xl)", displayHero: "var(--text-display-hero)", displayNum: "var(--text-display-num)",
