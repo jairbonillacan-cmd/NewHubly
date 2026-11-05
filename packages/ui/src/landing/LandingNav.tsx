@@ -14,7 +14,7 @@ export const LANDING_NAV_LINKS: readonly NavLink[] = [
 export function LandingNav({ links = LANDING_NAV_LINKS }: { links?: readonly NavLink[] }) {
   return (
     <header className="relative z-10 px-4 pt-4 lg:pt-6" data-landing-section="navegacion">
-      <nav aria-label="Principal" className="glass-panel relative mx-auto grid min-h-16 max-w-(--landing-width) grid-cols-[1fr_auto] items-center gap-2 rounded-full px-3 lg:grid-cols-[1fr_auto_1fr] lg:px-5">
+      <nav aria-label="Principal" className="glass-panel relative mx-auto grid min-h-16 max-w-(--landing-width) grid-cols-[1fr_auto] items-center gap-2 rounded-full! px-3 lg:grid-cols-[1fr_auto_1fr] lg:px-5">
         <a href="/" aria-label="Hubly, inicio" className="inline-flex min-h-11 items-center justify-self-start rounded-full px-1">
           <HubiWordmark />
         </a>

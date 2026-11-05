@@ -40,7 +40,7 @@ La limpieza y generación de derivados se ejecuta una sola vez fuera del árbol 
 
 ## Fraunces para la landing (#101)
 
-Los WOFF2 de [Fraunces](https://github.com/undercasetype/Fraunces) proceden de Google Fonts CSS2 (revisión de distribución `v38`). La licencia [SIL OFL 1.1](fraunces-OFL.txt) se conserva junto a este documento.
+Los WOFF2 de [Fraunces](https://github.com/undercasetype/Fraunces) proceden de Google Fonts CSS2 (revisión de distribución `v38`, versión interna `1.000` en el commit `b76b70a41`). La licencia [SIL OFL 1.1](fraunces-OFL.txt) se conserva junto a este documento.
 
 Se incluyen solo `latin` y `latin-ext` en normal e itálica (eje `ital` en la consulta CSS2). Los archivos conservan los ejes variables `opsz` (9–144), `wght` (100–900), `SOFT` (0–100) y `WONK` (0–1). Hubly usa tamaño óptico automático, `SOFT=100`, `WONK=0`, peso 400 en titulares y 500 en tarjetas.
 

@@ -1,4 +1,5 @@
 import { AudienceSection, DataSection, FaqSection, FeatureGrid, FinalCta, LandingFooter, LandingHero, LandingNav, PainSection, RoadmapSection, ShortcutsSection, WorkspaceSection } from "@hubly/ui";
+import "./landing.css";
 import type { Metadata } from "next";
 import { frauncesLatin, frauncesLatinExt } from "../fonts/fraunces";
 

@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React from "react";
+import "../landing/landing.css";
+import "./landing-fonts.css";
 import { RoadmapSection } from "../landing/RoadmapSection";
 import { ShortcutsSection } from "../landing/ShortcutsSection";
 import { WorkspaceSection } from "../landing/WorkspaceSection";
@@ -15,6 +17,7 @@ const meta: Meta<typeof LandingHero> = {
   title: "Landing/Marketing",
   component: LandingHero,
   parameters: { layout: "fullscreen" },
+  decorators: [(Story) => <div className="landing-page landing-story"><Story /></div>],
 };
 
 export default meta;
@@ -23,8 +26,10 @@ type Story = StoryObj<typeof LandingHero>;
 export const PaginaCompleta: Story = {
   render: () => (
     <div className="bg-(--surface-canvas) text-(--text-primary)">
-      <LandingNav />
-      <LandingHero />
+      <div className="bg-(image:--landing-hero)">
+        <LandingNav />
+        <LandingHero />
+      </div>
       <AudienceSection />
       <PainSection />
       <FeatureGrid />
@@ -40,10 +45,7 @@ export const PaginaCompleta: Story = {
 };
 
 export const Navegacion: Story = { render: () => <LandingNav /> };
-export const Fondos: Story = { render: () => <WorkspaceSection /> };
-export const Atajos: Story = { render: () => <ShortcutsSection /> };
-export const Etapas: Story = { render: () => <RoadmapSection /> };
-export const Hero: Story = { render: () => <LandingHero /> };
+export const Hero: Story = { render: () => <div className="bg-(image:--landing-hero)"><LandingHero /></div> };
 export const VistaDeHoy: Story = { render: () => <AppPreview /> };
 export const AQuienVaDirigido: Story = { render: () => <AudienceSection /> };
 export const ElProblema: Story = { render: () => <PainSection /> };
@@ -63,6 +65,13 @@ export const PreguntasFrecuentes: Story = {
     </div>
   ),
 };
+
+export const Fondos: Story = { render: () => <WorkspaceSection /> };
+export const Atajos: Story = { render: () => <ShortcutsSection /> };
+export const Etapas: Story = { render: () => <RoadmapSection /> };
+export const Privacidad: Story = { render: () => <DataSection /> };
+export const Cierre: Story = { render: () => <FinalCta /> };
+export const Pie: Story = { render: () => <LandingFooter /> };
 
 export const PaginaLegal: Story = {
   render: () => (
