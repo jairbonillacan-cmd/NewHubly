@@ -1,7 +1,7 @@
 "use client";
 import { Alert, Button, Hubi, HubiWordmark, Icon, Input, Label, TextField, ThemeToggle, Wallpaper } from "@hubly/ui";
 import React from "react";
-import { signInWithMagicLinkAction, signInWithPasswordAction, signUpWithPasswordAction } from "../../../actions/auth";
+import { hasActiveSessionAction, signInWithMagicLinkAction, signInWithPasswordAction, signUpWithPasswordAction } from "../../../actions/auth";
 
 export type AuthMode = "signin" | "signup" | "magic";
 export interface LoginScreenProps { initialMode?: AuthMode; onAuthenticated?: (workspaceId: string | null) => void; }
@@ -16,8 +16,15 @@ const TITLES = { signin: "Entra a tu espacio", signup: "Crea tu cuenta", magic: 
 const SUBTITLES = {
   signin: "Tus pendientes y notas siguen donde los dejaste.",
   signup: "Empiezas con tu espacio personal. A una agencia te unes o la creas después.",
-  magic: "Te enviamos un enlace de un solo uso. Ábrelo en este mismo navegador.",
+  magic: "Te enviamos un enlace de un solo uso para entrar sin contraseña.",
 } as const;
+
+/** Lo que /auth/confirm y /auth/callback dejan en ?error= cuando el enlace del correo no sirve. */
+const LINK_ERRORS: Record<string, string> = {
+  "enlace-caducado": "Ese enlace ya no sirve: caducó o ya se usó. Entra con tu contraseña o pide uno nuevo.",
+  "enlace-invalido": "Ese enlace no es válido. Pide uno nuevo desde aquí.",
+};
+export const linkErrorMessage = (search: string): string | null => LINK_ERRORS[new URLSearchParams(search).get("error") ?? ""] ?? null;
 
 function visibleError(message: string) {
   // Next oculta el mensaje de una Server Action que lanza en producción (React #441).
@@ -39,13 +46,20 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null), [errorMessage, setErrorMessage] = React.useState<string | null>(null), [submitting, setSubmitting] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [sent, setSent] = React.useState(false);
+  const [linkNotice, setLinkNotice] = React.useState<string | null>(null);
+  const [notConfirmedYet, setNotConfirmedYet] = React.useState(false);
   const [secondsLeft, setSecondsLeft] = React.useState(RESEND_WAIT_SECONDS);
   const screen = statusMessage || sent ? "sent" : mode === "signin" && errorMessage ? "error" : mode;
   const heading = React.useRef<HTMLHeadingElement>(null);
   const previousScreen = React.useRef(screen);
 
-  React.useEffect(() => { syncBrowserTimeZoneCookie(); }, []);
-  const navigate = (wsId: string | null) => onAuthenticated ? onAuthenticated(wsId) : (typeof window !== "undefined" && window.location.assign("/hoy"));
+  React.useEffect(() => {
+    syncBrowserTimeZoneCookie();
+    setLinkNotice(linkErrorMessage(window.location?.search ?? ""));
+  }, []);
+  // Una cuenta nueva sin confirmación por correo entra directo a Hoy, también con la bienvenida.
+  const navigate = (wsId: string | null, welcome = false) =>
+    onAuthenticated ? onAuthenticated(wsId) : (typeof window !== "undefined" && window.location.assign(welcome ? "/hoy?bienvenida=1" : "/hoy"));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +73,7 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
         const res = await signUpWithPasswordAction({ email, password, workspaceName });
         if (!res.ok) setErrorMessage(res.message);
         else if (res.requiresEmailConfirmation) setStatusMessage("Revisa tu correo para confirmar tu cuenta y acceder a tu espacio.");
-        else navigate(res.workspaceId);
+        else navigate(res.workspaceId, true);
       } else {
         const res = await signInWithMagicLinkAction({ email });
         if (res.ok) setStatusMessage(res.message); else setErrorMessage(res.message);
@@ -92,12 +106,30 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
     return () => window.clearInterval(timer);
   }, [statusMessage, submitting]);
 
+  // Tras registrarse, la cuenta se confirma desde el correo, a menudo en otra pestaña: al volver a esta se comprueba
+  // la sesión y se entra sola. La otra pestaña ya mostró la bienvenida, así que aquí se va a Hoy sin ella.
+  const checkConfirmed = async (manual: boolean) => {
+    const confirmed = await hasActiveSessionAction().catch(() => false);
+    if (confirmed) window.location.assign("/hoy");
+    else if (manual) setNotConfirmedYet(true);
+  };
+  React.useEffect(() => {
+    if (!sent || mode !== "signup" || typeof document === "undefined") return;
+    const onVisible = () => { if (document.visibilityState === "visible") void checkConfirmed(false); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => { document.removeEventListener("visibilitychange", onVisible); window.removeEventListener("focus", onVisible); };
+    // checkConfirmed solo usa setters estables: basta con volver a suscribirse al cambiar de pantalla.
+  }, [sent, mode]);
+
   const changeMode = (next: AuthMode) => {
     setMode(next);
     setShowPassword(false);
     setErrorMessage(null);
     setStatusMessage(null);
     setSent(false);
+    setNotConfirmedYet(false);
+    setLinkNotice(null);
     setSecondsLeft(RESEND_WAIT_SECONDS);
   };
 
@@ -142,9 +174,16 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
                 <div className="flex min-w-0 flex-col gap-2 break-words text-sm text-(--glass-text-secondary)">
                   <p>{signUp ? <>Te enviamos un correo a <strong>{email}</strong> para confirmar la cuenta.</> : <>Si <strong>{email}</strong> tiene cuenta en Hubly, te llegará un enlace para entrar.</>}</p>
                   <p>Puede tardar un par de minutos. Mira también en el correo no deseado.</p>
+                  {signUp && <p>Cuando confirmes, esta pantalla te lleva a tu espacio.</p>}
                 </div>
               ) : <p className="text-sm text-(--glass-text-secondary)">{SUBTITLES[mode]}</p>}
             </div>
+            {linkNotice && !isSent && (
+              <Alert status="warning" className="bg-(--status-warning-bg) text-(--status-warning-text)">
+                <Alert.Indicator />
+                <Alert.Content><Alert.Title className="text-(--status-warning-text)">{linkNotice}</Alert.Title></Alert.Content>
+              </Alert>
+            )}
             {!isSent && (
               <div className="flex flex-col gap-4">
                 <TextField name="email" type="email" isRequired value={email} onChange={setEmail} isReadOnly={submitting}>
@@ -186,6 +225,12 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
             <Button type="submit" variant="primary" className={`${PRIMARY} disabled:bg-(--surface-interactive) disabled:text-(--text-secondary) disabled:opacity-100`} isDisabled={submitting || (isSent && secondsLeft > 0)} fullWidth>
               {submitting ? "Procesando…" : isSent ? (secondsLeft > 0 ? `Reenviar en ${secondsLeft} s` : "Reenviar") : signIn ? "Entrar" : signUp ? "Crear cuenta" : "Enviar enlace"}
             </Button>
+            {isSent && signUp && (
+              <div className="flex flex-col gap-2">
+                <Button type="button" variant="secondary" className={PRIMARY} fullWidth onPress={() => void checkConfirmed(true)}>Ya confirmé, entrar</Button>
+                {notConfirmedYet && <p role="status" className="text-center text-sm text-(--glass-text-secondary)">Aún no vemos la confirmación en este navegador. Si la abriste en otro dispositivo, entra con tu contraseña.</p>}
+              </div>
+            )}
             {signIn && (
               <div className="flex flex-col gap-3">
                 <div aria-hidden="true" className="hidden items-center gap-3 text-sm text-(--glass-text-secondary) before:h-px before:grow before:bg-(--glass-line-strong) after:h-px after:grow after:bg-(--glass-line-strong) sm:flex">o</div>

@@ -1,7 +1,7 @@
 "use client";
 import { parseQuickCapture } from "@hubly/application";
 import { createTodoSchema, type UserPreferences } from "@hubly/contracts";
-import { EspacioEstado, EspacioHoy, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
+import { BienvenidaDialog, EspacioEstado, EspacioHoy, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
 import React, { useEffect, useRef, useState } from "react";
 import {
   archiveNoteAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction, createAgencyWorkspaceAction,
@@ -25,6 +25,8 @@ export interface WorkspaceScreenProps {
   initialPreferences?: UserPreferences;
   /** URL firmada de «Tu imagen» si es el fondo elegido (#84). */
   initialWallpaperImageUrl?: string | null;
+  /** Primera entrada después de confirmar la cuenta: se abre la bienvenida (?bienvenida=1). */
+  showWelcome?: boolean;
   onSavePreferences?: (patch: Partial<UserPreferences>) => Promise<unknown>;
   onRetry?: () => void; onLoginRedirect?: () => void; onTimezoneRefresh?: () => void; onSignOut?: () => Promise<void>;
   onSaveNote?: (note: WorkspaceNote, nextTitle: string, nextContent: string) => Promise<WorkspaceNote>;
@@ -102,7 +104,7 @@ const toEspacioWorkspace = (w: WorkspaceSummary): EspacioWorkspace => ({ id: w.i
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialTodos = [], initialNotes = [], initialActionError = null,
-  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, onSavePreferences,
+  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, onSavePreferences,
   onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
@@ -112,6 +114,12 @@ export function WorkspaceScreen({
   const [members, setMembers] = useState<WorkspaceMemberSummary[]>(initialMembers);
   const [invitations, setInvitations] = useState<WorkspaceInvitationSummary[]>(initialPendingInvitations);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [welcomeOpen, setWelcomeOpen] = useState(showWelcome);
+  // Se quita ?bienvenida=1 de la URL para que recargar la página no la vuelva a abrir.
+  const closeWelcome = () => {
+    setWelcomeOpen(false);
+    window.history.replaceState(window.history.state, "", window.location.pathname);
+  };
   const prefsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPrefs = useRef<Partial<UserPreferences>>({});
   // Al salir de la pantalla o cerrar la pestaña, el cambio pendiente se envía en vez de perderse.
@@ -285,6 +293,8 @@ export function WorkspaceScreen({
   });
 
   return (
+    <>
+    <BienvenidaDialog isOpen={welcomeOpen} onClose={closeWelcome} {...(activeWs ? { workspaceName: activeWs.name } : {})} />
     <EspacioHoy
       todayDate={todayDate}
       {...(initialPreferences ? { initialPreferences: toEspacioPreferencias(initialPreferences), initialTheme: themeToApply(initialPreferences.theme) } : {})}
@@ -331,5 +341,6 @@ export function WorkspaceScreen({
       onChangeNoteVisibility={(id, v) => void handleNoteVisibility(id, v)}
       onChangeTodoVisibility={(id, v) => void handleTodoVisibility(id, v)}
     />
+    </>
   );
 }

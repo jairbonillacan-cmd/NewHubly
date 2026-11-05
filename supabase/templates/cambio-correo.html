@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Confirma tu nuevo correo</title></head>
+<body style="margin:0;padding:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111316;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;padding:32px 28px;">
+        <tr><td>
+          <img src="{{ .SiteURL }}/apple-icon.png" width="56" height="56" alt="Hubly" style="display:block;border-radius:14px;margin:0 0 20px;">
+          <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;">Confirma tu nuevo correo</h1>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">Pediste cambiar el correo de tu cuenta de Hubly de <strong>{{ .Email }}</strong> a <strong>{{ .NewEmail }}</strong>. Confírmalo para que el cambio se aplique.</p>
+          <p style="margin:24px 0 8px;"><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email_change" style="display:inline-block;background:#1D4ED8;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 22px;border-radius:12px;">Confirmar el cambio</a></p>
+          <p style="margin:0;font-size:12px;line-height:1.5;color:#6b6f78;">Si el botón no funciona, copia este enlace en tu navegador:<br><span style="word-break:break-all;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email_change</span></p>
+          <p style="margin:28px 0 0;font-size:13px;line-height:1.5;color:#3F424A;">Si no pediste este cambio, no pulses el botón y cambia tu contraseña.</p>
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:12px;color:#6b6f78;">Hubly · tu espacio para pendientes, notas y clientes</p>
+    </td></tr>
+  </table>
+</body>
+</html>

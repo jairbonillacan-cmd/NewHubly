@@ -14,3 +14,24 @@ pool_mode = "transaction"
 [auth]
 enabled = true
 site_url = "http://127.0.0.1:3100"
+
+# Correos de Auth en español (los mismos que se pegan en el panel de producción; ver supabase/templates/README.md).
+[auth.email.template.confirmation]
+subject = "Confirma tu cuenta de Hubly"
+content_path = "./supabase/templates/confirmacion.html"
+
+[auth.email.template.magic_link]
+subject = "Tu enlace para entrar a Hubly"
+content_path = "./supabase/templates/enlace-magico.html"
+
+[auth.email.template.invite]
+subject = "Te invitaron a Hubly"
+content_path = "./supabase/templates/invitacion.html"
+
+[auth.email.template.email_change]
+subject = "Confirma tu nuevo correo de Hubly"
+content_path = "./supabase/templates/cambio-correo.html"
+
+[auth.email.template.reauthentication]
+subject = "Tu código de verificación de Hubly"
+content_path = "./supabase/templates/reautenticacion.html"
