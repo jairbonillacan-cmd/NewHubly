@@ -13,9 +13,9 @@ export function LandingFooter({ links = DEFAULT_FOOTER_LINKS }: { links?: readon
         <span className="mr-auto">© 2026 Hubly</span>
         <nav aria-label="Pie de página" className="flex flex-wrap gap-x-4">
           {links.map((link) => (
-            <a key={link.href} href={link.href} className="inline-flex min-h-11 items-center rounded-full hover:underline">{link.label}</a>
+            <a key={link.href} href={link.href} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:underline">{link.label}</a>
           ))}
-          <a href="/login" className="inline-flex min-h-11 items-center rounded-full hover:underline">Entrar</a>
+          <a href="/login" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:underline">Entrar</a>
         </nav>
       </div>
     </footer>
