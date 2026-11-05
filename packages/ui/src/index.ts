@@ -20,6 +20,9 @@ export * from "./landing/AudienceSection";
 export * from "./landing/AppPreview";
 export * from "./landing/Reveal";
 export * from "./landing/FeatureGrid";
+export * from "./landing/WorkspaceSection";
+export * from "./landing/ShortcutsSection";
+export * from "./landing/RoadmapSection";
 export * from "./landing/LandingSections";
 export * from "./landing/LegalPage";
 

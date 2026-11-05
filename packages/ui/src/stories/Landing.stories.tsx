@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React from "react";
+import { RoadmapSection } from "../landing/RoadmapSection";
+import { ShortcutsSection } from "../landing/ShortcutsSection";
+import { WorkspaceSection } from "../landing/WorkspaceSection";
 import { AudienceSection } from "../landing/AudienceSection";
 import { AppPreview } from "../landing/AppPreview";
 import { FeatureGrid } from "../landing/FeatureGrid";
@@ -25,6 +28,9 @@ export const PaginaCompleta: Story = {
       <AudienceSection />
       <PainSection />
       <FeatureGrid />
+      <WorkspaceSection />
+      <ShortcutsSection />
+      <RoadmapSection />
       <DataSection />
       <FaqSection />
       <FinalCta />
@@ -33,6 +39,10 @@ export const PaginaCompleta: Story = {
   ),
 };
 
+export const Navegacion: Story = { render: () => <LandingNav /> };
+export const Fondos: Story = { render: () => <WorkspaceSection /> };
+export const Atajos: Story = { render: () => <ShortcutsSection /> };
+export const Etapas: Story = { render: () => <RoadmapSection /> };
 export const Hero: Story = { render: () => <LandingHero /> };
 export const VistaDeHoy: Story = { render: () => <AppPreview /> };
 export const AQuienVaDirigido: Story = { render: () => <AudienceSection /> };
