@@ -3,6 +3,30 @@
 export type EspacioPriority = "low" | "medium" | "high";
 export type NoteSaveState = "saved" | "saving" | "error";
 export type HoyFilter = "vencidos" | "hoy" | null;
+/** Visibilidad de un elemento en una agencia (ADR 0007): privado para su autor o compartido con la agencia. */
+export type EspacioVisibility = "private" | "workspace";
+export type EspacioRole = "owner" | "admin" | "editor" | "viewer";
+export type EspacioInviteRole = Exclude<EspacioRole, "owner">;
+
+export interface EspacioWorkspace { id: string; name: string; kind: "personal" | "agency"; role: EspacioRole }
+export interface EspacioMember { userId: string; role: EspacioRole; isCurrentUser: boolean }
+export interface EspacioInvitation { id: string; email: string; role: EspacioInviteRole; expiresAt: string }
+
+export const ROLE_LABEL: Record<EspacioRole, string> = { owner: "Propietario", admin: "Administrador", editor: "Editor", viewer: "Lectura" };
+
+/** Roles que la persona puede asignar a un miembro. Refleja las políticas RLS de la migración 1B; el servidor decide. */
+export function assignableRoles(actor: EspacioRole, member: EspacioMember, ownerCount: number): EspacioRole[] {
+  if (member.isCurrentUser) return actor === "owner" && ownerCount >= 2 ? ["owner", "admin", "editor", "viewer"] : [];
+  if (actor === "owner") return member.role === "owner" && ownerCount < 2 ? [] : ["owner", "admin", "editor", "viewer"];
+  if (actor === "admin" && (member.role === "editor" || member.role === "viewer")) return ["editor", "viewer"];
+  return [];
+}
+
+export function canRemoveMember(actor: EspacioRole, member: EspacioMember, ownerCount: number): boolean {
+  if (member.isCurrentUser) return false;
+  if (actor === "owner") return member.role !== "owner" || ownerCount >= 2;
+  return actor === "admin" && (member.role === "editor" || member.role === "viewer");
+}
 
 export interface EspacioTodo {
   id: string;
@@ -12,6 +36,9 @@ export interface EspacioTodo {
   dueDate: string | null;
   isDone: boolean;
   noteId: string | null;
+  visibility?: EspacioVisibility;
+  /** Solo su autor, con rol distinto de lectura, puede cambiar la visibilidad. */
+  canChangeVisibility?: boolean;
 }
 
 export interface EspacioNote {
@@ -20,6 +47,10 @@ export interface EspacioNote {
   content: string;
   isPinned: boolean;
   isArchived: boolean;
+  visibility?: EspacioVisibility;
+  canChangeVisibility?: boolean;
+  /** Nota compartida que la persona no puede editar (rol de lectura o sin permiso). */
+  readOnly?: boolean;
 }
 
 export interface CaptureAnalysis {

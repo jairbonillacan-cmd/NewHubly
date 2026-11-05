@@ -23,6 +23,9 @@ const PATHS = {
   deshacer: "M9 14l-5-5 5-5M4 9h10a6 6 0 0 1 0 12h-3",
   teclado: "M3 6h18v12H3zM7 10h.01M11 10h.01M15 10h.01M7 14h10",
   hoy: "M5 5h14v15H5zM5 9h14M9 3v4M15 3v4",
+  equipo: "M9 5a3 3 0 1 0 0 6a3 3 0 1 0 0-6M3 19c.6-3 3-5 6-5s5.4 2 6 5M16 6a3 3 0 0 1 0 5M18 14c1.6.6 2.7 2.4 3 5",
+  candado: "M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3",
+  compartir: "M12 3v12M7 8l5-5 5 5M5 14v6h14v-6",
 } as const;
 
 export type IconName = keyof typeof PATHS;

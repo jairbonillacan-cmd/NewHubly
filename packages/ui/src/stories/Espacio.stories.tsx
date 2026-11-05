@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React, { useState } from "react";
 import { EspacioEstado, EspacioHoy } from "../espacio/EspacioHoy";
-import type { CaptureAnalysis, CaptureInput, EspacioNote, EspacioTodo, NoteSaveState } from "../espacio/types";
+import type { CaptureAnalysis, CaptureInput, EspacioInvitation, EspacioMember, EspacioNote, EspacioTodo, EspacioWorkspace, NoteSaveState } from "../espacio/types";
 
 const TODAY = "2026-11-04";
 
@@ -34,7 +34,18 @@ function analyze(text: string): CaptureAnalysis {
   };
 }
 
-function EspacioDemo({ todos: initialTodos = TODOS, notes: initialNotes = NOTES }: { todos?: EspacioTodo[]; notes?: EspacioNote[] }) {
+const PERSONAL: EspacioWorkspace = { id: "p", name: "Mi Espacio", kind: "personal", role: "owner" };
+const AGENCIA: EspacioWorkspace = { id: "a", name: "Agencia Pulso", kind: "agency", role: "owner" };
+const MIEMBROS: EspacioMember[] = [
+  { userId: "u-0001-yo", role: "owner", isCurrentUser: true },
+  { userId: "u-0002-ana", role: "editor", isCurrentUser: false },
+  { userId: "u-0003-leo", role: "viewer", isCurrentUser: false },
+];
+const INVITACIONES: EspacioInvitation[] = [{ id: "i1", email: "equipo@agencia.es", role: "editor", expiresAt: "2026-11-11T00:00:00.000Z" }];
+
+interface DemoProps { todos?: EspacioTodo[]; notes?: EspacioNote[]; agencia?: boolean }
+
+function EspacioDemo({ todos: initialTodos = TODOS, notes: initialNotes = NOTES, agencia = false }: DemoProps) {
   const [todos, setTodos] = useState(initialTodos);
   const [notes, setNotes] = useState(initialNotes);
   const [saves, setSaves] = useState<Record<string, NoteSaveState>>({});
@@ -66,6 +77,11 @@ function EspacioDemo({ todos: initialTodos = TODOS, notes: initialNotes = NOTES 
       onToggleArchive={(id) => patchNote(id, { isArchived: !notes.find((n) => n.id === id)?.isArchived })}
       onExport={() => undefined}
       onSignOut={() => undefined}
+      {...(agencia ? {
+        workspaces: [PERSONAL, AGENCIA], activeWorkspace: AGENCIA, members: MIEMBROS, invitations: INVITACIONES, inviteLink: "/invitacion#ejemplo",
+        onChangeNoteVisibility: (id: string, visibility: "private" | "workspace") => patchNote(id, { visibility }),
+        onChangeTodoVisibility: (id: string, visibility: "private" | "workspace") => setTodos((list) => list.map((t) => (t.id === id ? { ...t, visibility } : t))),
+      } : {})}
     />
   );
 }
@@ -84,3 +100,12 @@ export const ConPendientes: Story = {};
 export const SinPendientes: Story = { args: { todos: [], notes: [] } };
 
 export const Cargando: Story = { render: () => <EspacioEstado busy message="Cargando tu espacio de trabajo…" /> };
+
+/** Agencia activa (#64, #78): menú de espacios, equipo e invitaciones y visibilidad de notas y pendientes. */
+export const Agencia: Story = {
+  args: {
+    agencia: true,
+    todos: TODOS.map((t, i) => ({ ...t, visibility: i % 2 === 0 ? "workspace" : "private", canChangeVisibility: true })),
+    notes: NOTES.map((n, i) => ({ ...n, visibility: i === 0 ? "workspace" : "private", canChangeVisibility: true })),
+  },
+};

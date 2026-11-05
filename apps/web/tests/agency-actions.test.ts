@@ -49,16 +49,27 @@ describe("Server Actions Fase 1B · Agencia activa, equipo, invitaciones y visib
     const toRevoke = await inviteWorkspaceMemberAction({ workspaceId: agency.id, email: outsider.email, role: "viewer" });
     await revokeWorkspaceInvitationAction({ workspaceId: agency.id, invitationId: toRevoke.invitation.id });
     actAs(outsider);
-    await expect(acceptWorkspaceInvitationAction({ token: toRevoke.invitationPath })).rejects.toThrow();
+    expect(await acceptWorkspaceInvitationAction({ token: toRevoke.invitationPath })).toMatchObject({ ok: false, code: "INVALIDA" });
     actAs(editor);
     await ensureAuthenticatedWorkspace(undefined, "Personal Editor");
-    expect((await acceptWorkspaceInvitationAction({ token: reinvited.invitationPath })).workspaceId).toBe(agency.id);
+    expect(await acceptWorkspaceInvitationAction({ token: reinvited.invitationPath })).toEqual({ ok: true, workspaceId: agency.id });
+    // Reusar el enlace ya aceptado no sirve.
+    expect(await acceptWorkspaceInvitationAction({ token: reinvited.invitationPath })).toMatchObject({ ok: false, code: "INVALIDA" });
     expect(await resolveActiveWorkspaceCookie()).toBe(agency.id);
     actAs(owner);
     const invAdmin = await inviteWorkspaceMemberAction({ workspaceId: agency.id, email: admin.email, role: "admin" });
     const invViewer = await inviteWorkspaceMemberAction({ workspaceId: agency.id, email: viewer.email, role: "viewer" });
-    actAs(admin); await acceptWorkspaceInvitationAction({ token: invAdmin.invitationPath });
-    actAs(viewer); await acceptWorkspaceInvitationAction({ token: invViewer.invitationPath });
+    // Sin sesión y con otra cuenta: avisos con código, sin consumir la invitación (#86, puntos 2 y 3).
+    actAs(null);
+    expect(await acceptWorkspaceInvitationAction({ token: invAdmin.invitationPath })).toMatchObject({ ok: false, code: "SIN_SESION", message: expect.stringContaining("Inicia sesión") });
+    actAs(outsider);
+    expect(await acceptWorkspaceInvitationAction({ token: invViewer.invitationPath })).toMatchObject({ ok: false, code: "CORREO_NO_COINCIDE" });
+    actAs(admin); expect((await acceptWorkspaceInvitationAction({ token: invAdmin.invitationPath })).ok).toBe(true);
+    actAs(viewer); expect((await acceptWorkspaceInvitationAction({ token: invViewer.invitationPath })).ok).toBe(true);
+    actAs(owner);
+    const again = await inviteWorkspaceMemberAction({ workspaceId: agency.id, email: viewer.email, role: "viewer" });
+    actAs(viewer);
+    expect(await acceptWorkspaceInvitationAction({ token: again.invitationPath })).toMatchObject({ ok: false, code: "YA_MIEMBRO" });
   });
 
   it("3. Gestiona visibilidad private vs workspace, edición colaborativa, desenlace al privatizar nota y reubicación al salir", async () => {
