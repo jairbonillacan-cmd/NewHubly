@@ -32,17 +32,21 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
     syncBrowserTimeZoneCookie();
     setSubmitting(true); setErrorMessage(null); setStatusMessage(null);
     try {
-      if (mode === "signin") navigate((await signInWithPasswordAction({ email, password })).workspaceId);
-      else if (mode === "signup") {
+      if (mode === "signin") {
+        const res = await signInWithPasswordAction({ email, password });
+        if (res.ok) navigate(res.workspaceId); else setErrorMessage(res.message);
+      } else if (mode === "signup") {
         const res = await signUpWithPasswordAction({ email, password, workspaceName });
-        if (res.requiresEmailConfirmation) setStatusMessage("Revisa tu correo para confirmar tu cuenta y acceder a tu espacio.");
+        if (!res.ok) setErrorMessage(res.message);
+        else if (res.requiresEmailConfirmation) setStatusMessage("Revisa tu correo para confirmar tu cuenta y acceder a tu espacio.");
         else navigate(res.workspaceId);
       } else {
         const res = await signInWithMagicLinkAction({ email });
-        setStatusMessage(res.message);
+        if (res.ok) setStatusMessage(res.message); else setErrorMessage(res.message);
       }
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "No se pudo iniciar sesión");
+    } catch {
+      // Fallo inesperado (red o servidor): en producción su mensaje no es legible, así que se muestra uno propio (#92).
+      setErrorMessage("No se pudo conectar. Inténtalo de nuevo en unos minutos.");
     } finally {
       setSubmitting(false);
     }

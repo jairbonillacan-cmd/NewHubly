@@ -67,7 +67,10 @@ export async function executeProtectedAction(
   try { await fn(); } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("Sesión caducada") || msg.includes("No hay una sesión activa")) { onSessionExpired(); return; }
-    onActionError({ message: msg || fallbackMsg, retry: () => executeProtectedAction(fallbackMsg, fn, onSessionExpired, onActionError) });
+    // En producción Next sustituye el mensaje de los errores del servidor por uno genérico en inglés y añade «digest».
+    // Ese texto no ayuda a la persona: se muestra el mensaje propio de la acción (#92).
+    const sanitizedByServer = typeof (err as { digest?: unknown } | null)?.digest === "string";
+    onActionError({ message: sanitizedByServer || !msg ? fallbackMsg : msg, retry: () => executeProtectedAction(fallbackMsg, fn, onSessionExpired, onActionError) });
   }
 }
 

@@ -108,6 +108,10 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     await executeProtectedAction("Error", async () => { throw new Error("Sesión caducada"); }, onExpired, (st) => { currentError = st; });
     expect(onExpired).toHaveBeenCalledTimes(1);
     expect(currentError).toBeNull();
+    // En producción Next oculta el mensaje y añade «digest»: se muestra el mensaje propio de la acción, en español (#92).
+    const sanitized = Object.assign(new Error("An error occurred in the Server Components render."), { digest: "1234567" });
+    await executeProtectedAction("No se pudo guardar la nota.", async () => { throw sanitized; }, onExpired, (st) => { currentError = st; });
+    expect(currentError!.message).toBe("No se pudo guardar la nota.");
   });
 
   it("evalúa atajos globales 'c' y '/', clasifica vistas y valida Server Actions con fecha de exportación local", async () => {
