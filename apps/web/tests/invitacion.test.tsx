@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 import nextConfig from "../next.config";
 import { InvitacionScreen, consumeInvitationHashToken } from "../src/components/InvitacionScreen";
-import { classifyInvitationError } from "../src/server/composition";
+import { NextRequest } from "next/server";
+import { middleware } from "../src/middleware";
+import { classifyInvitationError, setSupabaseServerClientFactoryForTests } from "../src/server/composition";
 
 describe("Página /invitacion (#64; revisión de #86, puntos 2 y 3)", () => {
   it("quita el token del fragmento y del historial, y no envía Referer", async () => {
@@ -36,5 +38,15 @@ describe("Página /invitacion (#64; revisión de #86, puntos 2 y 3)", () => {
     expect(classifyInvitationError(Object.assign(new Error("x"), { code: "23505" }))).toBe("YA_MIEMBRO");
     expect(classifyInvitationError({ name: "ZodError", message: "token" })).toBe("INVALIDA");
     expect(classifyInvitationError(new Error("conexión perdida"))).toBe("ERROR");
+  });
+
+  it("el middleware refresca la sesión en /invitacion y no la redirige a /login", async () => {
+    const getUser = vi.fn().mockResolvedValue({ data: { user: null }, error: new Error("Expired") });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSupabaseServerClientFactoryForTests(() => ({ auth: { getUser } }) as any);
+    const res = await middleware(new NextRequest("http://localhost:3100/invitacion"));
+    expect(getUser).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(200);
+    setSupabaseServerClientFactoryForTests(null);
   });
 });
