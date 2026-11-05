@@ -1,0 +1,36 @@
+// Set único de iconos del espacio (#75): trazos propios de 24×24, sin dependencias nuevas.
+
+const PATHS = {
+  sol: "M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
+  nota: "M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6",
+  pin: "M9 4h6l-1 6 3 3H7l3-3zM12 13v7",
+  mas: "M12 5v14M5 12h14",
+  cerrar: "M6 6l12 12M18 6L6 18",
+  buscar: "M11 5a6 6 0 1 0 0 12a6 6 0 1 0 0-12M20 20l-4.5-4.5",
+  imagen: "M3 4h18v16H3zM3 16l5-5 4 4 3-3 6 6",
+  paneles: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
+  libre: "M3 4h11v16H3zM16 4h5v7h-5zM16 13h5v7h-5z",
+  lado: "M3 4h5v16H3zM9.5 4h5v16h-5zM16 4h5v16h-5z",
+  enfoque: "M7 4h10v16H7z",
+  descargar: "M12 4v11M7 10l5 5 5-5M5 20h14",
+  salir: "M10 5H5v14h5M14 8l4 4-4 4M18 12H9",
+  check: "M5 12l5 5 9-10",
+  chevrones: "M8 9l4-4 4 4M8 15l4 4 4-4",
+  usuario: "M12 4a4 4 0 1 0 0 8a4 4 0 1 0 0-8M4 21c1-4 4-6 8-6s7 2 8 6",
+  sobre: "M4 7l8 6 8-6M4 7h16v11H4z",
+  ajustes: "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M16 4v4M8 10v4M16 16v4",
+  archivar: "M4 5h16v4H4zM6 9v10h12V9M10 13h4",
+  deshacer: "M9 14l-5-5 5-5M4 9h10a6 6 0 0 1 0 12h-3",
+  teclado: "M3 6h18v12H3zM7 10h.01M11 10h.01M15 10h.01M7 14h10",
+  hoy: "M5 5h14v15H5zM5 9h14M9 3v4M15 3v4",
+} as const;
+
+export type IconName = keyof typeof PATHS;
+
+export function Icon({ name, className, strokeWidth = 1.75 }: { name: IconName; className?: string; strokeWidth?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className ?? "size-4"}>
+      <path d={PATHS[name]} />
+    </svg>
+  );
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { tokens } from "../tokens";
 
 export interface ThemeToggleProps {
@@ -8,24 +8,33 @@ export interface ThemeToggleProps {
   variante?: "pastilla" | "icono";
 }
 
-export function ThemeToggle({ variante = "pastilla" }: ThemeToggleProps = {}) {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+export type HublyTheme = "light" | "dark";
+
+/** Tema activo y forma de cambiarlo; lo comparten este botón y el menú de cuenta del espacio (#75). */
+export function useHublyTheme() {
+  const [theme, setThemeState] = useState<HublyTheme>("light");
 
   useEffect(() => {
     const stored = localStorage.getItem("hubly-theme");
     // El modo claro es el predeterminado; solo cambia si la persona eligió el oscuro (#85).
     if (stored === "dark" || stored === "light") {
-      setTheme(stored);
+      setThemeState(stored);
       document.documentElement.setAttribute("data-theme", stored);
     }
   }, []);
 
-  const toggleTheme = () => {
-    const nextTheme = theme === "light" ? "dark" : "light";
-    setTheme(nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
-    localStorage.setItem("hubly-theme", nextTheme);
-  };
+  const setTheme = useCallback((next: HublyTheme) => {
+    setThemeState(next);
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("hubly-theme", next);
+  }, []);
+
+  return [theme, setTheme] as const;
+}
+
+export function ThemeToggle({ variante = "pastilla" }: ThemeToggleProps = {}) {
+  const [theme, setTheme] = useHublyTheme();
+  const toggleTheme = () => setTheme(theme === "light" ? "dark" : "light");
 
   if (variante === "icono") {
     return (

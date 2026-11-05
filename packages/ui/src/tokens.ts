@@ -24,6 +24,11 @@ export const tokens = {
   landing: {
     tintBlue: "var(--tint-blue)", tintSand: "var(--tint-sand)", tintGreen: "var(--tint-green)", tintLilac: "var(--tint-lilac)", textFaint: "var(--text-faint)",
   },
+  espacio: {
+    wallpaperContornos: "var(--wallpaper-contornos)", wallpaperPatron: "var(--wallpaper-patron)", wallpaperTinta: "var(--wallpaper-tinta)", wallpaperGrafito: "var(--wallpaper-grafito)",
+    wallpaperLine: "var(--wallpaper-line)", wallpaperLineAccent: "var(--wallpaper-line-accent)", wallpaperPattern: "var(--wallpaper-pattern)", wallpaperPatternAccent: "var(--wallpaper-pattern-accent)",
+    glassLine: "var(--glass-line)", glassLineStrong: "var(--glass-line-strong)", glassHover: "var(--glass-hover)", glassField: "var(--glass-field)", popBg: "var(--pop-bg)",
+  },
   pill: {
     activeBg: "var(--pill-active-bg)", activeText: "var(--pill-active-text)", glassBg: "var(--pill-glass-bg)", glassBorder: "var(--pill-glass-border)", glassText: "var(--pill-glass-text)",
   },

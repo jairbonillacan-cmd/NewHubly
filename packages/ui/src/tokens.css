@@ -81,6 +81,13 @@
   --container-hero: 80rem; --container-bento: 76rem; --measure-hero-min-height: 92vh;
   /* Landing de marketing (#85): tintes suaves de las tarjetas de producto y texto tenue para frases grandes (>= 3:1 en texto grande) */
   --tint-blue: #EEF2FB; --tint-sand: #F7F1E7; --tint-green: #EAF4EE; --tint-lilac: #F2EEF8; --text-faint: #8A8D96;
+  /* Espacio con paneles de cristal sobre fondo personal (#75, #76): fondos, cristal, menús flotantes y dock */
+  --wallpaper-contornos: #E9ECF2; --wallpaper-patron: #F1F2F4; --wallpaper-tinta: #DCE5F8; --wallpaper-grafito: #F4F4F5;
+  --wallpaper-line: rgba(17, 19, 22, 0.09); --wallpaper-line-accent: rgba(29, 78, 216, 0.28);
+  --wallpaper-pattern: rgba(17, 19, 22, 0.05); --wallpaper-pattern-accent: rgba(29, 78, 216, 0.14);
+  --glass-rgb: 255 255 255; --panel-alpha: 0.78; --glass-line: rgba(17, 19, 22, 0.08); --glass-line-strong: rgba(17, 19, 22, 0.14);
+  --glass-panel-shadow: 0 0.5rem 1.5rem rgba(17, 19, 22, 0.10); --pop-bg: rgba(255, 255, 255, 0.96); --pop-shadow: 0 1rem 2.5rem rgba(17, 19, 22, 0.16);
+  --glass-hover: rgba(17, 19, 22, 0.05); --glass-field: rgba(17, 19, 22, 0.04); --glass-blur-panel: 18px;
 }
 
 :root[data-theme="dark"] {
@@ -117,6 +124,12 @@
   --pill-active-bg: #6F98FF; --pill-active-text: #0C0D0F;
   --pill-glass-bg: rgba(22, 24, 28, 0.84); --pill-glass-border: rgba(255, 255, 255, 0.22); --pill-glass-text: #E8E8EB;
   --tint-blue: #1A2238; --tint-sand: #2A2419; --tint-green: #17261E; --tint-lilac: #221D2E; --text-faint: #7A7E88;
+  --wallpaper-contornos: #0B0D12; --wallpaper-patron: #101115; --wallpaper-tinta: #0E1A3A; --wallpaper-grafito: #16181C;
+  --wallpaper-line: rgba(232, 232, 235, 0.09); --wallpaper-line-accent: rgba(111, 152, 255, 0.34);
+  --wallpaper-pattern: rgba(232, 232, 235, 0.06); --wallpaper-pattern-accent: rgba(111, 152, 255, 0.16);
+  --glass-rgb: 16 17 21; --panel-alpha: 0.80; --glass-line: rgba(255, 255, 255, 0.09); --glass-line-strong: rgba(255, 255, 255, 0.15);
+  --glass-panel-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.35); --pop-bg: rgba(20, 22, 26, 0.96); --pop-shadow: 0 1.125rem 2.75rem rgba(0, 0, 0, 0.5);
+  --glass-hover: rgba(255, 255, 255, 0.06); --glass-field: rgba(255, 255, 255, 0.06);
 }
 
 /* Derivación del tema de HeroUI v3 OSS desde tokens semánticos de @hubly/ui (ADR 0006 / Constitución #6).
@@ -256,3 +269,26 @@ body {
   .hubly-enter, .hubly-float, .hubly-pop { animation: none; }
   .hubly-draw { animation: none; stroke-dashoffset: 0; }
 }
+
+/* Paneles de cristal del espacio (#75): la opacidad la elige cada persona (60–98 %) y se aplica en --panel-alpha del contenedor. */
+.hubly-glass {
+  background-color: rgb(var(--glass-rgb) / var(--panel-alpha));
+  border: var(--border-width-thin) solid var(--glass-line);
+  box-shadow: var(--glass-panel-shadow);
+  backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%);
+}
+.hubly-pop-surface {
+  background-color: var(--pop-bg);
+  border: var(--border-width-thin) solid var(--glass-line-strong);
+  box-shadow: var(--pop-shadow);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+@supports not (backdrop-filter: blur(1px)) { .hubly-glass, .hubly-pop-surface { background-color: var(--surface-raised); } }
+@media (prefers-reduced-transparency: reduce) {
+  .hubly-glass, .hubly-pop-surface { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); }
+}
+.hubly-wallpaper { transition: background-color var(--motion-base) var(--motion-ease); }
+.hubly-wallpaper svg { transition: opacity var(--motion-base) var(--motion-ease); }
+@media (prefers-reduced-motion: reduce) { .hubly-wallpaper, .hubly-wallpaper svg { transition: none; } }

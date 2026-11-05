@@ -22,6 +22,9 @@ export * from "./landing/Reveal";
 export * from "./landing/FeatureGrid";
 export * from "./landing/LandingSections";
 
+// Espacio de Hoy con paneles de cristal sobre fondo personal (propuesta B, #75)
+export * from "./espacio";
+
 // Componentes de Notas y Pendientes de Fase 1A con dirección visual y HeroUI (Issues #26 y #47)
 export * from "./components/notes/NoteEditorCard";
 export * from "./components/todos/QuickCaptureBar";
