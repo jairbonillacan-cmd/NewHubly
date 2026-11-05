@@ -88,8 +88,9 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSupabaseServerClientFactoryForTests(() => ({ auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: new Error("No session") }) } }) as any);
     await expect(getVerifiedServerSession()).rejects.toThrow("Sesión caducada");
-    await expect(listNotesAction()).rejects.toThrow("Sesión caducada");
-    await expect(createTodoAction({ title: "Intento sin sesión" })).rejects.toThrow("Sesión caducada");
+    // Sin sesión, las acciones redirigen a /login: en producción un error lanzado no llega legible al cliente (#92).
+    await expect(listNotesAction()).rejects.toEqual(expect.objectContaining({ digest: expect.stringMatching(/^NEXT_REDIRECT;[a-z]+;\/login;/) }));
+    await expect(createTodoAction({ title: "Intento sin sesión" })).rejects.toEqual(expect.objectContaining({ digest: expect.stringMatching(/^NEXT_REDIRECT;[a-z]+;\/login;/) }));
 
     const members = [{ workspaceId: "ws-user-a", userId: "user-a", role: "owner" }];
     const todosB = [{ id: "todo-b", workspaceId: "ws-user-b", createdBy: "user-b", title: "Secreto B", detail: "", dueDate: "2026-11-04", priority: "high", isDone: false, doneAt: null, createdAt: new Date(), updatedAt: new Date() }];
@@ -138,6 +139,10 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
     const unauthRes = await middleware(new NextRequest("http://localhost:3100/hoy"));
     expect(unauthRes.status).toBe(307);
     expect(unauthRes.headers.get("location")).toBe("http://localhost:3100/login");
+    // Una Server Action sin sesión no se redirige en el middleware: la acción misma redirige con NEXT_REDIRECT (#92).
+    const actionRes = await middleware(new NextRequest("http://localhost:3100/hoy", { method: "POST", headers: { "next-action": "abc123" } }));
+    expect(actionRes.status).toBe(200);
+    expect(actionRes.headers.get("location")).toBeNull();
 
     setSupabaseServerClientFactoryForTests((cookieMethods) => ({
       auth: {
@@ -188,8 +193,10 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any);
 
-    await expect(signInWithPasswordAction({ email: "ana@agencia.es", password: "password123" })).rejects.toThrow("No se pudo iniciar sesión");
-    await expect(signUpWithPasswordAction({ email: "ana@agencia.es", password: "password123" })).rejects.toThrow("No se pudo iniciar sesión");
+    // Los fallos de autenticación se devuelven con un mensaje genérico, para que lleguen al cliente en producción (#92).
+    expect(await signInWithPasswordAction({ email: "ana@agencia.es", password: "password123" })).toEqual({ ok: false, message: "No se pudo iniciar sesión" });
+    expect(await signUpWithPasswordAction({ email: "ana@agencia.es", password: "password123" })).toEqual({ ok: false, message: "No se pudo iniciar sesión" });
+    expect(await signInWithPasswordAction({ email: "no-es-correo", password: "password123" })).toEqual({ ok: false, message: "Correo electrónico inválido" });
     expect(await signInWithPasswordAction({ email: "ana@agencia.es", password: "password123" })).toEqual({ ok: true, workspaceId: "ws-primer-inicio", userId: "u-login" });
     expect(await signUpWithPasswordAction({ email: "ana@agencia.es", password: "password123", workspaceName: "Agencia Ana" })).toEqual({ ok: true, workspaceId: "ws-primer-inicio", requiresEmailConfirmation: false });
     expect(await signInWithMagicLinkAction({ email: "ana@agencia.es" })).toEqual({ ok: true, message: GENERIC_MAGIC_LINK_MESSAGE });
