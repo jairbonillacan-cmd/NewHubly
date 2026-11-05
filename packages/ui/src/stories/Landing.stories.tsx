@@ -1,39 +1,49 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React from "react";
-import { BentoSection } from "../landing/BentoSection";
+import { FeatureGrid } from "../landing/FeatureGrid";
 import { GlassCard } from "../landing/GlassCard";
-import { HeroSection } from "../landing/HeroSection";
+import { AppPreview } from "../landing/AppPreview";
+import { LandingHero } from "../landing/LandingHero";
+import { LandingNav } from "../landing/LandingNav";
+import { DataSection, FaqSection, FinalCta, LandingFooter, PainSection } from "../landing/LandingSections";
 import { PillNav } from "../landing/PillNav";
 import { ThemeToggle } from "../landing/ThemeToggle";
 import { tokens } from "../tokens";
 
-const meta: Meta<typeof HeroSection> = {
-  title: "Landing/Bloques Editoriales",
-  component: HeroSection,
+const meta: Meta<typeof LandingHero> = {
+  title: "Landing/Marketing",
+  component: LandingHero,
 };
 
 export default meta;
-type Story = StoryObj<typeof HeroSection>;
+type Story = StoryObj<typeof LandingHero>;
 
-export const NavegacionPildora: Story = {
+export const PaginaCompleta: Story = {
+  render: () => (
+    <div className="bg-(--surface-canvas) text-(--text-primary)">
+      <LandingNav />
+      <LandingHero />
+      <AppPreview />
+      <PainSection />
+      <FeatureGrid />
+      <DataSection />
+      <FaqSection />
+      <FinalCta />
+      <LandingFooter />
+    </div>
+  ),
+};
+
+export const TarjetasDeProducto: Story = {
+  render: () => <FeatureGrid />,
+};
+
+export const NavegacionPildoraLegal: Story = {
   render: () => (
     <div style={{ position: "relative", minHeight: tokens.space[12], paddingBlock: tokens.space[10], backgroundColor: tokens.color.surfaceBrand, borderRadius: tokens.radius.xl }}>
       <PillNav activeSection="inicio" />
     </div>
   ),
-};
-
-export const SeccionHeroCompleta: Story = {
-  render: () => (
-    <div style={{ position: "relative" }}>
-      <PillNav activeSection="inicio" />
-      <HeroSection />
-    </div>
-  ),
-};
-
-export const CuadriculaBentoEditorial: Story = {
-  render: () => <BentoSection />,
 };
 
 export const TarjetaLiquidGlassYSelectorTema: Story = {
