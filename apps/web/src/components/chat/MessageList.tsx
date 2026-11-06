@@ -92,10 +92,12 @@ export function MessageList({
           const isNew = freshMessageIds ? freshMessageIds.has(entry.id) : baselineMax.current !== null && entry.number > baselineMax.current;
           const dayLabel = showDaySeparator ? daySeparatorLabel(entry.sentAt, now) : null;
           return <React.Fragment key={entry.id}>
-            {dayLabel && <li role="separator" aria-label={dayLabel} className="my-2 flex items-center gap-2 px-2 text-xs font-semibold text-(--text-muted)">
-              <span aria-hidden="true" className="h-px grow bg-(--border-subtle)" />
-              <span>{dayLabel}</span>
-              <span aria-hidden="true" className="h-px grow bg-(--border-subtle)" />
+            {dayLabel && <li className="my-2 px-2">
+              <div role="separator" aria-label={dayLabel} className="flex items-center gap-2 text-xs font-semibold text-(--text-muted)">
+                <span aria-hidden="true" className="h-px grow bg-(--border-subtle)" />
+                <span>{dayLabel}</span>
+                <span aria-hidden="true" className="h-px grow bg-(--border-subtle)" />
+              </div>
             </li>}
             <MessageItem entry={entry} name={isOwn ? "Tú" : personName(entry.authorId, people.get(entry.authorId))}
               person={people.get(entry.authorId)} isOwn={isOwn} canEdit={conversation.writable && isOwn}

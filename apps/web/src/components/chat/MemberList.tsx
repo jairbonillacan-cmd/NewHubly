@@ -48,9 +48,11 @@ export function DirectoryErrorBanner({ error, onRetry }: { error: string | null 
   if (!error) return null;
   return <Alert status="warning" role="alert" className="bg-(--status-warning-bg) text-(--status-warning-text)">
     <Alert.Indicator />
-    <Alert.Content className="flex flex-wrap items-center justify-between gap-2">
-      <Alert.Title className="text-(--status-warning-text)">{error}</Alert.Title>
-      {onRetry && <Button size="sm" variant="ghost" className={control} onPress={onRetry}>Reintentar directorio</Button>}
+    <Alert.Content className="w-full sm:flex-row">
+      <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:flex-row">
+        <Alert.Title className="text-(--status-warning-text)">{error}</Alert.Title>
+        {onRetry && <Button size="sm" variant="ghost" className={control} onPress={onRetry}>Reintentar directorio</Button>}
+      </div>
     </Alert.Content>
   </Alert>;
 }

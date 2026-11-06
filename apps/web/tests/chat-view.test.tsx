@@ -111,6 +111,7 @@ describe("Interfaz del chat", () => {
     );
     expect(html).toContain('role="separator" aria-label="Ayer"');
     expect(html).toContain('role="separator" aria-label="Hoy"');
+    expect(html).not.toMatch(/<li[^>]*role="separator"/i);
     expect(html).toContain('data-grouped="true"');
     expect(html).toContain('dateTime="2026-11-05T15:00:00.000Z"');
     expect(html).toContain("Ahora · 15:12");
@@ -136,7 +137,9 @@ describe("Interfaz del chat", () => {
     for (const label of ["Selector de emojis", "Buscar emoji", "Frecuentes", "Gestos", "Emociones", "Trabajo", "Símbolos", "Pulgar arriba"]) {
       expect(html).toContain(label);
     }
+    expect(html).toMatch(/<div role="grid" aria-label="Frecuentes"><div role="row"/);
     const emptyHtml = renderToStaticMarkup(<EmojiPicker initialQuery="inexistente-xyz" onSelect={vi.fn()} />);
     expect(emptyHtml).toContain("No hay emojis que coincidan con tu búsqueda.");
+    expect(emptyHtml).not.toContain('role="grid"');
   });
 });

@@ -128,22 +128,24 @@ export function EmojiPicker({ onSelect, onClose, initialQuery = "", initialCateg
             onPress={() => { setCategory(cat.id); setActiveIndex(0); }} className="min-h-8 px-2 text-xs">{cat.label}</Button>
         ))}
       </div>
-      <div role="grid" aria-label="Lista de emojis" onKeyDown={handleGridKeyDown} className="max-h-56 space-y-2 overflow-y-auto pr-1">
+      <div onKeyDown={handleGridKeyDown} className="max-h-56 space-y-2 overflow-y-auto pr-1">
         {groups.length ? groups.map((group) => (
           <section key={group.id} aria-label={group.label}>
             <h3 className="mb-1 text-xs font-semibold text-(--text-secondary)">{group.label}</h3>
-            <div role="row" className="grid grid-cols-8 gap-1">
-              {group.items.map((item) => {
-                const idx = cursor++;
-                return (
-                  <button key={`${group.id}-${item.emoji}`} ref={(el) => { buttonRefs.current[idx] = el; }}
-                    type="button" role="gridcell" tabIndex={idx === safeActive ? 0 : -1} aria-label={item.label} title={item.label}
-                    onFocus={() => setActiveIndex(idx)} onClick={() => onSelect(item.emoji)}
-                    className="flex size-8 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-lg hover:bg-(--surface-interactive) focus-visible:outline-2 focus-visible:outline-(--focus-ring-color)">
-                    <span aria-hidden="true">{item.emoji}</span>
-                  </button>
-                );
-              })}
+            <div role="grid" aria-label={group.label}>
+              <div role="row" className="grid grid-cols-8 gap-1">
+                {group.items.map((item) => {
+                  const idx = cursor++;
+                  return (
+                    <button key={`${group.id}-${item.emoji}`} ref={(el) => { buttonRefs.current[idx] = el; }}
+                      type="button" role="gridcell" tabIndex={idx === safeActive ? 0 : -1} aria-label={item.label} title={item.label}
+                      onFocus={() => setActiveIndex(idx)} onClick={() => onSelect(item.emoji)}
+                      className="flex size-8 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-lg hover:bg-(--surface-interactive) focus-visible:outline-2 focus-visible:outline-(--focus-ring-color)">
+                      <span aria-hidden="true">{item.emoji}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </section>
         )) : <p role="status" className="py-4 text-center text-xs text-(--text-secondary)">No hay emojis que coincidan con tu búsqueda.</p>}
