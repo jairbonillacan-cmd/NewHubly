@@ -57,7 +57,7 @@ function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAge
   };
   return (
     <Dropdown>
-      <Dropdown.Trigger aria-label={`Cambiar de espacio (actual: ${label})`} className="flex h-9 min-w-0 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-sm font-semibold whitespace-nowrap text-(--text-primary) hover:bg-(--glass-hover)">
+      <Dropdown.Trigger aria-label={`Cambiar de espacio (actual: ${label})`} className="flex h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-sm font-semibold whitespace-nowrap text-(--text-primary) hover:bg-(--glass-hover)">
         <span aria-hidden="true" className="hidden size-5 items-center justify-center rounded-md bg-(--accent-primary) text-(--text-on-accent) sm:flex"><Icon name={isAgency ? "equipo" : "usuario"} className="size-3.5" /></span>
         <span className="max-w-40 truncate">{label}</span>
         <Icon name="chevrones" className="size-3.5 text-(--text-muted)" />
@@ -292,7 +292,7 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, o
   const [theme, setTheme] = useHublyTheme();
   return (
     <div role="toolbar" aria-label="Controles del espacio" className="flex items-center gap-0.5">
-      <Button variant="ghost" onPress={onOpenPalette} aria-label="Buscar o ejecutar (Ctrl K)" className="h-11 gap-2 px-3 text-sm text-(--text-secondary) data-[hovered]:text-(--text-primary)">
+      <Button variant="ghost" onPress={onOpenPalette} aria-label="Buscar o ejecutar (Ctrl K)" className="h-11 min-w-11 gap-2 px-3 text-sm text-(--text-secondary) data-[hovered]:text-(--text-primary)">
         <Icon name="buscar" className="size-5" />
         <span className="hidden lg:inline">Buscar</span>
         <Kbd className="hidden lg:inline-flex"><Kbd.Abbr keyValue="ctrl" /><Kbd.Content>K</Kbd.Content></Kbd>
@@ -355,8 +355,8 @@ export function TopBar(props: TopBarProps) {
   const { todayDate } = props;
   return (
     <div className="flex flex-col gap-2">
-      <header className="hubly-glass hubly-enter flex h-14 items-center gap-2 rounded-(--glass-radius-access-bar) pr-1.5 pl-3 lg:gap-3">
-        <a href="/" aria-label="Hubly, inicio" className="flex min-h-11 items-center">
+      <header className="hubly-glass hubly-enter flex h-(--frame-topbar-h) items-center gap-2 rounded-(--glass-radius-access-bar) pr-1.5 pl-3 lg:gap-3">
+        <a href="/" aria-label="Hubly, inicio" className="flex min-h-11 min-w-11 items-center justify-center">
           <HubiFace className="size-7" />
         </a>
         <SpaceMenu {...props} />

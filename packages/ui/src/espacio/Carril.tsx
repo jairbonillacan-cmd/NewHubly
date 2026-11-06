@@ -26,7 +26,7 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
   const etiqueta = herramienta.disponible ? herramienta.nombre : `${herramienta.nombre}, próximamente`;
   const boton = (
     <Button variant="ghost" aria-label={etiqueta} {...(activa ? { "aria-current": "page" as const } : {})} onPress={onSelect}
-      className={`${ITEM} ${tono} ${expandido ? "h-11 justify-start gap-3 px-3" : "h-12 justify-center px-0"}`}>
+      className={`${ITEM} ${tono} ${expandido ? "h-11 justify-start gap-3 px-3" : "h-11 justify-center px-0"}`}>
       <span className="relative">
         <HerramientaIcono id={herramienta.id} activo={activa} />
         {!herramienta.disponible && !expandido && (
@@ -51,14 +51,14 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
   );
 }
 
-/** Carril izquierdo (#105, sección 3): Hoy primero y el grupo «Herramientas»; compacto (64 px) o completo (232 px). */
+/** Carril izquierdo (#105, sección 3): Hoy primero y el grupo «Herramientas»; compacto o completo, con el ancho de `--frame-rail-w` y `--frame-rail-w-open`. */
 export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPendientes, semana, chat }: CarrilProps) {
   const [hoy, ...herramientas] = HERRAMIENTAS;
   const ficha = (herramienta: Herramienta) => herramienta.id === "hoy" ? (hoyPendientes > 0 ? String(hoyPendientes) : null) : "Pronto";
   return (
     <div className="group/carril relative h-full">
     <nav aria-label="Herramientas" data-delay="1"
-      className={`hubly-glass hubly-enter hubly-carril flex h-full flex-col gap-1 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-2 whitespace-nowrap ${expandido ? "w-60" : "w-18 items-center"}`}>
+      className={`hubly-glass hubly-enter hubly-carril flex h-full flex-col gap-1 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-(--frame-rail-pad) whitespace-nowrap ${expandido ? "w-(--frame-rail-w-open)" : "w-(--frame-rail-w) items-center"}`}>
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
       {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined} aria-label="Chat"
         className={`${ITEM} flex items-center gap-3 ${expandido ? "px-3" : "justify-center"} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--glass-hover)"}`}>

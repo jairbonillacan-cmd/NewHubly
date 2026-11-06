@@ -10,7 +10,7 @@ import { WALLPAPERS, type EspacioPreferencias, type PreferenciasPatch } from "./
 import type { CaptureFieldProps, DockConfig, DockSuggestion } from "./dockConfig";
 import { WallpaperSwatch } from "./Wallpaper";
 
-const DOCK_BUTTON = "size-10 shrink-0 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
+const DOCK_BUTTON = "size-11 shrink-0 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
 
 /** «Tu imagen» (#84): URL firmada actual y acciones del servidor. Sin esto, el selector la muestra como no disponible. */
 export interface WallpaperImageControls {
@@ -254,7 +254,7 @@ export const Dock = forwardRef<HTMLInputElement, { config: DockConfig; extra?: R
   return (
     <div>
       <DockStatus suggestion={config.suggestion ?? null} />
-      <div role="toolbar" aria-label={config.label} data-delay="3" className="hubly-glass hubly-enter flex h-16 w-full min-w-0 items-center gap-1 rounded-(--glass-radius-access-card) px-2">
+      <div role="toolbar" aria-label={config.label} data-delay="3" className="hubly-glass hubly-enter flex h-(--frame-dock-h) w-full min-w-0 items-center gap-1 rounded-(--glass-radius-access-card) px-2">
         <span className={`w-16 shrink-0 px-1 text-xs font-semibold ${sinVista ? "hidden xl:block" : ""}`}>{config.context}</span>
         <DockActions actions={config.actions} />
         <CaptureField ref={ref} {...config.entry} />

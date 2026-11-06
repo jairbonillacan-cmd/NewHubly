@@ -142,7 +142,7 @@ export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: Li
   };
   const check = (on: boolean) => on && <Icon name="check" className="size-4 text-(--accent-primary)" />;
   return (
-    <div role="toolbar" aria-label="Lienzo y vista" data-delay="3" className="hubly-glass hubly-enter relative flex h-16 shrink-0 items-center gap-0.5 rounded-(--glass-radius-access-card) px-2">
+    <div role="toolbar" aria-label="Lienzo y vista" data-delay="3" className="hubly-glass hubly-enter relative flex h-(--frame-dock-h) shrink-0 items-center gap-0.5 rounded-(--glass-radius-access-card) px-2">
       <Dropdown>
         <Dropdown.Trigger aria-label="Opciones del lienzo" className={`flex cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent hover:bg-(--glass-hover) ${CONTROL}`}>
           <Icon name="tuerca" className="size-5" />
