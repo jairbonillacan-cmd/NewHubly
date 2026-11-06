@@ -139,7 +139,7 @@ function DirectForm({ people, userId, onCommand }: Pick<ChatViewProps, "people" 
           <Select.Value />
           <Select.Indicator />
         </Select.Trigger>
-        <Select.Popover>
+        <Select.Popover className="hubly-pop-surface hubly-popover-scroll rounded-xl p-1 text-(--text-primary)">
           <ListBox>
             {eligible.map((person) => {
               const name = personName(person.id, person);
@@ -271,13 +271,13 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
   });
 
   return <section className="hubly-glass flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl" aria-labelledby="chat-conversation">
-    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-(--border-default) p-3">
-      <div className="min-w-0">
+    <header className="hubly-corto-compacto flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-(--border-default) p-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
         <Button variant="ghost" size="sm" className={`${control} lg:hidden`} onPress={() => props.onSelect(null)}>
           <span aria-hidden="true">←</span> Conversaciones
         </Button>
         <h2 ref={heading} id="chat-conversation" tabIndex={-1} className="text-lg font-semibold wrap-anywhere">{conversationName(conversation, people)}</h2>
-        <p className="text-xs text-(--text-secondary)">
+        <p className="hubly-corto-sr w-full text-xs text-(--text-secondary)">
           {conversation.archived ? "Canal archivado" : conversation.kind === "channel" ? "Canal de la agencia" : "Conversación privada"}
         </p>
       </div>
@@ -297,13 +297,13 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
             person={people.get(entry.authorId)} canEdit={conversation.writable && entry.authorId === props.userId} onCommand={props.onCommand} />)}
         </ol> : <p className="p-4 text-sm text-(--text-secondary)">Todavía no hay mensajes.</p>}
     </div>
-    {conversation.writable && !props.loading ? <form className="grid shrink-0 gap-2 border-t border-(--border-default) p-3 sm:grid-cols-[1fr_auto] sm:items-end"
+    {conversation.writable && !props.loading ? <form className="hubly-corto-compacto grid shrink-0 gap-2 border-t border-(--border-default) p-3 sm:grid-cols-[1fr_auto] sm:items-end"
       onSubmit={(event) => { event.preventDefault(); if (props.sending) return; composer.current?.focus(); props.onSend(); }}>
       <label className="min-w-0">
-        <span className="mb-1 block text-sm font-semibold">Mensaje</span>
+        <span className="hubly-corto-sr mb-1 block text-sm font-semibold">Mensaje</span>
         {/* Mientras se envía el campo queda en solo lectura, no deshabilitado, para que el foco siga en el compositor. */}
         <TextArea ref={composer} fullWidth rows={2} value={props.draft} readOnly={props.sending} aria-busy={props.sending} maxLength={4000}
-          onChange={(event) => props.onDraft(event.target.value)} placeholder="Escribe un mensaje…" />
+          onChange={(event) => props.onDraft(event.target.value)} placeholder="Escribe un mensaje…" className="hubly-corto-entrada" />
       </label>
       <Button type="submit" variant="primary" className={control} isPending={props.sending} isDisabled={!props.sending && !props.draft.trim()}>
         {props.sending ? "Enviando…" : props.failedSend ? "Reintentar envío" : "Enviar"}
@@ -320,8 +320,8 @@ export function ChatView(props: ChatViewProps) {
   const listHeading = useRef<HTMLHeadingElement>(null);
   return <div className="flex min-h-0 min-w-0 grow flex-col gap-3">
     {conversation && <h1 className="sr-only lg:hidden">Chat</h1>}
-    <header className={`hubly-glass shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl p-3 hubly-corto-compacto ${conversation ? "hidden lg:flex" : "flex"}`}>
-      <div className="hubly-corto-sr">
+    <header className={`hubly-glass hubly-corto-sr shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl p-3 ${conversation ? "hidden lg:flex" : "flex"}`}>
+      <div>
         <p className={sectionLabel}>{props.workspaceName}</p>
         <h1 className="text-2xl font-semibold">Chat</h1>
       </div>
@@ -336,18 +336,22 @@ export function ChatView(props: ChatViewProps) {
     </Alert>}
     <span role="status" className="sr-only">{props.notice}</span>
     <div className="grid min-h-0 grow grid-rows-[minmax(0,1fr)] gap-3 lg:grid-cols-[minmax(var(--chat-list-min),var(--chat-list-max))_minmax(0,1fr)]">
-      <aside className={`hubly-glass min-h-0 min-w-0 overflow-y-auto rounded-2xl p-3 ${conversation ? "hidden lg:block" : ""}`} aria-labelledby="chat-list-title">
-        <h2 ref={listHeading} id="chat-list-title" tabIndex={-1} className="mb-2 text-base font-semibold">Conversaciones</h2>
-        <div className="flex flex-wrap gap-1 pb-2">
-          <Button size="sm" variant={props.unreadOnly ? "ghost" : "secondary"} className={control} aria-pressed={!props.unreadOnly} onPress={() => props.onFilter(false)}>Todas</Button>
-          <Button size="sm" variant={props.unreadOnly ? "secondary" : "ghost"} className={control} aria-pressed={props.unreadOnly} onPress={() => props.onFilter(true)}>Sin leer {unreadCount}</Button>
+      <aside className={`hubly-glass hubly-corto-compacto min-h-0 min-w-0 overflow-y-auto rounded-2xl p-3 ${conversation ? "hidden lg:block" : ""}`} aria-labelledby="chat-list-title">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
+          <h2 ref={listHeading} id="chat-list-title" tabIndex={-1} className="text-base font-semibold">Conversaciones</h2>
+          <div className="flex flex-wrap gap-1">
+            <Button size="sm" variant={props.unreadOnly ? "ghost" : "secondary"} className={control} aria-pressed={!props.unreadOnly} onPress={() => props.onFilter(false)}>Todas</Button>
+            <Button size="sm" variant={props.unreadOnly ? "secondary" : "ghost"} className={control} aria-pressed={props.unreadOnly} onPress={() => props.onFilter(true)}>Sin leer {unreadCount}</Button>
+          </div>
         </div>
-        {props.canManage && <ChannelForm onCommand={props.onCommand} />}
-        {props.canSend && <DirectForm people={props.people} userId={props.userId} onCommand={props.onCommand} />}
+        <div className="flex flex-wrap items-start gap-x-2 [&>details[open]]:w-full">
+          {props.canManage && <ChannelForm onCommand={props.onCommand} />}
+          {props.canSend && <DirectForm people={props.people} userId={props.userId} onCommand={props.onCommand} />}
+        </div>
         {(["channel", "direct"] as const).map((kind) => {
           const group = rows.filter((entry) => entry.kind === kind);
           if (!group.length) return null;
-          return <section key={kind} className="mt-3">
+          return <section key={kind} className="mt-2">
             <h3 className={sectionLabel}>{kind === "channel" ? "Canales" : "Mensajes directos"}</h3>
             <ul className="mt-1 space-y-1">{group.map((entry) => {
               const name = conversationName(entry, people);
