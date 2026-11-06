@@ -76,6 +76,6 @@ Las cuentas de Supabase y Vercel las crea el dueño del producto. Los secretos v
 
 Lienzo presenta dos o tres direcciones como páginas reales. El dueño del producto elige una. Se adopta HeroUI v3 OSS (`@heroui/react` y `@heroui/styles` sobre React Aria y Tailwind 4, [ADR 0006](adr/0006-componentes-heroui-v3-oss.md)) para los componentes base de `packages/ui`, con recreación propia sobre React Aria de los componentes ausentes en la versión gratuita y prohibición de HeroUI Pro.
 
-### Piloto de chat de agencia
+## Piloto de chat de agencia
 
 Canales, directos de dos personas, mensajes de texto e indicadores de lectura dentro de una agencia, según el [ADR 0010](adr/0010-chat-interno-de-agencia.md). Se habilita por agencia con `HUBLY_CHAT_PILOT_WORKSPACE_IDS`. Se cierra cuando dos cuentas de una agencia de prueba se escriben en canal y directo desde laptop y teléfono, el mensaje aparece en la otra sesión en menos de cinco segundos y otra agencia no ve nada en pruebas contra Postgres real. Hilos, menciones y búsqueda quedan para después del piloto.
