@@ -56,7 +56,7 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
       <span aria-hidden="true" className="mx-2 my-1.5 h-px bg-(--glass-line-strong)" />
       {expandido && <p className="m-0 px-3 pb-1 text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">Herramientas</p>}
-      <ul aria-label="Herramientas" className="m-0 flex list-none flex-col gap-1 p-0">
+      <ul className="m-0 flex list-none flex-col gap-1 p-0">
         {herramientas.map((herramienta) => (
           <li key={herramienta.id}>
             <Item herramienta={herramienta} activa={activa === herramienta.id} expandido={expandido} ficha={ficha(herramienta)} onSelect={() => onSelect(herramienta.id)} />

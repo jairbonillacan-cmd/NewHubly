@@ -39,10 +39,12 @@ export function createShortcutRegistry(shortcuts: readonly Shortcut[]) {
     byKey.set(key, shortcut);
   }
   return (event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.repeat || event.isComposing || event.altKey) return;
+    const withModifier = event.ctrlKey || event.metaKey;
     const target = event.target as HTMLElement | null;
-    if (event.defaultPrevented || event.repeat || event.isComposing || event.altKey ||
-      target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target?.tagName ?? "")) return;
-    const shortcut = byKey.get(`${event.ctrlKey || event.metaKey ? "ctrl " : ""}${event.key.toLowerCase()}`);
+    // Mientras se escribe, las teclas sueltas son texto; las combinaciones con Ctrl o Cmd (Ctrl K) siguen activas.
+    if (!withModifier && (target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target?.tagName ?? ""))) return;
+    const shortcut = byKey.get(`${withModifier ? "ctrl " : ""}${event.key.toLowerCase()}`);
     if (shortcut) {
       event.preventDefault();
       shortcut.run();

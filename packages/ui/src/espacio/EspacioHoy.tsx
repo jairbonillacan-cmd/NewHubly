@@ -4,7 +4,7 @@ import { Button, Dropdown } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { Hubi, type HubiPose } from "../components/brand/Hubi";
-import { hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyTheme, type HublyThemePreference } from "../landing/ThemeToggle";
+import { hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyThemePreference } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
 import { BackgroundPicker, CaptureField, Dock, DockMore, DockStatus, type WallpaperImageControls } from "./Dock";
@@ -32,9 +32,7 @@ export interface EspacioHoyProps {
   initialPreferences?: EspacioPreferencias | undefined;
   /** Se llama con las preferencias completas cada vez que cambian (fondo, opacidad, distribución o paneles). */
   onPreferencesChange?: ((prefs: EspacioPreferencias) => void) | undefined;
-  /** Tema guardado de la persona; si llega, manda sobre el del navegador al entrar. */
-  initialTheme?: HublyTheme | undefined;
-  /** Preferencia guardada, incluido «system» (#105); manda sobre initialTheme. */
+  /** Tema guardado de la persona, incluido «system» (#105); si llega, manda sobre el del navegador al entrar. */
   initialThemePreference?: HublyThemePreference | undefined;
   /** Se llama cuando la persona cambia de tema desde el menú del perfil o la paleta. */
   onThemeChange?: ((theme: HublyThemePreference) => void) | undefined;
@@ -115,7 +113,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
     : undefined;
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
-  const initialPreference = props.initialThemePreference ?? props.initialTheme ?? null;
+  const initialPreference = props.initialThemePreference ?? null;
   const lastPersistedTheme = useRef<HublyThemePreference | null>(initialPreference);
   const skipFirstTheme = useRef(true);
 
@@ -299,11 +297,14 @@ export function EspacioHoy(props: EspacioHoyProps) {
     ...(dock ? [{ key: dock.entry.shortcut, label: "Escribir un pendiente", run: focusCapture }, ...dock.actions] : []),
   ];
 
+  // Un solo oyente de teclado durante toda la visita; en cada render solo cambia el registro al que apunta.
+  const dispatchShortcut = useRef<(event: KeyboardEvent) => void>(noop);
+  dispatchShortcut.current = createShortcutRegistry(shortcuts);
   useEffect(() => {
-    const onKeyDown = createShortcutRegistry(shortcuts);
+    const onKeyDown = (event: KeyboardEvent) => dispatchShortcut.current(event);
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [shortcuts]);
+  }, []);
 
   return (
     // Marco fijo (#105): en escritorio, una cuadrícula con la barra superior, el carril y el dock fijos; solo el contenido se desliza.

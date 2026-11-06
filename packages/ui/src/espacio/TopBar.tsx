@@ -110,11 +110,11 @@ function AccountMenu({ timezone, userEmail, shortcuts, onExport, onSignOut }: Pi
       <Dropdown.Popover placement="bottom end" className={`${MENU} w-80`}>
         <div className="flex flex-col gap-3 border-b border-(--glass-line) px-2.5 pt-2 pb-3">
           <div className="flex items-start gap-3">
-            <span className="relative flex size-16 shrink-0 items-center justify-center rounded-full bg-(--accent-primary) text-2xl font-bold text-(--text-on-accent)">
-              <span aria-hidden="true">{initialOf(userEmail) ?? <Icon name="usuario" className="size-7" />}</span>
-              <Button isIconOnly isDisabled aria-label="Cambiar foto, muy pronto" className="absolute -right-1 -bottom-1 size-11 rounded-full border-2 border-(--surface-raised) bg-(--surface-raised) text-(--text-secondary)">
-                <Icon name="camara" className="size-4" />
-              </Button>
+            <span aria-hidden="true" className="relative flex size-16 shrink-0 items-center justify-center rounded-full bg-(--accent-primary) text-2xl font-bold text-(--text-on-accent)">
+              {initialOf(userEmail) ?? <Icon name="usuario" className="size-7" />}
+              <span className="absolute -right-0.5 -bottom-0.5 flex size-6 items-center justify-center rounded-full border-2 border-(--surface-raised) bg-(--surface-raised) text-(--text-secondary)">
+                <Icon name="camara" className="size-3.5" />
+              </span>
             </span>
             <div className="min-w-0 grow pt-1">
               <p className="m-0 truncate text-sm font-semibold">{profileName(userEmail)}</p>
@@ -123,7 +123,7 @@ function AccountMenu({ timezone, userEmail, shortcuts, onExport, onSignOut }: Pi
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="secondary" isDisabled aria-label="Cambiar foto, muy pronto" className="min-h-11">Cambiar foto</Button>
+            <Button size="sm" variant="secondary" isDisabled aria-label="Cambiar foto, muy pronto" className="min-h-11"><Icon name="camara" className="size-4" /> Cambiar foto</Button>
             <Chip size="sm" variant="soft">Muy pronto</Chip>
           </div>
         </div>
