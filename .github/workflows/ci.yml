@@ -163,7 +163,8 @@ jobs:
           EOF
         env:
           PGPASSWORD: postgres
-      - run: psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20261103000000_initial_schema.sql -f supabase/migrations/20261104000000_fase1b_agency_roles_invitations_visibility.sql -f supabase/migrations/20261105000000_user_preferences.sql -f supabase/migrations/20261106000000_user_wallpapers_storage.sql
+      # Todas las migraciones en orden de nombre (issue 134): una nueva ya no queda fuera de la prueba por olvido.
+      - run: for f in $(ls supabase/migrations/*.sql | sort); do psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$f"; done
         env:
           PGPASSWORD: postgres
       - run: pnpm test

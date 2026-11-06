@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 
-export type WallpaperId = "contornos" | "patron" | "tinta" | "grafito" | "imagen";
+export type WallpaperId = "contornos" | "patron" | "tinta" | "grafito" | "puntos" | "cuadricula" | "aurora" | "hubis" | "arena" | "imagen";
 export type LayoutId = "libre" | "lado" | "enfoque";
 export type PanelId = "hoy" | "nota" | "notas";
 
@@ -19,6 +19,11 @@ export const WALLPAPERS: { id: WallpaperId; claro: string; oscuro: string }[] = 
   { id: "patron", claro: "Patrón H", oscuro: "Patrón H" },
   { id: "tinta", claro: "Niebla", oscuro: "Tinta" },
   { id: "grafito", claro: "Papel", oscuro: "Grafito" },
+  { id: "puntos", claro: "Puntos", oscuro: "Puntos" },
+  { id: "cuadricula", claro: "Cuadrícula", oscuro: "Cuadrícula" },
+  { id: "aurora", claro: "Aurora", oscuro: "Aurora" },
+  { id: "hubis", claro: "Hubis", oscuro: "Hubis" },
+  { id: "arena", claro: "Arena", oscuro: "Medianoche" },
 ];
 
 /** Cambio parcial: también los paneles se pueden cambiar uno a uno. */
