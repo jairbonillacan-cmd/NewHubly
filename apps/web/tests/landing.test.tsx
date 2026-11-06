@@ -11,9 +11,11 @@ describe("Landing pública de Hubly en apps/web (#85)", () => {
     expect(html).toContain("glass-panel");
     expect(html).toContain("Deja de preguntar");
     expect(html).toContain("«¿quién tiene esto?»");
-    expect(html).toContain("Hoy, cada cosa vive en un lado distinto.");
-    expect(html).toContain("Lo que Hubly hace por tu agencia.");
-    expect(html).toContain("Tus datos son tuyos.");
+    expect(html).toContain("Todo está en algún lado.");
+    expect(html).toContain("Así se ve un día con Hubly.");
+    expect(html).toContain("Hubi te acompaña en la app.");
+    expect(html).toContain("Lo que ya usas y lo que viene.");
+    expect(html).toContain("Lo de tus clientes se queda contigo.");
     expect(html).toContain("Lo que nos preguntan.");
     expect(html).toContain("Empieza con tu día de hoy.");
     expect(html).toContain("/marca/hubi-volumen-claro-laptop-512.webp");

@@ -292,10 +292,24 @@ body {
 .hubly-bars > span:nth-child(8) { transition-delay: calc(var(--motion-step) * 3.5); }
 @keyframes hubly-pop { 0% { transform: scale(0.96); opacity: 0; } 100% { transform: none; opacity: 1; } }
 .hubly-pop { animation: hubly-pop var(--motion-fast) var(--motion-ease) both; }
+/* Landing viva (issue 127): Hubi se asoma cuando su bloque aparece, saluda al pasar el ratón y la tira de poses se desliza. */
+.hubly-peek { transition: transform var(--motion-slow) var(--motion-ease), opacity var(--motion-slow) var(--motion-ease); transition-delay: calc(var(--motion-step) * 2); }
+.hubly-motion .hubly-reveal:not([data-visible="true"]) .hubly-peek { opacity: 0; transform: translateY(40%) rotate(-6deg); }
+@keyframes hubly-wiggle { 0%, 100% { transform: rotate(0deg); } 30% { transform: rotate(-7deg); } 65% { transform: rotate(5deg); } }
+.hubly-wiggle { transform-origin: 50% 100%; }
+.hubly-wiggle:hover { animation: hubly-wiggle 0.6s ease-in-out; }
+@keyframes hubly-marquee { to { transform: translateX(-50%); } }
+.hubly-marquee { width: max-content; animation: hubly-marquee 48s linear infinite; }
+.hubly-marquee:hover { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
   .hubly-reveal, .hubly-bars > span { transition: none; }
   .hubly-motion .hubly-reveal:not([data-visible="true"]), .hubly-motion .hubly-bars:not([data-visible="true"]) > span { opacity: 1; transform: none; }
   .hubly-enter, .hubly-float, .hubly-pop { animation: none; }
+  .hubly-peek { transition: none; }
+  .hubly-motion .hubly-reveal:not([data-visible="true"]) .hubly-peek { opacity: 1; transform: none; }
+  .hubly-wiggle:hover { animation: none; }
+  .hubly-marquee { width: auto; flex-wrap: wrap; justify-content: center; animation: none; }
+  .hubly-marquee [data-copia] { display: none; }
   .hubly-draw { animation: none; stroke-dashoffset: 0; }
 }
 
