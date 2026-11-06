@@ -40,6 +40,8 @@ describe("Chat: adjuntos en bucket privado, cuarentena y retiro inmediato (Issue
       "private.chat_reserve_attachment_upload(uuid,uuid,uuid,text,text,integer)",
       "private.chat_register_attachment(uuid,uuid,uuid,uuid,text,text,integer,integer,integer)",
       "private.chat_purge_deleted_message_attachments()",
+      "private.chat_can_purge_message_attachments(uuid,uuid,uuid)", "private.chat_can_delete_attachment_object(text)",
+      "private.chat_message_attachment_paths(uuid,uuid,uuid)", "private.chat_expired_reservation_paths(uuid,uuid,uuid)",
     ]) {
       const [p] = await db.execute<{ a: boolean; pub: boolean }>(sql`select has_function_privilege('anon', ${fn}, 'execute') as a, has_function_privilege('public', ${fn}, 'execute') as pub`);
       expect(p).toEqual({ a: false, pub: false });
@@ -85,8 +87,55 @@ describe("Chat: adjuntos en bucket privado, cuarentena y retiro inmediato (Issue
 
     await as(owner, sql`select private.chat_change_message(${agency}::uuid, ${general}::uuid, ${chMsg}::uuid, null)`);
     const [remainingAtt] = await db.execute<{ n: number }>(sql`select count(*)::int as n from private.chat_attachments where message_id = ${chMsg}::uuid`);
-    const [remainingObj] = await db.execute<{ n: number }>(sql`select count(*)::int as n from storage.objects where bucket_id = 'chat-attachments' and name like ${`${agency}/${general}/%`}`);
     expect(remainingAtt?.n).toBe(0);
-    expect(remainingObj?.n).toBe(0);
+    // El disparador ya no borra filas de storage.objects por SQL (dejaría el archivo físico huérfano): la app borra
+    // por la API antes de retirar. Las filas que quedaran ya no se sirven a nadie.
+    const [remainingObj] = await db.execute<{ n: number }>(sql`select count(*)::int as n from storage.objects where bucket_id = 'chat-attachments' and name = ${reserved[0]!.final_path}`);
+    expect(remainingObj?.n).toBe(1);
+    expect(await as(viewer, sql`select name from storage.objects where bucket_id = 'chat-attachments' and name = ${reserved[0]!.final_path}`)).toHaveLength(0);
+    expect(await as(owner, sql`select name from storage.objects where bucket_id = 'chat-attachments' and name = ${reserved[0]!.final_path}`)).toHaveLength(0);
+  });
+
+  it("no tiene política UPDATE en Storage y el registro conserva la cuarentena para borrarla por la API", async () => {
+    const [policies] = await db.execute<{ n: number }>(sql`
+      select count(*)::int as n from pg_policies where schemaname = 'storage' and tablename = 'objects' and cmd in ('UPDATE', 'ALL')
+        and (coalesce(qual, '') like '%chat-attachments%' or coalesce(with_check, '') like '%chat-attachments%' or policyname like 'chat_attachments%')`);
+    expect(policies?.n).toBe(0);
+    const [fnSrc] = await db.execute<{ src: string }>(sql`select prosrc as src from pg_proc where oid = 'private.chat_register_attachment(uuid,uuid,uuid,uuid,text,text,integer,integer,integer)'::regprocedure`);
+    expect(fnSrc?.src).not.toMatch(/storage\.objects|allow_delete_query/);
+    const [trgSrc] = await db.execute<{ src: string }>(sql`select prosrc as src from pg_proc where oid = 'private.chat_purge_deleted_message_attachments()'::regprocedure`);
+    expect(trgSrc?.src).not.toMatch(/storage\.objects|allow_delete_query/);
+
+    const [{ id: general }] = await as<{ id: string }>(owner, sql`select private.chat_ensure_general(${agency}::uuid) as id`);
+    const [{ id: msg }] = await as<{ id: string }>(editor, sql`select private.chat_send_message(${agency}::uuid, ${general}::uuid, ${crypto.randomUUID()}::uuid, 'Adjunto del editor') as id`);
+    const [res] = await as<{ id: string; quarantine_path: string; final_path: string }>(editor, sql`select id, quarantine_path, final_path from private.chat_reserve_attachment_upload(${agency}::uuid, ${general}::uuid, ${msg}::uuid, 'foto.png', 'image/png', 2048)`);
+    await as(editor, sql`insert into storage.objects (bucket_id, name, owner) values ('chat-attachments', ${res!.quarantine_path}, ${editor}::uuid), ('chat-attachments', ${res!.final_path}, ${editor}::uuid)`);
+    await as(editor, sql`select private.chat_register_attachment(${agency}::uuid, ${general}::uuid, ${msg}::uuid, ${res!.id}::uuid, 'foto.png', 'image/png', 2048, 10, 10)`);
+    const [quarantine] = await db.execute<{ n: number }>(sql`select count(*)::int as n from storage.objects where bucket_id = 'chat-attachments' and name = ${res!.quarantine_path}`);
+    expect(quarantine?.n).toBe(1);
+
+    const canDelete = async (sub: string, path: string) =>
+      (await as<{ ok: boolean }>(sub, sql`select private.chat_can_delete_attachment_object(${path}) as ok`))[0]?.ok;
+    // El autor puede borrar la cuarentena ya registrada (limpieza tras commit) y el archivo final.
+    expect(await canDelete(editor, res!.quarantine_path)).toBe(true);
+    expect(await canDelete(editor, res!.final_path)).toBe(true);
+    // Un owner de la agencia puede purgar adjuntos ajenos de un canal; otro editor, un viewer o alguien de fuera, no.
+    expect(await canDelete(owner, res!.final_path)).toBe(true);
+    expect(await canDelete(third, res!.final_path)).toBe(false);
+    expect(await canDelete(viewer, res!.final_path)).toBe(false);
+    expect(await canDelete(outsider, res!.final_path)).toBe(false);
+
+    const ownerPaths = await as<{ object_path: string; required: boolean }>(owner, sql`select object_path, required from private.chat_message_attachment_paths(${agency}::uuid, ${general}::uuid, ${msg}::uuid)`);
+    expect(ownerPaths.filter((r) => r.required).map((r) => r.object_path)).toEqual([res!.final_path]);
+    expect(ownerPaths.map((r) => r.object_path)).toContain(res!.quarantine_path);
+    await expect(as(third, sql`select object_path from private.chat_message_attachment_paths(${agency}::uuid, ${general}::uuid, ${msg}::uuid)`)).rejects.toMatchObject({ cause: { code: "42501" } });
+
+    // Reservas vencidas: su autor obtiene las rutas para borrarlas por la API y puede borrarlas aunque estén vencidas.
+    const [stale] = await as<{ id: string; quarantine_path: string; final_path: string }>(editor, sql`select id, quarantine_path, final_path from private.chat_reserve_attachment_upload(${agency}::uuid, ${general}::uuid, ${msg}::uuid, 'tarde.png', 'image/png', 512)`);
+    await db.execute(sql`update private.chat_attachment_reservations set expires_at = now() - interval '1 minute' where id = ${stale!.id}::uuid`);
+    const expired = await as<{ p: string }>(editor, sql`select p from private.chat_expired_reservation_paths(${agency}::uuid, ${general}::uuid, ${msg}::uuid) as p`);
+    expect(expired.map((r) => r.p).sort()).toEqual([stale!.final_path, stale!.quarantine_path].sort());
+    expect(await as(owner, sql`select p from private.chat_expired_reservation_paths(${agency}::uuid, ${general}::uuid, ${msg}::uuid) as p`)).toHaveLength(0);
+    expect(await canDelete(editor, stale!.quarantine_path)).toBe(true);
   });
 });

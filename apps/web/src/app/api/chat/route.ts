@@ -5,6 +5,7 @@ import {
 } from "@hubly/contracts";
 import { SessionExpiredError } from "../../../server/composition/auth";
 import { getChatService } from "../../../server/composition/chat";
+import { ChatAttachmentError, ChatAttachmentPurgeError, purgeMessageAttachmentsFromStorage } from "../../../server/composition/chat-attachments";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,8 @@ const json = (value: unknown, status = 200) => Response.json(value, { status, he
 function failed(error: unknown) {
   if (error instanceof SessionExpiredError) return json({ error: "Tu sesión caducó." }, 401);
   if (error instanceof ChatAccessError) return json({ error: "Chat o conversación no disponible." }, 404);
+  if (error instanceof ChatAttachmentPurgeError) return json({ error: error.message }, 503);
+  if (error instanceof ChatAttachmentError) return json({ error: error.message }, 400);
   if (error instanceof ChatRequestError) {
     return json({ error: error.message }, error.reason === "conflict" ? 409 : error.reason === "rate-limit" ? 429 : 400);
   }
@@ -107,6 +110,10 @@ export async function POST(request: Request): Promise<Response> {
     const input = chatCommandSchema.safeParse(value);
     if (!input.success) return json({ error: "Revisa los datos del chat." }, 400);
     const chat = await getChatService(input.data.workspaceId);
+    if (input.data.kind === "remove") {
+      // Los archivos se borran por la API de Storage ANTES de retirar: si la purga falla, el mensaje no se retira.
+      await purgeMessageAttachmentsFromStorage(input.data.workspaceId, input.data.conversationId, input.data.messageId);
+    }
     const result = await chat.command(input.data);
     return json(result.message ? { ...result, message: chatMessageSchema.parse(result.message) } : result);
   } catch (error) {

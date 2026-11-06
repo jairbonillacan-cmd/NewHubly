@@ -28,7 +28,9 @@ export interface SignedChatAttachment {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const PDF_DANGER_RE = /\/(?:JavaScript|JS|Launch|OpenAction|AA|EmbeddedFiles?|RichMedia|ObjStm|URI|SubmitForm|ImportData|GoToR|GoToE|XFA)(?![A-Za-z0-9_])/;
+// Los enlaces normales (/URI) se admiten; se rechazan acciones automáticas, archivos incrustados y objetos comprimidos.
+const PDF_DANGER_RE = /\/(?:JavaScript|JS|Launch|OpenAction|AA|EmbeddedFiles?|RichMedia|ObjStm|SubmitForm|ImportData|GoToR|GoToE|XFA)(?![A-Za-z0-9_])/;
+export const CHAT_ATTACHMENT_PDF_REJECTED_MESSAGE = "Este PDF trae acciones automáticas, archivos incrustados u objetos comprimidos que no podemos revisar. Expórtalo de nuevo como PDF sencillo.";
 const ascii = (text: string) => Array.from(text, (c) => c.charCodeAt(0));
 const startsWith = (b: Uint8Array, sig: readonly number[], off = 0) => b.length >= off + sig.length && sig.every((v, i) => b[off + i] === v);
 const invalidFile = (msg = "El archivo no es una imagen (JPEG, PNG, WebP, GIF) ni un PDF válido.") => new ChatAttachmentError(msg);
@@ -118,7 +120,7 @@ function sanitizePdf(bytes: Uint8Array): Uint8Array {
   if (eof < 0 || bytes.length - eof > 1024) throw invalidFile();
   const decoded = text.replace(/\x23([0-9a-fA-F]{2})/g, (_, hex: string) => String.fromCharCode(Number.parseInt(hex, 16)));
   if (PDF_DANGER_RE.test(text) || PDF_DANGER_RE.test(decoded)) {
-    throw invalidFile("Por seguridad no se admiten archivos PDF con acciones o scripts incrustados.");
+    throw invalidFile(CHAT_ATTACHMENT_PDF_REJECTED_MESSAGE);
   }
   let end = eof + 5;
   while (end < bytes.length && (bytes[end] === 0x0a || bytes[end] === 0x0d)) end += 1;
@@ -166,6 +168,15 @@ export async function reserveChatAttachmentUploads(params: {
     if (f.byteSize > CHAT_ATTACHMENT_MAX_BYTES) throw new ChatAttachmentError("El archivo supera el límite de 10 MB.");
     return { fileName: sanitizeAttachmentFileName(f.fileName), mimeType: f.mimeType as ChatAttachmentMimeType, byteSize: Math.trunc(f.byteSize) };
   });
+  const bucket = (await createSupabaseServerClient()).storage.from(CHAT_ATTACHMENTS_BUCKET);
+  // Antes de que la reserva nueva borre las vencidas, se borran sus objetos por la API de Storage (no bloqueante).
+  try {
+    const expired = await withUserContext(claims, (tx) => tx.execute<{ object_path: string }>(
+      sql`select p as object_path from private.chat_expired_reservation_paths(${workspaceId}::uuid, ${conversationId}::uuid, ${messageId}::uuid) as p`,
+    ));
+    const expiredPaths = [...expired].map((r) => r.object_path).filter(Boolean);
+    if (expiredPaths.length > 0) await bucket.remove(expiredPaths);
+  } catch { /* La limpieza de reservas vencidas no impide reservar. */ }
   const rows = await withUserContext(claims, async (tx) => {
     const out: Array<{ id: string; file_name: string; mime_type: ChatAttachmentMimeType; byte_size: number; quarantine_path: string }> = [];
     for (const s of specs) {
@@ -177,7 +188,6 @@ export async function reserveChatAttachmentUploads(params: {
     }
     return out;
   });
-  const bucket = (await createSupabaseServerClient()).storage.from(CHAT_ATTACHMENTS_BUCKET);
   const reservations: ReservedChatAttachmentUpload[] = [];
   for (const r of rows) {
     const quarantinePath = r.quarantine_path || chatAttachmentQuarantinePath(workspaceId, conversationId, r.id);
@@ -241,6 +251,8 @@ export async function commitChatAttachmentUploads(params: {
     await bucket.remove([...quarantinePaths, ...uploadedFinalPaths]).catch(() => undefined);
     throw error;
   }
+  // Registro correcto: la copia sin sanear se borra por la API de Storage (la política permite borrar la
+  // cuarentena de un adjunto ya registrado). Si falla, no se pierde el adjunto; queda para limpieza posterior.
   await bucket.remove(quarantinePaths).catch(() => undefined);
   const results: SignedChatAttachment[] = [];
   for (const item of prepared) {
@@ -251,73 +263,32 @@ export async function commitChatAttachmentUploads(params: {
   return results;
 }
 
-export async function uploadChatMessageAttachments(params: {
-  workspaceId: string; conversationId: string; messageId: string; files: ReadonlyArray<{ name: string; bytes: Uint8Array }>;
-}): Promise<SignedChatAttachment[]> {
-  const { workspaceId, conversationId, messageId, files } = params;
-  if (!UUID_RE.test(workspaceId) || !UUID_RE.test(conversationId) || !UUID_RE.test(messageId)) throw new ChatAttachmentError("Identificadores de mensaje o conversación inválidos.");
-  const { claims } = await getVerifiedServerSession();
-  if (!isChatEnabled(workspaceId)) throw new ChatAccessError();
-  if (files.length === 0 || files.length > CHAT_ATTACHMENT_MAX_COUNT) throw new ChatAttachmentError("Puedes adjuntar entre 1 y 5 archivos por mensaje.");
-  const sanitized = files.map((f) => sanitizeChatAttachment(f.bytes, f.name));
-  const reserved = await withUserContext(claims, async (tx) => {
-    const out: Array<SanitizedChatAttachment & { id: string; objectPath: string }> = [];
-    for (const item of sanitized) {
-      const [row] = await tx.execute<{ id: string; final_path?: string }>(
-        sql`select id, final_path from private.chat_reserve_attachment_upload(${workspaceId}::uuid, ${conversationId}::uuid, ${messageId}::uuid, ${item.fileName}, ${item.mimeType}, ${Math.trunc(item.byteSize)}::integer)`,
-      );
-      if (!row) throw new ChatAccessError();
-      const id = UUID_RE.test(row.id ?? "") ? row.id : crypto.randomUUID();
-      out.push({ ...item, id, objectPath: row.final_path || chatAttachmentObjectPath(workspaceId, conversationId, id) });
-    }
-    return out;
-  });
-  const bucket = (await createSupabaseServerClient()).storage.from(CHAT_ATTACHMENTS_BUCKET);
-  const uploadedPaths: string[] = [];
-  try {
-    for (const item of reserved) {
-      const { error: uploadError } = await bucket.upload(item.objectPath, item.bytes, { contentType: item.mimeType, upsert: false, cacheControl: "3600" });
-      if (uploadError) throw new ChatAccessError();
-      uploadedPaths.push(item.objectPath);
-    }
-    await withUserContext(claims, async (tx) => {
-      for (const item of reserved) {
-        await tx.execute(
-          sql`select private.chat_register_attachment(${workspaceId}::uuid, ${conversationId}::uuid, ${messageId}::uuid, ${item.id}::uuid, ${item.fileName}, ${item.mimeType}, ${Math.trunc(item.byteSize)}::integer, ${item.width}::integer, ${item.height}::integer)`,
-        );
-      }
-    });
-  } catch (error) {
-    if (uploadedPaths.length > 0) await bucket.remove(uploadedPaths).catch(() => undefined);
-    throw error;
-  }
-  const results: SignedChatAttachment[] = [];
-  for (const item of reserved) {
-    const signed = await signAttachmentObject(item.objectPath, item.fileName);
-    if (!signed) throw new ChatAccessError();
-    results.push({ id: item.id, messageId, fileName: item.fileName, mimeType: item.mimeType, byteSize: item.byteSize, width: item.width, height: item.height, ...signed });
-  }
-  return results;
+export class ChatAttachmentPurgeError extends Error {
+  constructor() { super("No se pudieron borrar los archivos adjuntos del mensaje. Inténtalo de nuevo."); this.name = "ChatAttachmentPurgeError"; }
 }
 
-export async function purgeMessageAttachmentsFromStorage(
-  workspaceId: string, conversationId: string, messageId: string, objectPaths?: readonly string[],
-): Promise<string[]> {
+/**
+ * Borra por la API de Storage (bucket.remove) los archivos de un mensaje antes de retirarlo. La lista de rutas y el
+ * permiso (autor, u owner/admin que puede leer la conversación) los decide `private.chat_message_attachment_paths`;
+ * la política de borrado del bucket aplica la misma regla. Si algún adjunto registrado no se borra, lanza
+ * `ChatAttachmentPurgeError` y el mensaje no debe retirarse.
+ */
+export async function purgeMessageAttachmentsFromStorage(workspaceId: string, conversationId: string, messageId: string): Promise<string[]> {
   if (!UUID_RE.test(workspaceId) || !UUID_RE.test(conversationId) || !UUID_RE.test(messageId)) throw new ChatAttachmentError("Identificadores de mensaje o conversación inválidos.");
   const { claims } = await getVerifiedServerSession();
   if (!isChatEnabled(workspaceId)) throw new ChatAccessError();
-  const paths = objectPaths
-    ? [...objectPaths]
-    : (await withUserContext(claims, (tx) =>
-        tx.execute<{ object_path: string }>(
-          sql`select a.object_path from private.chat_attachments a join private.chat_messages m on m.workspace_id = a.workspace_id and m.conversation_id = a.conversation_id and m.id = a.message_id where a.workspace_id = ${workspaceId}::uuid and a.conversation_id = ${conversationId}::uuid and a.message_id = ${messageId}::uuid and m.author_id = ${claims.sub}::uuid`,
-        ),
-      )).map((r: { object_path: string }) => r.object_path).filter(Boolean);
-  if (paths.length > 0) {
-    const bucket = (await createSupabaseServerClient()).storage.from(CHAT_ATTACHMENTS_BUCKET);
-    const { error } = await bucket.remove(paths);
-    if (error) throw new ChatAccessError();
-  }
+  const rows = await withUserContext(claims, (tx) => tx.execute<{ object_path: string; required: boolean }>(
+    sql`select object_path, required from private.chat_message_attachment_paths(${workspaceId}::uuid, ${conversationId}::uuid, ${messageId}::uuid)`,
+  ));
+  const paths = [...new Set([...rows].map((r) => r.object_path).filter(Boolean))];
+  if (paths.length === 0) return [];
+  const required = [...rows].filter((r) => r.required && r.object_path).map((r) => r.object_path);
+  const bucket = (await createSupabaseServerClient()).storage.from(CHAT_ATTACHMENTS_BUCKET);
+  const { data, error } = await bucket.remove(paths);
+  if (error) throw new ChatAttachmentPurgeError();
+  // Storage devuelve los objetos borrados; si la política filtró alguno, no aparece y no se retira el mensaje.
+  const removed = new Set((data ?? []).map((o: { name?: string }) => o.name));
+  if (required.some((p) => !removed.has(p))) throw new ChatAttachmentPurgeError();
   return paths;
 }
 
