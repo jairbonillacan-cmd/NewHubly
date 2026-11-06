@@ -1,4 +1,4 @@
-import { ChatAccessError } from "@hubly/application";
+import { ChatAccessError, ChatRequestError } from "@hubly/application";
 import {
   chatCommandSchema, chatExportSchema, chatHistoryResultSchema, chatHistorySchema, chatMessageSchema,
   chatParticipantSchema, chatScopeSchema, chatSyncResultSchema, chatSyncSchema, type ChatMessage,
@@ -14,6 +14,9 @@ const json = (value: unknown, status = 200) => Response.json(value, { status, he
 function failed(error: unknown) {
   if (error instanceof SessionExpiredError) return json({ error: "Tu sesión caducó." }, 401);
   if (error instanceof ChatAccessError) return json({ error: "Chat o conversación no disponible." }, 404);
+  if (error instanceof ChatRequestError) {
+    return json({ error: error.message }, error.reason === "conflict" ? 409 : error.reason === "rate-limit" ? 429 : 400);
+  }
   const failure = error as { code?: unknown; cause?: { code?: unknown } } | null;
   switch (failure?.cause?.code ?? failure?.code) {
     case "42501": return json({ error: "Chat o conversación no disponible." }, 404);
@@ -21,7 +24,10 @@ function failed(error: unknown) {
     case "P0429": return json({ error: "Has enviado muchos mensajes. Espera un momento." }, 429);
     case "22023":
     case "23514": return json({ error: "La solicitud de chat no es válida." }, 400);
-    default: return json({ error: "No se pudo completar la solicitud de chat." }, 500);
+    default:
+      // Solo el tipo y el código: nunca el cuerpo de los mensajes ni los datos de la solicitud.
+      console.error("[chat] fallo inesperado", { name: (error as Error | null)?.name, code: failure?.cause?.code ?? failure?.code });
+      return json({ error: "No se pudo completar la solicitud de chat." }, 500);
   }
 }
 

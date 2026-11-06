@@ -49,7 +49,7 @@ export async function loadWorkspaceDashboardAction(workspaceId?: string): Promis
   const activeWorkspace: WorkspaceSummary = { id: ctx.workspaceId, name: ctx.workspaceName, slug: ctx.workspaceSlug ?? ctx.workspaceId, kind: ctx.workspaceKind, role: ctx.role };
   const wallpaperImageUrl = preferences.wallpaper === "imagen" ? await signUserWallpaper(ctx.userId) : null;
   const chat = activeWorkspace.kind === "agency" && isChatEnabled(activeWorkspace.id)
-    ? { unread: await composeChatService(activeWorkspace, ctx.claims).list(activeWorkspace.id)
+    ? { unread: await composeChatService(activeWorkspace, ctx.claims, ctx.db).list(activeWorkspace.id)
       .then((conversations) => conversations.filter((item) => item.unread).length, () => null) }
     : null;
   return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences, wallpaperImageUrl, currentUserEmail: ctx.userEmail, currentUserName: profile.name, avatarUrl: profile.avatarUrl, presence: profile.presence, chat };

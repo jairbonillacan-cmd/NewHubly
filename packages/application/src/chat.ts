@@ -1,3 +1,4 @@
+import { chatCommandSchema, chatHistorySchema, chatSyncSchema } from "@hubly/contracts";
 import type { ChatCommand, ChatCommandResult, ChatConversation, ChatHistory, ChatMessage, ChatParticipant, ChatSync } from "@hubly/contracts";
 import type { WorkspaceRole } from "@hubly/domain";
 
@@ -30,6 +31,29 @@ export class ChatAccessError extends Error {
   }
 }
 
+export type ChatFailure = "conflict" | "rate-limit" | "invalid";
+
+/** Error de una solicitud de chat bien formada que rechaza una regla de negocio. */
+export class ChatRequestError extends Error {
+  constructor(readonly reason: ChatFailure) {
+    super(reason === "conflict" ? "Ya existe un canal con ese nombre."
+      : reason === "rate-limit" ? "Has enviado muchos mensajes. Espera un momento." : "La solicitud de chat no es válida.");
+  }
+}
+
+const sqlFailures: Record<string, ChatFailure> = { "23505": "conflict", P0429: "rate-limit", "22023": "invalid", "23514": "invalid" };
+
+/** Traduce los códigos de Postgres a errores de aplicación; lo desconocido sigue como fallo interno. */
+function translate(error: unknown): never {
+  const failure = error as { code?: unknown; cause?: { code?: unknown } } | null;
+  const code = String(failure?.cause?.code ?? failure?.code ?? "");
+  if (code === "42501") throw new ChatAccessError();
+  const reason = sqlFailures[code];
+  throw reason ? new ChatRequestError(reason) : error;
+}
+
+const guarded = <T>(run: () => Promise<T>) => run().catch(translate);
+
 export function createChatService(ctx: ChatContext, repo: ChatRepository) {
   function requireAgency(workspaceId: string) {
     if (!ctx.enabled || ctx.workspaceKind !== "agency" || ctx.workspaceId !== workspaceId) {
@@ -40,23 +64,31 @@ export function createChatService(ctx: ChatContext, repo: ChatRepository) {
   return {
     async list(workspaceId: string) {
       requireAgency(workspaceId);
-      return await repo.conversations();
+      return await guarded(() => repo.conversations());
     },
     async bootstrap(workspaceId: string) {
       requireAgency(workspaceId);
-      return await repo.ensureGeneral();
+      return await guarded(() => repo.ensureGeneral());
     },
     async history(workspaceId: string, id: string, before?: number) {
       requireAgency(workspaceId);
-      const page = await repo.history(id, before);
+      const input = chatHistorySchema.safeParse({ workspaceId, conversationId: id, before });
+      if (!input.success) throw new ChatRequestError("invalid");
+      const page = await guarded(() => repo.history(input.data.conversationId, input.data.before));
       if (!page) throw new ChatAccessError();
       return page;
     },
     async sync(workspaceId: string, id: string | undefined, after: number) {
       requireAgency(workspaceId);
-      return await repo.sync(id, after);
+      const input = chatSyncSchema.safeParse({ workspaceId, conversationId: id, after });
+      if (!input.success) throw new ChatRequestError("invalid");
+      return await guarded(() => repo.sync(input.data.conversationId, input.data.after));
     },
-    async command(input: ChatCommand) {
+    async command(raw: ChatCommand) {
+      // También se valida aquí: el servicio no depende de que cada adaptador aplique antes el contrato.
+      const parsed = chatCommandSchema.safeParse(raw);
+      if (!parsed.success) throw new ChatRequestError("invalid");
+      const input = parsed.data;
       requireAgency(input.workspaceId);
       if (ctx.role === "viewer" && input.kind !== "read") throw new ChatAccessError();
       if (input.kind === "createChannel" || input.kind === "renameChannel" || input.kind === "archiveChannel") {
@@ -73,15 +105,15 @@ export function createChatService(ctx: ChatContext, repo: ChatRepository) {
       }
       if ((input.kind === "edit" || input.kind === "remove")
           && !await repo.ownsMessage(input.conversationId, input.messageId)) throw new ChatAccessError();
-      return await repo.command(input);
+      return await guarded(() => repo.command(input));
     },
     async directory(workspaceId: string) {
       requireAgency(workspaceId);
-      return await repo.directory();
+      return await guarded(() => repo.directory());
     },
     async exportOwn(workspaceId: string) {
       requireAgency(workspaceId);
-      return await repo.ownMessages();
+      return await guarded(() => repo.ownMessages());
     },
   };
 }
