@@ -487,10 +487,10 @@ export function EspacioHoy(props: EspacioHoyProps) {
           <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
-      {chat && !chat.active && herramienta === "hoy" && <a href={chat.unreadHref}
+      {chat && !chat.active && herramienta === "hoy" && <a href={chat.unread ? chat.unreadHref : chat.href}
         className="hubly-glass flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-(--glass-hover)">
         <Icon name="chat" className="size-5" />
-        <span>{chat.unread === null ? "Abrir chat" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
+        <span>{chat.unread === null ? "Abrir chat" : chat.unread === 0 ? "Chat al día" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
       </a>}
       {chat?.active ? chat.content : herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : enLienzo ? (
         <Lienzo items={lienzoItems} barra={{ slot: barraSlot, ...barraProps }} />

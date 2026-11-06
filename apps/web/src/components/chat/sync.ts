@@ -22,16 +22,20 @@ export function isMessageEndVisible(end: number, history: Pick<DOMRect, "top" | 
 export function startChatPolling(run: () => Promise<boolean>, windowEvents: Window = window, page: Document = document) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let running = false;
+  let pending = false;
   let stopped = false;
   function refresh() {
     clearTimeout(timer);
-    if (stopped || page.hidden || running || windowEvents.navigator.onLine === false) return;
+    if (stopped || page.hidden || windowEvents.navigator.onLine === false) return;
+    // Si ya hay una sincronización en curso, se encola otra inmediata en lugar de descartarla.
+    if (running) { pending = true; return; }
     running = true;
+    pending = false;
     let more = false;
     void run().then((result) => { more = result; }, () => {}).finally(() => {
       running = false;
       if (!stopped && !page.hidden && windowEvents.navigator.onLine !== false) {
-        timer = setTimeout(refresh, more ? 0 : CHAT_POLL_MS);
+        timer = setTimeout(refresh, more || pending ? 0 : CHAT_POLL_MS);
       }
     });
   }
