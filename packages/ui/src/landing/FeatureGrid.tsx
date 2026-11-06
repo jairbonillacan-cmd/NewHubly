@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { ApprovalVisual, CaptureVisual, TeamVisual, TodayVisual } from "./FeatureVisuals";
+import { Reveal } from "./Reveal";
 import { SectionIntro } from "./SectionIntro";
 import { StatusBadge, type FeatureStatus } from "./StatusBadge";
 
@@ -13,6 +15,8 @@ export interface Feature {
   tint: string;
   visual: ReactNode;
   details: ReactNode;
+  /** Hubi que se asoma por la esquina del panel (issue 127). */
+  hubi?: Exclude<HubiPose, "sentado" | "laptop">;
 }
 
 const TODAY_POINTS = [
@@ -45,8 +49,8 @@ export const LANDING_FEATURES: readonly Feature[] = [
     </>,
   },
   {
-    id: "captura", title: "Escribe como piensas. Hubly entiende.", status: "disponible", tint: "bg-(--landing-paper)", visual: <CaptureVisual />,
-    body: "Una sola línea basta. Hubly detecta la fecha, la prioridad y la nota, y lo acomoda donde va.",
+    id: "captura", title: "Una línea y ya quedó.", status: "disponible", tint: "bg-(--landing-paper)", visual: <CaptureVisual />, hubi: "ideas",
+    body: "Escribes «llamar a Lumen mañana !alta» y queda un pendiente para mañana con prioridad alta. Sin formularios.",
     details: <ul className="flex flex-wrap gap-2">
       {["hoy · mañana → fecha", "!alta → prioridad", "@nota → vínculo"].map((chip) => (
         <li key={chip} className="rounded-full bg-(--landing-ice) px-3 py-1.5 text-xs font-semibold text-(--landing-accent-text)">{chip}</li>
@@ -54,7 +58,7 @@ export const LANDING_FEATURES: readonly Feature[] = [
     </ul>,
   },
   {
-    id: "equipo", title: "Cada quien sabe lo suyo.", status: "pronto", tint: "bg-(--landing-ice)", visual: <TeamVisual />,
+    id: "equipo", title: "Cada quien sabe lo suyo.", status: "pronto", tint: "bg-(--landing-ice)", visual: <TeamVisual />, hubi: "comunidad",
     body: "Creas tu agencia, invitas a tu equipo con un enlace y eliges qué ve cada persona. Lo privado sigue siendo tuyo.",
     details: <dl className="grid gap-2 text-sm">
       {ROLES.map(([role, body]) => (
@@ -65,7 +69,7 @@ export const LANDING_FEATURES: readonly Feature[] = [
     </dl>,
   },
   {
-    id: "aprobacion", title: "El cliente dice sí desde su celular.", status: "proximamente", tint: "bg-(--landing-mist)", visual: <ApprovalVisual />,
+    id: "aprobacion", title: "El cliente dice sí desde su celular.", status: "proximamente", tint: "bg-(--landing-mist)", visual: <ApprovalVisual />, hubi: "correo",
     body: "Le mandas un enlace, lo revisa y aprueba o pide cambios. No tiene que crear cuenta ni recordar contraseñas.",
     details: <ul className="list-disc space-y-1 pl-5 text-sm text-(--text-secondary)">
       {["Enlace que caduca", "Comentarios en cada pieza", "Historial de quién aprobó y cuándo"].map((item) => <li key={item}>{item}</li>)}
@@ -76,11 +80,19 @@ export const LANDING_FEATURES: readonly Feature[] = [
 export function FeatureGrid() {
   return (
     <section id="producto" aria-labelledby="producto-titulo" data-landing-section="producto" className="mx-auto max-w-(--landing-width) scroll-mt-6 px-4 pt-20 lg:pt-28">
-      <SectionIntro id="producto-titulo" label="Producto" title="Lo que Hubly hace por tu agencia." body="Te decimos claro qué ya funciona y qué viene en camino." />
+      <Reveal>
+        <SectionIntro id="producto-titulo" label="Producto" title="Lo que ya usas y lo que viene." body="Cada cosa lleva su etiqueta: ya disponible, muy pronto o próximamente." />
+      </Reveal>
       <div className="mt-8 grid gap-12 lg:mt-12 lg:gap-13">
         {LANDING_FEATURES.map((feature, index) => (
-          <article key={feature.id} aria-labelledby={`feature-${feature.id}`} data-landing-section={`producto-${feature.id}`} className="grid items-center gap-5 lg:grid-cols-2 lg:gap-12">
-            <div aria-hidden="true" data-product-panel="" className={`grid min-w-0 content-center rounded-(--landing-panel-radius) px-4 py-6 lg:min-h-80 lg:px-7 lg:py-10 ${feature.tint} ${index % 2 === 1 ? "lg:order-last" : ""}`}>
+          <Reveal key={feature.id}>
+          <article aria-labelledby={`feature-${feature.id}`} data-landing-section={`producto-${feature.id}`} className="grid items-center gap-5 lg:grid-cols-2 lg:gap-12">
+            <div aria-hidden="true" data-product-panel="" className={`relative grid min-w-0 content-center rounded-(--landing-panel-radius) px-4 py-6 lg:min-h-80 lg:px-7 lg:py-10 ${feature.tint} ${index % 2 === 1 ? "lg:order-last" : ""}`}>
+              {feature.hubi && (
+                <div className={`hubly-peek absolute -top-12 ${index % 2 === 1 ? "left-4 lg:left-7" : "right-4 lg:right-7"}`}>
+                  <Hubi pose={feature.hubi} tamano={96} decorativo priority="deferred" className="hubly-wiggle size-20 lg:size-24" sizing="css" />
+                </div>
+              )}
               {feature.visual}
             </div>
             <div className="flex min-w-0 flex-col gap-3 lg:px-4">
@@ -90,6 +102,7 @@ export function FeatureGrid() {
               {feature.details}
             </div>
           </article>
+          </Reveal>
         ))}
       </div>
       <p className="mt-4 text-center text-xs text-(--text-muted)">Ejemplo ilustrativo. Los nombres son inventados.</p>

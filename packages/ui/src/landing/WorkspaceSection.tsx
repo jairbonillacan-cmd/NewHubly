@@ -14,8 +14,8 @@ export function WorkspaceSection() {
       <div className="grid items-center gap-6 rounded-(--landing-panel-radius) border border-(--border-default) bg-(--landing-card) px-5 py-8 lg:grid-cols-2 lg:gap-12 lg:p-12">
         <div className="grid gap-3">
           <StatusBadge status="disponible" />
-          <h2 id="espacio-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-5xl">Un lugar de trabajo que se siente tuyo.</h2>
-          <p className="max-w-md leading-relaxed text-(--text-secondary)">Elige tu fondo, acomoda tus paneles y trabaja en claro u oscuro. Tu fondo solo lo ves tú.</p>
+          <h2 id="espacio-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-5xl">Tu fondo, tus paneles, tu tema.</h2>
+          <p className="max-w-md leading-relaxed text-(--text-secondary)">Cambia el fondo, cierra los paneles que no usas y pasa de claro a oscuro. El fondo solo lo ves tú.</p>
         </div>
         <ul className="grid grid-cols-2 gap-2.5">
           {SWATCHES.map(([label, wallpaper, theme]) => (

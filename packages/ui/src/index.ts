@@ -22,6 +22,8 @@ export * from "./landing/Reveal";
 export * from "./landing/FeatureGrid";
 export * from "./landing/WorkspaceSection";
 export * from "./landing/ShortcutsSection";
+export * from "./landing/DiaSection";
+export * from "./landing/HubiSection";
 export * from "./landing/RoadmapSection";
 export * from "./landing/LandingSections";
 export * from "./landing/LegalPage";

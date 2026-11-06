@@ -1,4 +1,4 @@
-import { AudienceSection, DataSection, FaqSection, FeatureGrid, FinalCta, LandingFooter, LandingHero, LandingNav, PainSection, RoadmapSection, ShortcutsSection, WorkspaceSection } from "@hubly/ui";
+import { AudienceSection, DataSection, DiaSection, FaqSection, FeatureGrid, FinalCta, LandingFooter, LandingHero, HubiSection, LandingNav, PainSection, RoadmapSection, ShortcutsSection, WorkspaceSection } from "@hubly/ui";
 import "./landing.css";
 import type { Metadata } from "next";
 import { frauncesLatin, frauncesLatinExt } from "../fonts/fraunces";
@@ -23,9 +23,11 @@ export default function HomePage() {
         </div>
         <AudienceSection />
         <PainSection />
+        <DiaSection />
         <FeatureGrid />
         <WorkspaceSection />
         <ShortcutsSection />
+        <HubiSection />
         <RoadmapSection />
         <DataSection />
         <FaqSection />

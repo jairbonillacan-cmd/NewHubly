@@ -5,14 +5,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import {
-  AppPreview, AudienceSection, DataSection, FaqSection, FeatureGrid, FinalCta, LANDING_FAQ, LANDING_FEATURES, LANDING_NAV_LINKS,
-  LandingFooter, LandingHero, LandingNav, LegalPage, PainSection, RoadmapSection, ShortcutsSection, ThemeToggle, WorkspaceSection,
+  AppPreview, AudienceSection, DataSection, DiaSection, FaqSection, FeatureGrid, FinalCta, LANDING_FAQ, LANDING_FEATURES, LANDING_NAV_LINKS,
+  HubiSection, LandingFooter, LandingHero, LandingNav, LegalPage, PainSection, RoadmapSection, ShortcutsSection, ThemeToggle, WorkspaceSection,
 } from "../index";
 import { FaqAccordion, nextFaqIndex } from "./FaqAccordion";
 
 const currentDir = fileURLToPath(new URL(".", import.meta.url));
 const tokensCssPath = resolve(currentDir, "../tokens.css");
-const blocks = [LandingNav, LandingHero, AudienceSection, PainSection, FeatureGrid, WorkspaceSection, ShortcutsSection, RoadmapSection, DataSection, FaqSection, FinalCta, LandingFooter];
+const blocks = [LandingNav, LandingHero, AudienceSection, PainSection, DiaSection, FeatureGrid, WorkspaceSection, ShortcutsSection, HubiSection, RoadmapSection, DataSection, FaqSection, FinalCta, LandingFooter];
 
 const render = (component: (props: never) => unknown) => renderToStaticMarkup(createElement(component as () => null));
 const htmlForLanding = () => blocks.map(render).join("\n");
@@ -100,7 +100,24 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
     expect(css).toMatch(/\.hubly-motion \.hubly-reveal:not\(\[data-visible="true"\]\)/);
     expect(css).not.toMatch(/^\.hubly-reveal:not/m);
-    expect(htmlForLanding()).not.toMatch(/hubly-(enter|float|reveal)|\banimate-/);
+    // Lo que se asoma solo se oculta dentro de un bloque que aún no aparece y con JavaScript (issue 127).
+    expect(css).toMatch(/\.hubly-motion \.hubly-reveal:not\(\[data-visible="true"\]\) \.hubly-peek/);
+    expect(css).not.toMatch(/^\.hubly-peek:not|^\.hubly-motion \.hubly-peek/m);
+    const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce) {\n  .hubly-reveal"));
+    for (const name of ["hubly-peek", "hubly-wiggle", "hubly-marquee", "hubly-float"]) expect(reduced, name).toContain(name);
+    expect(htmlForLanding()).not.toMatch(/\banimate-/);
+  });
+
+  it("el día con Hubly solo usa lo que ya funciona y la tira de Hubi duplica sus tarjetas ocultas a lectores (issue 127)", () => {
+    const dia = render(DiaSection);
+    expect(listItems(dia)).toHaveLength(4);
+    for (const promised of ["aprob", "cliente lo", "programa", "publica"]) expect(dia.toLowerCase()).not.toContain(promised);
+    const tira = render(HubiSection);
+    const items = listItems(tira);
+    expect(items.length % 2).toBe(0);
+    expect(items.slice(items.length / 2).every((item) => item.includes('aria-hidden="true"'))).toBe(true);
+    expect(tira).not.toContain("campana");
+    expect(htmlForLanding()).not.toContain("hubi-volumen-campana");
   });
 
   it("la navegación y el pie muestran la firma accesible de Hubly con la cara de Hubi", () => {

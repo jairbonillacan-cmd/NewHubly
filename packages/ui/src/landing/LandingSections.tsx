@@ -1,6 +1,7 @@
 import { Hubi } from "../components/brand/Hubi";
 import { Icon } from "../espacio/icons";
 import { LandingFaq } from "./FaqAccordion";
+import { Reveal } from "./Reveal";
 
 export { PainSection } from "./PainSection";
 export { LandingFooter, DEFAULT_FOOTER_LINKS } from "./LandingFooter";
@@ -15,7 +16,10 @@ const DATA_POINTS = [
 export function DataSection() {
   return (
     <section id="privacidad" aria-labelledby="privacidad-titulo" data-landing-section="privacidad" className="mx-auto max-w-(--landing-width) scroll-mt-6 px-4 pt-20 lg:pt-28">
-      <div className="grid items-center gap-8 rounded-(--landing-panel-radius) bg-(--landing-paper) px-5 py-12 lg:grid-cols-2 lg:gap-12 lg:px-12">
+      <Reveal className="relative grid items-center gap-8 rounded-(--landing-panel-radius) bg-(--landing-paper) px-5 py-12 lg:grid-cols-2 lg:gap-12 lg:px-12">
+        <div aria-hidden="true" className="hubly-peek absolute -top-14 right-6 lg:right-12">
+          <Hubi pose="privacidad" tamano={112} decorativo priority="deferred" className="hubly-wiggle size-24 lg:size-28" sizing="css" />
+        </div>
         <div>
           <p className="mb-3 text-xs font-bold tracking-(--tracking-widest) text-(--landing-accent-text) uppercase">Privacidad</p>
           <h2 id="privacidad-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-5xl">Tus datos son tuyos.</h2>
@@ -46,7 +50,7 @@ export function DataSection() {
             ))}
           </ul>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }
@@ -57,9 +61,9 @@ export function FaqSection() {
       <div className="grid content-start gap-3">
         <p className="text-xs font-bold tracking-(--tracking-widest) text-(--landing-accent-text) uppercase">Preguntas</p>
         <h2 id="preguntas-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-5xl">Lo que nos preguntan.</h2>
-        <p className="max-w-sm leading-relaxed text-(--text-secondary)">Respuestas cortas y honestas. Si algo no está listo, lo decimos.</p>
+        <p className="max-w-sm leading-relaxed text-(--text-secondary)">Respuestas cortas. Si algo no está listo, te lo decimos.</p>
         <div className="mt-2 hidden lg:block">
-          <Hubi acabado="volumen" tamano={144} decorativo priority="deferred" className="size-36" sizing="css" />
+          <Hubi acabado="volumen" tamano={144} decorativo priority="deferred" className="hubly-wiggle size-36" sizing="css" />
         </div>
       </div>
       <LandingFaq />
@@ -70,19 +74,19 @@ export function FaqSection() {
 export function FinalCta() {
   return (
     <section aria-labelledby="cta-titulo" data-landing-section="cierre" className="mx-auto max-w-(--landing-width) px-4 pt-16 pb-12 lg:pt-24 lg:pb-18">
-      <div className="grid items-center gap-4 rounded-(--landing-end-radius) border border-(--landing-end-border) bg-(--landing-end) px-6 py-11 text-(--landing-on-end) lg:grid-cols-[minmax(0,1.7fr)_1fr] lg:gap-8 lg:px-14 lg:py-9">
+      <Reveal className="grid items-center gap-4 rounded-(--landing-end-radius) border border-(--landing-end-border) bg-(--landing-end) px-6 py-11 text-(--landing-on-end) lg:grid-cols-[minmax(0,1.7fr)_1fr] lg:gap-8 lg:px-14 lg:py-9">
         <div>
           <h2 id="cta-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-6xl">Empieza con tu día de hoy.</h2>
-          <p className="mt-4 text-(--landing-end-muted) lg:text-lg">Crea tu cuenta y ten tus pendientes en orden en un minuto.</p>
+          <p className="mt-4 text-(--landing-end-muted) lg:text-lg">Crea tu cuenta y captura tu primer pendiente en menos de un minuto.</p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <a href="/login" className="inline-flex min-h-12 items-center justify-center rounded-full bg-(--landing-on-end) px-6 font-semibold text-(--landing-end) hover:underline">Crear cuenta</a>
             <a href="/login" className="inline-flex min-h-12 items-center justify-center rounded-full border border-(--landing-on-end) px-6 font-semibold hover:underline">Ya tengo cuenta</a>
           </div>
         </div>
         <div className="justify-self-center">
-          <Hubi acabado="volumen" pose="laptop" tamano={280} decorativo priority="deferred" className="size-45 lg:size-70" sizing="css" />
+          <Hubi pose="celebrar" tamano={280} decorativo priority="deferred" className="hubly-wiggle size-45 lg:size-70" sizing="css" />
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

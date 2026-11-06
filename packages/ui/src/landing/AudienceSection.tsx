@@ -10,7 +10,7 @@ export function AudienceSection() {
   return (
     <section aria-labelledby="audiencia-titulo" data-landing-section="audiencia" className="mx-auto max-w-(--landing-width) px-4 pt-12 text-center lg:pt-18">
       <h2 id="audiencia-titulo" className="landing-display text-2xl leading-tight font-normal lg:text-3xl">
-        Pensado para quien hace que el contenido salga a tiempo
+        Para quien saca el contenido de cada semana
       </h2>
       <ul className="mt-5 flex flex-wrap justify-center gap-2.5">
         {AUDIENCE.map(([initials, name, tone]) => (
