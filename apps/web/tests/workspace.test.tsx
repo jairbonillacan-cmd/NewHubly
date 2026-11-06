@@ -47,7 +47,10 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
   it("renderiza los 4 estados obligatorios de pantalla terminada (carga, sin sesión, error y listo/vacío), conteos HeroUI y botón Cerrar sesión", async () => {
     expect(renderToStaticMarkup(<WorkspaceScreen initialStatus="loading" />)).toContain("Cargando tu espacio de trabajo…");
     expect(renderToStaticMarkup(<WorkspaceScreen initialStatus="unauthenticated" />)).toContain("Volver a iniciar sesión");
-    expect(renderToStaticMarkup(<WorkspaceScreen initialStatus="error" errorMessage="Fallo de red" />)).toContain("Reintentar");
+    const errorHtml = renderToStaticMarkup(<WorkspaceScreen initialStatus="error" errorMessage="Fallo de red" />);
+    expect(errorHtml).toContain("Reintentar");
+    expect(errorHtml).toContain("/marca/hubi-volumen-reparar-claro-256.webp");
+    expect(errorHtml).toContain("/marca/hubi-volumen-reparar-oscuro-256.webp");
     const emptyHtml = renderToStaticMarkup(<WorkspaceScreen initialStatus="ready" todayDate="2026-11-04" />);
     // Espacio con paneles de cristal (#75): exportar y cerrar sesión viven en el menú de cuenta, que se abre al pulsarlo.
     expect(emptyHtml).toContain("No tienes pendientes para hoy.");

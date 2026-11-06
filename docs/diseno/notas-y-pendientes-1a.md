@@ -38,8 +38,8 @@ Ningún PR de interfaz se aprueba si no cumple los ocho puntos siguientes:
 
 1. **Cuatro estados obligatorios con acción concreta (sin emojis como iconos; Hubi permitido en pantalla vacía como acompañamiento):**
    - **Carga:** estructura estable con reserva de espacio que evite saltos de layout (`CLS`).
-   - **Vacío:** `EmptyState` con texto específico en español, `Button` de acción directa y la mascota `Hubi` (`acabado="origen"`, `pose="sentado"`, decorativa) como acompañamiento visual, nunca en sustitución del texto ni de la acción concreta (ej. en **Hoy**: *«No tienes pendientes para hoy. Escribe arriba para capturar el primero o revisa Sin fecha.»*). Hubi no se usa en los estados de carga ni de error (`Issue #53`).
-   - **Error:** causa comprensible y `Button` real **«Reintentar»**.
+   - **Vacío:** `EmptyState` con texto específico en español, `Button` de acción directa y la mascota `Hubi` (`acabado="origen"`, `pose="sentado"`, decorativa) como acompañamiento visual, nunca en sustitución del texto ni de la acción concreta (ej. en **Hoy**: *«No tienes pendientes para hoy. Escribe arriba para capturar el primero o revisa Sin fecha.»*).
+   - **Error:** causa comprensible y `Button` real **«Reintentar»**. Hubi puede acompañar una pantalla de error como ilustración decorativa (`pose="reparar"` al fallar la carga de Hoy). En el 404, `pose="buscar"` acompaña el enlace **«Volver al inicio»** (#114).
    - **Sin permiso / sesión caducada:** explicación clara y `Button` para volver a iniciar sesión o regresar a **Hoy**.
 2. **Cero valores sueltos:** todo color, espacio, tipografía, radio, borde y alto de ventana proviene de `@hubly/ui` (validado en `pnpm lint` y `pnpm test`). Los controles interactivos usan `--border-control` ($\ge 3:1$).
 3. **Teclado completo:** todas las acciones (capturar, marcar hecho, cambiar vista, fijar, archivar, crear pendiente vinculado, exportar) funcionan sin ratón mediante las primitivas de React Aria / HeroUI y con `:focus-visible` de alto contraste.

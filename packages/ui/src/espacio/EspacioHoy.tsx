@@ -2,7 +2,7 @@
 
 import { Button, Tooltip } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Hubi } from "../components/brand/Hubi";
+import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { useHublyTheme, type HublyTheme } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
@@ -474,17 +474,18 @@ export interface EspacioEstadoProps {
   title?: string;
   message: string;
   busy?: boolean;
+  pose?: HubiPose;
   action?: { label: string; onPress: () => void };
   children?: ReactNode;
 }
 
 /** Estados de carga, sin sesión y error del espacio, sobre el mismo fondo y con Hubi (#75). */
-export function EspacioEstado({ title, message, busy, action }: EspacioEstadoProps) {
+export function EspacioEstado({ title, message, busy, pose = "sentado", action }: EspacioEstadoProps) {
   return (
     <main aria-busy={busy} role={busy ? "status" : "alert"} className="relative isolate flex min-h-dvh items-center justify-center p-4 text-(--text-primary)">
       <Wallpaper fondo="contornos" />
       <div className="hubly-glass hubly-enter flex w-full max-w-md flex-col items-center gap-4 rounded-2xl px-6 py-8 text-center">
-        <Hubi acabado="volumen" tamano={96} decorativo {...(busy ? { className: "hubly-float" } : {})} />
+        <Hubi acabado="volumen" pose={pose} tamano={96} decorativo {...(busy ? { className: "hubly-float" } : {})} />
         {title && <h1 className="m-0 text-xl font-bold">{title}</h1>}
         <p className="m-0 text-sm leading-relaxed text-(--text-secondary)">{message}</p>
         {action && (
