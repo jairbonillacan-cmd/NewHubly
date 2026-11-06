@@ -6,7 +6,7 @@ import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import {
   AppPreview, AudienceSection, DataSection, DiaSection, FaqSection, FeatureGrid, FinalCta, LANDING_FAQ, LANDING_FEATURES, LANDING_NAV_LINKS,
-  HubiSection, LandingFooter, LandingHero, LandingNav, LegalPage, PainSection, RoadmapSection, ShortcutsSection, ThemeToggle, WorkspaceSection,
+  HubiSection, LandingFooter, LandingHero, LandingNav, LegalPage, PLANES, PricingSection, formatPrecio, PainSection, RoadmapSection, ShortcutsSection, ThemeToggle, WorkspaceSection,
 } from "../index";
 import { FaqAccordion, nextFaqIndex } from "./FaqAccordion";
 
@@ -26,8 +26,9 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
   });
 
   it("la barra apunta a secciones que existen en la página", () => {
-    const sectionIds = ["producto", "lo-que-viene", "privacidad", "preguntas"];
-    expect(LANDING_NAV_LINKS.map((link) => link.href.slice(1))).toEqual(sectionIds);
+    const sectionIds = ["producto", "lo-que-viene", "preguntas"];
+    expect(LANDING_NAV_LINKS.filter((link) => link.href.startsWith("#")).map((link) => link.href.slice(1))).toEqual(sectionIds);
+    expect(LANDING_NAV_LINKS.map((link) => link.href)).toContain("/precios");
     const html = [FeatureGrid, RoadmapSection, DataSection, FaqSection].map(render).join("");
     for (const id of sectionIds) expect(html).toContain(`id="${id}"`);
   });
@@ -148,5 +149,24 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
     expect(sources).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     expect(sources).not.toContain("style={{");
     expect(htmlForLanding()).not.toContain(" style=");
+  });
+
+  it("los precios salen en «Próximamente» y se muestran en pesos en cuanto se pongan (issue 129)", () => {
+    expect(PLANES.map((plan) => plan.id)).toEqual(["personal", "equipo", "agencia"]);
+    for (const plan of PLANES) expect(formatPrecio(plan, "mensual").monto).toBe("Próximamente");
+    const conPrecio = { ...PLANES[1]!, precio: { mensual: 499, anual: 399 } };
+    expect(formatPrecio(conPrecio, "mensual").monto).toMatch(/^\$\s?499 \/mes$/);
+    expect(formatPrecio(conPrecio, "anual")).toEqual({ monto: expect.stringMatching(/399 \/mes$/), detalle: "Se paga una vez al año" });
+    const html = render(PricingSection);
+    expect(html.match(/>Próximamente<\/p>/g)).toHaveLength(3);
+    expect(html).not.toMatch(/\$\s?\d|gratis/i);
+    expect(html).toContain('role="radiogroup"');
+  });
+
+  it("el pie enlaza a rutas y secciones que existen y ofrece cambiar el tema", () => {
+    const html = render(LandingFooter);
+    const hrefs = [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1] ?? "");
+    for (const href of hrefs) expect(href).toMatch(/^\/(?:$|#(?:producto|dia|lo-que-viene|hubi|privacidad|preguntas)$|precios$|login(?:\?modo=registro)?$|hoy$|privacidad$|terminos$)/);
+    expect(html).toContain("Cambiar a tema");
   });
 });

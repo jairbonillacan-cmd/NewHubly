@@ -30,6 +30,7 @@ export const KNOWN_APP_ROUTES = new Map([
   ["/invitacion", "Aceptación de invitación a agencia por fragmento URL"],
   ["/privacidad", "Política de privacidad pública"],
   ["/terminos", "Términos del servicio públicos"],
+  ["/precios", "Planes y precios públicos (precio en «Próximamente»)"],
   ["/auth/callback", "Callback de intercambio de código de autenticación"],
   ["/auth/confirm", "Enlaces de los correos de Auth (token validado en el servidor)"],
 ]);

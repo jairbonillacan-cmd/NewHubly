@@ -30,8 +30,8 @@ describe("Landing pública de Hubly en apps/web (#85)", () => {
 
     for (const route of ["/", "/login", "/privacidad", "/terminos"]) expect(hrefs).toContain(route);
     for (const href of hrefs) {
-      expect(href).toMatch(/^(\/$|\/[a-z]|#[a-z])/);
-      if (href.startsWith("#")) expect(ids.has(href.slice(1))).toBe(true);
+      expect(href).toMatch(/^(\/$|\/[a-z#]|#[a-z])/);
+      if (href.startsWith("#") || href.startsWith("/#")) expect(ids.has(href.slice(href.indexOf("#") + 1))).toBe(true);
     }
   });
 });

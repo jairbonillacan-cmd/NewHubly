@@ -1,7 +1,7 @@
 import { Card } from "@heroui/react";
 import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { buttonLinkClass } from "../heroui-classes";
-import { LandingNav } from "./LandingNav";
+import { LandingNav, SITE_NAV_LINKS } from "./LandingNav";
 import { LandingFooter } from "./LandingSections";
 
 export interface LegalSection {
@@ -21,16 +21,10 @@ export interface LegalPageProps {
 }
 
 /** Plantilla de las páginas legales con la misma barra y pie que el landing (#85) y tarjetas de HeroUI. */
-export function LegalPage({ eyebrow, title, intro, sections, current, pose }: LegalPageProps) {
+export function LegalPage({ eyebrow, title, intro, sections, pose }: LegalPageProps) {
   return (
     <div className="min-h-dvh bg-(--surface-canvas) text-(--text-primary)">
-      <LandingNav
-        links={[
-          { href: "/", label: "Inicio" },
-          { href: "/privacidad", label: "Privacidad", current: current === "/privacidad" },
-          { href: "/terminos", label: "Términos", current: current === "/terminos" },
-        ]}
-      />
+      <LandingNav links={SITE_NAV_LINKS} />
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pt-14 pb-20 lg:pt-20">
         <header className="hubly-enter flex flex-col gap-3 pb-6">
           {pose && <Hubi pose={pose} tamano={112} decorativo className="-mb-2" />}

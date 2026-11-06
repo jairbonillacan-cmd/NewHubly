@@ -78,7 +78,7 @@ export function FinalCta() {
           <h2 id="cta-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-6xl">Empieza con tu día de hoy.</h2>
           <p className="mt-4 text-(--landing-end-muted) lg:text-lg">Crea tu cuenta y captura tu primer pendiente en menos de un minuto.</p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <a href="/login" className="inline-flex min-h-12 items-center justify-center rounded-full bg-(--landing-on-end) px-6 font-semibold text-(--landing-end) hover:underline">Crear cuenta</a>
+            <a href="/login?modo=registro" className="inline-flex min-h-12 items-center justify-center rounded-full bg-(--landing-on-end) px-6 font-semibold text-(--landing-end) hover:underline">Crear cuenta</a>
             <a href="/login" className="inline-flex min-h-12 items-center justify-center rounded-full border border-(--landing-on-end) px-6 font-semibold hover:underline">Ya tengo cuenta</a>
           </div>
         </div>
