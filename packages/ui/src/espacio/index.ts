@@ -15,4 +15,7 @@ export * from "./BienvenidaDialog";
 export * from "./Carril";
 export * from "./herramientas";
 export * from "./EquipoDialog";
+export * from "./PerfilDialog";
+export * from "./FotoRecorte";
+export * from "./Lienzo";
 export * from "./EspacioHoy";

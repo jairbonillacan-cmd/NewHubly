@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -142,5 +142,17 @@ describe("Enlaces de los correos: /auth/confirm, registro con bienvenida y nombr
       if (file !== "reautenticacion.html") expect(html, file).toContain(`{{ .SiteURL }}${EMAIL_CONFIRM_PATH}?token_hash={{ .TokenHash }}`);
     }
     expect(readFileSync(resolve(dir, "confirmacion.html"), "utf8")).toContain("flujo=registro");
+  });
+
+  it("las plantillas de correo muestran a Hubi en PNG ligero servido por la propia web (issue 125)", () => {
+    const dir = resolve(__dirname, "../../../supabase/templates");
+    for (const file of readdirSync(dir).filter((name) => name.endsWith(".html"))) {
+      const images = [...readFileSync(resolve(dir, file), "utf8").matchAll(/<img src="\{\{ \.SiteURL \}\}\/([^"]+)"/g)].map(([, path]) => path ?? "");
+      expect(images, file).toHaveLength(1);
+      for (const path of images) {
+        expect(path, file).toMatch(/^marca\/correo\/hubi-[a-z]+-192\.png$/);
+        expect(statSync(resolve(__dirname, "../public", path)).size, path).toBeLessThan(40_000);
+      }
+    }
   });
 });

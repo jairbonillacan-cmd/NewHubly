@@ -98,7 +98,7 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
         {triggerLabel && <span className="text-xs">{triggerLabel}</span>}
       </Button>
       <Popover.Content placement="top" className="hubly-pop-surface w-80 rounded-2xl p-4 text-(--text-primary)">
-        <Popover.Dialog aria-label="Elegir fondo" className="flex flex-col gap-4 outline-none">
+        <Popover.Dialog aria-label="Elegir fondo" className="hubly-sin-anillo flex flex-col gap-4 outline-none">
           <div className="flex items-baseline justify-between">
             <Popover.Heading className="m-0 text-sm font-semibold">Fondo de tu espacio</Popover.Heading>
             <span className="text-xs text-(--text-muted)">Solo lo ves tú</span>
@@ -111,7 +111,7 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
                   key={wallpaper.id}
                   isSelected={prefs.fondo === wallpaper.id}
                   onChange={() => onChange({ fondo: wallpaper.id })}
-                  className="h-auto min-w-0 flex-col items-stretch gap-1.5 rounded-xl border-2 border-transparent bg-transparent p-1 text-xs font-normal text-(--text-secondary) transition-transform data-[hovered]:-translate-y-0.5 data-[selected]:border-(--accent-primary) data-[selected]:bg-transparent data-[selected]:text-(--text-primary)"
+                  className="h-auto w-full min-w-0 flex-col items-stretch justify-start text-center gap-1.5 rounded-xl border-2 border-transparent bg-transparent p-1 text-xs font-normal text-(--text-secondary) transition-transform data-[hovered]:-translate-y-0.5 data-[selected]:border-(--accent-primary) data-[selected]:bg-transparent data-[selected]:text-(--text-primary)"
                 >
                   <WallpaperSwatch fondo={wallpaper.id} />
                   {label}
@@ -164,7 +164,7 @@ export const CaptureField = forwardRef<HTMLInputElement, CaptureFieldProps>(func
     setText("");
   };
   return (
-    <form onSubmit={submit} className="relative flex min-w-0 grow items-center gap-2">
+    <form onSubmit={submit} className="relative flex min-w-44 grow items-center gap-2">
       {(tokens.length > 0 || linked) && (
         <div className="hubly-pop hubly-pop-surface absolute right-0 bottom-full left-0 mb-2 flex flex-wrap items-center gap-1 rounded-xl p-2">
           {linked && <Button size="sm" variant="secondary" onPress={linked.remove} aria-label={`Quitar el vínculo con la nota ${linked.label}`} className="min-h-11">Nota: {linked.label} ×</Button>}
@@ -203,20 +203,20 @@ function Waiting({ waiting }: Pick<DockConfig, "waiting">) {
   );
 }
 
-function DockDetails({ config }: { config: DockConfig }) {
+function DockDetails({ config, sinVista = false }: { config: DockConfig; sinVista?: boolean }) {
   const name = useId();
   const { done, total } = config.pace;
   return (
     <>
       <Waiting waiting={config.waiting} />
-      <div className="flex shrink-0 items-center gap-1 text-xs text-(--text-secondary)">
+      <div className={`shrink-0 items-center gap-1 text-xs text-(--text-secondary) ${sinVista ? "hidden xl:flex" : "flex"}`}>
         <svg viewBox="0 0 24 24" className="size-7 text-(--accent-primary)" aria-hidden="true" fill="none" strokeWidth={2.5}>
           <circle cx="12" cy="12" r="9" className="stroke-(--glass-line-strong)" />
           <circle cx="12" cy="12" r="9" pathLength="100" stroke="currentColor" strokeDasharray={`${total ? 100 * done / total : 0} 100`} transform="rotate(-90 12 12)" />
         </svg>
         <span className="lg:sr-only xl:not-sr-only">{config.pace.label}</span>
       </div>
-      <div role="radiogroup" aria-label="Distribución" className="flex shrink-0 rounded-lg bg-(--glass-hover)">
+      {!sinVista && <><div role="radiogroup" aria-label="Distribución" className="flex shrink-0 rounded-lg bg-(--glass-hover)">
         {config.views.map((view) => (
           <label key={view.id} title={view.label} className="cursor-pointer">
             <input type="radio" name={name} aria-label={view.label} checked={view.selected} onChange={view.run} className="peer sr-only" />
@@ -224,7 +224,7 @@ function DockDetails({ config }: { config: DockConfig }) {
           </label>
         ))}
       </div>
-      <span aria-live="polite" title={config.saved} className="shrink-0 text-xs text-(--text-secondary) lg:sr-only xl:not-sr-only">{config.saved}</span>
+      <span aria-live="polite" title={config.saved} className="shrink-0 text-xs text-(--text-secondary) lg:sr-only xl:not-sr-only">{config.saved}</span></>}
     </>
   );
 }
@@ -249,15 +249,16 @@ export function DockStatus({ suggestion }: { suggestion: DockSuggestion | null }
 }
 
 /** El marco elige la configuración. El dock solo presenta sus controles. */
-export const Dock = forwardRef<HTMLInputElement, { config: DockConfig; extra?: ReactNode }>(function Dock({ config, extra }, ref) {
+/** `sinVista`: el modo de paneles, el guardado y el fondo van en la barra del lienzo (issue 147). */
+export const Dock = forwardRef<HTMLInputElement, { config: DockConfig; extra?: ReactNode; sinVista?: boolean }>(function Dock({ config, extra, sinVista = false }, ref) {
   return (
     <div>
       <DockStatus suggestion={config.suggestion ?? null} />
       <div role="toolbar" aria-label={config.label} data-delay="3" className="hubly-glass hubly-enter flex h-16 w-full min-w-0 items-center gap-1 rounded-(--glass-radius-access-card) px-2">
-        <span className="w-16 shrink-0 px-1 text-xs font-semibold">{config.context}</span>
+        <span className={`w-16 shrink-0 px-1 text-xs font-semibold ${sinVista ? "hidden xl:block" : ""}`}>{config.context}</span>
         <DockActions actions={config.actions} />
         <CaptureField ref={ref} {...config.entry} />
-        <DockDetails config={config} />
+        <DockDetails config={config} sinVista={sinVista} />
         {extra}
       </div>
     </div>

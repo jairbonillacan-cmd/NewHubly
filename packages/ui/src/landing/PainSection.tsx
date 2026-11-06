@@ -1,3 +1,5 @@
+import { Hubi } from "../components/brand/Hubi";
+import { Reveal } from "./Reveal";
 import { SectionIntro } from "./SectionIntro";
 
 const CARD = "rounded-2xl bg-(--landing-card) p-3 shadow-(--landing-shadow) lg:absolute lg:p-4";
@@ -6,9 +8,15 @@ const WAVE = [3, 6, 9, 5, 11, 7, 4, 10, 6, 3, 7, 5] as const;
 export function PainSection() {
   return (
     <section aria-labelledby="problema-titulo" data-landing-section="problema" className="mx-auto max-w-(--landing-width) px-4 pt-20 lg:pt-28">
-      <SectionIntro id="problema-titulo" label="El problema" title="Hoy, cada cosa vive en un lado distinto." body="Y la pregunta de siempre llega por el chat: ¿quién tiene esto?" />
+      <Reveal>
+        <SectionIntro id="problema-titulo" label="El problema" title="Deja de repartir tu trabajo entre tantas herramientas." body="Las ideas en el celular, la parrilla en un Excel y los pendientes en un chat. Y al final alguien pregunta: «¿quién tiene esto?»" />
+      </Reveal>
       <div className="mt-8 grid gap-4 lg:mt-11 lg:grid-cols-2 lg:gap-6">
-        <article className="rounded-(--landing-panel-radius) bg-(--landing-paper) px-5 py-6 lg:px-8 lg:py-7">
+        <Reveal retraso={1} className="h-full">
+        <article className="relative h-full rounded-(--landing-panel-radius) bg-(--landing-paper) px-5 py-6 lg:px-8 lg:py-7">
+          <div aria-hidden="true" className="hubly-peek absolute -top-12 right-5 lg:right-8">
+            <Hubi pose="buscar" tamano={96} decorativo priority="deferred" className="hubly-wiggle size-20 lg:size-24" sizing="css" />
+          </div>
           <h3 className="landing-display text-2xl font-medium lg:text-3xl">Sin Hubly</h3>
           <div aria-hidden="true" className="relative mt-5 grid gap-3 px-1 text-sm lg:min-h-76">
             <div className={`${CARD} -rotate-2 lg:top-0 lg:left-0 lg:w-3/5`}>
@@ -33,7 +41,12 @@ export function PainSection() {
             </div>
           </div>
         </article>
-        <article className="rounded-(--landing-panel-radius) bg-(--landing-mist) px-5 py-6 lg:px-8 lg:py-7">
+        </Reveal>
+        <Reveal retraso={2} className="h-full">
+        <article className="relative h-full rounded-(--landing-panel-radius) bg-(--landing-mist) px-5 py-6 lg:px-8 lg:py-7">
+          <div aria-hidden="true" className="hubly-peek absolute -top-12 right-5 lg:right-8">
+            <Hubi pose="bienvenida" tamano={96} decorativo priority="deferred" className="hubly-wiggle size-20 lg:size-24" sizing="css" />
+          </div>
           <h3 className="landing-display text-2xl font-medium lg:text-3xl">Con Hubly</h3>
           <div aria-hidden="true" className="mt-5 rounded-3xl bg-(--landing-card) p-4 shadow-(--landing-shadow) lg:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -52,6 +65,7 @@ export function PainSection() {
           </div>
           <p className="mt-4 text-sm text-(--text-secondary)">Así se verá cada pieza · <strong>Próximamente</strong></p>
         </article>
+        </Reveal>
       </div>
     </section>
   );

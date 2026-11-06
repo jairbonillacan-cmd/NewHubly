@@ -14,3 +14,6 @@ Plantillas en español de los correos que envía Supabase Auth. En local las car
 Los enlaces apuntan a `/auth/confirm?token_hash=…&type=…`. La app valida el token en el servidor, así que el enlace funciona aunque se abra en otro navegador o dispositivo. La confirmación de registro añade `&flujo=registro` para abrir Hoy con la bienvenida.
 
 Si se cambia una plantilla aquí, hay que volver a pegarla en el panel de producción.
+
+## Hubi en los correos (issue 125)
+Cada plantilla muestra un Hubi de 96 px servido desde `{{ .SiteURL }}/marca/correo/`. Si cambias el dominio de producción, actualiza el **Site URL** de Supabase para que las imágenes sigan cargando. Al pegar las plantillas en Supabase, copia el archivo completo.

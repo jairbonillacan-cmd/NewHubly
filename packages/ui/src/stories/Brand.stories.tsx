@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React from "react";
-import { Hubi } from "../components/brand/Hubi";
+import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { HublySymbol, HublyWordmark } from "../components/brand/HublyLogo";
 import { tokens } from "../tokens";
 
@@ -66,23 +66,40 @@ export const MascotaHubiVariantes: Story = {
   ),
 };
 
-export const PosesDeEstado: Story = {
-  render: () => (
+function PoseGallery({ poses }: { poses: ReadonlyArray<readonly [HubiPose, string]> }) {
+  return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {([
-        ["bienvenida", "Saluda · Bienvenida"],
-        ["buscar", "Busca · Página no encontrada"],
-        ["reparar", "Repara · Error al cargar Hoy"],
-        ["correo", "Lleva un sobre · Revisa tu correo"],
-        ["ideas", "Toma nota · Tu primera idea"],
-        ["celebrar", "Levanta las patas · Todo hecho"],
-        ["privacidad", "Abraza un escudo · Privacidad"],
-      ] as const).map(([pose, label]) => (
+      {poses.map(([pose, label]) => (
         <figure key={pose} className="m-0 flex flex-col items-center gap-3 rounded-xl bg-(--surface-raised) p-5 text-center text-(--text-primary)">
-          <Hubi pose={pose} tamano={128} decorativo />
+          <Hubi acabado="volumen" pose={pose} tamano={128} decorativo />
           <figcaption className="text-sm font-semibold">{label}</figcaption>
         </figure>
       ))}
     </div>
+  );
+}
+
+export const PosesDeEstado: Story = {
+  render: () => (
+    <PoseGallery poses={[
+      ["bienvenida", "Saluda · Bienvenida"],
+      ["buscar", "Busca · Página no encontrada"],
+      ["reparar", "Repara · Error al cargar Hoy"],
+      ["correo", "Lleva un sobre · Revisa tu correo"],
+      ["ideas", "Toma nota · Tu primera idea"],
+      ["celebrar", "Levanta las patas · Todo hecho"],
+      ["privacidad", "Abraza un escudo · Privacidad"],
+    ]} />
+  ),
+};
+
+export const PosesDeMarketing: Story = {
+  render: () => (
+    <PoseGallery poses={[
+      ["campana", "Campañas · Anuncia con un megáfono"],
+      ["contenido", "Contenido · Prepara la cámara"],
+      ["metricas", "Métricas · Señala los resultados"],
+      ["comunidad", "Comunidad · Saluda al responder"],
+    ]} />
   ),
 };

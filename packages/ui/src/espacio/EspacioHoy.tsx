@@ -12,13 +12,16 @@ import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery,
 import { Carril, Proximamente, resumenSemana } from "./Carril";
 import { HERRAMIENTAS, herramientaPorId, isHerramientaId, type HerramientaId } from "./herramientas";
 import { HoyPanel } from "./HoyPanel";
+import { Lienzo, LienzoBarra, type LienzoBarraProps, type LienzoItem } from "./Lienzo";
 import { NotaPanel } from "./NotaPanel";
 import { NotasPanel } from "./NotasPanel";
+import { FotoRecorte } from "./FotoRecorte";
+import { PerfilDialog, avatarFileError } from "./PerfilDialog";
 import { useEspacioPreferencias, type EspacioPreferencias } from "./preferencias";
 import { TopBar } from "./TopBar";
 import {
   relativeDateLabel, type CaptureAnalysis, type CaptureInput, type EspacioInvitation, type EspacioInviteRole, type EspacioMember,
-  type EspacioNote, type EspacioRole, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type HoyFilter, type NoteSaveState,
+  type EspacioNote, type EspacioPresence, type EspacioProfile, type EspacioRole, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type HoyFilter, type NoteSaveState,
 } from "./types";
 import { Wallpaper } from "./Wallpaper";
 
@@ -74,8 +77,30 @@ export interface EspacioHoyProps {
   onChangeTodoVisibility?: (id: string, visibility: EspacioVisibility) => void;
   /** Correo de la sesión, para la inicial del avatar. */
   userEmail?: string | null | undefined;
+  /** Nombre, foto y cómo cambiarlos (issue 135). Sin él, editar el perfil sale como «Muy pronto». */
+  profile?: EspacioProfile | undefined;
   /** Herramienta abierta al cargar (?herramienta=); por defecto, Hoy. */
   initialHerramienta?: HerramientaId | undefined;
+}
+
+/** Acomodo inicial de los paneles en el lienzo de escritorio (issue 136), en píxeles del lienzo. */
+const LIENZO_INICIAL = {
+  hoy: { x: 0, y: 0, w: 620, h: 640 },
+  nota: { x: 644, y: 0, w: 480, h: 400 },
+  notas: { x: 644, y: 424, w: 480, h: 216 },
+} as const;
+
+/** true desde el ancho de escritorio; en el servidor y en pruebas, false (se ve la versión apilada). */
+function useIsDesktop() {
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`);
+    const update = () => setDesktop(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return desktop;
 }
 
 /** Carril compacto o completo; se recuerda en este navegador hasta que exista su preferencia en la cuenta. */
@@ -141,6 +166,12 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [herramienta, setHerramienta] = useState<HerramientaId>(props.initialHerramienta ?? "hoy");
   const [carrilExpandido, setCarrilExpandido] = useState(false);
+  const [profileName, setProfileName] = useState<string | null>(props.profile?.name ?? null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(props.profile?.avatarUrl ?? null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [recorte, setRecorte] = useState<{ file: File; error: string | null } | null>(null);
+  const [presence, setPresence] = useState<EspacioPresence>(props.profile?.presence ?? "online");
 
   useEffect(() => {
     try { setCarrilExpandido(localStorage.getItem(CARRIL_STORAGE_KEY) === "completo"); } catch { /* sin almacenamiento: compacto */ }
@@ -165,6 +196,8 @@ export function EspacioHoy(props: EspacioHoyProps) {
     window.history.pushState(window.history.state, "", id === "hoy" ? window.location.pathname : `${window.location.pathname}?herramienta=${id}`);
     document.getElementById("contenido")?.focus();
   };
+  const desktop = useIsDesktop();
+  const [barraSlot, setBarraSlot] = useState<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const desktopCapture = useRef<HTMLInputElement>(null);
   const mobileCapture = useRef<HTMLInputElement>(null);
@@ -243,18 +276,47 @@ export function EspacioHoy(props: EspacioHoyProps) {
     setPickerOpen(isDesktop() ? "desktop" : "mobile");
   };
 
+  // Elegir una foto abre el recorte (issue 150); se sube lo que la persona encuadra.
+  const pickAvatar = (file: File) => {
+    if (!props.profile) return;
+    const invalid = avatarFileError(file);
+    if (invalid) return showToast(invalid);
+    setRecorte({ file, error: null });
+  };
+  const uploadRecorte = async (file: File) => {
+    if (!props.profile || !recorte) return;
+    setAvatarBusy(true);
+    const result = await props.profile.onUploadAvatar(file);
+    setAvatarBusy(false);
+    if (!result.ok) return setRecorte({ ...recorte, error: result.message });
+    setAvatarUrl(result.value);
+    setRecorte(null);
+    showToast("Foto actualizada");
+  };
+
+  // El punto cambia al instante; si el servidor no lo guarda, vuelve al anterior y avisa.
+  const changePresence = async (status: EspacioPresence) => {
+    const onChange = props.profile?.onChangePresence;
+    if (!onChange || status === presence) return;
+    const previous = presence;
+    setPresence(status);
+    const result = await onChange(status);
+    if (!result.ok) { setPresence(previous); showToast(result.message); }
+  };
+
   const paletteActions: PaletteAction[] = [
-    { id: "pendiente", label: "Nuevo pendiente", icon: "mas", run: () => { selectHerramienta("hoy"); setTimeout(focusCapture, 0); } },
-    { id: "nota", label: "Nueva nota", icon: "nota", run: () => void createNote() },
-    { id: "fondo", label: "Cambiar fondo", icon: "imagen", run: () => setTimeout(openBackground, 0) },
+    { id: "pendiente", label: "Nuevo pendiente", hint: "Escríbelo en la captura de Hoy", icon: "mas", run: () => { selectHerramienta("hoy"); setTimeout(focusCapture, 0); } },
+    { id: "nota", label: "Nueva nota", hint: "Se abre lista para escribir", icon: "nota", run: () => void createNote() },
+    { id: "fondo", label: "Cambiar fondo", hint: "Elige el fondo de tu espacio", icon: "imagen", run: () => setTimeout(openBackground, 0) },
     prefs.distribucion === "enfoque"
-      ? { id: "libre", label: "Salir del modo enfoque", icon: "libre", run: () => setPrefs({ distribucion: "libre" }) }
-      : { id: "enfoque", label: "Modo enfoque", icon: "enfoque", run: () => setPrefs({ distribucion: "enfoque" }) },
-    { id: "tema", label: theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro", icon: "sol", run: () => setTheme(theme === "dark" ? "light" : "dark") },
-    { id: "agencia", label: "Crear agencia", icon: "mas", run: () => setTimeout(() => setTeamMode("crear"), 0) },
-    ...(activeWorkspace.kind === "agency" ? [{ id: "equipo", label: "Equipo e invitaciones", icon: "equipo" as const, run: () => setTimeout(() => setTeamMode("equipo"), 0) }] : []),
-    { id: "json", label: "Exportar en JSON", icon: "descargar", run: () => onExport("json") },
-    { id: "md", label: "Exportar en Markdown", icon: "descargar", run: () => onExport("md") },
+      ? { id: "libre", label: "Salir del modo enfoque", hint: "Vuelven todos tus paneles", icon: "libre", run: () => setPrefs({ distribucion: "libre" }) }
+      : { id: "enfoque", label: "Modo enfoque", hint: "Solo el panel de Hoy", icon: "enfoque", run: () => setPrefs({ distribucion: "enfoque" }) },
+    { id: "tema", label: theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro", hint: "Cambia los colores de tu espacio", icon: theme === "dark" ? "sol" : "luna", run: () => setTheme(theme === "dark" ? "light" : "dark") },
+    ...(props.profile ? [{ id: "perfil", label: "Editar perfil", hint: "Tu nombre y tu foto", icon: "usuario" as const, run: () => setTimeout(() => setProfileOpen(true), 0) }] : []),
+    { id: "agencia", label: "Crear agencia", hint: "Para trabajar con tu equipo", icon: "mas", run: () => setTimeout(() => setTeamMode("crear"), 0) },
+    ...(activeWorkspace.kind === "agency" ? [{ id: "equipo", label: "Equipo e invitaciones", hint: "Quién está y a quién invitaste", icon: "equipo" as const, run: () => setTimeout(() => setTeamMode("equipo"), 0) }] : []),
+    { id: "json", label: "Exportar en JSON", hint: "Descarga todo lo que escribiste", icon: "descargar", run: () => onExport("json") },
+    { id: "md", label: "Exportar en Markdown", hint: "Descarga tus notas como texto", icon: "descargar", run: () => onExport("md") },
   ];
 
   const openedNote = notes.find((note) => note.id === openNoteId) ?? null;
@@ -306,6 +368,58 @@ export function EspacioHoy(props: EspacioHoyProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  const hoyPanel = (className: string) => (
+    <HoyPanel
+      todos={todos}
+      notes={notes}
+      todayDate={todayDate}
+      filter={filter}
+      recentlyDone={recentlyDone}
+      freshIds={freshIds}
+      onToggle={(id) => void toggleTodo(id)}
+      onChangeVisibility={props.onChangeTodoVisibility}
+      onClearFilter={() => setFilter(null)}
+      className={className}
+    />
+  );
+  const notaPanel = (className: string) => (
+    <NotaPanel
+      note={openedNote}
+      linkedTodos={openedNote ? todos.filter((todo) => todo.noteId === openedNote.id) : []}
+      saveState={openedNote ? (noteSaveStates[openedNote.id] ?? "saved") : "saved"}
+      onSave={onSaveNote}
+      onTogglePin={onTogglePin}
+      onToggleArchive={onToggleArchive}
+      onChangeVisibility={props.onChangeNoteVisibility}
+      onCreateTodoFromNote={linkCaptureToNote}
+      onCreateNote={() => void createNote()}
+      onClose={() => setPrefs({ paneles: { nota: false } })}
+      className={className}
+    />
+  );
+  const notasPanel = (className: string) => (
+    <NotasPanel
+      notes={notes}
+      openNoteId={openNoteId}
+      onOpen={openNote}
+      onCreateNote={() => void createNote()}
+      onClose={() => setPrefs({ paneles: { notas: false } })}
+      className={className}
+    />
+  );
+  const enLienzo = desktop && layout === "libre" && herramienta === "hoy";
+  // El fondo se elige desde la tuerca; el selector se ancla, invisible, a la barra del lienzo.
+  const barraProps: Omit<LienzoBarraProps, "lienzo"> = {
+    layout, onLayout: (distribucion) => setPrefs({ distribucion }), onOpenFondo: openBackground,
+    fondo: <BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs} isOpen={pickerOpen === "desktop"}
+      onOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} triggerClassName="pointer-events-none invisible absolute right-2 bottom-full size-0 min-w-0 p-0" />,
+  };
+  const lienzoItems: LienzoItem[] = [
+    ...(panels.hoy ? [{ id: "hoy", rect: LIENZO_INICIAL.hoy, node: hoyPanel("h-full") }] : []),
+    ...(panels.nota ? [{ id: "nota", rect: LIENZO_INICIAL.nota, node: notaPanel("h-full") }] : []),
+    ...(panels.notas ? [{ id: "notas", rect: LIENZO_INICIAL.notas, node: notasPanel("h-full") }] : []),
+  ];
+
   return (
     // Marco fijo (#105): en escritorio, una cuadrícula con la barra superior, el carril y el dock fijos; solo el contenido se desliza.
     <div ref={rootRef} className="relative isolate min-h-dvh text-(--text-primary) lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-[3.5rem_minmax(0,1fr)_auto] lg:gap-3 lg:overflow-hidden lg:p-3">
@@ -332,6 +446,12 @@ export function EspacioHoy(props: EspacioHoyProps) {
           focusMode={layout === "enfoque"}
           onToggleFocus={() => setPrefs({ distribucion: layout === "enfoque" ? "libre" : "enfoque" })}
           userEmail={props.userEmail}
+          userName={profileName}
+          avatarUrl={avatarUrl}
+          avatarBusy={avatarBusy}
+          presence={presence}
+          {...(props.profile?.onChangePresence ? { onChangePresence: (status: EspacioPresence) => void changePresence(status) } : {})}
+          {...(props.profile ? { onEditProfile: () => setProfileOpen(true), onPickAvatar: pickAvatar } : {})}
         />
       </div>
 
@@ -353,54 +473,23 @@ export function EspacioHoy(props: EspacioHoyProps) {
           <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
-      {herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : (
+      {herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : enLienzo ? (
+        <Lienzo items={lienzoItems} barra={{ slot: barraSlot, ...barraProps }} />
+      ) : (
       <div className={`flex flex-col gap-3 lg:min-h-144 lg:grow ${gridClass}`}>
-        {panels.hoy && (
-          <HoyPanel
-            todos={todos}
-            notes={notes}
-            todayDate={todayDate}
-            filter={filter}
-            recentlyDone={recentlyDone}
-            freshIds={freshIds}
-            onToggle={(id) => void toggleTodo(id)}
-            onChangeVisibility={props.onChangeTodoVisibility}
-            onClearFilter={() => setFilter(null)}
-            className={`max-h-160 lg:max-h-none ${hoyClass}`}
-          />
-        )}
-        {panels.nota && (
-          <NotaPanel
-            note={openedNote}
-            linkedTodos={openedNote ? todos.filter((todo) => todo.noteId === openedNote.id) : []}
-            saveState={openedNote ? (noteSaveStates[openedNote.id] ?? "saved") : "saved"}
-            onSave={onSaveNote}
-            onTogglePin={onTogglePin}
-            onToggleArchive={onToggleArchive}
-            onChangeVisibility={props.onChangeNoteVisibility}
-            onCreateTodoFromNote={linkCaptureToNote}
-            onCreateNote={() => void createNote()}
-            onClose={() => setPrefs({ paneles: { nota: false } })}
-            className={`min-h-72 ${sideClass}`}
-          />
-        )}
-        {panels.notas && (
-          <NotasPanel
-            notes={notes}
-            openNoteId={openNoteId}
-            onOpen={openNote}
-            onCreateNote={() => void createNote()}
-            onClose={() => setPrefs({ paneles: { notas: false } })}
-            className={sideClass}
-          />
-        )}
+        {panels.hoy && hoyPanel(`max-h-160 lg:max-h-none ${hoyClass}`)}
+        {panels.nota && notaPanel(`min-h-72 ${sideClass}`)}
+        {panels.notas && notasPanel(sideClass)}
       </div>
       )}
       </main>
 
-      {dock && <div className="z-20 hidden min-w-0 lg:col-start-2 lg:row-start-3 lg:block">
-        <Dock ref={desktopCapture} config={dock} extra={<BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs}
-          isOpen={pickerOpen === "desktop"} onOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} triggerClassName="size-11 min-w-11 shrink-0" />} />
+      {dock && <div className="z-20 hidden min-w-0 gap-3 lg:col-start-2 lg:row-start-3 lg:flex lg:items-end">
+        <div className="min-w-0 grow"><Dock ref={desktopCapture} config={dock} sinVista /></div>
+        {/* Barra propia del lienzo (issue 147): en el lienzo libre la llena el propio lienzo; si no, solo el modo y el fondo. */}
+        <div ref={setBarraSlot} className="contents">
+          {!enLienzo && <LienzoBarra {...barraProps} />}
+        </div>
       </div>}
 
       <div {...(dock ? { role: "toolbar", "aria-label": dock.label } : {})} className="hubly-glass fixed inset-x-2 bottom-2 z-30 flex flex-col gap-2 rounded-(--glass-radius-access-card) p-2 lg:hidden">
@@ -451,6 +540,19 @@ export function EspacioHoy(props: EspacioHoyProps) {
         onLeave={() => { setTeamMode(null); props.onLeaveAgency?.(); }}
         onExportOwn={() => onExport("json")}
       />
+
+      {props.profile && (
+        <PerfilDialog
+          isOpen={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          profile={{ ...props.profile, name: profileName, avatarUrl, email: props.userEmail ?? null, initial: (profileName || props.userEmail)?.trim().charAt(0).toUpperCase() || null }}
+          onNameSaved={(name) => { setProfileName(name); showToast("Perfil guardado"); }}
+          onAvatarChanged={setAvatarUrl}
+          onPickAvatar={pickAvatar}
+          avatarBusy={avatarBusy}
+        />
+      )}
+      <FotoRecorte file={recorte?.file ?? null} busy={avatarBusy} error={recorte?.error ?? null} onCancel={() => setRecorte(null)} onConfirm={(file) => void uploadRecorte(file)} />
 
       <CommandPalette
         isOpen={paletteOpen}

@@ -1,5 +1,6 @@
 "use client";
-import { Alert, Button, Hubi, HubiWordmark, Icon, Input, Label, TextField, ThemeToggle, Wallpaper } from "@hubly/ui";
+import { Alert, Button, Hubi, Icon, Input, LandingNav, Label, SITE_NAV_LINKS, TextField, Wallpaper } from "@hubly/ui";
+import "../../landing.css";
 import React from "react";
 import { hasActiveSessionAction, signInWithMagicLinkAction, signInWithPasswordAction, signUpWithPasswordAction } from "../../../actions/auth";
 
@@ -55,7 +56,10 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
 
   React.useEffect(() => {
     syncBrowserTimeZoneCookie();
-    setLinkNotice(linkErrorMessage(window.location?.search ?? ""));
+    const search = window.location?.search ?? "";
+    setLinkNotice(linkErrorMessage(search));
+    // «Crear cuenta» de la barra y del landing llega con ?modo=registro (issue 129).
+    if (new URLSearchParams(search).get("modo") === "registro") setMode("signup");
   }, []);
   // Una cuenta nueva sin confirmación por correo entra directo a Hoy, también con la bienvenida.
   const navigate = (wsId: string | null, welcome = false) =>
@@ -140,20 +144,11 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
   return (
     <main className="relative isolate flex min-h-dvh flex-col px-4 pt-3 pb-4 text-(--glass-text-primary)">
       <Wallpaper fondo="contornos" />
-      <header className="hubly-glass sticky top-3 z-10 -mx-1 flex h-13 shrink-0 items-center justify-between rounded-(--glass-radius-access-bar) px-2">
-        <a href="/" aria-label="Volver al inicio" className="flex size-11 items-center justify-center sm:hidden">
-          <span aria-hidden="true">←</span>
-        </a>
-        <a href="/" aria-label="Hubly, inicio" className="flex min-h-11 items-center px-2">
-          <HubiWordmark />
-        </a>
-        <div className="flex items-center gap-2 [&>button]:size-11">
-          <a href="/" className="hidden min-h-11 items-center px-2 text-sm font-semibold text-(--glass-text-secondary) sm:inline-flex">← Volver al inicio</a>
-          <ThemeToggle variante="icono" />
-        </div>
-      </header>
+      <div className="-mx-4 -mt-3">
+        <LandingNav links={SITE_NAV_LINKS} />
+      </div>
       <div className="mx-auto flex w-full max-w-(--container-access) grow flex-col justify-center pt-12">
-        <section aria-labelledby="login-heading" className="hubly-glass relative rounded-(--glass-radius-access-card) p-5 sm:p-9">
+        <section aria-labelledby="login-heading" className="hubly-enter hubly-glass relative rounded-(--glass-radius-access-card) p-5 sm:p-9">
           <div className="pointer-events-none absolute right-5 bottom-full h-11.5 overflow-hidden sm:right-8">
             <Hubi acabado="volumen" pose="laptop" tamano={96} decorativo />
           </div>
@@ -163,9 +158,7 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
             )}
             <div role={isSent ? "status" : undefined} className="flex flex-col gap-2">
               {isSent && (
-                <span className="flex size-11 items-center justify-center rounded-xl bg-(--accent-primary-subtle) text-(--accent-primary)">
-                  <Icon name="sobre" className="size-6" />
-                </span>
+                <Hubi pose="correo" tamano={88} decorativo className="hubly-pop" />
               )}
               {screen === "error" ? <p className={HEADING}>{TITLES.signin}</p> : (
                 <h1 id="login-heading" tabIndex={-1} ref={heading} className={HEADING}>{TITLES[screen]}</h1>

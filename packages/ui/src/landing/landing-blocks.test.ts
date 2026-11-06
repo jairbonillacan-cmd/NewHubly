@@ -5,14 +5,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import {
-  AppPreview, AudienceSection, DataSection, FaqSection, FeatureGrid, FinalCta, LANDING_FAQ, LANDING_FEATURES, LANDING_NAV_LINKS,
-  LandingFooter, LandingHero, LandingNav, LegalPage, PainSection, RoadmapSection, ShortcutsSection, ThemeToggle, WorkspaceSection,
+  AppPreview, AudienceSection, DataSection, DiaSection, FaqSection, FeatureGrid, FinalCta, LANDING_FAQ, LANDING_FEATURES, LANDING_NAV_LINKS,
+  GrowSection, HubiSection, LandingFooter, LandingHero, LandingNav, LegalPage, PLANES, PricingSection, formatPrecio, PainSection, RoadmapSection, ShortcutsSection, ThemeToggle, WorkspaceSection,
 } from "../index";
 import { FaqAccordion, nextFaqIndex } from "./FaqAccordion";
 
 const currentDir = fileURLToPath(new URL(".", import.meta.url));
 const tokensCssPath = resolve(currentDir, "../tokens.css");
-const blocks = [LandingNav, LandingHero, AudienceSection, PainSection, FeatureGrid, WorkspaceSection, ShortcutsSection, RoadmapSection, DataSection, FaqSection, FinalCta, LandingFooter];
+const blocks = [LandingNav, LandingHero, AudienceSection, PainSection, DiaSection, FeatureGrid, WorkspaceSection, ShortcutsSection, GrowSection, HubiSection, RoadmapSection, DataSection, FaqSection, FinalCta, LandingFooter];
 
 const render = (component: (props: never) => unknown) => renderToStaticMarkup(createElement(component as () => null));
 const htmlForLanding = () => blocks.map(render).join("\n");
@@ -26,8 +26,9 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
   });
 
   it("la barra apunta a secciones que existen en la página", () => {
-    const sectionIds = ["producto", "lo-que-viene", "privacidad", "preguntas"];
-    expect(LANDING_NAV_LINKS.map((link) => link.href.slice(1))).toEqual(sectionIds);
+    const sectionIds = ["producto", "lo-que-viene", "preguntas"];
+    expect(LANDING_NAV_LINKS.filter((link) => link.href.startsWith("#")).map((link) => link.href.slice(1))).toEqual(sectionIds);
+    expect(LANDING_NAV_LINKS.map((link) => link.href)).toContain("/precios");
     const html = [FeatureGrid, RoadmapSection, DataSection, FaqSection].map(render).join("");
     for (const id of sectionIds) expect(html).toContain(`id="${id}"`);
   });
@@ -70,7 +71,7 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
   });
 
   it("no promete precios, cifras ni testimonios, ni usa frases genéricas (#56)", () => {
-    expect(htmlForLanding()).not.toMatch(/gratis|\$\s?\d|\+\d[\d,.]*\s|testimonio|lorem ipsum|potencia tu|todo en un solo lugar|sin fricción/i);
+    expect(htmlForLanding()).not.toMatch(/gratis|\$\s?\d|\+\d[\d,.]*\s|testimonio|lorem ipsum|potencia tu|todo en un solo lugar|sin fricción|revoluciona|siguiente nivel|desbloquea|sin precedentes|transforma tu|impulsad[ao] por (?:la )?IA|solución definitiva|marketing os/i);
     expect(LANDING_FAQ).toHaveLength(6);
   });
 
@@ -100,7 +101,24 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
     expect(css).toMatch(/\.hubly-motion \.hubly-reveal:not\(\[data-visible="true"\]\)/);
     expect(css).not.toMatch(/^\.hubly-reveal:not/m);
-    expect(htmlForLanding()).not.toMatch(/hubly-(enter|float|reveal)|\banimate-/);
+    // Lo que se asoma solo se oculta dentro de un bloque que aún no aparece y con JavaScript (issue 127).
+    expect(css).toMatch(/\.hubly-motion \.hubly-reveal:not\(\[data-visible="true"\]\) \.hubly-peek/);
+    expect(css).not.toMatch(/^\.hubly-peek:not|^\.hubly-motion \.hubly-peek/m);
+    const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce) {\n  .hubly-reveal"));
+    for (const name of ["hubly-peek", "hubly-wiggle", "hubly-marquee", "hubly-float"]) expect(reduced, name).toContain(name);
+    expect(htmlForLanding()).not.toMatch(/\banimate-/);
+  });
+
+  it("el día con Hubly solo usa lo que ya funciona y la tira de Hubi duplica sus tarjetas ocultas a lectores (issue 127)", () => {
+    const dia = render(DiaSection);
+    expect(listItems(dia)).toHaveLength(4);
+    for (const promised of ["aprob", "cliente lo", "programa", "publica"]) expect(dia.toLowerCase()).not.toContain(promised);
+    const tira = render(HubiSection);
+    const items = listItems(tira);
+    expect(items.length % 2).toBe(0);
+    expect(items.slice(items.length / 2).every((item) => item.includes('aria-hidden="true"'))).toBe(true);
+    expect(tira).not.toContain("campana");
+    expect(htmlForLanding()).not.toContain("hubi-volumen-campana");
   });
 
   it("la navegación y el pie muestran la firma accesible de Hubly con la cara de Hubi", () => {
@@ -131,5 +149,24 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
     expect(sources).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     expect(sources).not.toContain("style={{");
     expect(htmlForLanding()).not.toContain(" style=");
+  });
+
+  it("los precios salen en «Próximamente» y se muestran en pesos en cuanto se pongan (issue 129)", () => {
+    expect(PLANES.map((plan) => plan.id)).toEqual(["personal", "equipo", "agencia"]);
+    for (const plan of PLANES) expect(formatPrecio(plan, "mensual").monto).toBe("Próximamente");
+    const conPrecio = { ...PLANES[1]!, precio: { mensual: 499, anual: 399 } };
+    expect(formatPrecio(conPrecio, "mensual").monto).toMatch(/^\$\s?499 \/mes$/);
+    expect(formatPrecio(conPrecio, "anual")).toEqual({ monto: expect.stringMatching(/399 \/mes$/), detalle: "Se paga una vez al año" });
+    const html = render(PricingSection);
+    expect(html.match(/>Próximamente<\/p>/g)).toHaveLength(3);
+    expect(html).not.toMatch(/\$\s?\d|gratis/i);
+    expect(html).toContain('role="radiogroup"');
+  });
+
+  it("el pie enlaza a rutas y secciones que existen y ofrece cambiar el tema", () => {
+    const html = render(LandingFooter);
+    const hrefs = [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1] ?? "");
+    for (const href of hrefs) expect(href).toMatch(/^\/(?:$|#(?:producto|dia|crece|lo-que-viene|hubi|privacidad|preguntas)$|precios$|login(?:\?modo=registro)?$|hoy$|privacidad$|terminos$)/);
+    expect(html).toContain("Cambiar a tema");
   });
 });

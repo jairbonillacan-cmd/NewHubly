@@ -1,13 +1,13 @@
 "use client";
 import { canEditItem, parseQuickCapture, suggestOverdueTodos } from "@hubly/application";
-import { createTodoSchema, type UserPreferences } from "@hubly/contracts";
+import { createTodoSchema, type PresenceStatus, type UserPreferences } from "@hubly/contracts";
 import { BienvenidaDialog, EspacioEstado, EspacioHoy, type HerramientaId, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
 import React, { useEffect, useRef, useState } from "react";
 import {
   archiveNoteAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction, createAgencyWorkspaceAction,
   createNoteAction, createTodoAction, createTodoFromNoteAction, exportWorkspaceAction, inviteWorkspaceMemberAction, loadWorkspaceDashboardAction,
   pinNoteAction, removeOrLeaveWorkspaceMemberAction, removeWallpaperAction, revokeWorkspaceInvitationAction, saveNoteAction, saveUserPreferencesAction, selectActiveWorkspaceAction, toggleTodoAction,
-  updateTodoAction, uploadWallpaperAction,
+  updateTodoAction, uploadWallpaperAction, removeAvatarAction, saveDisplayNameAction, savePresenceAction, uploadAvatarAction,
   type WorkspaceInvitationSummary, type WorkspaceMemberSummary, type WorkspaceNote, type WorkspaceSummary, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
 import { signOutAction } from "../actions/auth";
@@ -29,6 +29,10 @@ export interface WorkspaceScreenProps {
   showWelcome?: boolean;
   /** Correo de la sesión, para la inicial del avatar. */
   currentUserEmail?: string | null;
+  /** Nombre visible y foto de perfil firmada (issue 135). */
+  currentUserName?: string | null;
+  initialAvatarUrl?: string | null;
+  initialPresence?: PresenceStatus;
   /** Herramienta abierta al cargar (?herramienta=). */
   initialHerramienta?: HerramientaId;
   onSavePreferences?: (patch: Partial<UserPreferences>) => Promise<unknown>;
@@ -108,7 +112,7 @@ const toEspacioWorkspace = (w: WorkspaceSummary): EspacioWorkspace => ({ id: w.i
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialTodos = [], initialNotes = [], initialActionError = null,
-  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, currentUserEmail = null, initialHerramienta, onSavePreferences,
+  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, currentUserEmail = null, currentUserName = null, initialAvatarUrl = null, initialPresence = "online", initialHerramienta, onSavePreferences,
   onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
@@ -328,6 +332,19 @@ export function WorkspaceScreen({
       onThemeChange={(theme) => persistPreferences({ theme }, 0)}
       wallpaperImageUrl={initialWallpaperImageUrl}
       userEmail={currentUserEmail}
+      profile={{
+        name: currentUserName,
+        avatarUrl: initialAvatarUrl,
+        presence: initialPresence,
+        onChangePresence: async (status) => { try { return await savePresenceAction(status); } catch { return { ok: false as const, message: "No se pudo cambiar tu estado." }; } },
+        onUploadAvatar: async (file) => {
+          const form = new FormData();
+          form.set("foto", file);
+          try { return await uploadAvatarAction(form); } catch { return { ok: false as const, message: "No se pudo subir tu foto. Inténtalo de nuevo." }; }
+        },
+        onRemoveAvatar: async () => { try { return await removeAvatarAction(); } catch { return { ok: false as const, message: "No se pudo quitar tu foto." }; } },
+        onSaveName: async (name) => { try { return await saveDisplayNameAction(name); } catch { return { ok: false as const, message: "No se pudo guardar tu nombre." }; } },
+      }}
       initialHerramienta={initialHerramienta}
       onUploadWallpaper={async (file) => {
         const form = new FormData();

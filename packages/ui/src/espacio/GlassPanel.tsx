@@ -24,7 +24,7 @@ export function GlassPanel({ id, title, icon, actions, onClose, children, classN
       data-delay={retraso || undefined}
       className={`hubly-glass hubly-enter flex min-h-0 flex-col overflow-hidden rounded-2xl text-(--text-primary) ${className ?? ""}`}
     >
-      <div className="flex items-center gap-2.5 border-b border-(--glass-line) py-2.5 pr-2.5 pl-3.5">
+      <div data-lienzo-asa className="flex items-center gap-2.5 border-b border-(--glass-line) py-2.5 pr-2.5 pl-3.5">
         <span className="text-(--accent-primary)">
           <Icon name={icon} />
         </span>

@@ -2,8 +2,11 @@ import type { CSSProperties } from "react";
 
 export type HubiFinish = "origen" | "volumen";
 type HubiBasePose = "sentado" | "laptop";
-type HubiStatePose = "bienvenida" | "buscar" | "reparar" | "correo" | "ideas" | "celebrar" | "privacidad";
-export type HubiPose = HubiBasePose | HubiStatePose;
+type HubiContextPose =
+  | "bienvenida" | "buscar" | "reparar"
+  | "correo" | "ideas" | "celebrar" | "privacidad"
+  | "campana" | "contenido" | "metricas" | "comunidad";
+export type HubiPose = HubiBasePose | HubiContextPose;
 
 export type HubiProps = {
   tamano?: number;
@@ -15,7 +18,7 @@ export type HubiProps = {
   priority?: "high" | "deferred";
 } & (
   | { acabado?: HubiFinish; pose?: HubiBasePose }
-  | { acabado?: "volumen"; pose: HubiStatePose }
+  | { acabado?: "volumen"; pose: HubiContextPose }
 );
 
 type ThemeAssets = { light: string; dark: string };
@@ -43,7 +46,7 @@ const HUBI_ASSET_MAP: Record<HubiFinish, Record<HubiBasePose, ThemeAssets>> = {
   },
 };
 
-const HUBI_STATE_ASSETS: Record<HubiStatePose, ThemeAssets> = {
+const HUBI_CONTEXT_ASSETS: Record<HubiContextPose, ThemeAssets> = {
   bienvenida: {
     light: "/marca/hubi-volumen-bienvenida-claro-256.webp",
     dark: "/marca/hubi-volumen-bienvenida-oscuro-256.webp",
@@ -72,6 +75,22 @@ const HUBI_STATE_ASSETS: Record<HubiStatePose, ThemeAssets> = {
     light: "/marca/hubi-volumen-privacidad-claro-256.webp",
     dark: "/marca/hubi-volumen-privacidad-oscuro-256.webp",
   },
+  campana: {
+    light: "/marca/hubi-volumen-campana-claro-256.webp",
+    dark: "/marca/hubi-volumen-campana-oscuro-256.webp",
+  },
+  contenido: {
+    light: "/marca/hubi-volumen-contenido-claro-256.webp",
+    dark: "/marca/hubi-volumen-contenido-oscuro-256.webp",
+  },
+  metricas: {
+    light: "/marca/hubi-volumen-metricas-claro-256.webp",
+    dark: "/marca/hubi-volumen-metricas-oscuro-256.webp",
+  },
+  comunidad: {
+    light: "/marca/hubi-volumen-comunidad-claro-256.webp",
+    dark: "/marca/hubi-volumen-comunidad-oscuro-256.webp",
+  },
 };
 
 export function Hubi({
@@ -89,7 +108,7 @@ export function Hubi({
   const resolvedAlt = isDecorative ? "" : (alt ?? "Hubi, mascota de Hubly");
   const pair = pose === "sentado" || pose === "laptop"
     ? HUBI_ASSET_MAP[acabado][pose]
-    : HUBI_STATE_ASSETS[pose];
+    : HUBI_CONTEXT_ASSETS[pose];
 
   return (
     <span

@@ -106,8 +106,9 @@ export class SessionExpiredError extends Error {
 }
 export const isSessionExpiredError = (err: unknown): boolean => err instanceof SessionExpiredError || (err instanceof Error && err.message === "Sesión caducada");
 
-export async function getVerifiedServerSession(): Promise<{ claims: UserClaims; email: string | null }> {
+export async function getVerifiedServerSession(): Promise<{ claims: UserClaims; email: string | null; displayName: string | null }> {
   const { data, error } = await (await createSupabaseServerClient()).auth.getUser();
   if (error || !data?.user?.id) throw new SessionExpiredError();
-  return { claims: { sub: data.user.id, role: "authenticated" }, email: data.user.email ?? null };
+  const displayName = data.user.user_metadata?.display_name;
+  return { claims: { sub: data.user.id, role: "authenticated" }, email: data.user.email ?? null, displayName: typeof displayName === "string" && displayName.trim() ? displayName.trim() : null };
 }

@@ -18,11 +18,13 @@ import {
 } from "./auth";
 import { WALLPAPER_BUCKET, removeUserWallpaper, signUserWallpaper, uploadUserWallpaper, wallpaperObjectPath } from "./wallpaper-storage";
 import { WALLPAPER_MAX_BYTES, WallpaperImageError, sanitizeWallpaperImage } from "./wallpaper-image";
+import { AVATAR_BUCKET, DISPLAY_NAME_MAX, avatarObjectPath, loadUserProfile, normalizeDisplayName, removeUserAvatar, saveUserDisplayName, saveUserPresence, signUserAvatar, uploadUserAvatar, type UserProfile } from "./profile";
 import { EMAIL_LINK_ERRORS, SIGNUP_FLOW, destinationAfterEmailLink, isEmailLinkType, workspaceNameFromMetadata, type EmailLinkType } from "./email-link";
 import { acceptWorkspaceInvitationByToken, acceptWorkspaceInvitationSafely, classifyInvitationError, currentSessionEmail, issueWorkspaceInvitation, revokePendingWorkspaceInvitation, type AcceptInvitationResult } from "./invitations";
 export {
   EMAIL_LINK_ERRORS, SIGNUP_FLOW, isEmailLinkType, type EmailLinkType,
   WALLPAPER_BUCKET, WALLPAPER_MAX_BYTES, WallpaperImageError, removeUserWallpaper, sanitizeWallpaperImage, signUserWallpaper, uploadUserWallpaper, wallpaperObjectPath,
+  AVATAR_BUCKET, DISPLAY_NAME_MAX, avatarObjectPath, loadUserProfile, normalizeDisplayName, removeUserAvatar, saveUserDisplayName, saveUserPresence, signUserAvatar, uploadUserAvatar, type UserProfile,
   DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
   acceptWorkspaceInvitationByToken, acceptWorkspaceInvitationSafely, classifyInvitationError, currentSessionEmail, type AcceptInvitationResult, createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
   SessionExpiredError, getVerifiedServerSession, isSessionExpiredError, isValidIanaTimeZone, issueWorkspaceInvitation, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie,
@@ -43,7 +45,7 @@ export function setClockNowForTests(fn: (() => Date) | null): void {
 }
 
 export interface CompositionContext extends AppContext {
-  claims: UserClaims; userEmail: string | null; role: WorkspaceRole; workspaceKind: WorkspaceKind; workspaceName: string; workspaceSlug: string | null;
+  claims: UserClaims; userEmail: string | null; userDisplayName: string | null; role: WorkspaceRole; workspaceKind: WorkspaceKind; workspaceName: string; workspaceSlug: string | null;
   timezone: string; todayDate: string; db?: DbInstance;
 }
 
@@ -67,7 +69,7 @@ export async function completeEmailLinkSignIn(supabase: SupabaseServerClient, fl
 }
 
 export async function ensureAuthenticatedWorkspace(workspaceId?: string, defaultName?: string): Promise<CompositionContext> {
-  const [{ claims, email }, timezone, cookieWsId] = await Promise.all([
+  const [{ claims, email, displayName }, timezone, cookieWsId] = await Promise.all([
     // En producción Next oculta el mensaje de los errores de una Server Action; una redirección sí llega al cliente (#92).
     getVerifiedServerSession().catch((err: unknown) => { if (isSessionExpiredError(err)) redirect("/login"); throw err; }),
     resolveRequestTimeZone(), resolveActiveWorkspaceCookie(),
@@ -92,7 +94,7 @@ export async function ensureAuthenticatedWorkspace(workspaceId?: string, default
   if (!member) throw new Error(`No autorizado en el espacio de trabajo: ${resolvedWorkspaceId}`);
   const role: WorkspaceRole = member.role as WorkspaceRole, workspaceKind: WorkspaceKind = (ws?.kind as WorkspaceKind | undefined) ?? "personal";
   const todayDate = createSystemClock(timezone).todayIsoDate();
-  return { claims, userEmail: email, workspaceId: resolvedWorkspaceId, userId: claims.sub, role, workspaceKind, workspaceName: ws?.name ?? defaultName ?? "Mi Espacio", workspaceSlug: ws?.slug ?? null, timezone, todayDate, ...(resolvedDb ? { db: resolvedDb } : {}) };
+  return { claims, userEmail: email, userDisplayName: displayName, workspaceId: resolvedWorkspaceId, userId: claims.sub, role, workspaceKind, workspaceName: ws?.name ?? defaultName ?? "Mi Espacio", workspaceSlug: ws?.slug ?? null, timezone, todayDate, ...(resolvedDb ? { db: resolvedDb } : {}) };
 }
 
 export const getWorkspaceContext = ensureAuthenticatedWorkspace;

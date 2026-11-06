@@ -1,10 +1,27 @@
-// Set único de iconos del espacio (#75): trazos propios de 24×24, sin dependencias nuevas.
+// Set único de iconos del espacio (#75): trazos propios de 24×24, sin dependencias nuevas. Los que tienen versión en
+// la identidad nueva (issue 148) se dibujan con ella; el resto sigue con su trazo.
+import { ICONOS_HUBLY, type IconoHublyNombre } from "./iconos/iconosHubly";
+
+/** Tuerca de 8 dientes con su hueco central; se calcula una vez al cargar el módulo. */
+const TUERCA = (() => {
+  const points: string[] = [];
+  for (let i = 0; i < 32; i++) {
+    const angle = (i / 32) * Math.PI * 2 - Math.PI / 2;
+    const r = i % 4 < 2 ? 9.5 : 7.2;
+    points.push(`${(12 + r * Math.cos(angle)).toFixed(2)} ${(12 + r * Math.sin(angle)).toFixed(2)}`);
+  }
+  return `M${points.join("L")}ZM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6`;
+})();
 
 const PATHS = {
   sol: "M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
   nota: "M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6",
   pin: "M9 4h6l-1 6 3 3H7l3-3zM12 13v7",
   mas: "M12 5v14M5 12h14",
+  menos: "M5 12h14",
+  tuerca: TUERCA,
+  mapa: "M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14",
+  encuadrar: "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5",
   cerrar: "M6 6l12 12M18 6L6 18",
   buscar: "M11 5a6 6 0 1 0 0 12a6 6 0 1 0 0-12M20 20l-4.5-4.5",
   imagen: "M3 4h18v16H3zM3 16l5-5 4 4 3-3 6 6",
@@ -16,6 +33,7 @@ const PATHS = {
   salir: "M10 5H5v14h5M14 8l4 4-4 4M18 12H9",
   check: "M5 12l5 5 9-10",
   chevrones: "M8 9l4-4 4 4M8 15l4 4 4-4",
+  chevron: "M9 6l6 6-6 6",
   usuario: "M12 4a4 4 0 1 0 0 8a4 4 0 1 0 0-8M4 21c1-4 4-6 8-6s7 2 8 6",
   sobre: "M4 7l8 6 8-6M4 7h16v11H4z",
   ajustes: "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M16 4v4M8 10v4M16 16v4",
@@ -29,7 +47,6 @@ const PATHS = {
   campana: "M6 9a6 6 0 0 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9M10.3 20.5a2 2 0 0 0 3.4 0",
   luna: "M20.5 13.5A8.5 8.5 0 1 1 10.5 3.5a6.5 6.5 0 0 0 10 10",
   ayuda: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M9.6 9.2a2.5 2.5 0 0 1 4.9.6c0 1.6-2.5 2.2-2.5 3.7M12 16.8h.01",
-  engrane: "M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.9 1.9M17.5 17.5l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.9-1.9M17.5 6.5l1.9-1.9",
   lapiz: "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4",
   camara: "M4 8h3l1.5-2h7L18 8h2v12H4zM12 17a3.5 3.5 0 1 0 0-7a3.5 3.5 0 1 0 0 7",
   expandir: "M4 5h16v14H4zM9 5v14M13 10l2 2-2 2",
@@ -38,7 +55,25 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS;
 
+const HUBLY: Partial<Record<IconName, IconoHublyNombre>> = {
+  sol: "claro", luna: "oscuro", mas: "agregar", menos: "alejar", buscar: "buscar", imagen: "fondos", libre: "lienzo-libre",
+  lado: "lado-a-lado", enfoque: "enfoque", descargar: "descargar", salir: "cerrar-sesion", teclado: "teclado", hoy: "hoy",
+  campana: "avisos", ayuda: "ayuda", ajustes: "ajustes", lapiz: "editar-perfil", tuerca: "opciones-lienzo", mapa: "mapa",
+  encuadrar: "ver-paneles", deshacer: "restablecer", paneles: "cuadricula", chevron: "submenu",
+};
+
+/** Icono de la identidad (issue 148), a color; `activo` lo pasa a los colores sobre el acento. */
+export function IconoHubly({ name, className, activo = false }: { name: IconoHublyNombre; className?: string | undefined; activo?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`${activo ? "hubly-icono-activo " : ""}${className ?? "size-4"}`}>
+      {ICONOS_HUBLY[name]}
+    </svg>
+  );
+}
+
 export function Icon({ name, className, strokeWidth = 1.75 }: { name: IconName; className?: string; strokeWidth?: number }) {
+  const hubly = HUBLY[name];
+  if (hubly) return <IconoHubly name={hubly} className={className} />;
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className ?? "size-4"}>
       <path d={PATHS[name]} />

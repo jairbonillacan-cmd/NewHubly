@@ -77,12 +77,14 @@ export function HoyPanel({ todos, notes, todayDate, filter, recentlyDone, freshI
     .map((group) => ({ group, items: active.filter((todo) => todoGroup(todo, todayDate) === group) }))
     .filter((entry) => entry.items.length > 0);
   const nothingToday = !active.some((todo) => !todo.isDone && todo.dueDate !== null && todo.dueDate <= todayDate);
+  // Hubi celebra si había algo para hoy y ya está hecho; si no, invita a capturar la primera idea (#125).
+  const finishedToday = nothingToday && todos.some((todo) => todo.isDone && todo.dueDate === todayDate);
 
   return (
     <GlassPanel
       id="panel-hoy"
       title={filter === "vencidos" ? "Hoy · solo vencidos" : filter === "hoy" ? "Hoy · solo para hoy" : "Hoy"}
-      icon="sol"
+      icon="hoy"
       onClose={onClose}
       className={className}
       actions={
@@ -95,9 +97,11 @@ export function HoyPanel({ todos, notes, todayDate, filter, recentlyDone, freshI
     >
       {nothingToday && !filter && (
         <div className="hubly-pop flex items-center gap-4 px-4 pt-4 pb-2">
-          <Hubi acabado="volumen" tamano={64} decorativo className="hubly-float" />
+          <Hubi pose={finishedToday ? "celebrar" : "ideas"} tamano={64} decorativo className="hubly-float" />
           <p className="m-0 text-sm leading-relaxed text-(--text-secondary)">
-            No tienes pendientes para hoy. Captura el primero abajo o pulsa <Kbd><Kbd.Content>C</Kbd.Content></Kbd>.
+            {finishedToday
+              ? "Terminaste todo lo de hoy. ¡Bien hecho!"
+              : <>No tienes pendientes para hoy. Captura el primero abajo o pulsa <Kbd><Kbd.Content>C</Kbd.Content></Kbd>.</>}
           </p>
         </div>
       )}

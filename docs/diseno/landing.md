@@ -1,6 +1,8 @@
 # Especificación de Diseño: Landing — Editorial Fotográfica con Bento, Liquid Glass y Paleta Grafito y Azul Tinta
 
-Estado: Vigente para Fase 1B | Issues: #8, #10 y #52 (Paleta Grafito y azul tinta)
+Estado: histórico (Fase 1B) | Issues: #8, #10 y #52 (Paleta Grafito y azul tinta)
+
+> Desde el issue 131, la posición, los textos y la estructura de la landing los define [docs/producto/vision.md](../producto/vision.md). Este documento se conserva por los tokens y las mediciones de contraste.
 
 ## 1. Dirección visual y decisiones de producto
 Dirección formal elegida por el dueño del producto (#8 y #52): **editorial fotográfica con bento, liquid glass y paleta «Grafito y azul tinta»**.

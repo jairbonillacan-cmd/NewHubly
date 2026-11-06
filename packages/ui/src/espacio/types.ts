@@ -96,3 +96,25 @@ export function todoGroup(todo: Pick<EspacioTodo, "dueDate">, today: string): To
   if (todo.dueDate < today) return "vencidos";
   return todo.dueDate === today ? "hoy" : "proximos";
 }
+
+export type ProfileOutcome<T> = { ok: true; value: T } | { ok: false; message: string };
+
+/** Perfil de la persona (issue 135): nombre visible, foto y cómo cambiarlos. El servidor valida todo otra vez. */
+export interface EspacioProfile {
+  name: string | null;
+  avatarUrl: string | null;
+  onUploadAvatar: (file: File) => Promise<ProfileOutcome<string>>;
+  onRemoveAvatar: () => Promise<ProfileOutcome<null>>;
+  onSaveName: (name: string) => Promise<ProfileOutcome<string>>;
+  /** Estado de presencia (issue 143); sin `onChangePresence`, el menú no ofrece cambiarlo. */
+  presence?: EspacioPresence | undefined;
+  onChangePresence?: ((status: EspacioPresence) => Promise<ProfileOutcome<EspacioPresence>>) | undefined;
+}
+
+export type EspacioPresence = "online" | "away" | "dnd";
+
+export const PRESENCE: Record<EspacioPresence, { label: string; hint: string }> = {
+  online: { label: "En línea", hint: "Tu equipo ve que estás disponible" },
+  away: { label: "Ausente", hint: "Vuelves en un rato" },
+  dnd: { label: "No molestar", hint: "Silencia los avisos y el chat" },
+};

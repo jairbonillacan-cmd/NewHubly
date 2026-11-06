@@ -1,11 +1,11 @@
-import { AudienceSection, DataSection, FaqSection, FeatureGrid, FinalCta, LandingFooter, LandingHero, LandingNav, PainSection, RoadmapSection, ShortcutsSection, WorkspaceSection } from "@hubly/ui";
+import { AudienceSection, DataSection, DiaSection, FaqSection, FeatureGrid, FinalCta, GrowSection, HubiSection, LandingFooter, LandingHero, LandingNav, PainSection, RoadmapSection, WorkspaceSection } from "@hubly/ui";
 import "./landing.css";
 import type { Metadata } from "next";
 import { frauncesLatin, frauncesLatinExt } from "../fonts/fraunces";
 
 export const metadata: Metadata = {
-  title: "Hubly · Sabe qué sigue y quién lo tiene",
-  description: "Hubly junta las ideas, los pendientes y las aprobaciones de cada cliente de tu agencia. Abres y ya sabes qué sigue y quién lo tiene.",
+  title: "Hubly · Un solo espacio para todo tu marketing",
+  description: "Organiza tus ideas, tu contenido y tus marcas en el mismo lugar. Para quien lleva su propia marca y para agencias y equipos.",
 };
 
 const LEGAL_LINKS = [
@@ -23,9 +23,11 @@ export default function HomePage() {
         </div>
         <AudienceSection />
         <PainSection />
+        <DiaSection />
         <FeatureGrid />
+        <GrowSection />
         <WorkspaceSection />
-        <ShortcutsSection />
+        <HubiSection />
         <RoadmapSection />
         <DataSection />
         <FaqSection />
