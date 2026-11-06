@@ -246,17 +246,17 @@ export function EspacioHoy(props: EspacioHoyProps) {
   };
 
   const paletteActions: PaletteAction[] = [
-    { id: "pendiente", label: "Nuevo pendiente", icon: "mas", run: () => { selectHerramienta("hoy"); setTimeout(focusCapture, 0); } },
-    { id: "nota", label: "Nueva nota", icon: "nota", run: () => void createNote() },
-    { id: "fondo", label: "Cambiar fondo", icon: "imagen", run: () => setTimeout(openBackground, 0) },
+    { id: "pendiente", label: "Nuevo pendiente", hint: "Escríbelo en la captura de Hoy", icon: "mas", run: () => { selectHerramienta("hoy"); setTimeout(focusCapture, 0); } },
+    { id: "nota", label: "Nueva nota", hint: "Se abre lista para escribir", icon: "nota", run: () => void createNote() },
+    { id: "fondo", label: "Cambiar fondo", hint: "Elige el fondo de tu espacio", icon: "imagen", run: () => setTimeout(openBackground, 0) },
     prefs.distribucion === "enfoque"
-      ? { id: "libre", label: "Salir del modo enfoque", icon: "libre", run: () => setPrefs({ distribucion: "libre" }) }
-      : { id: "enfoque", label: "Modo enfoque", icon: "enfoque", run: () => setPrefs({ distribucion: "enfoque" }) },
-    { id: "tema", label: theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro", icon: "sol", run: () => setTheme(theme === "dark" ? "light" : "dark") },
-    { id: "agencia", label: "Crear agencia", icon: "mas", run: () => setTimeout(() => setTeamMode("crear"), 0) },
-    ...(activeWorkspace.kind === "agency" ? [{ id: "equipo", label: "Equipo e invitaciones", icon: "equipo" as const, run: () => setTimeout(() => setTeamMode("equipo"), 0) }] : []),
-    { id: "json", label: "Exportar en JSON", icon: "descargar", run: () => onExport("json") },
-    { id: "md", label: "Exportar en Markdown", icon: "descargar", run: () => onExport("md") },
+      ? { id: "libre", label: "Salir del modo enfoque", hint: "Vuelven todos tus paneles", icon: "libre", run: () => setPrefs({ distribucion: "libre" }) }
+      : { id: "enfoque", label: "Modo enfoque", hint: "Solo el panel de Hoy", icon: "enfoque", run: () => setPrefs({ distribucion: "enfoque" }) },
+    { id: "tema", label: theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro", hint: "Cambia los colores de tu espacio", icon: theme === "dark" ? "sol" : "luna", run: () => setTheme(theme === "dark" ? "light" : "dark") },
+    { id: "agencia", label: "Crear agencia", hint: "Para trabajar con tu equipo", icon: "mas", run: () => setTimeout(() => setTeamMode("crear"), 0) },
+    ...(activeWorkspace.kind === "agency" ? [{ id: "equipo", label: "Equipo e invitaciones", hint: "Quién está y a quién invitaste", icon: "equipo" as const, run: () => setTimeout(() => setTeamMode("equipo"), 0) }] : []),
+    { id: "json", label: "Exportar en JSON", hint: "Descarga todo lo que escribiste", icon: "descargar", run: () => onExport("json") },
+    { id: "md", label: "Exportar en Markdown", hint: "Descarga tus notas como texto", icon: "descargar", run: () => onExport("md") },
   ];
 
   const openedNote = notes.find((note) => note.id === openNoteId) ?? null;

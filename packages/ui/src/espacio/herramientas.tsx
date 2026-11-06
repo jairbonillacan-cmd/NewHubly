@@ -27,7 +27,7 @@ export const herramientaPorId = (id: HerramientaId): Herramienta => HERRAMIENTAS
 
 // Trazos propios de 24×24: relleno suave, contorno y un detalle en el color de acento.
 const ICONOS: Record<HerramientaId, { relleno: string; trazo: string; acento: string }> = {
-  hoy: { relleno: "M6 15a6 6 0 0 1 12 0z", trazo: "M3 15h18M7 19h10M6 15a6 6 0 0 1 12 0", acento: "M12 4v2M5.6 7.6l1.4 1.4M18.4 7.6L17 9" },
+  hoy: { relleno: "M4 6h16v4H4z", trazo: "M4 6h16v14H4zM8 3.5v4M16 3.5v4", acento: "M8.5 14.5l2.5 2.5 4.5-5" },
   calendario: { relleno: "M4 9h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z", trazo: "M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM4 9h16M8 3v4M16 3v4", acento: "M14 14h2.5v2.5H14z" },
   contenido: { relleno: "M9 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z", trazo: "M4 15V6a2 2 0 0 1 2-2h9M9 7h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM7 17l3.5-3.5 2.5 2.5 2-2 5 5", acento: "M16.5 10.5h.01" },
   clientes: { relleno: "M14 6h5a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-5z", trazo: "M5 6h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM6 16.5a2.5 2.5 0 0 1 5 0M8.5 12.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM14 6h5a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-5", acento: "M17 10h1.5M17 13h1.5" },
