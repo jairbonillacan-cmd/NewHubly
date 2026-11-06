@@ -34,7 +34,7 @@ describe("Catálogo RLS y Seguridad (ADR 0004, ADR 0007, Issue #23 & #62)", () =
   });
 
   it("las tablas del chat en private tienen RLS forzado y anon no las lee", async () => {
-    const chatTables = ["chat_conversations", "chat_messages", "chat_reads", "chat_reactions", "chat_mentions", "chat_typing"];
+    const chatTables = ["chat_conversations", "chat_messages", "chat_reads", "chat_reactions", "chat_mentions", "chat_typing", "chat_quotas"];
     const rows = await sql<Array<{ relname: string; relrowsecurity: boolean; relforcerowsecurity: boolean }>>`
       select c.relname, c.relrowsecurity, c.relforcerowsecurity from pg_class c
       join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'private' and c.relname in ${sql(chatTables)};
@@ -45,6 +45,8 @@ describe("Catálogo RLS y Seguridad (ADR 0004, ADR 0007, Issue #23 & #62)", () =
       const [s] = await sql<Array<{ p: boolean }>>`select has_table_privilege('anon', ${"private." + r.relname}, 'select') as p;`;
       expect(s?.p, `anon no select private.${r.relname}`).toBe(false);
     }
+    const [q] = await sql<Array<{ p: boolean }>>`select has_table_privilege('authenticated', 'private.chat_quotas', 'select') as p;`;
+    expect(q?.p, "authenticated no lee private.chat_quotas").toBe(false);
   });
 
   it("las funciones internas del chat no las ejecuta ni authenticated", async () => {

@@ -176,6 +176,9 @@ describe("Chat: operaciones transaccionales", { timeout: 30000 }, () => {
     await asMember(peer, (tx) => tx`select private.chat_change_message(${agency}, ${channel}, ${reply1}, null)`);
     expect((await db`select thread_reply_count, thread_last_reply_at from private.chat_messages where id = ${root}`)[0])
       .toMatchObject({ thread_reply_count: 0, thread_last_reply_at: null });
+    await asMember(editor, (tx) => tx`select private.chat_change_message(${agency}, ${channel}, ${root}, null)`);
+    await expect(asMember(peer, (tx) => tx`select private.chat_send_message(${agency}, ${channel}, ${randomUUID()}, 'En raíz retirada', null, ${root})`)).rejects.toMatchObject({ code: "22023" });
+    await expect(asMember(peer, (tx) => tx`select private.chat_send_message(${agency}, ${channel}, ${randomUUID()}, 'Citando retirada', ${root})`)).rejects.toMatchObject({ code: "22023" });
   });
 
   it("alterna reacciones con validación de emoji, limpia al retirar y aplica cuota por minuto", async () => {

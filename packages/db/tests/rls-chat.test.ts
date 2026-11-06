@@ -54,7 +54,9 @@ describe("Chat: aislamiento en Postgres", { timeout: 30000 }, () => {
       await tx`insert into private.chat_reactions (workspace_id, conversation_id, message_id, user_id, emoji)
         values (${agency}, ${general}, ${channelMsg}, ${editor}, '👍'), (${agency}, ${direct}, ${directMsg}, ${editor}, '🔥')`;
       await tx`insert into private.chat_mentions (workspace_id, conversation_id, message_id, mentioned_user_id)
-        values (${agency}, ${general}, ${channelMsg}, ${viewer}), (${agency}, ${direct}, ${directMsg}, ${peer})`;
+        values (${agency}, ${general}, ${channelMsg}, ${viewer}),
+        (${agency}, ${general}, ${channelMsg}, ${owner}),
+        (${agency}, ${direct}, ${directMsg}, ${peer})`;
       await tx`insert into private.chat_typing (workspace_id, conversation_id, user_id, updated_at, expires_at)
         values (${agency}, ${general}, ${editor}, now(), now() + interval '6 seconds'),
         (${agency}, ${direct}, ${editor}, now(), now() + interval '6 seconds')`;
@@ -111,6 +113,7 @@ describe("Chat: aislamiento en Postgres", { timeout: 30000 }, () => {
         ...(await tx`select user_id from private.chat_typing where conversation_id = ${direct}`),
       ])).toHaveLength(0);
     }));
+    expect(await asMember(editor, (tx) => tx`select mentioned_user_id from private.chat_mentions where conversation_id = ${direct}`)).toHaveLength(0);
     expect(await asMember(peer, async (tx) => ({
       messages: [...(await tx`select body from private.chat_messages where conversation_id = ${direct}`)],
       reactions: [...(await tx`select emoji from private.chat_reactions where conversation_id = ${direct}`)],
@@ -129,10 +132,14 @@ describe("Chat: aislamiento en Postgres", { timeout: 30000 }, () => {
   it("revoca acceso tras bajar el rol o salir de la agencia", async () => {
     await db`update public.workspace_members set role = 'viewer' where workspace_id = ${agency} and user_id = ${peer}`;
     try {
-      expect(await asMember(peer, (tx) => tx`select body from private.chat_messages where conversation_id = ${direct}`)).toHaveLength(0);
+      for (const table of ["chat_messages", "chat_reactions", "chat_mentions", "chat_typing"]) {
+        expect(await asMember(peer, (tx) => tx`select 1 from ${tx("private." + table)} where conversation_id = ${direct}`)).toHaveLength(0);
+      }
       expect(await asMember(peer, (tx) => tx`select body from private.chat_messages where conversation_id = ${general}`)).toHaveLength(1);
       await db`delete from public.workspace_members where workspace_id = ${agency} and user_id = ${peer}`;
-      expect(await asMember(peer, (tx) => tx`select body from private.chat_messages where workspace_id = ${agency}`)).toHaveLength(0);
+      for (const table of ["chat_messages", "chat_reactions", "chat_mentions", "chat_typing"]) {
+        expect(await asMember(peer, (tx) => tx`select 1 from ${tx("private." + table)} where workspace_id = ${agency}`)).toHaveLength(0);
+      }
       expect(await asMember(editor, (tx) => tx`select body from private.chat_messages where conversation_id = ${direct}`)).toHaveLength(1);
     } finally {
       await db`insert into public.workspace_members (workspace_id, user_id, role) values (${agency}, ${peer}, 'editor')

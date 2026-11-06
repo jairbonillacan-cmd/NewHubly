@@ -1,7 +1,6 @@
 -- Migración aditiva (#200, ADR 0012): respuestas en línea, hilos, reacciones, menciones y estado escribiendo.
+-- Reversión: drop function if exists private.chat_toggle_reaction(uuid,uuid,uuid,text), private.chat_set_typing(uuid,uuid), private.chat_mark_mentions_read(uuid,uuid,integer), private.chat_send_message(uuid,uuid,uuid,text,uuid,uuid,uuid[]); drop table if exists private.chat_quotas, private.chat_typing, private.chat_mentions, private.chat_reactions; drop index if exists private.chat_messages_thread_idx; alter table private.chat_messages drop constraint if exists chat_messages_thread_check, drop constraint if exists chat_messages_thread_root_fk, drop constraint if exists chat_messages_reply_to_fk, drop column if exists thread_last_reply_at, drop column if exists thread_reply_count, drop column if exists thread_root_id, drop column if exists reply_to_id; -- y restaurar chat_send_message(uuid,uuid,uuid,text) y chat_change_message de 20261111/20261113.
 begin;
-
-alter table private.chat_conversations add column quotas jsonb not null default '{}'::jsonb;
 
 alter table private.chat_messages
   add column reply_to_id uuid,
@@ -50,17 +49,27 @@ create table private.chat_typing (
   check (expires_at > updated_at)
 );
 
-revoke all on private.chat_reactions, private.chat_mentions, private.chat_typing from public, anon, authenticated;
+create table private.chat_quotas (
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  user_id uuid not null,
+  kind text not null check (kind in ('reaction', 'mention_read')),
+  bucket bigint not null,
+  n integer not null default 0 check (n >= 0),
+  primary key (workspace_id, user_id, kind)
+);
+
+revoke all on private.chat_reactions, private.chat_mentions, private.chat_typing, private.chat_quotas from public, anon, authenticated;
 grant select on private.chat_reactions, private.chat_mentions, private.chat_typing to authenticated;
 alter table private.chat_reactions enable row level security, force row level security;
 alter table private.chat_mentions enable row level security, force row level security;
 alter table private.chat_typing enable row level security, force row level security;
+alter table private.chat_quotas enable row level security, force row level security;
 
 create policy chat_reactions_read on private.chat_reactions for select to authenticated
   using (exists (select 1 from private.chat_conversations c
     where c.workspace_id = chat_reactions.workspace_id and c.id = chat_reactions.conversation_id));
 create policy chat_mentions_read on private.chat_mentions for select to authenticated
-  using (exists (select 1 from private.chat_conversations c
+  using (mentioned_user_id = (select auth.uid()) and exists (select 1 from private.chat_conversations c
     where c.workspace_id = chat_mentions.workspace_id and c.id = chat_mentions.conversation_id));
 create policy chat_typing_read on private.chat_typing for select to authenticated
   using (exists (select 1 from private.chat_conversations c
@@ -86,11 +95,11 @@ begin
     raise exception 'Límite de envíos alcanzado' using errcode = 'P0429';
   end if;
   if reply_to is not null and not exists (select 1 from private.chat_messages
-      where workspace_id = agency_id and conversation_id = target_id and id = reply_to) then
+      where workspace_id = agency_id and conversation_id = target_id and id = reply_to and deleted_at is null) then
     raise exception 'Mensaje citado inválido' using errcode = '22023';
   end if;
   if thread_root is not null and not exists (select 1 from private.chat_messages
-      where workspace_id = agency_id and conversation_id = target_id and id = thread_root and thread_root_id is null) then
+      where workspace_id = agency_id and conversation_id = target_id and id = thread_root and thread_root_id is null and deleted_at is null) then
     raise exception 'Raíz de hilo inválida' using errcode = '22023';
   end if;
   if array_position(mentioned_users, null) is not null then raise exception 'Mención inválida' using errcode = '22023'; end if;
@@ -161,16 +170,13 @@ end; $$;
 create function private.chat_toggle_reaction(agency_id uuid, target_id uuid, target_message_id uuid, reaction_emoji text) returns boolean
 language plpgsql security definer set search_path = '' as $$
 declare actor_id uuid := (select auth.uid()); conversation private.chat_conversations;
-declare now_ts timestamptz := clock_timestamp(); quota_key text;
-declare quota_bucket text := (extract(epoch from now_ts)::bigint / 60)::text; added boolean;
+declare now_ts timestamptz := clock_timestamp(); quota_bucket bigint := extract(epoch from now_ts)::bigint / 60; added boolean;
 begin
   if actor_id is null or agency_id is null then raise exception 'Conversación no disponible' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended(agency_id::text || ':react:' || actor_id::text, 0));
   conversation := private.chat_lock_writable(agency_id, target_id);
   if reaction_emoji is null then raise exception 'Emoji inválido' using errcode = '22023'; end if;
-  quota_key := 'r:' || actor_id::text;
-  if (select coalesce(sum(case when c.quotas -> quota_key ->> 'b' = quota_bucket then (c.quotas -> quota_key ->> 'n')::int else 0 end), 0)
-      from private.chat_conversations c where c.workspace_id = agency_id) >= 60 then
+  if (select n from private.chat_quotas where workspace_id = agency_id and user_id = actor_id and kind = 'reaction' and bucket = quota_bucket) >= 60 then
     raise exception 'Límite de reacciones alcanzado' using errcode = 'P0429';
   end if;
   update private.chat_messages set change_number = conversation.last_change_number + 1
@@ -187,10 +193,11 @@ begin
     exception when check_violation then raise exception 'Emoji inválido' using errcode = '22023'; end;
     added := true;
   end if;
-  update private.chat_conversations set last_change_number = last_change_number + 1,
-    quotas = jsonb_set(quotas, array[quota_key], jsonb_build_object('b', quota_bucket, 'n',
-      case when quotas -> quota_key ->> 'b' = quota_bucket then (quotas -> quota_key ->> 'n')::int + 1 else 1 end))
-    where workspace_id = agency_id and id = target_id;
+  insert into private.chat_quotas (workspace_id, user_id, kind, bucket, n)
+    values (agency_id, actor_id, 'reaction', quota_bucket, 1)
+    on conflict (workspace_id, user_id, kind) do update
+      set bucket = excluded.bucket, n = case when chat_quotas.bucket = excluded.bucket then chat_quotas.n + 1 else 1 end;
+  update private.chat_conversations set last_change_number = last_change_number + 1 where workspace_id = agency_id and id = target_id;
   return added;
 end; $$;
 
@@ -216,8 +223,7 @@ end; $$;
 create function private.chat_mark_mentions_read(agency_id uuid, target_id uuid, up_to_message_number integer default null) returns integer
 language plpgsql security definer set search_path = '' as $$
 declare actor_id uuid := (select auth.uid()); actor_role text; conversation private.chat_conversations;
-declare now_ts timestamptz := clock_timestamp(); quota_key text;
-declare quota_bucket text := (extract(epoch from now_ts)::bigint / 60)::text; updated_count integer;
+declare now_ts timestamptz := clock_timestamp(); quota_bucket bigint := extract(epoch from now_ts)::bigint / 60; updated_count integer;
 begin
   if actor_id is null or agency_id is null then raise exception 'Conversación no disponible' using errcode = '42501'; end if;
   actor_role := private.chat_lock_agency_role(agency_id);
@@ -231,14 +237,13 @@ begin
     raise exception 'Cursor de lectura inválido' using errcode = '22023';
   end if;
   perform pg_advisory_xact_lock(hashtextextended(agency_id::text || ':mentions:' || actor_id::text, 0));
-  quota_key := 'm:' || actor_id::text;
-  if (select coalesce(sum(case when c.quotas -> quota_key ->> 'b' = quota_bucket then (c.quotas -> quota_key ->> 'n')::int else 0 end), 0)
-      from private.chat_conversations c where c.workspace_id = agency_id) >= 60 then
+  if (select n from private.chat_quotas where workspace_id = agency_id and user_id = actor_id and kind = 'mention_read' and bucket = quota_bucket) >= 60 then
     raise exception 'Límite de lecturas de menciones alcanzado' using errcode = 'P0429';
   end if;
-  update private.chat_conversations set quotas = jsonb_set(quotas, array[quota_key], jsonb_build_object('b', quota_bucket, 'n',
-      case when quotas -> quota_key ->> 'b' = quota_bucket then (quotas -> quota_key ->> 'n')::int + 1 else 1 end))
-    where workspace_id = agency_id and id = target_id;
+  insert into private.chat_quotas (workspace_id, user_id, kind, bucket, n)
+    values (agency_id, actor_id, 'mention_read', quota_bucket, 1)
+    on conflict (workspace_id, user_id, kind) do update
+      set bucket = excluded.bucket, n = case when chat_quotas.bucket = excluded.bucket then chat_quotas.n + 1 else 1 end;
   update private.chat_mentions m set read_at = now_ts from private.chat_messages msg
     where m.workspace_id = agency_id and m.conversation_id = target_id and m.mentioned_user_id = actor_id and m.read_at is null
       and msg.workspace_id = m.workspace_id and msg.conversation_id = m.conversation_id and msg.id = m.message_id
