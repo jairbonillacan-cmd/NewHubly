@@ -29,10 +29,10 @@ La Constitución establece que cada pantalla responde «¿qué sigue y quién lo
 Las tres tablas viven en `public` con Drizzle (`packages/db/src/schema.ts`), `enable row level security` y `force row level security`, revocando todo permiso a `anon` y `public`:
 
 1. **`public.brands`:**
-   - Columnas: `id uuid primary key default gen_random_uuid()`, `workspace_id uuid not null references public.workspaces(id) on delete cascade`, `created_by uuid not null`, `visibility text not null default 'workspace' check (visibility in ('private', 'workspace'))`, `name text not null check (btrim(name) <> '' and char_length(name) <= 80)`, `color text not null default 'azul' check (color in ('azul', 'arena', 'verde', 'lila'))` (claves de la paleta semántica de `tokens.css`, nunca hexadecimal), `archived_at timestamptz`, `created_at timestamptz not null default now()`, `updated_at timestamptz not null default now()`, `unique (workspace_id, id)`.
+   - Columnas: `id uuid primary key default gen_random_uuid()`, `workspace_id uuid not null references public.workspaces(id) on delete cascade`, `created_by uuid not null`, `visibility text not null default 'workspace' check (visibility in ('private', 'workspace'))`, `name text not null check (char_length(btrim(name)) between 1 and 120)`, `color text not null default 'azul' check (color in ('azul', 'arena', 'verde', 'lila'))` (claves de la paleta semántica de `tokens.css`, nunca hexadecimal), `archived_at timestamptz`, `created_at timestamptz not null default now()`, `updated_at timestamptz not null default now()`, `unique (workspace_id, id)`.
    - Gestión: `owner` y `admin` en agencia; `owner` en espacio personal.
 2. **`public.content_pieces`:**
-   - Contenido: `brand_id uuid` con clave foránea compuesta `(workspace_id, brand_id) references public.brands(workspace_id, id) on delete set null (brand_id)`, `title text not null check (btrim(title) <> '' and char_length(title) <= 200)`, `brief text not null default '' check (char_length(brief) <= 4000)`, `campaign text not null default '' check (char_length(campaign) <= 120)`.
+   - Contenido: `brand_id uuid` con clave foránea compuesta `(workspace_id, brand_id) references public.brands(workspace_id, id) on delete set null (brand_id)`, `title text not null check (char_length(btrim(title)) between 1 and 280)`, `brief text not null default '' check (char_length(brief) <= 10000)`, `campaign text not null default '' check (char_length(campaign) <= 120)`.
    - Canal: `channel text not null default 'instagram' check (channel in ('instagram', 'facebook', 'tiktok', 'linkedin', 'x', 'youtube', 'blog', 'email', 'otro'))`.
    - Agenda: `planned_date date not null`, `planned_time time null` (hora local del espacio) y `assignee_id uuid null`.
    - Ciclo de vida: `status text not null default 'idea'`, `published_date date null`, `visibility text not null default 'workspace' check (visibility in ('private', 'workspace'))`, `archived_at timestamptz null`, `created_at timestamptz not null default now()`, `updated_at timestamptz not null default now()`, `unique (workspace_id, id)`.
@@ -43,8 +43,8 @@ Las tres tablas viven en `public` con Drizzle (`packages/db/src/schema.ts`), `en
 
 ### 3. Máquina de estados y permisos por rol
 
-- El dominio modela el ciclo completo de la Constitución (`idea`, `borrador`, `revision`, `aprobacion_cliente`, `programada`, `aprobada`, `publicada`, `medida`), pero **en v1 solo se permiten estas transiciones**:
-  - `idea ↔ borrador → revision → aprobada`
+- El dominio modela el ciclo completo de la Constitución (`idea`, `borrador`, `revision`, `aprobacion_cliente`, `programada`, `aprobada`, `publicada`, `medida`), pero **en v1 solo se permiten estas transiciones** (incluidas las devoluciones `revision → borrador` y `aprobada → revision`):
+  - `idea ↔ borrador ↔ revision ↔ aprobada → publicada`
   - `aprobada → publicada` (marcada a mano con su fecha real `published_date`).
   - «Aprobación del cliente» y «programada» llegan en la Fase 3.
 - Matriz de roles ([ADR 0007](0007-roles-invitaciones-y-visibilidad-agencia.md)), validada en el caso de uso y en RLS:

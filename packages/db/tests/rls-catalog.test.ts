@@ -45,6 +45,10 @@ describe("Catálogo RLS y Seguridad (ADR 0004, ADR 0007, ADR 0011, Issue #23, #6
     const [mr] = await sql<Array<{ p: boolean }>>`select has_column_privilege('authenticated', 'public.workspace_members', 'role', 'update') as p;`;
     const [ei] = await sql<Array<{ p: boolean }>>`select has_table_privilege('authenticated', 'public.content_piece_events', 'insert') as p;`;
     expect(th?.p).toBe(false); expect(mu?.p).toBe(false); expect(mr?.p).toBe(true); expect(ei?.p).toBe(false);
+    for (const t of ["brands", "content_pieces", "content_piece_events"]) {
+      const [tr] = await sql<Array<{ p: boolean }>>`select has_table_privilege('authenticated', ${"public." + t}, 'TRUNCATE') as p;`;
+      expect(tr?.p, `authenticated no truncate ${t}`).toBe(false);
+    }
   });
 
   it("las tablas del chat en private tienen RLS forzado y anon no las lee", async () => {

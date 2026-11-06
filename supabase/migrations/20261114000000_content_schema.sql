@@ -4,34 +4,38 @@ begin;
 create table public.brands (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
-  created_by uuid not null references auth.users(id) on delete cascade,
+  created_by uuid not null,
   name text not null check (char_length(btrim(name)) between 1 and 120),
   color text not null default 'azul' check (color in ('azul', 'arena', 'verde', 'lila')),
   visibility text not null default 'workspace' check (visibility in ('private', 'workspace')),
   archived_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint brands_workspace_id_id_unique unique (workspace_id, id)
 );
 create index brands_workspace_archived_idx on public.brands (workspace_id, archived_at);
 
 create table public.content_pieces (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
-  brand_id uuid not null references public.brands(id) on delete restrict,
-  created_by uuid not null references auth.users(id) on delete cascade,
+  brand_id uuid,
+  created_by uuid not null,
   title text not null check (char_length(btrim(title)) between 1 and 280),
   brief text not null default '' check (char_length(brief) <= 10000),
   campaign text not null default '' check (char_length(campaign) <= 120),
   channel text not null default 'instagram' check (channel in ('instagram', 'facebook', 'tiktok', 'linkedin', 'x', 'youtube', 'blog', 'email', 'otro')),
   planned_date date not null,
   planned_time time,
-  assignee_id uuid references auth.users(id) on delete set null,
+  assignee_id uuid,
   status text not null default 'idea' check (status in ('idea', 'borrador', 'revision', 'aprobacion_cliente', 'programada', 'aprobada', 'publicada', 'medida')),
   published_date date,
   visibility text not null default 'workspace' check (visibility in ('private', 'workspace')),
   archived_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint content_pieces_workspace_id_id_unique unique (workspace_id, id),
+  constraint content_pieces_workspace_brand_fk foreign key (workspace_id, brand_id)
+    references public.brands(workspace_id, id) on delete set null (brand_id)
 );
 create index content_pieces_workspace_planned_date_idx on public.content_pieces (workspace_id, planned_date);
 create index content_pieces_workspace_brand_idx on public.content_pieces (workspace_id, brand_id);
@@ -39,19 +43,20 @@ create index content_pieces_workspace_brand_idx on public.content_pieces (worksp
 create table public.content_piece_events (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
-  piece_id uuid not null references public.content_pieces(id) on delete cascade,
+  piece_id uuid not null,
   kind text not null check (kind in ('created', 'status', 'rescheduled', 'assigned')),
   "from" text,
   "to" text,
-  actor_id uuid not null references auth.users(id) on delete cascade,
-  at timestamptz not null default now()
+  actor_id uuid not null,
+  at timestamptz not null default clock_timestamp(),
+  constraint content_piece_events_workspace_piece_fk foreign key (workspace_id, piece_id)
+    references public.content_pieces(workspace_id, id) on delete cascade
 );
 create index content_piece_events_piece_at_idx on public.content_piece_events (piece_id, at asc);
 
-revoke all on public.brands, public.content_pieces, public.content_piece_events from public, anon;
-revoke insert, update, delete on public.content_piece_events from authenticated, anon;
-grant select on public.brands, public.content_pieces, public.content_piece_events to authenticated;
-grant insert, update, delete on public.brands, public.content_pieces to authenticated;
+revoke all on public.brands, public.content_pieces, public.content_piece_events from public, anon, authenticated;
+grant select, insert, update, delete on public.brands, public.content_pieces to authenticated;
+grant select on public.content_piece_events to authenticated;
 
 create or replace function private.has_workspace_role(lookup_workspace_id uuid, allowed_roles text[])
 returns boolean language sql security definer stable set search_path = '' as $$
@@ -101,10 +106,15 @@ end; $$;
 create or replace function private.enforce_content_piece_write() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-  if not exists (select 1 from public.brands b where b.id = new.brand_id and b.workspace_id = new.workspace_id) then
+  if new.brand_id is not null and (tg_op = 'INSERT' or new.brand_id is distinct from old.brand_id) and not exists (
+    select 1 from public.brands b
+    where b.id = new.brand_id
+      and b.workspace_id = new.workspace_id
+      and private.can_read_workspace_item(b.workspace_id, b.created_by, b.visibility)
+  ) then
     raise exception 'brand_workspace_mismatch' using errcode = '23514';
   end if;
-  if new.assignee_id is not null and not exists (
+  if new.assignee_id is not null and (tg_op = 'INSERT' or new.assignee_id is distinct from old.assignee_id) and not exists (
     select 1 from public.workspace_members wm where wm.workspace_id = new.workspace_id and wm.user_id = new.assignee_id
   ) then
     raise exception 'assignee_not_workspace_member' using errcode = '23514';
@@ -210,10 +220,10 @@ create policy brands_select on public.brands for select to authenticated
 create policy brands_insert on public.brands for insert to authenticated
   with check (created_by = (select auth.uid()) and private.has_workspace_role(workspace_id, array['owner', 'admin']));
 create policy brands_update on public.brands for update to authenticated
-  using (private.has_workspace_role(workspace_id, array['owner', 'admin']))
-  with check (private.has_workspace_role(workspace_id, array['owner', 'admin']));
+  using (private.can_read_workspace_item(workspace_id, created_by, visibility) and private.has_workspace_role(workspace_id, array['owner', 'admin']))
+  with check ((visibility = 'workspace' or created_by = (select auth.uid())) and private.has_workspace_role(workspace_id, array['owner', 'admin']));
 create policy brands_delete on public.brands for delete to authenticated
-  using (private.has_workspace_role(workspace_id, array['owner', 'admin']));
+  using (private.can_read_workspace_item(workspace_id, created_by, visibility) and private.has_workspace_role(workspace_id, array['owner', 'admin']));
 
 create policy content_pieces_select on public.content_pieces for select to authenticated
   using (private.can_read_workspace_item(workspace_id, created_by, visibility));

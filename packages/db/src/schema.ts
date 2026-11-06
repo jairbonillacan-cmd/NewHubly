@@ -88,12 +88,15 @@ export const brands = pgTable("brands", {
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index("brands_workspace_archived_idx").on(t.workspaceId, t.archivedAt)]);
+}, (t) => [
+  unique("brands_workspace_id_id_unique").on(t.workspaceId, t.id),
+  index("brands_workspace_archived_idx").on(t.workspaceId, t.archivedAt),
+]);
 
 export const contentPieces = pgTable("content_pieces", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
-  brandId: uuid("brand_id").notNull().references(() => brands.id, { onDelete: "restrict" }),
+  brandId: uuid("brand_id"),
   createdBy: uuid("created_by").notNull(),
   title: text("title").notNull(),
   brief: text("brief").notNull().default(""),
@@ -109,6 +112,8 @@ export const contentPieces = pgTable("content_pieces", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
+  unique("content_pieces_workspace_id_id_unique").on(t.workspaceId, t.id),
+  foreignKey({ columns: [t.workspaceId, t.brandId], foreignColumns: [brands.workspaceId, brands.id], name: "content_pieces_workspace_brand_fk" }).onDelete("set null"),
   index("content_pieces_workspace_planned_date_idx").on(t.workspaceId, t.plannedDate),
   index("content_pieces_workspace_brand_idx").on(t.workspaceId, t.brandId),
 ]);
@@ -116,13 +121,16 @@ export const contentPieces = pgTable("content_pieces", {
 export const contentPieceEvents = pgTable("content_piece_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
-  pieceId: uuid("piece_id").notNull().references(() => contentPieces.id, { onDelete: "cascade" }),
+  pieceId: uuid("piece_id").notNull(),
   kind: text("kind", { enum: ["created", "status", "rescheduled", "assigned"] }).notNull(),
   from: text("from"),
   to: text("to"),
   actorId: uuid("actor_id").notNull(),
   at: timestamp("at", { withTimezone: true }).defaultNow().notNull(),
-}, (t) => [index("content_piece_events_piece_at_idx").on(t.pieceId, t.at)]);
+}, (t) => [
+  foreignKey({ columns: [t.workspaceId, t.pieceId], foreignColumns: [contentPieces.workspaceId, contentPieces.id], name: "content_piece_events_workspace_piece_fk" }).onDelete("cascade"),
+  index("content_piece_events_piece_at_idx").on(t.pieceId, t.at),
+]);
 
 export type BrandRow = typeof brands.$inferSelect; export type NewBrandRow = typeof brands.$inferInsert;
 export type ContentPieceRow = typeof contentPieces.$inferSelect; export type NewContentPieceRow = typeof contentPieces.$inferInsert;

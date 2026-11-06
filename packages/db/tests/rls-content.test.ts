@@ -5,10 +5,11 @@ import { withUserContext } from "../src/context";
 import { getDb } from "../src/internal";
 import { brands, contentPieceEvents, contentPieces, workspaceMembers } from "../src/schema";
 
-const expectPgError = async (fn: () => Promise<unknown>, pattern: RegExp) => {
-  let caught: { message?: string; cause?: { message?: string } } | undefined;
+const expectPgError = async (fn: () => Promise<unknown>, pattern: RegExp, code?: string) => {
+  let caught: { code?: string; message?: string; cause?: { code?: string; message?: string } } | undefined;
   try { await fn(); } catch (e) { caught = e as typeof caught; }
   expect(caught?.cause?.message ?? caught?.message ?? "").toMatch(pattern);
+  if (code) expect(caught?.cause?.code ?? caught?.code).toBe(code);
 };
 
 describe("Fase 2 · Marcas, piezas y eventos del calendario editorial con RLS (ADR 0011, Issue #191)", { timeout: 30000 }, () => {
@@ -174,6 +175,13 @@ describe("Fase 2 · Marcas, piezas y eventos del calendario editorial con RLS (A
         "status:revision->aprobada",
         "status:aprobada->publicada",
       ]);
+      const [monotonic] = await tx.execute<{ ok: boolean }>(sql`
+        select bool_and(next_at > at) as ok from (
+          select at, lead(at) over (order by at asc) as next_at
+          from public.content_piece_events where piece_id = ${piece!.id}::uuid
+        ) s where next_at is not null
+      `);
+      expect(monotonic?.ok).toBe(true);
     });
 
     await expect(withUserContext({ sub: ownerA, role: "authenticated" }, (tx) =>
@@ -182,5 +190,51 @@ describe("Fase 2 · Marcas, piezas y eventos del calendario editorial con RLS (A
     await expect(withUserContext({ sub: ownerA, role: "authenticated" }, (tx) =>
       tx.execute(sql`delete from public.content_piece_events where piece_id = ${piece!.id}::uuid`),
     )).rejects.toThrow();
+    await expectPgError(() =>
+      db.execute(sql`insert into public.content_piece_events (workspace_id, piece_id, kind, actor_id) values (${agencyBId}::uuid, ${piece!.id}::uuid, 'created', ${ownerA}::uuid)`),
+      /content_piece_events_workspace_piece_fk/, "23503",
+    );
+  });
+
+  it("6. Regresiones de auditoría: TRUNCATE denegado (42501), marca privada protegida, borrado de marca con set null y edición tras baja de assignee", async () => {
+    for (const table of ["public.brands", "public.content_pieces", "public.content_piece_events"]) {
+      await expectPgError(
+        () => withUserContext({ sub: ownerA, role: "authenticated" }, (tx) => tx.execute(sql.raw(`truncate ${table}`))),
+        /permission denied/i, "42501",
+      );
+    }
+
+    const [privBrandOwner] = await withUserContext({ sub: ownerA, role: "authenticated" }, (tx) =>
+      tx.insert(brands).values({ workspaceId: agencyAId, createdBy: ownerA, name: "Marca Privada Owner", visibility: "private" }).returning());
+    await withUserContext({ sub: adminA, role: "authenticated" }, async (tx) => {
+      expect(await tx.update(brands).set({ name: "Intruso Admin" }).where(eq(brands.id, privBrandOwner!.id)).returning()).toEqual([]);
+      expect(await tx.delete(brands).where(eq(brands.id, privBrandOwner!.id)).returning()).toEqual([]);
+    });
+    await expectPgError(() => withUserContext({ sub: editorA, role: "authenticated" }, (tx) =>
+      tx.insert(contentPieces).values({
+        workspaceId: agencyAId, brandId: privBrandOwner!.id, createdBy: editorA,
+        title: "Intento con marca privada ajena", plannedDate: "2026-11-22",
+      }),
+    ), /brand_workspace_mismatch/, "23514");
+
+    const [tempBrand] = await withUserContext({ sub: adminA, role: "authenticated" }, (tx) =>
+      tx.insert(brands).values({ workspaceId: agencyAId, createdBy: adminA, name: "Marca Temporal" }).returning());
+    const exMember = crypto.randomUUID();
+    await db.insert(workspaceMembers).values({ workspaceId: agencyAId, userId: exMember, role: "editor" });
+    const [pieceWithBrand] = await withUserContext({ sub: editorA, role: "authenticated" }, (tx) =>
+      tx.insert(contentPieces).values({
+        workspaceId: agencyAId, brandId: tempBrand!.id, createdBy: editorA,
+        title: "Pieza sobreviviente", plannedDate: "2026-11-23", assigneeId: exMember,
+      }).returning());
+
+    await withUserContext({ sub: adminA, role: "authenticated" }, (tx) =>
+      tx.delete(brands).where(eq(brands.id, tempBrand!.id)));
+    await db.execute(sql`delete from public.workspace_members where workspace_id = ${agencyAId}::uuid and user_id = ${exMember}::uuid`);
+
+    const [updatedAfterExit] = await withUserContext({ sub: editorA, role: "authenticated" }, (tx) =>
+      tx.update(contentPieces).set({ status: "borrador", plannedDate: "2026-11-24" }).where(eq(contentPieces.id, pieceWithBrand!.id)).returning());
+    expect(updatedAfterExit?.brandId).toBeNull();
+    expect(updatedAfterExit?.assigneeId).toBe(exMember);
+    expect(updatedAfterExit?.status).toBe("borrador");
   });
 });
