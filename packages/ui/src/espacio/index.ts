@@ -11,5 +11,7 @@ export * from "./TopBar";
 export * from "./Dock";
 export * from "./CommandPalette";
 export * from "./BienvenidaDialog";
+export * from "./Carril";
+export * from "./herramientas";
 export * from "./EquipoDialog";
 export * from "./EspacioHoy";

@@ -31,6 +31,8 @@ const PATHS = {
   ayuda: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M9.6 9.2a2.5 2.5 0 0 1 4.9.6c0 1.6-2.5 2.2-2.5 3.7M12 16.8h.01",
   engrane: "M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.9 1.9M17.5 17.5l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.9-1.9M17.5 6.5l1.9-1.9",
   lapiz: "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4",
+  expandir: "M4 5h16v14H4zM9 5v14M13 10l2 2-2 2",
+  contraer: "M4 5h16v14H4zM9 5v14M15 10l-2 2 2 2",
 } as const;
 
 export type IconName = keyof typeof PATHS;

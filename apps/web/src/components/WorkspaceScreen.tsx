@@ -1,7 +1,7 @@
 "use client";
 import { parseQuickCapture } from "@hubly/application";
 import { createTodoSchema, type UserPreferences } from "@hubly/contracts";
-import { BienvenidaDialog, EspacioEstado, EspacioHoy, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
+import { BienvenidaDialog, EspacioEstado, EspacioHoy, type HerramientaId, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
 import React, { useEffect, useRef, useState } from "react";
 import {
   archiveNoteAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction, createAgencyWorkspaceAction,
@@ -29,6 +29,8 @@ export interface WorkspaceScreenProps {
   showWelcome?: boolean;
   /** Correo de la sesión, para la inicial del avatar. */
   currentUserEmail?: string | null;
+  /** Herramienta abierta al cargar (?herramienta=). */
+  initialHerramienta?: HerramientaId;
   onSavePreferences?: (patch: Partial<UserPreferences>) => Promise<unknown>;
   onRetry?: () => void; onLoginRedirect?: () => void; onTimezoneRefresh?: () => void; onSignOut?: () => Promise<void>;
   onSaveNote?: (note: WorkspaceNote, nextTitle: string, nextContent: string) => Promise<WorkspaceNote>;
@@ -106,7 +108,7 @@ const toEspacioWorkspace = (w: WorkspaceSummary): EspacioWorkspace => ({ id: w.i
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialTodos = [], initialNotes = [], initialActionError = null,
-  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, currentUserEmail = null, onSavePreferences,
+  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, currentUserEmail = null, initialHerramienta, onSavePreferences,
   onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
@@ -304,6 +306,7 @@ export function WorkspaceScreen({
       onThemeChange={(theme) => persistPreferences({ theme }, 0)}
       wallpaperImageUrl={initialWallpaperImageUrl}
       userEmail={currentUserEmail}
+      initialHerramienta={initialHerramienta}
       onUploadWallpaper={async (file) => {
         const form = new FormData();
         form.set("imagen", file);

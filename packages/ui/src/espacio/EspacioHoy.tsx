@@ -1,18 +1,19 @@
 "use client";
 
-import { Button, Tooltip } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { useHublyTheme, type HublyTheme } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
 import { BackgroundPicker, CaptureField, Dock, findNoteByQuery, type WallpaperImageControls } from "./Dock";
-import { IconButton } from "./GlassPanel";
+import { Carril, Proximamente, resumenSemana } from "./Carril";
+import { herramientaPorId, isHerramientaId, type HerramientaId } from "./herramientas";
 import { HoyPanel } from "./HoyPanel";
 import { Icon } from "./icons";
 import { NotaPanel } from "./NotaPanel";
 import { NotasPanel } from "./NotasPanel";
-import { useEspacioPreferencias, type EspacioPreferencias, type PanelId } from "./preferencias";
+import { useEspacioPreferencias, type EspacioPreferencias } from "./preferencias";
 import { TopBar } from "./TopBar";
 import {
   relativeDateLabel, type CaptureAnalysis, type CaptureInput, type EspacioInvitation, type EspacioInviteRole, type EspacioMember,
@@ -71,7 +72,12 @@ export interface EspacioHoyProps {
   onChangeTodoVisibility?: (id: string, visibility: EspacioVisibility) => void;
   /** Correo de la sesión, para la inicial del avatar. */
   userEmail?: string | null | undefined;
+  /** Herramienta abierta al cargar (?herramienta=); por defecto, Hoy. */
+  initialHerramienta?: HerramientaId | undefined;
 }
+
+/** Carril compacto o completo; se recuerda en este navegador hasta que exista su preferencia en la cuenta. */
+const CARRIL_STORAGE_KEY = "hubly-carril";
 
 export const PERSONAL_WORKSPACE: EspacioWorkspace = { id: "personal", name: "Espacio personal", kind: "personal", role: "owner" };
 const noop = () => {};
@@ -83,50 +89,6 @@ const isTypingTarget = (target: EventTarget | null) => {
   const tag = el?.tagName ?? "";
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || Boolean(el?.isContentEditable);
 };
-
-interface RailProps {
-  overdueCount: number;
-  panels: Record<PanelId, boolean>;
-  onTogglePanel: (id: PanelId) => void;
-  workspaces: EspacioWorkspace[];
-  activeId: string;
-  onSelect: (id: string) => void;
-  onCreateAgency: () => void;
-}
-
-function Rail({ overdueCount, panels, onTogglePanel, workspaces, activeId, onSelect, onCreateAgency }: RailProps) {
-  const railButton = "relative flex size-9 cursor-pointer items-center justify-center rounded-lg border-2 text-sm font-bold";
-  return (
-    <nav aria-label="Espacios y paneles" className="hubly-glass hubly-enter flex h-full w-16 flex-col items-center gap-2 overflow-y-auto rounded-(--glass-radius-access-bar) py-2.5" data-delay="1">
-      <span className="text-xs font-semibold text-(--text-muted)">Espacios</span>
-      {workspaces.map((ws) => {
-        const active = ws.id === activeId;
-        const name = ws.kind === "personal" ? "Espacio personal" : ws.name;
-        return (
-          <Tooltip key={ws.id} delay={400}>
-          <Button isIconOnly variant={active ? "primary" : "tertiary"} onPress={() => { if (!active) onSelect(ws.id); }}
-            className={`${railButton} ${active ? "border-(--accent-primary)" : "border-transparent data-[hovered]:border-(--glass-line-strong)"}`}>
-            {ws.kind === "personal" ? <Icon name="usuario" /> : <span aria-hidden="true">{ws.name.trim().charAt(0).toUpperCase() || "A"}</span>}
-            <span className="sr-only">{name}{active ? " (activo)" : ""}</span>
-            {active && overdueCount > 0 && (
-              <span key={overdueCount} className="hubly-pop absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-(--status-danger-text) px-1 text-xs font-bold text-(--surface-raised)">
-                {overdueCount}
-              </span>
-            )}
-          </Button>
-          <Tooltip.Content placement="right">{name}{active ? " · activo" : ""}</Tooltip.Content>
-          </Tooltip>
-        );
-      })}
-      <IconButton icon="mas" label="Crear agencia" onPress={onCreateAgency} className="border border-dashed border-(--glass-line-strong)" />
-      <span aria-hidden="true" className="my-1 h-px w-7 bg-(--glass-line-strong)" />
-      <span className="text-xs font-semibold text-(--text-muted)">Paneles</span>
-      <IconButton icon="sol" label="Panel Hoy" pressed={panels.hoy} onPress={() => onTogglePanel("hoy")} />
-      <IconButton icon="nota" label="Panel Nota abierta" pressed={panels.nota} onPress={() => onTogglePanel("nota")} />
-      <IconButton icon="pin" label="Panel Notas fijadas" pressed={panels.notas} onPress={() => onTogglePanel("notas")} />
-    </nav>
-  );
-}
 
 /** Espacio de Hoy con paneles de cristal sobre fondo personal (propuesta B, #75). Sin datos propios: todo llega por props. */
 export function EspacioHoy(props: EspacioHoyProps) {
@@ -175,6 +137,32 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [pickerOpen, setPickerOpen] = useState<"desktop" | "mobile" | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [herramienta, setHerramienta] = useState<HerramientaId>(props.initialHerramienta ?? "hoy");
+  const [carrilExpandido, setCarrilExpandido] = useState(false);
+
+  useEffect(() => {
+    try { setCarrilExpandido(localStorage.getItem(CARRIL_STORAGE_KEY) === "completo"); } catch { /* sin almacenamiento: compacto */ }
+    const onPopState = () => {
+      const id = new URLSearchParams(window.location.search).get("herramienta");
+      setHerramienta(isHerramientaId(id) ? id : "hoy");
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const toggleCarril = () => {
+    const next = !carrilExpandido;
+    setCarrilExpandido(next);
+    try { localStorage.setItem(CARRIL_STORAGE_KEY, next ? "completo" : "compacto"); } catch { /* se queda solo en esta visita */ }
+  };
+
+  // Cambiar de herramienta no recarga la página: el marco se queda y la URL guarda cuál está abierta.
+  const selectHerramienta = (id: HerramientaId) => {
+    if (id === herramienta) return;
+    setHerramienta(id);
+    window.history.pushState(window.history.state, "", id === "hoy" ? window.location.pathname : `${window.location.pathname}?herramienta=${id}`);
+    document.getElementById("contenido")?.focus();
+  };
   const rootRef = useRef<HTMLDivElement>(null);
   const desktopCapture = useRef<HTMLInputElement>(null);
   const mobileCapture = useRef<HTMLInputElement>(null);
@@ -339,6 +327,9 @@ export function EspacioHoy(props: EspacioHoyProps) {
           onSelectWorkspace={props.onSelectWorkspace ?? noop}
           onCreateAgency={() => setTeamMode("crear")}
           onOpenTeam={() => setTeamMode("equipo")}
+          toolName={herramientaPorId(herramienta).nombre}
+          panels={prefs.paneles}
+          onTogglePanel={(id) => setPrefs({ distribucion: layout === "enfoque" ? "libre" : layout, paneles: { [id]: !prefs.paneles[id] } })}
           focusMode={layout === "enfoque"}
           onToggleFocus={() => setPrefs({ distribucion: layout === "enfoque" ? "libre" : "enfoque" })}
           userEmail={props.userEmail}
@@ -346,14 +337,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
       </div>
 
       <div className="z-20 hidden min-h-0 lg:col-start-1 lg:row-span-2 lg:row-start-2 lg:block">
-        <Rail
-          overdueCount={overdueCount}
-          panels={prefs.paneles}
-          onTogglePanel={(id) => setPrefs({ distribucion: layout === "enfoque" ? "libre" : layout, paneles: { [id]: !prefs.paneles[id] } })}
-          workspaces={workspaces}
-          activeId={activeWorkspace.id}
-          onSelect={props.onSelectWorkspace ?? noop}
-          onCreateAgency={() => setTeamMode("crear")}
+        <Carril
+          expandido={carrilExpandido}
+          onToggleExpandido={toggleCarril}
+          activa={herramienta}
+          onSelect={selectHerramienta}
+          hoyPendientes={overdueCount + todayCount}
+          semana={resumenSemana(todos, todayDate)}
         />
       </div>
 
@@ -364,6 +354,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
+      {herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : (
       <div className={`flex flex-col gap-3 lg:min-h-144 lg:grow ${gridClass}`}>
         {panels.hoy && (
           <HoyPanel
@@ -405,6 +396,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           />
         )}
       </div>
+      )}
       </main>
 
       <div className="z-20 hidden justify-center lg:col-start-2 lg:row-start-3 lg:flex">

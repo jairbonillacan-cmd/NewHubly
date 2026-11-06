@@ -1,6 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import * as ui from "@hubly/ui";
 
 vi.mock("server-only", () => ({}));
 import { createTodoAction, exportWorkspaceAction, loadWorkspaceDashboardAction, saveNoteAction } from "../src/actions";
@@ -171,11 +172,16 @@ describe("Agencias en Hoy: permisos de interfaz por elemento (#64, #78)", () => 
   });
 
   it("pinta la agencia activa y la lista de espacios que llega del servidor", () => {
+    using espacio = vi.spyOn(ui, "EspacioHoy");
+    const personal = { id: "p-1", name: "Mi Espacio", slug: "mi-espacio", kind: "personal" as const, role: "owner" as const };
     const html = renderToStaticMarkup(
       <WorkspaceScreen todayDate="2026-11-05" currentUserId="u1" initialActiveWorkspace={agency}
-        initialWorkspaces={[{ id: "p-1", name: "Mi Espacio", slug: "mi-espacio", kind: "personal", role: "owner" }, agency]} />,
+        initialWorkspaces={[personal, agency]} />,
     );
     expect(html).toContain("Cambiar de espacio (actual: Agencia Pulso)");
-    expect(html).toContain("Espacio personal");
+    expect(espacio.mock.calls[0]?.[0]).toMatchObject({
+      activeWorkspace: { id: agency.id, name: agency.name },
+      workspaces: [{ id: personal.id, kind: "personal" }, { id: agency.id, kind: "agency" }],
+    });
   });
 });
