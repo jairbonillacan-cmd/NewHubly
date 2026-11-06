@@ -122,7 +122,7 @@ function DirectForm({ people, userId, onCommand }: Pick<ChatViewProps, "people" 
     }}>
       <label className="block">
         <span className="mb-1 block text-xs">Persona</span>
-        <select name="recipient" className={input} required>
+        <select name="recipient" aria-label="Persona" className={input} required>
           <option value="">Elige una persona</option>
           {eligible.map((person) => <option key={person.id} value={person.id}>{personName(person.id, person)}</option>)}
         </select>
@@ -183,7 +183,10 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
   const heading = useRef<HTMLHeadingElement>(null);
   const pinned = useRef(true);
   const earlier = useRef<{ height: number; top: number } | null>(null);
-  useEffect(() => { heading.current?.focus(); }, []);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    heading.current?.focus({ preventScroll: true });
+  }, []);
 
   function visible() {
     const element = scroll.current;
@@ -279,8 +282,8 @@ export function ChatView(props: ChatViewProps) {
       <aside className={`hubly-glass min-h-0 min-w-0 overflow-y-auto rounded-2xl p-3 ${conversation ? "hidden lg:block" : ""}`} aria-labelledby="chat-list-title">
         <h2 ref={listHeading} id="chat-list-title" tabIndex={-1} className="mb-2 text-base font-semibold">Conversaciones</h2>
         <div className="flex flex-wrap gap-1 pb-2">
-          <button type="button" className={control} aria-pressed={!props.unreadOnly} onClick={() => props.onFilter(false)}>Todas</button>
-          <button type="button" className={control} aria-pressed={props.unreadOnly} onClick={() => props.onFilter(true)}>Sin leer {unreadCount}</button>
+          <button type="button" className={`${control} aria-pressed:bg-(--accent-primary-subtle) aria-pressed:text-(--accent-primary)`} aria-pressed={!props.unreadOnly} onClick={() => props.onFilter(false)}>Todas</button>
+          <button type="button" className={`${control} aria-pressed:bg-(--accent-primary-subtle) aria-pressed:text-(--accent-primary)`} aria-pressed={props.unreadOnly} onClick={() => props.onFilter(true)}>Sin leer {unreadCount}</button>
         </div>
         {props.canManage && <ChannelForm onCommand={props.onCommand} />}
         {props.canSend && <DirectForm people={props.people} userId={props.userId} onCommand={props.onCommand} />}
@@ -307,7 +310,7 @@ export function ChatView(props: ChatViewProps) {
         {!rows.length && <p className="mt-3 text-sm text-(--text-secondary)">{props.unreadOnly ? "Ya estás al día." : "Aún no hay conversaciones."}</p>}
       </aside>
       {conversation ? <ConversationView key={conversation.id} conversation={conversation} people={people} props={{
-        ...props, onSelect: (id) => { props.onSelect(id); if (!id) requestAnimationFrame(() => listHeading.current?.focus()); },
+        ...props, onSelect: (id) => { props.onSelect(id); if (!id) requestAnimationFrame(() => { window.scrollTo(0, 0); listHeading.current?.focus({ preventScroll: true }); }); },
       }} /> : <div className="hubly-glass hidden items-center justify-center rounded-2xl p-6 text-sm text-(--text-secondary) lg:flex">
         Elige una conversación para leer sus mensajes.
       </div>}

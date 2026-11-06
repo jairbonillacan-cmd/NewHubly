@@ -8,7 +8,8 @@ import { Icon } from "./icons";
 export interface CarrilProps {
   expandido: boolean;
   onToggleExpandido: () => void;
-  activa: HerramientaId;
+  activa: HerramientaId | undefined;
+  chat?: { href: string; active: boolean } | undefined;
   onSelect: (id: HerramientaId) => void;
   /** Pendientes de Hoy sin hacer (vencidos y de hoy): la ficha de Hoy. */
   hoyPendientes: number;
@@ -51,7 +52,7 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
 }
 
 /** Carril izquierdo (#105, sección 3): Hoy primero y el grupo «Herramientas»; compacto (64 px) o completo (232 px). */
-export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPendientes, semana }: CarrilProps) {
+export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPendientes, semana, chat }: CarrilProps) {
   const [hoy, ...herramientas] = HERRAMIENTAS;
   const ficha = (herramienta: Herramienta) => herramienta.id === "hoy" ? (hoyPendientes > 0 ? String(hoyPendientes) : null) : "Pronto";
   return (
@@ -59,6 +60,11 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
     <nav aria-label="Herramientas" data-delay="1"
       className={`hubly-glass hubly-enter hubly-carril flex h-full flex-col gap-1 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-2 whitespace-nowrap ${expandido ? "w-60" : "w-18 items-center"}`}>
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
+      {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined} aria-label="Chat"
+        className={`${ITEM} flex items-center gap-3 ${expandido ? "px-3" : "justify-center"} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--glass-hover)"}`}>
+        <Icon name="chat" active={chat.active} className="size-6" />
+        {expandido && <span className="hubly-carril-texto text-sm font-semibold">Chat</span>}
+      </a>}
       <span aria-hidden="true" className="mx-2 my-1.5 h-px bg-(--glass-line-strong)" />
       {expandido && <p className="hubly-carril-texto m-0 px-3 pb-1 text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">Herramientas</p>}
       <ul aria-label="Herramientas" className="m-0 flex list-none flex-col gap-1 p-0">
