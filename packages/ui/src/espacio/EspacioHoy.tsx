@@ -12,7 +12,7 @@ import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery,
 import { Carril, Proximamente, resumenSemana } from "./Carril";
 import { HERRAMIENTAS, herramientaPorId, isHerramientaId, type HerramientaId } from "./herramientas";
 import { HoyPanel } from "./HoyPanel";
-import { Lienzo, type LienzoItem } from "./Lienzo";
+import { Lienzo, LienzoBarra, type LienzoBarraProps, type LienzoItem } from "./Lienzo";
 import { NotaPanel } from "./NotaPanel";
 import { NotasPanel } from "./NotasPanel";
 import { PerfilDialog, avatarFileError } from "./PerfilDialog";
@@ -197,6 +197,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
     document.getElementById("contenido")?.focus();
   };
   const desktop = useIsDesktop();
+  const [barraSlot, setBarraSlot] = useState<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const desktopCapture = useRef<HTMLInputElement>(null);
   const mobileCapture = useRef<HTMLInputElement>(null);
@@ -396,6 +397,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
       className={className}
     />
   );
+  const enLienzo = desktop && layout === "libre" && herramienta === "hoy";
+  // El fondo se elige desde la tuerca; el selector se ancla, invisible, a la barra del lienzo.
+  const barraProps: Omit<LienzoBarraProps, "lienzo"> = {
+    layout, onLayout: (distribucion) => setPrefs({ distribucion }), onOpenFondo: openBackground,
+    fondo: <BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs} isOpen={pickerOpen === "desktop"}
+      onOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} triggerClassName="pointer-events-none invisible absolute right-2 bottom-full size-0 min-w-0 p-0" />,
+  };
   const lienzoItems: LienzoItem[] = [
     ...(panels.hoy ? [{ id: "hoy", rect: LIENZO_INICIAL.hoy, node: hoyPanel("h-full") }] : []),
     ...(panels.nota ? [{ id: "nota", rect: LIENZO_INICIAL.nota, node: notaPanel("h-full") }] : []),
@@ -455,8 +463,8 @@ export function EspacioHoy(props: EspacioHoyProps) {
           <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
-      {herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : desktop && layout === "libre" ? (
-        <Lienzo items={lienzoItems} layout={layout} onLayout={(distribucion) => setPrefs({ distribucion })} />
+      {herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : enLienzo ? (
+        <Lienzo items={lienzoItems} barra={{ slot: barraSlot, ...barraProps }} />
       ) : (
       <div className={`flex flex-col gap-3 lg:min-h-144 lg:grow ${gridClass}`}>
         {panels.hoy && hoyPanel(`max-h-160 lg:max-h-none ${hoyClass}`)}
@@ -466,9 +474,12 @@ export function EspacioHoy(props: EspacioHoyProps) {
       )}
       </main>
 
-      {dock && <div className="z-20 hidden min-w-0 lg:col-start-2 lg:row-start-3 lg:block">
-        <Dock ref={desktopCapture} config={dock} extra={<BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs}
-          isOpen={pickerOpen === "desktop"} onOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} triggerClassName="size-11 min-w-11 shrink-0" />} />
+      {dock && <div className="z-20 hidden min-w-0 gap-3 lg:col-start-2 lg:row-start-3 lg:flex lg:items-end">
+        <div className="min-w-0 grow"><Dock ref={desktopCapture} config={dock} sinVista /></div>
+        {/* Barra propia del lienzo (issue 147): en el lienzo libre la llena el propio lienzo; si no, solo el modo y el fondo. */}
+        <div ref={setBarraSlot} className="contents">
+          {!enLienzo && <LienzoBarra {...barraProps} />}
+        </div>
       </div>}
 
       <div {...(dock ? { role: "toolbar", "aria-label": dock.label } : {})} className="hubly-glass fixed inset-x-2 bottom-2 z-30 flex flex-col gap-2 rounded-(--glass-radius-access-card) p-2 lg:hidden">

@@ -203,7 +203,7 @@ function Waiting({ waiting }: Pick<DockConfig, "waiting">) {
   );
 }
 
-function DockDetails({ config }: { config: DockConfig }) {
+function DockDetails({ config, sinVista = false }: { config: DockConfig; sinVista?: boolean }) {
   const name = useId();
   const { done, total } = config.pace;
   return (
@@ -216,7 +216,7 @@ function DockDetails({ config }: { config: DockConfig }) {
         </svg>
         <span className="lg:sr-only xl:not-sr-only">{config.pace.label}</span>
       </div>
-      <div role="radiogroup" aria-label="Distribución" className="flex shrink-0 rounded-lg bg-(--glass-hover)">
+      {!sinVista && <><div role="radiogroup" aria-label="Distribución" className="flex shrink-0 rounded-lg bg-(--glass-hover)">
         {config.views.map((view) => (
           <label key={view.id} title={view.label} className="cursor-pointer">
             <input type="radio" name={name} aria-label={view.label} checked={view.selected} onChange={view.run} className="peer sr-only" />
@@ -224,7 +224,7 @@ function DockDetails({ config }: { config: DockConfig }) {
           </label>
         ))}
       </div>
-      <span aria-live="polite" title={config.saved} className="shrink-0 text-xs text-(--text-secondary) lg:sr-only xl:not-sr-only">{config.saved}</span>
+      <span aria-live="polite" title={config.saved} className="shrink-0 text-xs text-(--text-secondary) lg:sr-only xl:not-sr-only">{config.saved}</span></>}
     </>
   );
 }
@@ -249,7 +249,8 @@ export function DockStatus({ suggestion }: { suggestion: DockSuggestion | null }
 }
 
 /** El marco elige la configuración. El dock solo presenta sus controles. */
-export const Dock = forwardRef<HTMLInputElement, { config: DockConfig; extra?: ReactNode }>(function Dock({ config, extra }, ref) {
+/** `sinVista`: el modo de paneles, el guardado y el fondo van en la barra del lienzo (issue 147). */
+export const Dock = forwardRef<HTMLInputElement, { config: DockConfig; extra?: ReactNode; sinVista?: boolean }>(function Dock({ config, extra, sinVista = false }, ref) {
   return (
     <div>
       <DockStatus suggestion={config.suggestion ?? null} />
@@ -257,7 +258,7 @@ export const Dock = forwardRef<HTMLInputElement, { config: DockConfig; extra?: R
         <span className="w-16 shrink-0 px-1 text-xs font-semibold">{config.context}</span>
         <DockActions actions={config.actions} />
         <CaptureField ref={ref} {...config.entry} />
-        <DockDetails config={config} />
+        <DockDetails config={config} sinVista={sinVista} />
         {extra}
       </div>
     </div>
