@@ -87,6 +87,7 @@ describe("Chat: aislamiento en Postgres", () => {
   it("reserva los directos para los participantes y los cursores para sus dueños", async () => {
     for (const nonParticipant of [owner, admin, viewer, outsider]) {
       expect(await asMember(nonParticipant, (tx) => tx`select body from private.chat_messages where conversation_id = ${direct}`)).toHaveLength(0);
+      expect(await asMember(nonParticipant, (tx) => tx`select member_low, member_high from private.chat_conversations where id = ${direct}`)).toHaveLength(0);
     }
     expect(await asMember(peer, (tx) => tx`select body from private.chat_messages where conversation_id = ${direct}`))
       .toEqual([{ body: "Mensaje directo" }]);

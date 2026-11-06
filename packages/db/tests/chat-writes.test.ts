@@ -122,6 +122,24 @@ describe("Chat: operaciones transaccionales", () => {
       .rejects.toMatchObject({ code: "22023" });
   });
 
+  it("no revela si existe una conversación ajena y limita ediciones seguidas del mismo mensaje", async () => {
+    const agency = await makeAgency();
+    const id = await general(agency);
+    const failures = await Promise.all([
+      send(agency, id, stranger, "Intruso").catch((error: { code?: string; message?: string }) => error),
+      send(agency, randomUUID(), stranger, "Intruso").catch((error: { code?: string; message?: string }) => error),
+      send(agency, randomUUID(), editor, "Inexistente").catch((error: { code?: string; message?: string }) => error),
+    ]);
+    for (const failure of failures) expect(failure).toMatchObject({ code: "42501", message: "Conversación no disponible" });
+
+    const message = await send(agency, id, editor, "Original");
+    await asMember(editor, (tx) => tx`select private.chat_change_message(${agency}, ${id}, ${message}, 'Primera edición')`);
+    await expect(asMember(editor, (tx) => tx`select private.chat_change_message(${agency}, ${id}, ${message}, 'Ráfaga')`))
+      .rejects.toMatchObject({ code: "P0429" });
+    await asMember(editor, (tx) => tx`select private.chat_change_message(${agency}, ${id}, ${message}, null)`);
+    expect((await db`select body from private.chat_messages where id = ${message}`)[0]).toMatchObject({ body: null });
+  });
+
   it("aplica la cuota en toda la agencia y permite reintentar un envío ya guardado", async () => {
     const agency = await makeAgency();
     const id = await general(agency);
