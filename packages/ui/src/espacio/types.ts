@@ -106,4 +106,15 @@ export interface EspacioProfile {
   onUploadAvatar: (file: File) => Promise<ProfileOutcome<string>>;
   onRemoveAvatar: () => Promise<ProfileOutcome<null>>;
   onSaveName: (name: string) => Promise<ProfileOutcome<string>>;
+  /** Estado de presencia (issue 143); sin `onChangePresence`, el menú no ofrece cambiarlo. */
+  presence?: EspacioPresence | undefined;
+  onChangePresence?: ((status: EspacioPresence) => Promise<ProfileOutcome<EspacioPresence>>) | undefined;
 }
+
+export type EspacioPresence = "online" | "away" | "dnd";
+
+export const PRESENCE: Record<EspacioPresence, { label: string; hint: string }> = {
+  online: { label: "En línea", hint: "Tu equipo ve que estás disponible" },
+  away: { label: "Ausente", hint: "Vuelves en un rato" },
+  dnd: { label: "No molestar", hint: "Silencia los avisos y el chat" },
+};

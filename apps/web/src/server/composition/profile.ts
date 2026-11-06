@@ -1,4 +1,5 @@
 import "server-only";
+import type { PresenceStatus } from "@hubly/contracts";
 import { createSupabaseServerClient } from "./auth";
 import { sanitizeWallpaperImage } from "./wallpaper-image";
 
@@ -12,16 +13,31 @@ export const DISPLAY_NAME_MAX = 60;
 /** Un solo archivo por persona, en su carpeta: subir otra foto la reemplaza. */
 export const avatarObjectPath = (userId: string) => `${userId}/foto`;
 
-export interface UserProfile { name: string | null; avatarUrl: string | null }
+export interface UserProfile { name: string | null; avatarUrl: string | null; presence: PresenceStatus }
 
 /** URL firmada de la foto; si no hay foto, la firma falla y queda en null. El nombre llega con la sesión.
  *  El perfil es accesorio: si no se puede leer, Hoy carga igual con la inicial del correo. */
 export async function loadUserProfile(userId: string, displayName: string | null): Promise<UserProfile> {
+  const [avatarUrl, presence] = await Promise.all([signUserAvatar(userId).catch(() => null), loadUserPresence(userId)]);
+  return { name: displayName, avatarUrl, presence };
+}
+
+/** Estado elegido por la persona (issue 143); sin fila guardada, o si no se puede leer, cuenta como «en línea». */
+export async function loadUserPresence(userId: string): Promise<PresenceStatus> {
   try {
-    return { name: displayName, avatarUrl: await signUserAvatar(userId) };
+    const { data } = await (await createSupabaseServerClient()).from("user_presence").select("status").eq("user_id", userId).maybeSingle();
+    const status = (data as { status?: unknown } | null)?.status;
+    return status === "away" || status === "dnd" ? status : "online";
   } catch {
-    return { name: displayName, avatarUrl: null };
+    return "online";
   }
+}
+
+export async function saveUserPresence(userId: string, status: PresenceStatus): Promise<PresenceStatus> {
+  const { error } = await (await createSupabaseServerClient()).from("user_presence")
+    .upsert({ user_id: userId, status, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) throw new Error("No se pudo cambiar tu estado.");
+  return status;
 }
 
 /** Limpia espacios repetidos y corta al máximo; un nombre vacío no se guarda. */

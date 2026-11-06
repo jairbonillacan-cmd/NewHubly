@@ -18,13 +18,13 @@ import {
 } from "./auth";
 import { WALLPAPER_BUCKET, removeUserWallpaper, signUserWallpaper, uploadUserWallpaper, wallpaperObjectPath } from "./wallpaper-storage";
 import { WALLPAPER_MAX_BYTES, WallpaperImageError, sanitizeWallpaperImage } from "./wallpaper-image";
-import { AVATAR_BUCKET, DISPLAY_NAME_MAX, avatarObjectPath, loadUserProfile, normalizeDisplayName, removeUserAvatar, saveUserDisplayName, signUserAvatar, uploadUserAvatar, type UserProfile } from "./profile";
+import { AVATAR_BUCKET, DISPLAY_NAME_MAX, avatarObjectPath, loadUserProfile, normalizeDisplayName, removeUserAvatar, saveUserDisplayName, saveUserPresence, signUserAvatar, uploadUserAvatar, type UserProfile } from "./profile";
 import { EMAIL_LINK_ERRORS, SIGNUP_FLOW, destinationAfterEmailLink, isEmailLinkType, workspaceNameFromMetadata, type EmailLinkType } from "./email-link";
 import { acceptWorkspaceInvitationByToken, acceptWorkspaceInvitationSafely, classifyInvitationError, currentSessionEmail, issueWorkspaceInvitation, revokePendingWorkspaceInvitation, type AcceptInvitationResult } from "./invitations";
 export {
   EMAIL_LINK_ERRORS, SIGNUP_FLOW, isEmailLinkType, type EmailLinkType,
   WALLPAPER_BUCKET, WALLPAPER_MAX_BYTES, WallpaperImageError, removeUserWallpaper, sanitizeWallpaperImage, signUserWallpaper, uploadUserWallpaper, wallpaperObjectPath,
-  AVATAR_BUCKET, DISPLAY_NAME_MAX, avatarObjectPath, loadUserProfile, normalizeDisplayName, removeUserAvatar, saveUserDisplayName, signUserAvatar, uploadUserAvatar, type UserProfile,
+  AVATAR_BUCKET, DISPLAY_NAME_MAX, avatarObjectPath, loadUserProfile, normalizeDisplayName, removeUserAvatar, saveUserDisplayName, saveUserPresence, signUserAvatar, uploadUserAvatar, type UserProfile,
   DEFAULT_APP_TIMEZONE, GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, HUBLY_TIMEZONE_COOKIE, HUBLY_WORKSPACE_COOKIE,
   acceptWorkspaceInvitationByToken, acceptWorkspaceInvitationSafely, classifyInvitationError, currentSessionEmail, type AcceptInvitationResult, createHttpOnlyCookieMethods, createSupabaseServerClient, enforceHttpOnlyCookieOptions,
   SessionExpiredError, getVerifiedServerSession, isSessionExpiredError, isValidIanaTimeZone, issueWorkspaceInvitation, persistActiveWorkspaceCookie, resolveActiveWorkspaceCookie,

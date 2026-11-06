@@ -279,7 +279,7 @@ export function Lienzo({ items, layout = "libre", onLayout }: LienzoProps) {
             <Icon name="tuerca" className="size-4" />
           </Dropdown.Trigger>
           <Dropdown.Popover placement="top end" className={MENU}>
-            <Dropdown.Menu aria-label="Opciones del lienzo" onAction={onMenu}>
+            <Dropdown.Menu aria-label="Opciones del lienzo" onAction={onMenu} className="hubly-sin-anillo">
               <Dropdown.Section aria-label="Modo de los paneles" selectionMode="single" selectedKeys={[layout]} onSelectionChange={onModo} className="border-b border-(--glass-line) pb-1.5">
                 {MODOS.map((modo) => (
                   <Dropdown.Item key={modo.id} id={modo.id} textValue={modo.label} className={ITEM}>
