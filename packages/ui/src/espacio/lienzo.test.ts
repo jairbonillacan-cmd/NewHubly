@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LIENZO_ZOOM_MAX, LIENZO_ZOOM_MIN, clampZoom, fitView, zoomAt } from "./Lienzo";
+import { LIENZO_PASO, LIENZO_ZOOM_MAX, LIENZO_ZOOM_MIN, alinear, clampZoom, fitView, visibleRect, zoomAt } from "./Lienzo";
 
 describe("Lienzo infinito (issue 136)", () => {
   it("acerca y aleja sin mover el punto bajo el cursor", () => {
@@ -23,5 +23,14 @@ describe("Lienzo infinito (issue 136)", () => {
     expect(big.x).toBeCloseTo((4000 - 1040) / 2);
     const small = fitView(rects, 800, 500, 0);
     expect(small.zoom).toBeCloseTo(Math.min(800 / 1040, 500 / 600));
+  });
+
+  it("el mapa marca lo que se ve en coordenadas del lienzo (issue 141)", () => {
+    expect(visibleRect({ x: -200, y: 100, zoom: 2 }, 800, 600)).toEqual({ x: 100, y: -50, w: 400, h: 300 });
+  });
+
+  it("con el imán, los paneles caen en la cuadrícula; sin él, solo se redondean", () => {
+    expect(alinear(LIENZO_PASO * 3 + 5, true)).toBe(LIENZO_PASO * 3);
+    expect(alinear(37.6, false)).toBe(38);
   });
 });

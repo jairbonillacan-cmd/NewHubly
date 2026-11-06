@@ -443,7 +443,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         </div>
       )}
       {herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : desktop && layout === "libre" ? (
-        <Lienzo items={lienzoItems} />
+        <Lienzo items={lienzoItems} layout={layout} onLayout={(distribucion) => setPrefs({ distribucion })} />
       ) : (
       <div className={`flex flex-col gap-3 lg:min-h-144 lg:grow ${gridClass}`}>
         {panels.hoy && hoyPanel(`max-h-160 lg:max-h-none ${hoyClass}`)}
