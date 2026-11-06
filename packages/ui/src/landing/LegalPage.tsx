@@ -1,4 +1,5 @@
 import { Card } from "@heroui/react";
+import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { buttonLinkClass } from "../heroui-classes";
 import { LandingNav } from "./LandingNav";
 import { LandingFooter } from "./LandingSections";
@@ -15,10 +16,12 @@ export interface LegalPageProps {
   intro: string;
   sections: readonly LegalSection[];
   current: "/privacidad" | "/terminos";
+  /** Hubi decorativo junto al título (issue 125). */
+  pose?: Exclude<HubiPose, "sentado" | "laptop">;
 }
 
 /** Plantilla de las páginas legales con la misma barra y pie que el landing (#85) y tarjetas de HeroUI. */
-export function LegalPage({ eyebrow, title, intro, sections, current }: LegalPageProps) {
+export function LegalPage({ eyebrow, title, intro, sections, current, pose }: LegalPageProps) {
   return (
     <div className="min-h-dvh bg-(--surface-canvas) text-(--text-primary)">
       <LandingNav
@@ -30,6 +33,7 @@ export function LegalPage({ eyebrow, title, intro, sections, current }: LegalPag
       />
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pt-14 pb-20 lg:pt-20">
         <header className="hubly-enter flex flex-col gap-3 pb-6">
+          {pose && <Hubi pose={pose} tamano={112} decorativo className="-mb-2" />}
           <span className="text-xs font-bold tracking-(--tracking-widest) text-(--accent-primary) uppercase">{eyebrow}</span>
           <h1 className="m-0 text-4xl leading-tight font-bold tracking-(--tracking-tighter) lg:text-5xl">{title}</h1>
           <p className="m-0 text-lg leading-relaxed text-(--text-secondary)">{intro}</p>

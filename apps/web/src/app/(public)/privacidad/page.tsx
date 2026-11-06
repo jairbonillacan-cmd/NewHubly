@@ -31,6 +31,7 @@ export function PrivacyPage() {
       intro="Cómo protegemos, aislamos y garantizamos la portabilidad de la información de tu agencia en Hubly."
       sections={PRIVACY_SECTIONS}
       current="/privacidad"
+      pose="privacidad"
     />
   );
 }
