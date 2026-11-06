@@ -265,11 +265,12 @@ export function ChatView(props: ChatViewProps) {
   const rows = props.unreadOnly ? props.conversations.filter((entry) => entry.unread) : props.conversations;
   const unreadCount = props.conversations.filter((entry) => entry.unread).length;
   const listHeading = useRef<HTMLHeadingElement>(null);
-  return <div className="flex min-h-0 min-w-0 grow flex-col gap-3" aria-labelledby="chat-title">
-    <header className={`hubly-glass flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl p-3 ${conversation ? "sr-only lg:not-sr-only" : ""}`}>
+  return <div className="flex min-h-0 min-w-0 grow flex-col gap-3">
+    {conversation && <h1 className="sr-only lg:hidden">Chat</h1>}
+    <header className={`hubly-glass shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl p-3 ${conversation ? "hidden lg:flex" : "flex"}`}>
       <div>
         <p className={sectionLabel}>{props.workspaceName}</p>
-        <h1 id="chat-title" className="text-2xl font-semibold">Chat</h1>
+        <h1 className="text-2xl font-semibold">Chat</h1>
       </div>
       <div className="flex gap-2">
         <a className={control} href={props.download("json")} aria-label="Descargar mis mensajes en JSON"><Icon name="descargar" /> JSON</a>
