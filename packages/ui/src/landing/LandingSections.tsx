@@ -8,9 +8,9 @@ export { LandingFooter, DEFAULT_FOOTER_LINKS } from "./LandingFooter";
 export { LANDING_FAQ } from "./FaqAccordion";
 
 const DATA_POINTS = [
-  ["Privado hasta que lo compartas", "Nadie más ve tus notas si no lo decides tú. Lo comprobamos contra la base de datos real."],
-  ["Te lo llevas cuando quieras", "Exportas todo en JSON o Markdown, en un clic."],
-  ["Tu hora, tu «hoy»", "Lo que vence hoy, vence en tu día, estés donde estés."],
+  ["Lo privado es privado", "Tus notas solo las ve quien tú decidas. Ni otro cliente ni otra agencia."],
+  ["Si un día te vas, te lo llevas", "Descargas todo lo que escribiste cuando quieras, sin pedir permiso."],
+  ["Tu día empieza a tu hora", "Lo que vence hoy vence en tu día, aunque trabajes desde otra ciudad."],
 ] as const;
 
 export function DataSection() {
@@ -21,8 +21,8 @@ export function DataSection() {
           <Hubi pose="privacidad" tamano={112} decorativo priority="deferred" className="hubly-wiggle size-24 lg:size-28" sizing="css" />
         </div>
         <div>
-          <p className="mb-3 text-xs font-bold tracking-(--tracking-widest) text-(--landing-accent-text) uppercase">Privacidad</p>
-          <h2 id="privacidad-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-5xl">Tus datos son tuyos.</h2>
+          <p className="mb-3 text-xs font-bold tracking-(--tracking-widest) text-(--landing-accent-text) uppercase">Tranquilidad</p>
+          <h2 id="privacidad-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-5xl">Lo de tus clientes se queda contigo.</h2>
           <ol className="mt-6 grid gap-4">
             {DATA_POINTS.map(([title, body], index) => (
               <li key={title} className="grid grid-cols-[auto_1fr] gap-3">
@@ -36,19 +36,18 @@ export function DataSection() {
           </ol>
         </div>
         <div aria-hidden="true" className="min-w-0 rounded-3xl bg-(--landing-card) p-5 shadow-(--landing-shadow) lg:p-7">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-(--landing-ice) text-(--landing-accent-text)"><Icon name="descargar" className="size-5" /></span>
-            <p className="text-lg font-semibold">Exportar mis datos</p>
-          </div>
-          <p className="mt-3 text-sm text-(--text-secondary)">Todas tus notas y pendientes, con sus fechas y vínculos.</p>
-          <div className="mt-4 flex flex-wrap gap-2 text-sm font-semibold text-(--landing-accent-text)">
-            {["JSON", "Markdown"].map((format) => <span key={format} className="rounded-full bg-(--landing-ice) px-3 py-2">{format}</span>)}
-          </div>
-          <ul className="mt-4 grid gap-1.5 font-mono text-xs text-(--text-secondary)">
-            {["json", "md"].map((extension) => (
-              <li key={extension} className="rounded-xl bg-(--landing-row) px-3 py-2 wrap-anywhere">hubly-export-AAAA-MM-DD.{extension}</li>
-            ))}
+          <p className="text-xs text-(--text-muted)">Nota · Café Aurora</p>
+          <p className="mt-1 text-lg font-semibold">Brief de la campaña de invierno</p>
+          <p className="mt-4 text-sm font-semibold">¿Quién la ve?</p>
+          <ul className="mt-2 grid gap-2 text-sm">
+            <li className="flex items-center gap-3 rounded-xl border-2 border-(--accent-primary) bg-(--landing-ice) px-3 py-2.5">
+              <Icon name="candado" className="size-5 text-(--landing-accent-text)" /><span className="grow font-semibold">Solo tú</span><span className="text-xs text-(--landing-accent-text)">Elegido</span>
+            </li>
+            <li className="flex items-center gap-3 rounded-xl bg-(--landing-row) px-3 py-2.5">
+              <Icon name="compartir" className="size-5 text-(--text-secondary)" /><span className="grow">Tu equipo de la agencia</span>
+            </li>
           </ul>
+          <p className="mt-4 text-xs text-(--text-muted)">Compartir con el equipo · Muy pronto</p>
         </div>
       </Reveal>
     </section>

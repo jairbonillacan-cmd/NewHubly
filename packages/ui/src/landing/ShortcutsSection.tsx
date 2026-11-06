@@ -11,7 +11,7 @@ export function ShortcutsSection() {
   return (
     <section aria-labelledby="teclas-titulo" data-landing-section="teclas" className="mx-auto max-w-(--landing-width) px-4 pt-16 lg:pt-24">
       <div className="rounded-(--landing-panel-radius) bg-(--landing-ice) px-5 py-8 lg:px-12 lg:py-12">
-        <SectionIntro id="teclas-titulo" title="Sin soltar el teclado." body="Capturas, buscas y te mueves con tres atajos." />
+        <SectionIntro id="teclas-titulo" title="Para ir rápido." body="Si te gusta el teclado, tres teclas te bastan para anotar y buscar." />
         <ul className="mt-7 grid gap-3 lg:grid-cols-3 lg:gap-4">
           {SHORTCUTS.map(({ keys, label }) => (
             <li key={label} className="grid justify-items-start gap-3 rounded-3xl bg-(--landing-card) p-4 lg:p-6">

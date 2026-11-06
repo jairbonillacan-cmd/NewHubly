@@ -7,8 +7,8 @@ type Pose = Exclude<HubiPose, "sentado" | "laptop">;
 // Un martes de una cuenta inventada, solo con lo que ya funciona (Constitución #3).
 const MOMENTOS: readonly { hora: string; titulo: string; texto: string; ejemplo: string; pose: Pose; tono: string }[] = [
   { hora: "9:02", titulo: "Abres Hubly", texto: "Arriba, en rojo, lo que se te pasó ayer. Debajo, lo de hoy.", ejemplo: "2 vencidos · 5 para hoy", pose: "bienvenida", tono: "bg-(--landing-mist)" },
-  { hora: "11:40", titulo: "Sales de la junta", texto: "Lo escribes tal cual y queda ligado a la nota de la junta.", ejemplo: "mandar propuesta mañana !alta @Aurora", pose: "ideas", tono: "bg-(--landing-paper)" },
-  { hora: "16:15", titulo: "«¿Me pasas lo de octubre?»", texto: "Pulsas / y lo encuentras entre tus notas y pendientes.", ejemplo: "/ octubre", pose: "buscar", tono: "bg-(--landing-ice)" },
+  { hora: "11:40", titulo: "Sales de la junta", texto: "Lo escribes tal cual, en una línea, y queda para mañana.", ejemplo: "Mandar propuesta a Aurora mañana", pose: "ideas", tono: "bg-(--landing-paper)" },
+  { hora: "16:15", titulo: "«¿Me pasas lo de octubre?»", texto: "Lo buscas y aparece entre tus notas y pendientes.", ejemplo: "Buscar: octubre", pose: "buscar", tono: "bg-(--landing-ice)" },
   { hora: "19:05", titulo: "Cierras el día", texto: "Lo de hoy está hecho. Lo de mañana ya tiene fecha.", ejemplo: "5 de 5 · hechos hoy", pose: "celebrar", tono: "bg-(--tint-green)" },
 ];
 

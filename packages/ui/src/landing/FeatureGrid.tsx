@@ -21,9 +21,9 @@ export interface Feature {
 
 const TODAY_POINTS = [
   ["Lo vencido, arriba", "En rojo, para que no se escape."],
-  ["Notas ligadas", "Cada pendiente sabe de qué junta salió."],
-  ["Tu zona horaria", "Tu «hoy» empieza a tu medianoche."],
-  ["Autoguardado", "Escribes y ya quedó."],
+  ["Cada pendiente con su nota", "Sabes de qué junta salió."],
+  ["Tu día, a tu hora", "Aunque trabajes desde otra ciudad."],
+  ["Se guarda solo", "Escribes y ya quedó."],
 ] as const;
 
 const ROLES = [
@@ -50,9 +50,9 @@ export const LANDING_FEATURES: readonly Feature[] = [
   },
   {
     id: "captura", title: "Una línea y ya quedó.", status: "disponible", tint: "bg-(--landing-paper)", visual: <CaptureVisual />, hubi: "ideas",
-    body: "Escribes «llamar a Lumen mañana !alta» y queda un pendiente para mañana con prioridad alta. Sin formularios.",
+    body: "Escribes «llamar a Lumen mañana» y queda en tu lista de mañana. Sin llenar formularios.",
     details: <ul className="flex flex-wrap gap-2">
-      {["hoy · mañana → fecha", "!alta → prioridad", "@nota → vínculo"].map((chip) => (
+      {["Entiende «hoy» y «mañana»", "Marca lo urgente", "Lo junta con la nota del cliente"].map((chip) => (
         <li key={chip} className="rounded-full bg-(--landing-ice) px-3 py-1.5 text-xs font-semibold text-(--landing-accent-text)">{chip}</li>
       ))}
     </ul>,
@@ -72,7 +72,7 @@ export const LANDING_FEATURES: readonly Feature[] = [
     id: "aprobacion", title: "El cliente dice sí desde su celular.", status: "proximamente", tint: "bg-(--landing-mist)", visual: <ApprovalVisual />, hubi: "correo",
     body: "Le mandas un enlace, lo revisa y aprueba o pide cambios. No tiene que crear cuenta ni recordar contraseñas.",
     details: <ul className="list-disc space-y-1 pl-5 text-sm text-(--text-secondary)">
-      {["Enlace que caduca", "Comentarios en cada pieza", "Historial de quién aprobó y cuándo"].map((item) => <li key={item}>{item}</li>)}
+      {["Un enlace solo para esa revisión", "Comentarios en cada pieza", "Sabes quién aprobó y cuándo"].map((item) => <li key={item}>{item}</li>)}
     </ul>,
   },
 ];
