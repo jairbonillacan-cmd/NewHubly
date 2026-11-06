@@ -75,10 +75,10 @@ export function FinalCta() {
     <section aria-labelledby="cta-titulo" data-landing-section="cierre" className="mx-auto max-w-(--landing-width) px-4 pt-16 pb-12 lg:pt-24 lg:pb-18">
       <Reveal className="grid items-center gap-4 rounded-(--landing-end-radius) border border-(--landing-end-border) bg-(--landing-end) px-6 py-11 text-(--landing-on-end) lg:grid-cols-[minmax(0,1.7fr)_1fr] lg:gap-8 lg:px-14 lg:py-9">
         <div>
-          <h2 id="cta-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-6xl">Empieza con tu día de hoy.</h2>
-          <p className="mt-4 text-(--landing-end-muted) lg:text-lg">Crea tu cuenta y captura tu primer pendiente en menos de un minuto.</p>
+          <h2 id="cta-titulo" className="landing-display text-4xl leading-none font-normal tracking-(--tracking-tight) lg:text-6xl">Tu marketing tiene su lugar.</h2>
+          <p className="mt-4 text-(--landing-end-muted) lg:text-lg">Organiza tu trabajo y empieza desde Hubly.</p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <a href="/login?modo=registro" className="inline-flex min-h-12 items-center justify-center rounded-full bg-(--landing-on-end) px-6 font-semibold text-(--landing-end) hover:underline">Crear cuenta</a>
+            <a href="/login?modo=registro" className="inline-flex min-h-12 items-center justify-center rounded-full bg-(--landing-on-end) px-6 font-semibold text-(--landing-end) hover:underline">Empezar con Hubly</a>
             <a href="/login" className="inline-flex min-h-12 items-center justify-center rounded-full border border-(--landing-on-end) px-6 font-semibold hover:underline">Ya tengo cuenta</a>
           </div>
         </div>

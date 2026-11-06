@@ -1,6 +1,6 @@
 # Instrucciones para agentes
 
-Lee antes de cada tarea: [docs/CONSTITUCION.md](docs/CONSTITUCION.md) y la fase vigente en [docs/PLAN.md](docs/PLAN.md).
+Lee antes de cada tarea: [docs/CONSTITUCION.md](docs/CONSTITUCION.md) y la fase vigente en [docs/PLAN.md](docs/PLAN.md). Para textos públicos, la landing o propuestas de producto, lee también [docs/producto/vision.md](docs/producto/vision.md).
 
 ## Forma de trabajo
 

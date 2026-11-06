@@ -4,19 +4,19 @@ import { SectionIntro } from "./SectionIntro";
 
 type Pose = Exclude<HubiPose, "sentado" | "laptop">;
 
-// Un martes de una cuenta inventada, solo con lo que ya funciona (Constitución #3).
+// Un día de una cuenta inventada: de la idea a los pendientes, solo con lo que ya funciona (Constitución #3).
 const MOMENTOS: readonly { hora: string; titulo: string; texto: string; ejemplo: string; pose: Pose; tono: string }[] = [
-  { hora: "9:02", titulo: "Abres Hubly", texto: "Arriba, en rojo, lo que se te pasó ayer. Debajo, lo de hoy.", ejemplo: "2 vencidos · 5 para hoy", pose: "bienvenida", tono: "bg-(--landing-mist)" },
-  { hora: "11:40", titulo: "Sales de la junta", texto: "Lo escribes tal cual, en una línea, y queda para mañana.", ejemplo: "Mandar propuesta a Aurora mañana", pose: "ideas", tono: "bg-(--landing-paper)" },
-  { hora: "16:15", titulo: "«¿Me pasas lo de octubre?»", texto: "Lo buscas y aparece entre tus notas y pendientes.", ejemplo: "Buscar: octubre", pose: "buscar", tono: "bg-(--landing-ice)" },
-  { hora: "19:05", titulo: "Cierras el día", texto: "Lo de hoy está hecho. Lo de mañana ya tiene fecha.", ejemplo: "5 de 5 · hechos hoy", pose: "celebrar", tono: "bg-(--tint-green)" },
+  { hora: "9:02", titulo: "Anotas una idea", texto: "En una nota, sin pensar todavía dónde va. Se guarda sola.", ejemplo: "Nota · Ideas para diciembre", pose: "ideas", tono: "bg-(--landing-mist)" },
+  { hora: "11:40", titulo: "La vuelves pendientes", texto: "Desde la nota creas lo que hay que hacer, y cada pendiente recuerda de dónde salió.", ejemplo: "Pendiente desde la nota: pedir fotos", pose: "bienvenida", tono: "bg-(--landing-paper)" },
+  { hora: "16:15", titulo: "Das seguimiento", texto: "Abres Hoy: lo vencido arriba y lo de hoy debajo. Lo que te piden, lo buscas y aparece.", ejemplo: "1 vencido · 3 para hoy", pose: "buscar", tono: "bg-(--landing-ice)" },
+  { hora: "19:05", titulo: "Cierras el día", texto: "Lo de hoy está hecho. Lo de mañana ya tiene fecha.", ejemplo: "3 de 3 · hechos hoy", pose: "celebrar", tono: "bg-(--tint-green)" },
 ];
 
 export function DiaSection() {
   return (
     <section id="dia" aria-labelledby="dia-titulo" data-landing-section="dia" className="scroll-mt-6 mx-auto max-w-(--landing-width) px-4 pt-20 lg:pt-28">
       <Reveal>
-        <SectionIntro id="dia-titulo" label="Un martes cualquiera" title="Así se ve un día con Hubly." body="Lo que ya puedes hacer hoy, en el orden en que te pasa." />
+        <SectionIntro id="dia-titulo" label="Un día cualquiera" title="Así se trabaja en Hubly." body="De la idea al pendiente hecho, con lo que ya puedes usar hoy." />
       </Reveal>
       <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:mt-14 lg:grid-cols-4">
         {MOMENTOS.map((momento, index) => (

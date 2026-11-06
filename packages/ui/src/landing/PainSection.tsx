@@ -9,7 +9,7 @@ export function PainSection() {
   return (
     <section aria-labelledby="problema-titulo" data-landing-section="problema" className="mx-auto max-w-(--landing-width) px-4 pt-20 lg:pt-28">
       <Reveal>
-        <SectionIntro id="problema-titulo" label="El problema" title="Todo está en algún lado." body="El copy en el chat, la parrilla en un Excel y el pendiente en tu cabeza. Y alguien pregunta: «¿quién tiene esto?»" />
+        <SectionIntro id="problema-titulo" label="El problema" title="Deja de repartir tu trabajo entre tantas herramientas." body="Las ideas en el celular, la parrilla en un Excel y los pendientes en un chat. Y al final alguien pregunta: «¿quién tiene esto?»" />
       </Reveal>
       <div className="mt-8 grid gap-4 lg:mt-11 lg:grid-cols-2 lg:gap-6">
         <Reveal retraso={1} className="h-full">
