@@ -4,7 +4,7 @@ import { Button, Chip, Dropdown, Kbd, Popover, ToggleButton, Tooltip } from "@he
 import type { ReactNode } from "react";
 import type { Key, Selection } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
-import { useHublyTheme } from "../landing/ThemeToggle";
+import { useHublyTheme, useHublyThemePreference } from "../landing/ThemeToggle";
 import { Icon, type IconName } from "./icons";
 import type { Shortcut } from "./dockConfig";
 import type { PanelId } from "./preferencias";
@@ -36,7 +36,7 @@ export interface TopBarProps {
 }
 
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
-const ITEM = "flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover) data-[disabled]:cursor-default data-[disabled]:opacity-60";
+const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover) data-[disabled]:cursor-default data-[disabled]:opacity-60";
 
 function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAgency, onOpenTeam }: Pick<TopBarProps, "workspaces" | "activeWorkspace" | "onSelectWorkspace" | "onCreateAgency" | "onOpenTeam">) {
   const isAgency = activeWorkspace.kind === "agency";
@@ -78,17 +78,24 @@ function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAge
 
 const initialOf = (email: string | null | undefined) => email?.trim().charAt(0).toUpperCase() || null;
 
-function AccountMenu({ timezone, userEmail, onOpenBackground, onExport, onSignOut }: Pick<TopBarProps, "timezone" | "userEmail" | "onOpenBackground" | "onExport" | "onSignOut">) {
-  const [theme, setTheme] = useHublyTheme();
+/** Nombre visible mientras Auth no guarda uno: se deriva del correo, sin inventar datos. */
+function profileName(email: string | null | undefined): string {
+  const local = email?.split("@")[0]?.trim();
+  if (!local) return "Tu cuenta";
+  return local.split(/[._-]+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+}
+
+function AccountMenu({ timezone, userEmail, shortcuts, onExport, onSignOut }: Pick<TopBarProps, "timezone" | "userEmail" | "shortcuts" | "onExport" | "onSignOut">) {
+  const [preference, , setThemePreference] = useHublyThemePreference();
   const onAction = (key: Key) => {
-    if (key === "fondo") onOpenBackground();
-    else if (key === "json") onExport("json");
+    if (key === "json") onExport("json");
     else if (key === "md") onExport("md");
     else if (key === "salir") onSignOut();
   };
   const onTheme = (selection: Selection) => {
-    const next = selection === "all" ? null : [...selection][0];
-    if (next === "light" || next === "dark") setTheme(next);
+    if (selection === "all") return;
+    const next = [...selection][0];
+    if (next === "light" || next === "dark" || next === "system") setThemePreference(next);
   };
   return (
     <Dropdown>
@@ -100,25 +107,57 @@ function AccountMenu({ timezone, userEmail, onOpenBackground, onExport, onSignOu
           <Icon name="lapiz" className="size-2.5" strokeWidth={2.5} />
         </span>
       </Dropdown.Trigger>
-      <Dropdown.Popover placement="bottom end" className={MENU}>
-        <p className="m-0 px-2.5 pt-2 pb-1 text-sm font-semibold">Tu cuenta</p>
-        {userEmail && <p className="m-0 truncate px-2.5 pb-1 text-xs text-(--text-secondary)">{userEmail}</p>}
-        {timezone && <p className="m-0 px-2.5 pb-2 text-xs text-(--text-muted)">Zona horaria: {timezone.replaceAll("_", " ")}</p>}
-        <Dropdown.Menu aria-label="Opciones de tu cuenta" onAction={onAction}>
-          <Dropdown.Section aria-label="Tema" selectionMode="single" selectedKeys={[theme]} onSelectionChange={onTheme} className="border-b border-(--glass-line) pb-1.5">
-            <Dropdown.Item id="light" textValue="Tema claro" className={ITEM}>
-              <span className="grow">Tema claro</span>
-              <Dropdown.ItemIndicator />
-            </Dropdown.Item>
-            <Dropdown.Item id="dark" textValue="Tema oscuro" className={ITEM}>
-              <span className="grow">Tema oscuro</span>
-              <Dropdown.ItemIndicator />
+      <Dropdown.Popover placement="bottom end" className={`${MENU} w-80`}>
+        <div className="flex flex-col gap-3 border-b border-(--glass-line) px-2.5 pt-2 pb-3">
+          <div className="flex items-start gap-3">
+            <span className="relative flex size-16 shrink-0 items-center justify-center rounded-full bg-(--accent-primary) text-2xl font-bold text-(--text-on-accent)">
+              <span aria-hidden="true">{initialOf(userEmail) ?? <Icon name="usuario" className="size-7" />}</span>
+              <Button isIconOnly isDisabled aria-label="Cambiar foto, muy pronto" className="absolute -right-1 -bottom-1 size-11 rounded-full border-2 border-(--surface-raised) bg-(--surface-raised) text-(--text-secondary)">
+                <Icon name="camara" className="size-4" />
+              </Button>
+            </span>
+            <div className="min-w-0 grow pt-1">
+              <p className="m-0 truncate text-sm font-semibold">{profileName(userEmail)}</p>
+              {userEmail && <p className="m-0 truncate text-xs text-(--text-secondary)">{userEmail}</p>}
+              {timezone && <p className="m-0 truncate text-xs text-(--text-muted)">Zona horaria: {timezone.replaceAll("_", " ")}</p>}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="secondary" isDisabled aria-label="Cambiar foto, muy pronto" className="min-h-11">Cambiar foto</Button>
+            <Chip size="sm" variant="soft">Muy pronto</Chip>
+          </div>
+        </div>
+        <Dropdown.Menu aria-label="Menú de tu perfil" onAction={onAction} className="pt-1.5">
+          <Dropdown.Section aria-label="Perfil">
+            <Dropdown.Item id="editar" isDisabled textValue="Editar perfil" aria-label="Editar perfil, muy pronto" className={ITEM}>
+              <Icon name="lapiz" /> <span className="grow">Editar perfil</span><span className="text-xs text-(--text-muted)">Muy pronto</span>
             </Dropdown.Item>
           </Dropdown.Section>
-          <Dropdown.Section aria-label="Acciones" className="pt-1.5">
-            <Dropdown.Item id="fondo" textValue="Cambiar fondo" className={ITEM}><Icon name="imagen" /> Cambiar fondo</Dropdown.Item>
-            <Dropdown.Item id="json" textValue="Exportar en JSON" className={ITEM}><Icon name="descargar" /> Exportar en JSON</Dropdown.Item>
-            <Dropdown.Item id="md" textValue="Exportar en Markdown" className={ITEM}><Icon name="descargar" /> Exportar en Markdown</Dropdown.Item>
+          <Dropdown.Section aria-label="Tema" selectionMode="single" selectedKeys={[preference]} onSelectionChange={onTheme} className="border-y border-(--glass-line) py-1.5">
+            <Dropdown.Item id="light" textValue="Tema claro" className={ITEM}><span className="grow">Claro</span>{preference === "light" && <Icon name="check" className="size-4 text-(--accent-primary)" />}</Dropdown.Item>
+            <Dropdown.Item id="dark" textValue="Tema oscuro" className={ITEM}><span className="grow">Oscuro</span>{preference === "dark" && <Icon name="check" className="size-4 text-(--accent-primary)" />}</Dropdown.Item>
+            <Dropdown.Item id="system" textValue="Tema del sistema" className={ITEM}><span className="grow">Sistema</span>{preference === "system" && <Icon name="check" className="size-4 text-(--accent-primary)" />}</Dropdown.Item>
+          </Dropdown.Section>
+          <Dropdown.Section aria-label="Tus datos" className="pt-1.5">
+            <Dropdown.Item id="json" textValue="Exportar mis datos en JSON" className={ITEM}><Icon name="descargar" /> <span className="grow">Exportar mis datos (JSON)</span></Dropdown.Item>
+            <Dropdown.Item id="md" textValue="Exportar mis datos en Markdown" className={ITEM}><Icon name="descargar" /> <span className="grow">Exportar mis datos (Markdown)</span></Dropdown.Item>
+            <Dropdown.SubmenuTrigger>
+              <Dropdown.Item id="atajos" textValue="Atajos de teclado" className={ITEM}>
+                <Icon name="teclado" /> <span className="grow">Atajos de teclado</span><Dropdown.SubmenuIndicator />
+              </Dropdown.Item>
+              <Dropdown.Popover placement="right top" className={MENU}>
+                <Dropdown.Menu aria-label="Atajos de teclado">
+                  {shortcuts.map((shortcut) => (
+                    <Dropdown.Item key={shortcut.key} id={`atajo:${shortcut.key}`} isDisabled textValue={`${shortcut.label}: ${shortcut.key}`} className={ITEM}>
+                      <span className="grow">{shortcut.label}</span>
+                      <Kbd><Kbd.Content>{shortcut.key}</Kbd.Content></Kbd>
+                    </Dropdown.Item>
+                  ))}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.SubmenuTrigger>
+          </Dropdown.Section>
+          <Dropdown.Section aria-label="Sesión" className="border-t border-(--glass-line) pt-1.5">
             <Dropdown.Item id="salir" textValue="Cerrar sesión" className={`${ITEM} text-(--status-danger-text)`}><Icon name="salir" /> Cerrar sesión</Dropdown.Item>
           </Dropdown.Section>
         </Dropdown.Menu>

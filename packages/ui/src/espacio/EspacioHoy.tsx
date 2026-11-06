@@ -4,7 +4,7 @@ import { Button, Dropdown } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { Hubi, type HubiPose } from "../components/brand/Hubi";
-import { useHublyTheme, type HublyTheme } from "../landing/ThemeToggle";
+import { hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyTheme, type HublyThemePreference } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
 import { BackgroundPicker, CaptureField, Dock, DockMore, DockStatus, type WallpaperImageControls } from "./Dock";
@@ -34,8 +34,10 @@ export interface EspacioHoyProps {
   onPreferencesChange?: ((prefs: EspacioPreferencias) => void) | undefined;
   /** Tema guardado de la persona; si llega, manda sobre el del navegador al entrar. */
   initialTheme?: HublyTheme | undefined;
-  /** Se llama cuando la persona cambia de tema desde el menú de cuenta o la paleta. */
-  onThemeChange?: ((theme: HublyTheme) => void) | undefined;
+  /** Preferencia guardada, incluido «system» (#105); manda sobre initialTheme. */
+  initialThemePreference?: HublyThemePreference | undefined;
+  /** Se llama cuando la persona cambia de tema desde el menú del perfil o la paleta. */
+  onThemeChange?: ((theme: HublyThemePreference) => void) | undefined;
   /** «Tu imagen» (#84): URL firmada inicial y acciones de subir y quitar. Sin acciones, el mosaico sale como no disponible. */
   wallpaperImageUrl?: string | null | undefined;
   onUploadWallpaper?: WallpaperImageControls["onUpload"] | undefined;
@@ -94,6 +96,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [teamMode, setTeamMode] = useState<EquipoDialogMode | null>(null);
   const [prefs, setPrefs] = useEspacioPreferencias(props.initialPreferences, props.onPreferencesChange);
   const [theme, setTheme] = useHublyTheme();
+  const [themePreference] = useHublyThemePreference();
   const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(props.wallpaperImageUrl ?? null);
   const imagenControls: WallpaperImageControls | undefined = props.onUploadWallpaper && props.onRemoveWallpaper
     ? {
@@ -112,20 +115,25 @@ export function EspacioHoy(props: EspacioHoyProps) {
     : undefined;
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
+  const initialPreference = props.initialThemePreference ?? props.initialTheme ?? null;
+  const lastPersistedTheme = useRef<HublyThemePreference | null>(initialPreference);
+  const skipFirstTheme = useRef(true);
 
-  // El tema guardado en el servidor manda al entrar; después, cualquier cambio de data-theme (menú de cuenta o paleta) se guarda.
+  // El tema guardado en el servidor manda al entrar; después, cada cambio de preferencia se guarda una sola vez.
   useEffect(() => {
-    if (props.initialTheme && document.documentElement.getAttribute("data-theme") !== props.initialTheme) setTheme(props.initialTheme);
-    let last = document.documentElement.getAttribute("data-theme");
-    const observer = new MutationObserver(() => {
-      const current = document.documentElement.getAttribute("data-theme");
-      if (current !== last && (current === "light" || current === "dark")) onThemeChangeRef.current?.(current);
-      last = current;
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-    // Solo al montar: initialTheme es el valor con el que se cargó la página.
+    if (initialPreference) hydrateThemePreference(initialPreference);
+    // Solo al montar: initialPreference es el valor con el que se cargó la página.
   }, []);
+  useEffect(() => {
+    if (skipFirstTheme.current) {
+      skipFirstTheme.current = false;
+      if (lastPersistedTheme.current === null) lastPersistedTheme.current = themePreference;
+      return;
+    }
+    if (themePreference === lastPersistedTheme.current) return;
+    lastPersistedTheme.current = themePreference;
+    onThemeChangeRef.current?.(themePreference);
+  }, [themePreference]);
   const [filter, setFilter] = useState<HoyFilter>(null);
   const [openNoteId, setOpenNoteId] = useState<string | null>(() => notes.find((n) => n.isPinned && !n.isArchived)?.id ?? notes.find((n) => !n.isArchived)?.id ?? null);
   const [linkedNoteId, setLinkedNoteId] = useState<string | null>(null);
