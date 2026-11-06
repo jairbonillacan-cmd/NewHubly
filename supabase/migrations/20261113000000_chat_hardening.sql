@@ -1,4 +1,5 @@
 -- Endurece las escrituras del chat (#178). Migración aditiva: solo reemplaza funciones existentes.
+begin;
 
 -- La pertenencia a la agencia se comprueba y bloquea antes de tocar la conversación:
 -- alguien ajeno ya no puede bloquear la fila ni distinguir si existe, y el orden de bloqueos
@@ -28,7 +29,7 @@ begin
 end;
 $$;
 
--- Una misma edición no puede repetirse más de una vez cada 2 segundos: evita ráfagas que inflan
+-- Un mismo mensaje no puede editarse más de una vez cada 2 segundos: evita ráfagas que inflan
 -- last_change_number y hacen trabajar de más a la sincronización. Retirar no tiene espera.
 create or replace function private.chat_change_message(agency_id uuid, target_id uuid, message_id uuid, new_body text) returns void
 language plpgsql security definer set search_path = '' as $$
@@ -60,3 +61,5 @@ grant execute on function private.chat_change_message(uuid, uuid, uuid, text) to
 
 comment on function private.chat_send_message(uuid, uuid, uuid, text) is
   'Envía un mensaje. Es idempotente por (agencia, conversación, autor, client_key): un reintento con la misma clave devuelve el id del mensaje original aunque el texto haya cambiado.';
+
+commit;

@@ -136,6 +136,8 @@ describe("Chat: operaciones transaccionales", () => {
     await asMember(editor, (tx) => tx`select private.chat_change_message(${agency}, ${id}, ${message}, 'Primera edición')`);
     await expect(asMember(editor, (tx) => tx`select private.chat_change_message(${agency}, ${id}, ${message}, 'Ráfaga')`))
       .rejects.toMatchObject({ code: "P0429" });
+    await new Promise((resolve) => setTimeout(resolve, 2100));
+    await asMember(editor, (tx) => tx`select private.chat_change_message(${agency}, ${id}, ${message}, 'Tras la espera')`);
     await asMember(editor, (tx) => tx`select private.chat_change_message(${agency}, ${id}, ${message}, null)`);
     expect((await db`select body from private.chat_messages where id = ${message}`)[0]).toMatchObject({ body: null });
   });
