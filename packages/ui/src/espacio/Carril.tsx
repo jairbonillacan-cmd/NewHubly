@@ -25,14 +25,17 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
   const etiqueta = herramienta.disponible ? herramienta.nombre : `${herramienta.nombre}, próximamente`;
   const boton = (
     <Button variant="ghost" aria-label={etiqueta} {...(activa ? { "aria-current": "page" as const } : {})} onPress={onSelect}
-      className={`${ITEM} ${tono} ${expandido ? "h-11 justify-start gap-3 px-3" : "h-auto flex-col gap-1 px-1 py-2"}`}>
+      className={`${ITEM} ${tono} ${expandido ? "h-11 justify-start gap-3 px-3" : "h-12 justify-center px-0"}`}>
       <span className="relative">
         <HerramientaIcono id={herramienta.id} activo={activa} />
         {!herramienta.disponible && !expandido && (
           <span aria-hidden="true" className="absolute -top-0.5 -right-1 size-2 rounded-full border-2 border-(--text-muted)" />
         )}
+        {herramienta.disponible && !expandido && ficha && (
+          <span aria-hidden="true" className={`absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs leading-none font-bold ${activa ? "bg-(--text-on-accent) text-(--accent-primary)" : "bg-(--accent-primary) text-(--text-on-accent)"}`}>{ficha}</span>
+        )}
       </span>
-      <span className={expandido ? "grow text-left text-sm font-semibold" : "text-xs font-semibold"}>{herramienta.nombre}</span>
+      {expandido && <span className="grow text-left text-sm font-semibold">{herramienta.nombre}</span>}
       {expandido && ficha && (
         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${activa ? "bg-(--icon-fill-active)" : herramienta.disponible ? "bg-(--accent-primary-subtle) text-(--accent-primary)" : "bg-(--glass-hover) text-(--text-secondary)"}`}>{ficha}</span>
       )}
@@ -52,8 +55,9 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
   const [hoy, ...herramientas] = HERRAMIENTAS;
   const ficha = (herramienta: Herramienta) => herramienta.id === "hoy" ? (hoyPendientes > 0 ? String(hoyPendientes) : null) : "Pronto";
   return (
+    <div className="group/carril relative h-full">
     <nav aria-label="Herramientas" data-delay="1"
-      className={`hubly-glass hubly-enter flex h-full flex-col gap-1 overflow-y-auto rounded-(--glass-radius-access-bar) p-2 transition-[width] ${expandido ? "w-58" : "w-16"}`}>
+      className={`hubly-glass hubly-enter flex h-full flex-col gap-1 overflow-y-auto rounded-(--glass-radius-access-bar) p-2 transition-[width] ${expandido ? "w-58" : "w-16 items-center"}`}>
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
       <span aria-hidden="true" className="mx-2 my-1.5 h-px bg-(--glass-line-strong)" />
       {expandido && <p className="m-0 px-3 pb-1 text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">Herramientas</p>}
@@ -65,7 +69,7 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
         ))}
       </ul>
       <Button variant="ghost" isDisabled aria-label="Agregar una herramienta, muy pronto"
-        className={`${ITEM} mt-1 border border-dashed border-(--glass-line-strong) bg-transparent text-(--text-secondary) ${expandido ? "h-11 justify-start gap-3 px-3" : "h-11 px-0"}`}>
+        className={`${ITEM} mt-1 border border-dashed border-(--glass-line-strong) bg-transparent text-(--text-secondary) ${expandido ? "h-11 justify-start gap-3 px-3" : "h-11 justify-center px-0"}`}>
         <Icon name="mas" className="size-5" />
         {expandido && <span className="grow text-left text-sm">Agregar una herramienta</span>}
         {expandido && <span className="text-xs">Muy pronto</span>}
@@ -79,12 +83,16 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
             className="h-1.5 w-full appearance-none overflow-hidden rounded-full [&::-moz-progress-bar]:bg-(--accent-primary) [&::-webkit-progress-bar]:bg-(--glass-line-strong) [&::-webkit-progress-value]:bg-(--accent-primary)" />
         </div>
       )}
-      <Button variant="ghost" aria-expanded={expandido} aria-label={expandido ? "Contraer el carril" : "Expandir el carril"} onPress={onToggleExpandido}
-        className={`${ITEM} h-11 bg-transparent text-(--text-secondary) data-[hovered]:bg-(--glass-hover) data-[hovered]:text-(--text-primary) ${expandido ? "justify-start gap-3 px-3" : "px-0"}`}>
-        <Icon name={expandido ? "contraer" : "expandir"} className="size-5" />
-        {expandido && <span className="text-sm">Contraer</span>}
-      </Button>
     </nav>
+      {/* Flecha a media altura en el borde derecho (issue 142): despliega o retrae el carril. */}
+      <Tooltip delay={400}>
+        <Button isIconOnly variant="ghost" aria-expanded={expandido} aria-label={expandido ? "Contraer el carril" : "Expandir el carril"} onPress={onToggleExpandido}
+          className="hubly-pop-surface absolute top-1/2 -right-3.5 z-10 size-7 min-w-7 -translate-y-1/2 rounded-full p-0 text-(--text-secondary) transition-transform data-[hovered]:scale-110 data-[hovered]:text-(--accent-primary)">
+          <Icon name="chevron" className={`size-4 transition-transform ${expandido ? "rotate-180" : ""}`} strokeWidth={2.25} />
+        </Button>
+        <Tooltip.Content placement="right">{expandido ? "Contraer" : "Expandir"}</Tooltip.Content>
+      </Tooltip>
+    </div>
   );
 }
 
