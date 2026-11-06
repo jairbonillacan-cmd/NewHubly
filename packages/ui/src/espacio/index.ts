@@ -16,4 +16,5 @@ export * from "./Carril";
 export * from "./herramientas";
 export * from "./EquipoDialog";
 export * from "./PerfilDialog";
+export * from "./Lienzo";
 export * from "./EspacioHoy";

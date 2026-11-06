@@ -358,6 +358,13 @@ body {
 @media (prefers-reduced-transparency: reduce) {
   .hubly-glass, .hubly-pop-surface { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); }
 }
+/* Lienzo infinito de Hoy (issue 136): la capa se mueve y escala con variables que pone el componente. */
+.hubly-lienzo { touch-action: none; cursor: grab; }
+.hubly-lienzo[data-arrastrando] { cursor: grabbing; user-select: none; }
+.hubly-lienzo-capa { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: translate(var(--lienzo-x, 0), var(--lienzo-y, 0)) scale(var(--lienzo-zoom, 1)); }
+.hubly-lienzo-item { position: absolute; left: var(--item-x); top: var(--item-y); width: var(--item-w); height: var(--item-h); z-index: var(--item-z); min-width: 20rem; min-height: 12.5rem; resize: both; overflow: hidden; border-radius: 1rem; cursor: auto; }
+.hubly-lienzo-item > * { height: 100%; }
+.hubly-lienzo-item [data-lienzo-asa] { cursor: grab; }
 .hubly-wallpaper { transition: background-color var(--motion-base) var(--motion-ease); }
 .hubly-wallpaper svg { transition: opacity var(--motion-base) var(--motion-ease); }
 /* Aurora (issue 134): manchas de color que se mueven muy despacio detrás de los paneles. */
