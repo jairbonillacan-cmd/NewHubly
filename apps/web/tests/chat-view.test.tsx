@@ -4,7 +4,12 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ChatView, type ChatViewProps } from "../src/components/chat/ChatView";
+import {
+  LONG_PRESS_MS, MessageItem, QUICK_REACTIONS, applyOptimisticReaction, createLongPressController,
+  executeOptimisticReaction, formatReactorNames, jumpToQuotedMessage, type ChatMessageView, type ChatReactionSummary,
+} from "../src/components/chat/MessageItem";
 import { daySeparatorLabel, shouldGroupMessages } from "../src/components/chat/MessageList";
+import { ThreadPanel } from "../src/components/chat/ThreadPanel";
 import { agencyExportHref } from "../src/components/chat/transport";
 
 const channel: ChatConversation = {
@@ -146,27 +151,15 @@ describe("Interfaz del chat", () => {
 
   it("muestra en EquipoDialog la exportación del chat de la agencia solo al owner y un aviso a los demás miembros", () => {
     const baseDialogProps = {
-      mode: "equipo" as const,
-      onClose: vi.fn(),
+      mode: "equipo" as const, onClose: vi.fn(),
       members: [{ userId: "actor", role: "owner" as const, isCurrentUser: true }],
-      invitations: [],
-      inviteLink: null,
-      onCreateAgency: vi.fn(),
-      onInvite: vi.fn(),
-      onCopyInvite: vi.fn(),
-      onRevokeInvite: vi.fn(),
-      onChangeRole: vi.fn(),
-      onRemoveMember: vi.fn(),
-      onLeave: vi.fn(),
-      onExportOwn: vi.fn(),
+      invitations: [], inviteLink: null, onCreateAgency: vi.fn(), onInvite: vi.fn(), onCopyInvite: vi.fn(),
+      onRevokeInvite: vi.fn(), onChangeRole: vi.fn(), onRemoveMember: vi.fn(), onLeave: vi.fn(), onExportOwn: vi.fn(),
       chatExportHref: (format: "json" | "md") => agencyExportHref("ag-1", format),
     };
 
     const ownerHtml = renderToStaticMarkup(
-      <EquipoDialog
-        {...baseDialogProps}
-        workspace={{ id: "ag-1", name: "Agencia Pulso", kind: "agency", role: "owner" }}
-      />,
+      <EquipoDialog {...baseDialogProps} workspace={{ id: "ag-1", name: "Agencia Pulso", kind: "agency", role: "owner" }} />,
     );
     expect(ownerHtml).toContain("Exportar chat en JSON");
     expect(ownerHtml).toContain("Exportar chat en Markdown");
@@ -175,13 +168,137 @@ describe("Interfaz del chat", () => {
     expect(ownerHtml).toContain("nunca los directos entre otras personas");
 
     const memberHtml = renderToStaticMarkup(
-      <EquipoDialog
-        {...baseDialogProps}
-        workspace={{ id: "ag-1", name: "Agencia Pulso", kind: "agency", role: "editor" }}
-      />,
+      <EquipoDialog {...baseDialogProps} workspace={{ id: "ag-1", name: "Agencia Pulso", kind: "agency", role: "editor" }} />,
     );
     expect(memberHtml).not.toContain("Exportar chat en JSON");
     expect(memberHtml).not.toContain("Exportar chat en Markdown");
     expect(memberHtml).toContain("El propietario de la agencia puede exportar los canales desde estos ajustes de equipo.");
+  });
+
+  it("muestra barra de acciones con las 6 reacciones rápidas, EmojiPicker, quién reaccionó y pulsación larga en móvil", () => {
+    vi.useFakeTimers();
+    try {
+      const triggered = vi.fn();
+      const lp = createLongPressController(triggered);
+      lp.start();
+      vi.advanceTimersByTime(LONG_PRESS_MS - 50);
+      expect(triggered).not.toHaveBeenCalled();
+      lp.cancel();
+      vi.advanceTimersByTime(100);
+      expect(triggered).not.toHaveBeenCalled();
+      lp.start();
+      vi.advanceTimersByTime(LONG_PRESS_MS);
+      expect(triggered).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const directory = new Map<string, ChatParticipant>([
+      ["peer-1", { id: "peer-1", name: "Ana López", role: "editor", status: "online" }],
+      ["peer-2", { id: "peer-2", name: "Carlos Ruiz", role: "admin", status: "away" }],
+    ]);
+    expect(formatReactorNames(["peer-1", "actor"], "actor", directory)).toBe("Ana López y Tú");
+    expect(formatReactorNames(["peer-1", "peer-2", "actor"], "actor", directory)).toBe("Ana López, Carlos Ruiz y Tú");
+
+    const reactions: ChatReactionSummary[] = [
+      { emoji: "👍", userIds: ["peer-1", "actor"] },
+      { emoji: "🚀", userIds: ["peer-2"] },
+    ];
+    const itemHtml = renderToStaticMarkup(
+      <ul>
+        <MessageItem entry={{ ...entry, body: "Propuesta lista", reactions }} name="Tú" people={directory}
+          viewerId="actor" isOwn writable canEdit initialActionsOpen initialPickerOpen onCommand={vi.fn()} />
+      </ul>,
+    );
+    expect(itemHtml).toContain('role="toolbar" aria-label="Acciones del mensaje de Tú"');
+    expect(itemHtml).toContain('data-actions-open="true"');
+    for (const emoji of QUICK_REACTIONS) expect(itemHtml).toContain(`aria-label="Reaccionar con ${emoji}"`);
+    for (const text of ["Más emojis", "Responder", "Abrir hilo", "Editar", "Retirar", "Selector de emojis"]) {
+      expect(itemHtml).toContain(text);
+    }
+    expect(itemHtml).toContain('aria-label="👍 2, reaccionaron: Ana López y Tú"');
+    expect(itemHtml).toContain('aria-label="🚀 1, reaccionaron: Carlos Ruiz"');
+  });
+
+  it("aplica reacciones de forma optimista en el primer fotograma y revierte automáticamente si falla el servidor", async () => {
+    const initial: ChatReactionSummary[] = [{ emoji: "👍", userIds: ["peer-1"] }];
+    expect(applyOptimisticReaction(initial, "👍", "actor")).toEqual([{ emoji: "👍", userIds: ["peer-1", "actor"] }]);
+    expect(applyOptimisticReaction([{ emoji: "👍", userIds: ["actor"] }], "👍", "actor")).toEqual([]);
+
+    const frames: { reactions: readonly ChatReactionSummary[]; error: string | null }[] = [];
+    let resolveServer!: (ok: boolean) => void;
+    const pendingPromise = executeOptimisticReaction({
+      current: initial, emoji: "❤️", userId: "actor",
+      applyState: (reactions, error) => frames.push({ reactions, error }),
+      persist: () => new Promise<boolean>((resolve) => { resolveServer = resolve; }),
+    });
+
+    expect(frames).toEqual([{
+      reactions: [{ emoji: "👍", userIds: ["peer-1"] }, { emoji: "❤️", userIds: ["actor"] }],
+      error: null,
+    }]);
+    resolveServer(true);
+    await expect(pendingPromise).resolves.toMatchObject({ ok: true, error: null });
+
+    const rollbackFrames: { reactions: readonly ChatReactionSummary[]; error: string | null }[] = [];
+    const failedResult = await executeOptimisticReaction({
+      current: initial, emoji: "🎉", userId: "actor",
+      applyState: (reactions, error) => rollbackFrames.push({ reactions, error }),
+      persist: () => Promise.reject(new Error("Fallo de red")),
+    });
+    expect(failedResult.ok).toBe(false);
+    expect(rollbackFrames[0]?.reactions).toEqual([{ emoji: "👍", userIds: ["peer-1"] }, { emoji: "🎉", userIds: ["actor"] }]);
+    expect(rollbackFrames[1]).toEqual({ reactions: initial, error: "No se pudo guardar la reacción." });
+
+    const errorHtml = renderToStaticMarkup(
+      <ChatView {...props} reactionErrorsByMessage={{ [entry.id]: "No se pudo guardar la reacción." }} />,
+    );
+    expect(errorHtml).toContain("No se pudo guardar la reacción.");
+    expect(errorHtml).toContain("Reintentar reacción");
+  });
+
+  it("muestra cita de respuesta con salto al mensaje original y abre, responde y cierra ThreadPanel", () => {
+    const rootMsg: ChatMessageView = {
+      ...entry, id: "root-1", authorId: "peer-1", body: "Definamos el calendario de entrega", number: 1,
+      threadReplyCount: 2, threadLastReplyAt: "2026-11-05T15:10:00.000Z",
+    };
+    const replyInline: ChatMessageView = {
+      ...entry, id: "msg-2", authorId: "actor", body: "De acuerdo con la propuesta", number: 2,
+      sentAt: "2026-11-05T15:04:00.000Z", replyToId: "root-1",
+    };
+    const threadReply1: ChatMessageView = {
+      ...entry, id: "th-1", authorId: "actor", body: "Subo el cronograma aquí en el hilo", number: 3,
+      sentAt: "2026-11-05T15:08:00.000Z", threadRootId: "root-1",
+    };
+
+    const scrollIntoView = vi.fn();
+    const focus = vi.fn();
+    const fakeDoc = {
+      getElementById: vi.fn((id: string) => id === "chat-msg-root-1" ? ({ scrollIntoView, focus } as unknown as HTMLElement) : null),
+    };
+    expect(jumpToQuotedMessage("root-1", fakeDoc, false)).toBe(true);
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "center" });
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(jumpToQuotedMessage("root-1", fakeDoc, true)).toBe(true);
+    expect(scrollIntoView).toHaveBeenLastCalledWith({ behavior: "auto", block: "center" });
+
+    const viewHtml = renderToStaticMarkup(
+      <ChatView {...props} people={[{ id: "peer-1", name: "Ana López", role: "editor", status: "online" }]}
+        messages={[rootMsg, replyInline]} threadMessages={[threadReply1]} activeThreadRootId="root-1"
+        replyingToMessageId="root-1" highlightedMessageId="root-1" />,
+    );
+    for (const expected of [
+      'aria-label="Ir al mensaje citado de Ana López"', "2 respuestas · Ver hilo", "Última a las 15:10",
+      'data-highlighted="true"', "Respondiendo a Ana López:", "Cancelar respuesta",
+      "Mensaje principal del hilo", "Subo el cronograma aquí en el hilo", "Responder en el hilo",
+      "Enviar al hilo", "Cerrar hilo",
+    ]) expect(viewHtml).toContain(expected);
+
+    const panelHtml = renderToStaticMarkup(
+      <ThreadPanel rootMessage={rootMsg} replies={[]} userId="actor" writable={false} onClose={vi.fn()}
+        people={new Map([["peer-1", { id: "peer-1", name: "Ana López", role: "editor", status: "online" }]])} />,
+    );
+    expect(panelHtml).toContain("Todavía no hay respuestas en este hilo.");
+    expect(panelHtml).not.toContain("Responder en el hilo");
   });
 });
