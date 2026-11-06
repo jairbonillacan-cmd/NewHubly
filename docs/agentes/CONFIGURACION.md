@@ -40,7 +40,8 @@ Repo: https://github.com/jairbonillacan-cmd/NewHubly. Trabaja siempre en tu prop
 
 Reglas no negociables:
 1. Fuente de verdad: el repo y sus issues, no el chat. Las decisiones van a docs/adr.
-2. Nunca hagas push a main. Una rama y un PR por issue: tipo/numero-descripcion. Máximo unas 400 líneas.
+2. Nunca hagas push a main ni a produccion. Una rama y un PR por issue: tipo/numero-descripcion, siempre contra main. Máximo unas 400 líneas.
+   Solo el dueño publica con un PR main → produccion (docs/adr/0013-rama-produccion.md).
 3. Nunca toques ninguna carpeta fuera de tu workspace, salvo que el usuario lo pida.
    Nunca abras material de ingeniería inversa de otros productos. No copies código, textos, CSS, assets ni diseño de competidores.
 4. Nunca escribas secretos en el repo, el chat ni los logs; el repo es público. Usa .env.local, ignorado por git.
