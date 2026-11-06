@@ -4,7 +4,7 @@ Este directorio conserva la fuente de verdad de los activos gráficos de identid
 
 ## 1. Estructura de recursos
 
-- `docs/marca/originales/`: fuentes maestras de alta resolución (`1254×1254` para las 12 variantes de Hubi ya limpias y `1672×941` para la lámina de referencia `secuencia-h.png`). **No se sirven directamente en producción.**
+- `docs/marca/originales/`: fuentes maestras de alta resolución (`1254×1254` para las variantes de Hubi y `1672×941` para la lámina de referencia `secuencia-h.png`). **No se sirven directamente en producción.**
 - `apps/web/public/marca/`: derivados optimizados en formato WebP (2× del tamaño de uso en interfaz) e iconos PNG de aplicación web instalable (`192×192`, `512×512` y `512×512` *maskable*).
 - `apps/web/src/app/`: iconos de convención de Next.js App Router (`favicon.ico` multirresolución `16×16` y `32×32`, `icon.png` `32×32` y `apple-icon.png` `180×180`) junto con `manifest.ts`.
 
@@ -45,3 +45,15 @@ Los WOFF2 de [Fraunces](https://github.com/undercasetype/Fraunces) proceden de G
 Se incluyen solo `latin` y `latin-ext` en normal e itálica (eje `ital` en la consulta CSS2). Los archivos conservan los ejes variables `opsz` (9–144), `wght` (100–900), `SOFT` (0–100) y `WONK` (0–1). Hubly usa tamaño óptico automático, `SOFT=100`, `WONK=0`, peso 400 en titulares y 500 en tarjetas.
 
 Next.js carga los archivos con `next/font/local` solo en `/`. Los titulares usan `--font-display`; el resto conserva la fuente del sistema. No se consulta Google Fonts en tiempo de ejecución.
+
+## Poses de bienvenida y error (#114)
+
+`Hubi` admite tres poses con acabado Volumen. La ilustración es decorativa y se acompaña del mensaje y de la acción de cada pantalla.
+
+| Pose | Uso |
+| --- | --- |
+| `bienvenida` | Saluda en el diálogo al entrar después de confirmar la cuenta. |
+| `buscar` | Usa la lupa en la página no encontrada (404). |
+| `reparar` | Sostiene una llave en el error al cargar Hoy, junto a «Reintentar». |
+
+Las seis imágenes se generaron con la herramienta integrada de ImageGen, usando `volumen-claro.png` y `volumen-oscuro.png` como referencias. Los PNG maestros se guardan como `volumen-{pose}-{tema}.png` en `originales/`. Los WebP de producción se exportaron con Sharp 0.35.5 a `256×256`, Lanczos3, calidad 88 y alfa 100, tras limpiar píxeles sueltos del borde. [Prompts de generación](poses-hubi-prompts.md).

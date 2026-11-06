@@ -105,6 +105,17 @@ export const SinPendientes: Story = { args: { todos: [], notes: [] } };
 
 export const Cargando: Story = { render: () => <EspacioEstado busy message="Cargando tu espacio de trabajo…" /> };
 
+export const ErrorAlCargar: Story = {
+  render: () => (
+    <EspacioEstado
+      pose="reparar"
+      title="No se pudo cargar Hoy"
+      message="No se pudo cargar tu espacio de trabajo."
+      action={{ label: "Reintentar", onPress: () => window.location.reload() }}
+    />
+  ),
+};
+
 /** Agencia activa (#64, #78): menú de espacios, equipo e invitaciones y visibilidad de notas y pendientes. */
 export const Agencia: Story = {
   args: {

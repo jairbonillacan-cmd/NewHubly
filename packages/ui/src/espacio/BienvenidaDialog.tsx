@@ -20,11 +20,11 @@ const PRIMEROS_PASOS = [
 /** Se abre una sola vez, al entrar a Hoy después de confirmar la cuenta. */
 export function BienvenidaDialog({ isOpen, onClose, workspaceName }: BienvenidaDialogProps) {
   return (
-    <ModalOverlay isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} isDismissable className="fixed inset-0 z-50 flex items-start justify-center bg-(--glass-hover) px-3 pt-20 backdrop-blur-xs">
+    <ModalOverlay isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} isDismissable className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-(--glass-hover) px-3 py-4 backdrop-blur-xs sm:pt-20">
       <Modal className="hubly-pop w-full max-w-md">
         <Dialog className="hubly-pop-surface flex flex-col gap-5 rounded-2xl px-5 pt-6 pb-5 text-(--text-primary) outline-none sm:px-7">
           <div className="flex flex-col items-center gap-3 text-center">
-            <Hubi acabado="volumen" tamano={88} decorativo className="hubly-float" />
+            <Hubi pose="bienvenida" tamano={112} decorativo />
             <Heading slot="title" className="m-0 text-2xl leading-tight font-bold tracking-(--tracking-tight)">¡Te damos la bienvenida a Hubly!</Heading>
             <p className="m-0 text-sm text-(--text-secondary)">
               Tu cuenta está confirmada y {workspaceName ? <>tu espacio <strong className="text-(--text-primary)">{workspaceName}</strong></> : "tu espacio"} ya está listo.

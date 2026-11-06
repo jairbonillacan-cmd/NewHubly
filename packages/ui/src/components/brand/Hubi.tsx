@@ -1,11 +1,11 @@
 import type { CSSProperties } from "react";
 
 export type HubiFinish = "origen" | "volumen";
-export type HubiPose = "sentado" | "laptop";
+type HubiBasePose = "sentado" | "laptop";
+type HubiStatePose = "bienvenida" | "buscar" | "reparar";
+export type HubiPose = HubiBasePose | HubiStatePose;
 
-export interface HubiProps {
-  acabado?: HubiFinish;
-  pose?: HubiPose;
+export type HubiProps = {
   tamano?: number;
   alt?: string;
   decorativo?: boolean;
@@ -13,9 +13,14 @@ export interface HubiProps {
   style?: CSSProperties;
   sizing?: "fixed" | "css";
   priority?: "high" | "deferred";
-}
+} & (
+  | { acabado?: HubiFinish; pose?: HubiBasePose }
+  | { acabado?: "volumen"; pose: HubiStatePose }
+);
 
-const HUBI_ASSET_MAP: Record<HubiFinish, Record<HubiPose, { light: string; dark: string }>> = {
+type ThemeAssets = { light: string; dark: string };
+
+const HUBI_ASSET_MAP: Record<HubiFinish, Record<HubiBasePose, ThemeAssets>> = {
   origen: {
     sentado: {
       light: "/marca/hubi-origen-claro-256.webp",
@@ -38,6 +43,21 @@ const HUBI_ASSET_MAP: Record<HubiFinish, Record<HubiPose, { light: string; dark:
   },
 };
 
+const HUBI_STATE_ASSETS: Record<HubiStatePose, ThemeAssets> = {
+  bienvenida: {
+    light: "/marca/hubi-volumen-bienvenida-claro-256.webp",
+    dark: "/marca/hubi-volumen-bienvenida-oscuro-256.webp",
+  },
+  buscar: {
+    light: "/marca/hubi-volumen-buscar-claro-256.webp",
+    dark: "/marca/hubi-volumen-buscar-oscuro-256.webp",
+  },
+  reparar: {
+    light: "/marca/hubi-volumen-reparar-claro-256.webp",
+    dark: "/marca/hubi-volumen-reparar-oscuro-256.webp",
+  },
+};
+
 export function Hubi({
   acabado = "origen",
   pose = "sentado",
@@ -51,7 +71,9 @@ export function Hubi({
 }: HubiProps) {
   const isDecorative = decorativo ?? !alt;
   const resolvedAlt = isDecorative ? "" : (alt ?? "Hubi, mascota de Hubly");
-  const pair = HUBI_ASSET_MAP[acabado][pose];
+  const pair = pose === "sentado" || pose === "laptop"
+    ? HUBI_ASSET_MAP[acabado][pose]
+    : HUBI_STATE_ASSETS[pose];
 
   return (
     <span

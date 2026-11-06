@@ -158,7 +158,7 @@ export function WorkspaceScreen({
         />
       );
     }
-    return <EspacioEstado title="No se pudo cargar Hoy" message={errorMessage} action={{ label: "Reintentar", onPress: () => { if (onRetry) onRetry(); else window.location.reload(); } }} />;
+    return <EspacioEstado pose="reparar" title="No se pudo cargar Hoy" message={errorMessage} action={{ label: "Reintentar", onPress: () => { if (onRetry) onRetry(); else window.location.reload(); } }} />;
   }
 
   const handleCapture = async (input: CaptureInput): Promise<boolean> => {
