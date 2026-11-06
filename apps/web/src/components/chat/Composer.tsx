@@ -3,7 +3,7 @@
 import type { ChatParticipant } from "@hubly/contracts";
 import { Button, EmojiPicker, TextArea } from "@hubly/ui";
 import React, { useMemo, useRef, useState } from "react";
-import { formatAttachmentBytes } from "./ChatAttachmentView";
+import { formatAttachmentBytes, type ChatAttachmentItem } from "./ChatAttachmentView";
 import { ChatAvatar, personName, statusLabel } from "./MemberList";
 
 const control = "min-h-11";
@@ -91,6 +91,67 @@ export function formatTypingIndicator(
   if (names.length === 1) return `${names[0]} está escribiendo…`;
   if (names.length === 2) return `${names[0]} y ${names[1]} están escribiendo…`;
   return `${names.slice(0, -1).join(", ")} y ${names.at(-1)} están escribiendo…`;
+}
+
+export async function uploadComposerAttachments(options: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+  attachments: readonly ComposerAttachmentDraft[];
+  fetchImpl?: typeof fetch | undefined;
+  onProgress?: ((percent: number) => void) | undefined;
+}): Promise<ChatAttachmentItem[]> {
+  const { workspaceId, conversationId, messageId, attachments, fetchImpl = fetch, onProgress } = options;
+  if (!attachments.length) return [];
+  onProgress?.(0);
+  const reserveRes = await fetchImpl("/api/chat/attachments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      op: "reserve",
+      workspaceId,
+      conversationId,
+      messageId,
+      files: attachments.map((a) => ({ fileName: a.fileName, mimeType: a.mimeType, byteSize: a.byteSize })),
+    }),
+  });
+  const reserveJson = (await reserveRes.json().catch(() => null)) as {
+    reservations?: Array<{ id: string; signedUrl: string }>;
+    error?: string;
+  } | null;
+  if (!reserveRes.ok || !reserveJson?.reservations || reserveJson.reservations.length !== attachments.length) {
+    throw new Error(reserveJson?.error ?? "No se pudo reservar la subida de archivos adjuntos.");
+  }
+  for (const [idx, reservation] of reserveJson.reservations.entries()) {
+    const draft = attachments[idx]!;
+    const putRes = await fetchImpl(reservation.signedUrl, {
+      method: "PUT",
+      headers: { "Content-Type": draft.mimeType },
+      body: draft.file,
+    });
+    if (!putRes.ok) throw new Error(`No se pudo subir el archivo ${draft.fileName}.`);
+    onProgress?.(Math.round(((idx + 1) / (attachments.length + 1)) * 100));
+  }
+  const commitRes = await fetchImpl("/api/chat/attachments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      op: "commit",
+      workspaceId,
+      conversationId,
+      messageId,
+      reservationIds: reserveJson.reservations.map((r) => r.id),
+    }),
+  });
+  const commitJson = (await commitRes.json().catch(() => null)) as {
+    attachments?: ChatAttachmentItem[];
+    error?: string;
+  } | null;
+  if (!commitRes.ok || !commitJson?.attachments) {
+    throw new Error(commitJson?.error ?? "No se pudo registrar los archivos adjuntos.");
+  }
+  onProgress?.(100);
+  return commitJson.attachments;
 }
 
 export interface ComposerProps {

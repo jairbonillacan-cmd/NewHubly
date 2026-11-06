@@ -8,7 +8,7 @@ import { ChatAttachmentList, formatAttachmentBytes, type ChatAttachmentItem } fr
 import {
   Composer, MAX_CHAT_ATTACHMENT_BYTES, MAX_CHAT_ATTACHMENTS, TYPING_COOLDOWN_MS,
   applyMentionSelection, detectMentionQuery, filterMentionCandidates, formatTypingIndicator,
-  validateAndAddAttachments, type ComposerAttachmentDraft,
+  uploadComposerAttachments, validateAndAddAttachments, type ComposerAttachmentDraft,
 } from "../src/components/chat/Composer";
 import { ThreadPanel, type ThreadMessageView } from "../src/components/chat/ThreadPanel";
 
@@ -156,5 +156,53 @@ describe("Compositor del chat: @menciones, emojis, adjuntos, indicador escribien
 
     const standaloneHtml = renderToStaticMarkup(<ChatAttachmentList attachments={attachments} />);
     expect(standaloneHtml).toContain('aria-label="Archivos adjuntos del mensaje"');
+  });
+
+  it("sube adjuntos directos a la signedUrl en cuarentena de Storage (reserve → PUT → commit) sin pasar binarios por la Vercel Function", async () => {
+    const bigPdf = new File([new Uint8Array(8), "pdf"], "dossier-10mb.pdf", { type: "application/pdf" });
+    Object.defineProperty(bigPdf, "size", { value: MAX_CHAT_ATTACHMENT_BYTES });
+    const drafts: ComposerAttachmentDraft[] = [
+      { id: "d1", file: bigPdf, fileName: "dossier-10mb.pdf", mimeType: "application/pdf", byteSize: MAX_CHAT_ATTACHMENT_BYTES },
+    ];
+    const progressSteps: number[] = [];
+    const calls: Array<{ url: string; method: string; contentType: string | null; isBinaryBody: boolean }> = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const headers = new Headers(init?.headers);
+      calls.push({ url, method, contentType: headers.get("Content-Type"), isBinaryBody: init?.body instanceof File });
+      if (url === "/api/chat/attachments" && typeof init?.body === "string") {
+        const parsed = JSON.parse(init.body) as { op: string };
+        if (parsed.op === "reserve") {
+          return Response.json({ reservations: [{ id: "res-1", signedUrl: "https://storage.local/quarantine/res-1" }] });
+        }
+        if (parsed.op === "commit") {
+          return Response.json({
+            attachments: [{
+              id: "res-1", fileName: "dossier-10mb.pdf", mimeType: "application/pdf",
+              byteSize: MAX_CHAT_ATTACHMENT_BYTES, url: "https://storage.local/final/res-1", downloadUrl: "https://storage.local/final/res-1?download=1",
+            }],
+          });
+        }
+      }
+      if (url.startsWith("https://storage.local/quarantine/") && method === "PUT") {
+        return new Response(null, { status: 200 });
+      }
+      return new Response(null, { status: 500 });
+    });
+
+    const uploaded = await uploadComposerAttachments({
+      workspaceId: "ws-1", conversationId: "conv-1", messageId: "msg-1",
+      attachments: drafts, fetchImpl: fetchMock as unknown as typeof fetch,
+      onProgress: (pct) => progressSteps.push(pct),
+    });
+    expect(uploaded).toHaveLength(1);
+    expect(uploaded[0]?.fileName).toBe("dossier-10mb.pdf");
+    expect(calls).toEqual([
+      { url: "/api/chat/attachments", method: "POST", contentType: "application/json", isBinaryBody: false },
+      { url: "https://storage.local/quarantine/res-1", method: "PUT", contentType: "application/pdf", isBinaryBody: true },
+      { url: "/api/chat/attachments", method: "POST", contentType: "application/json", isBinaryBody: false },
+    ]);
+    expect(progressSteps).toEqual([0, 50, 100]);
   });
 });
