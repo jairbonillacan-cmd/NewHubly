@@ -309,6 +309,8 @@ body {
 .hubly-palette-row:nth-child(5) { animation-delay: 120ms; }
 .hubly-palette-row:nth-child(n+6) { animation-delay: 150ms; }
 .hubly-palette-input:focus-visible { outline: none; }
+/* Contenedores de ventanitas que reciben el foco al abrirse: el anillo enmarcaría todo el contenido. */
+.hubly-sin-anillo:focus-visible { outline: none; }
 /* Landing viva (issue 127): Hubi se asoma cuando su bloque aparece, saluda al pasar el ratón y la tira de poses se desliza. */
 .hubly-peek { transition: transform var(--motion-slow) var(--motion-ease), opacity var(--motion-slow) var(--motion-ease); transition-delay: calc(var(--motion-step) * 2); }
 .hubly-motion .hubly-reveal:not([data-visible="true"]) .hubly-peek { opacity: 0; transform: translateY(40%) rotate(-6deg); }

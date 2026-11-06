@@ -98,7 +98,7 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
         {triggerLabel && <span className="text-xs">{triggerLabel}</span>}
       </Button>
       <Popover.Content placement="top" className="hubly-pop-surface w-80 rounded-2xl p-4 text-(--text-primary)">
-        <Popover.Dialog aria-label="Elegir fondo" className="flex flex-col gap-4 outline-none">
+        <Popover.Dialog aria-label="Elegir fondo" className="hubly-sin-anillo flex flex-col gap-4 outline-none">
           <div className="flex items-baseline justify-between">
             <Popover.Heading className="m-0 text-sm font-semibold">Fondo de tu espacio</Popover.Heading>
             <span className="text-xs text-(--text-muted)">Solo lo ves tú</span>
@@ -111,7 +111,7 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
                   key={wallpaper.id}
                   isSelected={prefs.fondo === wallpaper.id}
                   onChange={() => onChange({ fondo: wallpaper.id })}
-                  className="h-auto min-w-0 flex-col items-stretch gap-1.5 rounded-xl border-2 border-transparent bg-transparent p-1 text-xs font-normal text-(--text-secondary) transition-transform data-[hovered]:-translate-y-0.5 data-[selected]:border-(--accent-primary) data-[selected]:bg-transparent data-[selected]:text-(--text-primary)"
+                  className="h-auto w-full min-w-0 flex-col items-stretch justify-start text-center gap-1.5 rounded-xl border-2 border-transparent bg-transparent p-1 text-xs font-normal text-(--text-secondary) transition-transform data-[hovered]:-translate-y-0.5 data-[selected]:border-(--accent-primary) data-[selected]:bg-transparent data-[selected]:text-(--text-primary)"
                 >
                   <WallpaperSwatch fondo={wallpaper.id} />
                   {label}
