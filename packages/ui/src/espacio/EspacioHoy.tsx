@@ -12,6 +12,7 @@ import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery,
 import { Carril, Proximamente, resumenSemana } from "./Carril";
 import { HERRAMIENTAS, herramientaPorId, isHerramientaId, type HerramientaId } from "./herramientas";
 import { HoyPanel } from "./HoyPanel";
+import { Lienzo, type LienzoItem } from "./Lienzo";
 import { NotaPanel } from "./NotaPanel";
 import { NotasPanel } from "./NotasPanel";
 import { PerfilDialog, avatarFileError } from "./PerfilDialog";
@@ -81,6 +82,26 @@ export interface EspacioHoyProps {
   profile?: EspacioProfile | undefined;
   /** Herramienta abierta al cargar (?herramienta=); por defecto, Hoy. */
   initialHerramienta?: HerramientaId | undefined;
+}
+
+/** Acomodo inicial de los paneles en el lienzo de escritorio (issue 136), en píxeles del lienzo. */
+const LIENZO_INICIAL = {
+  hoy: { x: 0, y: 0, w: 620, h: 640 },
+  nota: { x: 644, y: 0, w: 480, h: 400 },
+  notas: { x: 644, y: 424, w: 480, h: 216 },
+} as const;
+
+/** true desde el ancho de escritorio; en el servidor y en pruebas, false (se ve la versión apilada). */
+function useIsDesktop() {
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`);
+    const update = () => setDesktop(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return desktop;
 }
 
 /** Carril compacto o completo; se recuerda en este navegador hasta que exista su preferencia en la cuenta. */
@@ -174,6 +195,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
     window.history.pushState(window.history.state, "", id === "hoy" ? window.location.pathname : `${window.location.pathname}?herramienta=${id}`);
     document.getElementById("contenido")?.focus();
   };
+  const desktop = useIsDesktop();
   const rootRef = useRef<HTMLDivElement>(null);
   const desktopCapture = useRef<HTMLInputElement>(null);
   const mobileCapture = useRef<HTMLInputElement>(null);
@@ -324,6 +346,51 @@ export function EspacioHoy(props: EspacioHoyProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [shortcuts]);
 
+  const hoyPanel = (className: string) => (
+    <HoyPanel
+      todos={todos}
+      notes={notes}
+      todayDate={todayDate}
+      filter={filter}
+      recentlyDone={recentlyDone}
+      freshIds={freshIds}
+      onToggle={(id) => void toggleTodo(id)}
+      onChangeVisibility={props.onChangeTodoVisibility}
+      onClearFilter={() => setFilter(null)}
+      className={className}
+    />
+  );
+  const notaPanel = (className: string) => (
+    <NotaPanel
+      note={openedNote}
+      linkedTodos={openedNote ? todos.filter((todo) => todo.noteId === openedNote.id) : []}
+      saveState={openedNote ? (noteSaveStates[openedNote.id] ?? "saved") : "saved"}
+      onSave={onSaveNote}
+      onTogglePin={onTogglePin}
+      onToggleArchive={onToggleArchive}
+      onChangeVisibility={props.onChangeNoteVisibility}
+      onCreateTodoFromNote={linkCaptureToNote}
+      onCreateNote={() => void createNote()}
+      onClose={() => setPrefs({ paneles: { nota: false } })}
+      className={className}
+    />
+  );
+  const notasPanel = (className: string) => (
+    <NotasPanel
+      notes={notes}
+      openNoteId={openNoteId}
+      onOpen={openNote}
+      onCreateNote={() => void createNote()}
+      onClose={() => setPrefs({ paneles: { notas: false } })}
+      className={className}
+    />
+  );
+  const lienzoItems: LienzoItem[] = [
+    ...(panels.hoy ? [{ id: "hoy", rect: LIENZO_INICIAL.hoy, node: hoyPanel("h-full") }] : []),
+    ...(panels.nota ? [{ id: "nota", rect: LIENZO_INICIAL.nota, node: notaPanel("h-full") }] : []),
+    ...(panels.notas ? [{ id: "notas", rect: LIENZO_INICIAL.notas, node: notasPanel("h-full") }] : []),
+  ];
+
   return (
     // Marco fijo (#105): en escritorio, una cuadrícula con la barra superior, el carril y el dock fijos; solo el contenido se desliza.
     <div ref={rootRef} className="relative isolate min-h-dvh text-(--text-primary) lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-[3.5rem_minmax(0,1fr)_auto] lg:gap-3 lg:overflow-hidden lg:p-3">
@@ -375,47 +442,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
           <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
-      {herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : (
+      {herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : desktop && layout === "libre" ? (
+        <Lienzo items={lienzoItems} />
+      ) : (
       <div className={`flex flex-col gap-3 lg:min-h-144 lg:grow ${gridClass}`}>
-        {panels.hoy && (
-          <HoyPanel
-            todos={todos}
-            notes={notes}
-            todayDate={todayDate}
-            filter={filter}
-            recentlyDone={recentlyDone}
-            freshIds={freshIds}
-            onToggle={(id) => void toggleTodo(id)}
-            onChangeVisibility={props.onChangeTodoVisibility}
-            onClearFilter={() => setFilter(null)}
-            className={`max-h-160 lg:max-h-none ${hoyClass}`}
-          />
-        )}
-        {panels.nota && (
-          <NotaPanel
-            note={openedNote}
-            linkedTodos={openedNote ? todos.filter((todo) => todo.noteId === openedNote.id) : []}
-            saveState={openedNote ? (noteSaveStates[openedNote.id] ?? "saved") : "saved"}
-            onSave={onSaveNote}
-            onTogglePin={onTogglePin}
-            onToggleArchive={onToggleArchive}
-            onChangeVisibility={props.onChangeNoteVisibility}
-            onCreateTodoFromNote={linkCaptureToNote}
-            onCreateNote={() => void createNote()}
-            onClose={() => setPrefs({ paneles: { nota: false } })}
-            className={`min-h-72 ${sideClass}`}
-          />
-        )}
-        {panels.notas && (
-          <NotasPanel
-            notes={notes}
-            openNoteId={openNoteId}
-            onOpen={openNote}
-            onCreateNote={() => void createNote()}
-            onClose={() => setPrefs({ paneles: { notas: false } })}
-            className={sideClass}
-          />
-        )}
+        {panels.hoy && hoyPanel(`max-h-160 lg:max-h-none ${hoyClass}`)}
+        {panels.nota && notaPanel(`min-h-72 ${sideClass}`)}
+        {panels.notas && notasPanel(sideClass)}
       </div>
       )}
       </main>

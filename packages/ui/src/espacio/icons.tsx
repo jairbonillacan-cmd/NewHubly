@@ -5,6 +5,8 @@ const PATHS = {
   nota: "M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6",
   pin: "M9 4h6l-1 6 3 3H7l3-3zM12 13v7",
   mas: "M12 5v14M5 12h14",
+  menos: "M5 12h14",
+  encuadrar: "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5",
   cerrar: "M6 6l12 12M18 6L6 18",
   buscar: "M11 5a6 6 0 1 0 0 12a6 6 0 1 0 0-12M20 20l-4.5-4.5",
   imagen: "M3 4h18v16H3zM3 16l5-5 4 4 3-3 6 6",
