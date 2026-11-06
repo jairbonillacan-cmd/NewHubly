@@ -85,12 +85,14 @@ export interface EspacioHoyProps {
   profile?: EspacioProfile | undefined;
   /** Herramienta abierta al cargar (?herramienta=); por defecto, Hoy. */
   initialHerramienta?: HerramientaId | undefined;
+  chatUnreadMentions?: number | undefined;
   chat?: {
     href: string;
     todayHref: string;
     unreadHref: string;
     exportHref?: ((format: "json" | "md") => string) | undefined;
     unread: number | null;
+    unreadMentions?: number | undefined;
     active: boolean;
     content?: ReactNode;
   };
@@ -481,7 +483,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           expandido={carrilExpandido}
           onToggleExpandido={toggleCarril}
           activa={chat?.active ? undefined : herramienta}
-          chat={chat}
+          chat={chat ? { ...chat, unreadMentions: props.chatUnreadMentions ?? chat.unreadMentions } : undefined}
           onSelect={selectHerramienta}
           hoyPendientes={overdueCount + todayCount}
           semana={resumenSemana(todos, todayDate)}
@@ -495,11 +497,21 @@ export function EspacioHoy(props: EspacioHoyProps) {
           <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
-      {chat && !chat.active && herramienta === "hoy" && <a href={chat.unread ? chat.unreadHref : chat.href}
-        className="hubly-glass flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-(--glass-hover)">
-        <Icon name="chat" className="size-5" />
-        <span>{chat.unread === null ? "Abrir chat" : chat.unread === 0 ? "Chat al día" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
-      </a>}
+      {chat && !chat.active && herramienta === "hoy" && (() => {
+        const mentions = props.chatUnreadMentions ?? chat.unreadMentions ?? 0;
+        const mentionText = mentions === 1 ? "1 mención sin leer" : `${mentions} menciones sin leer`;
+        return <a href={chat.unread || mentions > 0 ? chat.unreadHref : chat.href}
+          className="hubly-glass flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-(--glass-hover)">
+          <Icon name="chat" className="size-5" />
+          <span className="grow">{chat.unread === null ? "Abrir chat" : chat.unread === 0 ? "Chat al día" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
+          {mentions > 0 && (
+            <span data-hoy-mentions={mentions} aria-label={mentionText}
+              className="rounded-full border border-(--accent-primary) bg-(--surface-brand-soft) px-2.5 py-0.5 text-xs font-semibold text-(--accent-primary)">
+              {mentionText}
+            </span>
+          )}
+        </a>;
+      })()}
       {chat?.active ? chat.content : herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : enLienzo ? (
         <Lienzo items={lienzoItems} barra={{ slot: barraSlot, ...barraProps }} />
       ) : (

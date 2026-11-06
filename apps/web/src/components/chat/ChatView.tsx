@@ -4,7 +4,7 @@ import type { ChatConversation, ChatParticipant } from "@hubly/contracts";
 import { Alert, Button } from "@hubly/ui";
 import React, { useEffect, useRef, useState } from "react";
 import { Composer } from "./Composer";
-import { ChannelForm, ConversationHeader } from "./ConversationHeader";
+import { ChannelForm, ConversationHeader, type BrowserNotificationPermission } from "./ConversationHeader";
 import {
   ChatAvatar, DirectoryErrorBanner, MemberList, MissingNameBanner, conversationName, personName, type ChatViewCommand,
 } from "./MemberList";
@@ -12,6 +12,7 @@ import type { ChatMessageView, ChatReactionSummary } from "./MessageItem";
 import { MessageList } from "./MessageList";
 import { ThreadPanel } from "./ThreadPanel";
 
+export type { BrowserNotificationPermission } from "./ConversationHeader";
 export type { ChatViewCommand } from "./MemberList";
 export type { ChatMessageView, ChatReactionSummary } from "./MessageItem";
 
@@ -42,12 +43,17 @@ export interface ChatViewProps {
   replyingToMessageId?: string | null;
   reactionsByMessage?: Readonly<Record<string, readonly ChatReactionSummary[]>>;
   reactionErrorsByMessage?: Readonly<Record<string, string | null | undefined>>;
+  unreadMentionsCount?: number | undefined;
+  unreadMentionMessageIds?: ReadonlySet<string> | undefined;
+  notificationPermission?: BrowserNotificationPermission | undefined;
   now?: Date;
   onRetryDirectory?: () => void;
   onFilter: (enabled: boolean) => void;
   onSelect: (id: string | null) => void;
   onOlder: () => void;
   onVisible: (conversationId: string, number: number) => void;
+  onMarkMentionsRead?: (conversationId: string, upToMessageNumber: number, messageIds: string[]) => void;
+  onRequestNotificationPermission?: () => Promise<BrowserNotificationPermission | void> | BrowserNotificationPermission | void;
   onCommand: (input: ChatViewCommand) => Promise<boolean>;
   onDraft: (value: string) => void;
   onSend: () => void;
@@ -94,12 +100,16 @@ function ConversationView({ props, conversation, people }: {
     <div className="flex min-h-0 min-w-0 grow gap-3">
       <section className="hubly-glass flex min-h-0 min-w-0 grow flex-col overflow-hidden rounded-2xl" aria-labelledby="chat-conversation">
         <ConversationHeader conversation={conversation} people={people} canManage={props.canManage}
-          headingRef={heading} onSelect={props.onSelect} onCommand={props.onCommand} />
+          headingRef={heading} notificationPermission={props.notificationPermission}
+          onRequestNotificationPermission={props.onRequestNotificationPermission}
+          onSelect={props.onSelect} onCommand={props.onCommand} />
         <MessageList conversation={conversation} messages={props.messages} people={people} userId={props.userId}
           loading={props.loading} hasOlder={props.hasOlder} loadingOlder={props.loadingOlder}
           freshMessageIds={props.freshMessageIds} highlightedMessageId={props.highlightedMessageId}
           reactionsByMessage={props.reactionsByMessage} reactionErrorsByMessage={props.reactionErrorsByMessage}
-          now={props.now} onOlder={props.onOlder} onVisible={props.onVisible} onCommand={props.onCommand}
+          unreadMentionMessageIds={props.unreadMentionMessageIds}
+          now={props.now} onOlder={props.onOlder} onVisible={props.onVisible}
+          onMarkMentionsRead={props.onMarkMentionsRead} onCommand={props.onCommand}
           onReply={(message) => { setReplyingToId(message.id); props.onReplyToMessage?.(message); }}
           onOpenThread={(message) => { setThreadRootId(message.id); props.onOpenThread?.(message); }}
           onJumpToMessage={props.onJumpToMessage}
@@ -138,12 +148,25 @@ export function ChatView(props: ChatViewProps) {
   const unreadCount = props.conversations.filter((entry) => entry.unread).length;
   const listHeading = useRef<HTMLHeadingElement>(null);
 
+  const unreadMentions = Math.max(0, props.unreadMentionsCount ?? 0);
+
   return <div className="flex min-h-0 min-w-0 grow flex-col gap-3">
     {conversation && <h1 className="sr-only lg:hidden">Chat</h1>}
     <header className={`hubly-glass shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl p-3 ${conversation ? "hidden lg:flex" : "flex"}`}>
-      <div>
-        <p className={sectionLabel}>{props.workspaceName}</p>
-        <h1 className="text-2xl font-semibold">Chat</h1>
+      <div className="flex flex-wrap items-center gap-2">
+        <div>
+          <p className={sectionLabel}>{props.workspaceName}</p>
+          <h1 className="text-2xl font-semibold">Chat</h1>
+        </div>
+        {unreadMentions > 0 && (
+          <span
+            data-chat-unread-mentions={unreadMentions}
+            aria-label={unreadMentions === 1 ? "1 mención sin leer" : `${unreadMentions} menciones sin leer`}
+            className="inline-flex min-h-5 items-center rounded-full bg-(--accent-primary) px-2 py-0.5 text-xs font-semibold text-(--text-on-accent) tabular-nums"
+          >
+            {unreadMentions === 1 ? "1 mención sin leer" : `${unreadMentions} menciones sin leer`}
+          </span>
+        )}
       </div>
       <p className="text-xs text-(--text-secondary)">
         El propietario de la agencia puede exportar los canales desde los ajustes de equipo.
