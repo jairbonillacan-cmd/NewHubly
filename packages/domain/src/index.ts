@@ -192,3 +192,51 @@ export function parseQuickCapture(text: string, todayDate: string): QuickCapture
   const dueDate = dueKeyword === 'hoy' ? todayDate : dueKeyword === 'mañana' ? addDaysToDateString(todayDate, 1) : null;
   return { title: kept.join(' '), dueDate, dueKeyword, priority, noteQuery };
 }
+
+// Calendario editorial: marcas, piezas, máquina de estados v1 e historial (ADR 0011, #192).
+export const BRAND_COLORS = ['azul', 'arena', 'verde', 'lila'] as const;
+export type BrandColor = (typeof BRAND_COLORS)[number];
+export const isBrandColor = (value: string): value is BrandColor => (BRAND_COLORS as readonly string[]).includes(value);
+
+export const CONTENT_CHANNELS = ['instagram', 'facebook', 'tiktok', 'linkedin', 'x', 'youtube', 'blog', 'email', 'otro'] as const;
+export type ContentChannel = (typeof CONTENT_CHANNELS)[number];
+export const isContentChannel = (value: string): value is ContentChannel => (CONTENT_CHANNELS as readonly string[]).includes(value);
+
+export const CONTENT_PIECE_STATUSES = ['idea', 'borrador', 'revision', 'aprobacion_cliente', 'programada', 'aprobada', 'publicada', 'medida'] as const;
+export type ContentPieceStatus = (typeof CONTENT_PIECE_STATUSES)[number];
+export const CONTENT_V1_STATUSES = ['idea', 'borrador', 'revision', 'aprobada', 'publicada'] as const;
+export type ContentV1Status = (typeof CONTENT_V1_STATUSES)[number];
+
+export const ALLOWED_CONTENT_V1_TRANSITIONS: Record<ContentPieceStatus, readonly ContentV1Status[]> = {
+  idea: ['borrador'], borrador: ['idea', 'revision'], revision: ['borrador', 'aprobada'],
+  aprobada: ['revision', 'publicada'], publicada: [], aprobacion_cliente: [], programada: [], medida: [],
+};
+export const canTransitionContentStatus = (from: ContentPieceStatus, to: ContentPieceStatus): boolean =>
+  (ALLOWED_CONTENT_V1_TRANSITIONS[from] as readonly string[] | undefined)?.includes(to) ?? false;
+export const getNextContentStatuses = (current: ContentPieceStatus): readonly ContentV1Status[] => ALLOWED_CONTENT_V1_TRANSITIONS[current] ?? [];
+
+export const CONTENT_PIECE_EVENT_KINDS = ['created', 'status', 'rescheduled', 'assigned'] as const;
+export type ContentPieceEventKind = (typeof CONTENT_PIECE_EVENT_KINDS)[number];
+
+export const canRoleWrite = (role: WorkspaceRole | null): boolean => role === 'owner' || role === 'admin' || role === 'editor';
+export const canManageBrands = (role: WorkspaceRole | null): boolean => role === 'owner' || role === 'admin';
+export const canWriteContentPiece = (role: WorkspaceRole | null): boolean => canRoleWrite(role);
+export const canDeleteContentPiece = (role: WorkspaceRole | null, isAuthor: boolean): boolean =>
+  role === 'owner' || role === 'admin' || (role === 'editor' && isAuthor);
+
+export interface Brand {
+  id: string; workspaceId: string; createdBy: string; name: string; color: BrandColor;
+  visibility: ItemVisibility; archivedAt: string | null; createdAt: string; updatedAt: string;
+}
+export interface ContentPiece {
+  id: string; workspaceId: string; brandId: string; createdBy: string; title: string; brief: string; campaign: string;
+  channel: ContentChannel; plannedDate: string; plannedTime: string | null; assigneeId: string | null;
+  status: ContentPieceStatus; publishedDate: string | null; visibility: ItemVisibility; archivedAt: string | null; createdAt: string; updatedAt: string;
+}
+export interface ContentPieceEvent {
+  id: string; workspaceId: string; pieceId: string; kind: ContentPieceEventKind; from: string | null; to: string | null; actorId: string; at: string;
+}
+export interface WorkspaceMemberSummary {
+  userId: string; role: WorkspaceRole; displayName?: string | null; email?: string | null;
+}
+

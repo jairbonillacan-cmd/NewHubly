@@ -68,3 +68,53 @@ describe('Preferencias por persona (#83)', () => {
   });
 });
 
+describe('Calendario editorial: contratos Zod (#192)', () => {
+  const brandId = '11111111-1111-4111-8111-111111111111';
+  const pieceId = '22222222-2222-4222-8222-222222222222';
+
+  it('valida creación y edición de marcas y piezas con valores por defecto y normalización de hora', async () => {
+    const {
+      isValidCalendarDate, isValidTimeOfDay, createBrandSchema, updateBrandSchema,
+      createContentPieceSchema, updateContentPieceSchema,
+    } = await import('./index.js');
+    expect(isValidCalendarDate('2026-11-06') && !isValidCalendarDate('2026-02-30')).toBe(true);
+    expect(isValidTimeOfDay('09:30') && isValidTimeOfDay('14:05:00') && !isValidTimeOfDay('24:00')).toBe(true);
+
+    const brand = createBrandSchema.parse({ name: '  Lumen  ' });
+    expect(brand).toEqual({ name: 'Lumen', color: 'azul', visibility: 'workspace' });
+    expect(createBrandSchema.safeParse({ name: '   ' }).success).toBe(false);
+    expect(updateBrandSchema.safeParse({ brandId, color: 'verde', archived: true }).success).toBe(true);
+
+    const piece = createContentPieceSchema.parse({
+      brandId, title: '  Lanzamiento de invierno ', plannedDate: '2026-11-10', plannedTime: '09:30:00',
+    });
+    expect(piece).toEqual({
+      brandId, title: 'Lanzamiento de invierno', brief: '', campaign: '', channel: 'instagram',
+      plannedDate: '2026-11-10', plannedTime: '09:30', assigneeId: null, status: 'idea', visibility: 'workspace',
+    });
+    expect(createContentPieceSchema.safeParse({ brandId, title: 'X', plannedDate: '2026-11-10', status: 'publicada' }).success).toBe(false);
+    expect(updateContentPieceSchema.safeParse({ pieceId, channel: 'linkedin', assigneeId: null }).success).toBe(true);
+  });
+
+  it('valida transiciones, reprogramación, borrado, filtros de rango y formatos de exportación', async () => {
+    const {
+      transitionContentPieceStatusSchema, rescheduleContentPieceSchema, deleteContentPieceSchema,
+      contentRangeFilterSchema, contentExportQuerySchema,
+    } = await import('./index.js');
+    expect(transitionContentPieceStatusSchema.safeParse({ pieceId, status: 'publicada', publishedDate: '2026-11-06' }).success).toBe(true);
+    expect(transitionContentPieceStatusSchema.safeParse({ pieceId, status: 'publicada' }).success).toBe(true);
+    expect(transitionContentPieceStatusSchema.safeParse({ pieceId, status: 'borrador', publishedDate: '2026-11-06' }).success).toBe(false);
+    expect(transitionContentPieceStatusSchema.safeParse({ pieceId, status: 'programada' }).success).toBe(false);
+
+    expect(rescheduleContentPieceSchema.parse({ pieceId, plannedDate: '2026-11-12', plannedTime: '18:00:00' }).plannedTime).toBe('18:00');
+    expect(deleteContentPieceSchema.safeParse({ pieceId }).success).toBe(true);
+
+    expect(contentRangeFilterSchema.safeParse({ from: '2026-11-01', to: '2026-11-30', channel: 'tiktok' }).success).toBe(true);
+    expect(contentRangeFilterSchema.safeParse({ from: '2026-11-30', to: '2026-11-01' }).success).toBe(false);
+    expect(contentExportQuerySchema.parse({ from: '2026-11-01', to: '2026-11-30' }).format).toBe('json');
+    expect(contentExportQuerySchema.parse({ format: 'ics' }).format).toBe('ics');
+    expect(contentExportQuerySchema.safeParse({ format: 'csv' }).success).toBe(false);
+  });
+});
+
+
