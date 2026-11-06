@@ -8,7 +8,9 @@ import { DrizzleChatRepository } from "../src/repositories/chat";
 
 const db = postgres(process.env.DATABASE_URL || "postgresql://postgres:postgres@127.0.0.1:54322/postgres");
 const workspaceId = randomUUID();
+const owner = randomUUID();
 const editor = randomUUID();
+const peer = randomUUID();
 const viewer = randomUUID();
 let general: string;
 
@@ -26,7 +28,7 @@ describe("Chat: casos de uso y repositorio", () => {
     await db.begin(async (tx) => {
       await tx`insert into public.workspaces (id, name, slug, kind) values (${workspaceId}, 'Agencia', ${workspaceId}, 'agency')`;
       await tx`insert into public.workspace_members (workspace_id, user_id, role)
-        values (${workspaceId}, ${randomUUID()}, 'owner'), (${workspaceId}, ${editor}, 'editor'), (${workspaceId}, ${viewer}, 'viewer')`;
+        values (${workspaceId}, ${owner}, 'owner'), (${workspaceId}, ${editor}, 'editor'), (${workspaceId}, ${peer}, 'editor'), (${workspaceId}, ${viewer}, 'viewer')`;
     });
     general = await writer.bootstrap(workspaceId);
   });
@@ -37,6 +39,23 @@ describe("Chat: casos de uso y repositorio", () => {
     } finally {
       await db.end();
     }
+  });
+
+  it("crea, renombra y archiva canales y abre directos desde el repositorio", async () => {
+    const admin = createChatService({ workspaceId, userId: owner, role: "owner", workspaceKind: "agency", enabled: true },
+      new DrizzleChatRepository({ sub: owner, role: "authenticated" }, workspaceId));
+    const { conversationId: channel } = await admin.command({ kind: "createChannel", workspaceId, slug: "campanas" });
+    await admin.command({ kind: "renameChannel", workspaceId, conversationId: channel, slug: "produccion" });
+    // Antes de #176 llega el código de Postgres; después, el error de aplicación ya traducido.
+    await expect(admin.command({ kind: "createChannel", workspaceId, slug: "produccion" })).rejects
+      .toSatisfy((error: { reason?: string; cause?: { code?: string } }) => error.reason === "conflict" || error.cause?.code === "23505");
+    await admin.command({ kind: "archiveChannel", workspaceId, conversationId: channel });
+    const archived = (await admin.list(workspaceId)).find((item) => item.id === channel);
+    expect(archived).toMatchObject({ slug: "produccion", archived: true, writable: false });
+
+    const { conversationId: directId } = await writer.command({ kind: "openDirect", workspaceId, recipientId: peer });
+    expect((await writer.command({ kind: "openDirect", workspaceId, recipientId: peer })).conversationId).toBe(directId);
+    expect((await writer.list(workspaceId)).find((item) => item.id === directId)).toMatchObject({ kind: "direct", peerId: peer, writable: true });
   });
 
   it("comprueba agencia, habilitación y rol antes de cambiar el chat", async () => {
