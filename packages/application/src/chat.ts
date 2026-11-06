@@ -1,7 +1,7 @@
-import type { ChatCommand, ChatCommandResult, ChatConversation, ChatHistory, ChatMessage, ChatSync } from "@hubly/contracts";
+import type { ChatCommand, ChatCommandResult, ChatConversation, ChatHistory, ChatMessage, ChatParticipant, ChatSync } from "@hubly/contracts";
 import type { WorkspaceRole } from "@hubly/domain";
 
-export type { ChatCommand, ChatCommandResult, ChatConversation, ChatHistory, ChatMessage, ChatSync } from "@hubly/contracts";
+export type { ChatCommand, ChatCommandResult, ChatConversation, ChatHistory, ChatMessage, ChatParticipant, ChatSync } from "@hubly/contracts";
 
 export interface ChatContext {
   workspaceId: string;
@@ -21,6 +21,7 @@ export interface ChatRepository {
   ensureGeneral(): Promise<string>;
   command(input: ChatCommand): Promise<ChatCommandResult>;
   ownMessages(): Promise<ChatMessage[]>;
+  directory(): Promise<ChatParticipant[]>;
 }
 
 export class ChatAccessError extends Error {
@@ -73,6 +74,10 @@ export function createChatService(ctx: ChatContext, repo: ChatRepository) {
       if ((input.kind === "edit" || input.kind === "remove")
           && !await repo.ownsMessage(input.conversationId, input.messageId)) throw new ChatAccessError();
       return await repo.command(input);
+    },
+    async directory(workspaceId: string) {
+      requireAgency(workspaceId);
+      return await repo.directory();
     },
     async exportOwn(workspaceId: string) {
       requireAgency(workspaceId);
