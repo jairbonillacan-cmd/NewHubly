@@ -61,7 +61,8 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     expect(emptyHtml).toContain("Nueva nota");
     expect(emptyHtml).toContain("0 vencidos");
     expect(emptyHtml).toContain("0 para hoy");
-    expect(emptyHtml).toContain("Todo guardado");
+    // El guardado y el modo de paneles salieron del dock a la barra del lienzo (issue 147).
+    expect(emptyHtml).toContain('aria-label="Lienzo y vista"');
 
     const signOutSpy = vi.fn().mockResolvedValue({ error: null });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

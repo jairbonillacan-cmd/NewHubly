@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LIENZO_PASO, LIENZO_ZOOM_MAX, LIENZO_ZOOM_MIN, alinear, clampZoom, fitView, visibleRect, zoomAt } from "./Lienzo";
+import { PANEL_MIN, redimensionar, LIENZO_PASO, LIENZO_ZOOM_MAX, LIENZO_ZOOM_MIN, alinear, clampZoom, fitView, visibleRect, zoomAt } from "./Lienzo";
 
 describe("Lienzo infinito (issue 136)", () => {
   it("acerca y aleja sin mover el punto bajo el cursor", () => {
@@ -32,5 +32,15 @@ describe("Lienzo infinito (issue 136)", () => {
   it("con el imán, los paneles caen en la cuadrícula; sin él, solo se redondean", () => {
     expect(alinear(LIENZO_PASO * 3 + 5, true)).toBe(LIENZO_PASO * 3);
     expect(alinear(37.6, false)).toBe(38);
+  });
+
+  it("cambia el tamaño desde cualquier borde sin mover el lado opuesto ni bajar del mínimo (issue 147)", () => {
+    const rect = { x: 100, y: 100, w: 400, h: 300 };
+    expect(redimensionar(rect, "w", -50, 0)).toEqual({ x: 50, y: 100, w: 450, h: 300 });
+    expect(redimensionar(rect, "n", 0, 40)).toEqual({ x: 100, y: 140, w: 400, h: 260 });
+    expect(redimensionar(rect, "se", 20, 30)).toEqual({ x: 100, y: 100, w: 420, h: 330 });
+    const chico = redimensionar(rect, "nw", 999, 999);
+    expect([chico.w, chico.h]).toEqual([PANEL_MIN.w, PANEL_MIN.h]);
+    expect(chico.x + chico.w).toBe(rect.x + rect.w);
   });
 });

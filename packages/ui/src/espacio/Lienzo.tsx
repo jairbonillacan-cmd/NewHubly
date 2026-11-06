@@ -2,27 +2,33 @@
 
 import { Button, Dropdown, ToggleButton, Tooltip } from "@heroui/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import type { Key, Selection } from "react-aria-components";
+import { createPortal } from "react-dom";
+import type { Key } from "react-aria-components";
 import { Icon, type IconName } from "./icons";
 import type { LayoutId } from "./preferencias";
 
-// Lienzo infinito de Hoy (issues 136 y 141): los paneles flotan en un plano que se arrastra y se acerca o aleja.
+// Lienzo infinito de Hoy (issues 136, 141 y 147): los paneles flotan en un plano que se arrastra y se acerca o aleja.
 // El acomodo y las opciones se recuerdan en este navegador hasta que exista su preferencia en la cuenta, igual que el carril.
 
 export interface LienzoRect { x: number; y: number; w: number; h: number }
 export interface LienzoView { x: number; y: number; zoom: number }
 export interface LienzoItem { id: string; rect: LienzoRect; node: ReactNode }
 export interface LienzoOpciones { mapa: boolean; iman: boolean }
+/** Borde desde el que se cambia el tamaño: lados y esquinas. */
+export type LienzoBorde = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
 export const LIENZO_ZOOM_MIN = 0.4;
 export const LIENZO_ZOOM_MAX = 1.6;
 /** Paso del imán: los paneles se alinean a esta cuadrícula al moverlos o cambiarles el tamaño. */
 export const LIENZO_PASO = 24;
-const PANEL_MIN = { w: 320, h: 200 };
+export const PANEL_MIN = { w: 320, h: 200 };
 const STORAGE_KEY = "hubly-lienzo";
 const ZOOM_STEP = 1.2;
 const FIT_PADDING = 32;
 const MAPA = { w: 176, h: 112, margen: 160 };
+/** Lo que dura el asentamiento del panel al soltarlo; coincide con la animación hubly-asentar. */
+const ASENTAR_MS = 520;
+const BORDES: readonly LienzoBorde[] = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 
 export const clampZoom = (zoom: number) => Math.min(LIENZO_ZOOM_MAX, Math.max(LIENZO_ZOOM_MIN, zoom));
 export const alinear = (value: number, iman: boolean) => (iman ? Math.round(value / LIENZO_PASO) * LIENZO_PASO : Math.round(value));
@@ -51,6 +57,17 @@ export function fitView(rects: readonly LienzoRect[], width: number, height: num
 export const visibleRect = (view: LienzoView, width: number, height: number): LienzoRect =>
   ({ x: -view.x / view.zoom, y: -view.y / view.zoom, w: width / view.zoom, h: height / view.zoom });
 
+/** Nuevo rectángulo al arrastrar un borde (dx, dy en unidades del lienzo). El lado opuesto queda quieto y nunca
+ *  baja del tamaño mínimo. */
+export function redimensionar(rect: LienzoRect, borde: LienzoBorde, dx: number, dy: number, iman = false): LienzoRect {
+  let { x, y, w, h } = rect;
+  if (borde.includes("e")) w = Math.max(PANEL_MIN.w, alinear(rect.w + dx, iman));
+  if (borde.includes("s")) h = Math.max(PANEL_MIN.h, alinear(rect.h + dy, iman));
+  if (borde.includes("w")) { w = Math.max(PANEL_MIN.w, alinear(rect.w - dx, iman)); x = rect.x + rect.w - w; }
+  if (borde.includes("n")) { h = Math.max(PANEL_MIN.h, alinear(rect.h - dy, iman)); y = rect.y + rect.h - h; }
+  return { x, y, w, h };
+}
+
 interface Saved { view?: LienzoView; rects?: Record<string, LienzoRect>; opciones?: Partial<LienzoOpciones> }
 
 function readSaved(): Saved {
@@ -68,7 +85,8 @@ function writeSaved(saved: Saved) {
 
 type Gesture =
   | { kind: "pan"; startX: number; startY: number; view: LienzoView }
-  | { kind: "item"; id: string; startX: number; startY: number; rect: LienzoRect };
+  | { kind: "item"; id: string; startX: number; startY: number; rect: LienzoRect }
+  | { kind: "borde"; id: string; borde: LienzoBorde; startX: number; startY: number; rect: LienzoRect };
 
 const NOT_DRAG = "button, a, input, textarea, select, [contenteditable='true'], [role='button'], [role='menuitem'], [role='switch'], [role='checkbox']";
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
@@ -84,23 +102,106 @@ function Control({ icon, label, onPress }: { icon: IconName; label: string; onPr
   return (
     <Tooltip delay={400}>
       <Button isIconOnly size="sm" variant="ghost" aria-label={label} onPress={onPress} className={CONTROL}>
-        <Icon name={icon} className="size-4" />
+        <Icon name={icon} className="size-5" />
       </Button>
       <Tooltip.Content placement="top">{label}</Tooltip.Content>
     </Tooltip>
   );
 }
 
+/** Controles del lienzo cuando está activo: zoom, mapa, imán y acomodo. */
+export interface LienzoControles {
+  zoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onFit: () => void;
+  onReset: () => void;
+  opciones: LienzoOpciones;
+  onOpciones: (opciones: LienzoOpciones) => void;
+}
+
+export interface LienzoBarraProps {
+  layout: LayoutId;
+  onLayout: (layout: LayoutId) => void;
+  /** Abre el selector de fondo; `fondo` es ese selector, anclado a la barra. */
+  onOpenFondo: () => void;
+  fondo?: ReactNode;
+  /** Solo en el lienzo libre de escritorio; sin ellos, la barra ofrece el modo de paneles y el fondo. */
+  lienzo?: LienzoControles | undefined;
+}
+
+/** Barra propia del lienzo (issue 147), a la derecha del dock: tuerca con modos, mapa, imán, fondo y acomodo, y zoom. */
+export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: LienzoBarraProps) {
+  const onMenu = (key: Key) => {
+    if (key === "libre" || key === "lado" || key === "enfoque") onLayout(key);
+    else if (key === "fondo") onOpenFondo();
+    else if (key === "mapa" && lienzo) lienzo.onOpciones({ ...lienzo.opciones, mapa: !lienzo.opciones.mapa });
+    else if (key === "iman" && lienzo) lienzo.onOpciones({ ...lienzo.opciones, iman: !lienzo.opciones.iman });
+    else if (key === "encuadrar") lienzo?.onFit();
+    else if (key === "restablecer") lienzo?.onReset();
+  };
+  const check = (on: boolean) => on && <Icon name="check" className="size-4 text-(--accent-primary)" />;
+  return (
+    <div role="toolbar" aria-label="Lienzo y vista" data-delay="3" className="hubly-glass hubly-enter relative flex h-16 shrink-0 items-center gap-0.5 rounded-(--glass-radius-access-card) px-2">
+      <Dropdown>
+        <Dropdown.Trigger aria-label="Opciones del lienzo" className={`flex cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent hover:bg-(--glass-hover) ${CONTROL}`}>
+          <Icon name="tuerca" className="size-5" />
+        </Dropdown.Trigger>
+        <Dropdown.Popover placement="top end" className={MENU}>
+          <Dropdown.Menu aria-label="Opciones del lienzo" onAction={onMenu}>
+            <Dropdown.Section aria-label="Modo de los paneles" className="border-b border-(--glass-line) pb-1.5">
+              {MODOS.map((modo) => (
+                <Dropdown.Item key={modo.id} id={modo.id} textValue={modo.label} className={ITEM}>
+                  <Icon name={modo.icon} /> <span className="grow">{modo.label}</span>{check(layout === modo.id)}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Section>
+            <Dropdown.Section aria-label="Vista" className="py-1.5">
+              <Dropdown.Item id="fondo" textValue="Fondo y opacidad" className={ITEM}><Icon name="imagen" /> <span className="grow">Fondo y opacidad</span></Dropdown.Item>
+              {lienzo ? <>
+                <Dropdown.Item id="mapa" textValue="Mostrar el mapa" className={ITEM}><Icon name="mapa" /> <span className="grow">Mostrar el mapa</span>{check(lienzo.opciones.mapa)}</Dropdown.Item>
+                <Dropdown.Item id="iman" textValue="Alinear a la cuadrícula" className={ITEM}><Icon name="paneles" /> <span className="grow">Alinear a la cuadrícula</span>{check(lienzo.opciones.iman)}</Dropdown.Item>
+              </> : null}
+            </Dropdown.Section>
+            {lienzo ? (
+              <Dropdown.Section aria-label="Acomodo" className="border-t border-(--glass-line) pt-1.5">
+                <Dropdown.Item id="encuadrar" textValue="Ver todos los paneles" className={ITEM}><Icon name="encuadrar" /> Ver todos los paneles</Dropdown.Item>
+                <Dropdown.Item id="restablecer" textValue="Volver al acomodo inicial" className={ITEM}><Icon name="deshacer" /> Volver al acomodo inicial</Dropdown.Item>
+              </Dropdown.Section>
+            ) : null}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown>
+      {lienzo && (
+        <>
+          <Tooltip delay={400}>
+            <ToggleButton isIconOnly size="sm" variant="ghost" aria-label="Mapa del lienzo" isSelected={lienzo.opciones.mapa} onChange={(mapa) => lienzo.onOpciones({ ...lienzo.opciones, mapa })}
+              className={`${CONTROL} data-[selected]:bg-(--accent-primary-subtle)`}>
+              <Icon name="mapa" className="size-5" />
+            </ToggleButton>
+            <Tooltip.Content placement="top">Mapa del lienzo</Tooltip.Content>
+          </Tooltip>
+          <span aria-hidden="true" className="mx-1 h-6 w-px bg-(--glass-line-strong)" />
+          <Control icon="menos" label="Alejar" onPress={lienzo.onZoomOut} />
+          <span aria-live="polite" className="min-w-12 text-center text-xs font-semibold text-(--text-secondary) tabular-nums">{Math.round(lienzo.zoom * 100)} %</span>
+          <Control icon="mas" label="Acercar" onPress={lienzo.onZoomIn} />
+          <Control icon="encuadrar" label="Ver todos los paneles" onPress={lienzo.onFit} />
+        </>
+      )}
+      {fondo}
+    </div>
+  );
+}
+
 export interface LienzoProps {
   items: readonly LienzoItem[];
-  /** Modo de paneles actual y cómo cambiarlo desde la tuerca. */
-  layout?: LayoutId;
-  onLayout?: (layout: LayoutId) => void;
+  /** Dónde va la barra del lienzo (en la fila del dock) y lo que necesita para su tuerca. */
+  barra?: { slot: HTMLElement | null } & Omit<LienzoBarraProps, "lienzo"> | undefined;
 }
 
 /** Lienzo infinito: se arrastra desde el fondo, la rueda lo mueve y Ctrl + rueda (o pellizcar) acerca o aleja.
- *  Cada panel se mueve desde su cabecera y cambia de tamaño desde su esquina. */
-export function Lienzo({ items, layout = "libre", onLayout }: LienzoProps) {
+ *  Cada panel se mueve desde su cabecera y cambia de tamaño desde cualquier borde. */
+export function Lienzo({ items, barra }: LienzoProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<LienzoView>({ x: 0, y: 0, zoom: 1 });
@@ -108,9 +209,10 @@ export function Lienzo({ items, layout = "libre", onLayout }: LienzoProps) {
   const [order, setOrder] = useState<string[]>([]);
   const [opciones, setOpciones] = useState<LienzoOpciones>({ mapa: true, iman: false });
   const [size, setSize] = useState({ w: 0, h: 0 });
-  const [flotando, setFlotando] = useState<string | null>(null);
+  const [activo, setActivo] = useState<{ id: string; modo: "flotando" | "borde" | "asentando" } | null>(null);
   const [ready, setReady] = useState(false);
   const gesture = useRef<Gesture | null>(null);
+  const asentarTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const rectOf = useCallback((item: LienzoItem) => rects[item.id] ?? item.rect, [rects]);
 
@@ -130,6 +232,8 @@ export function Lienzo({ items, layout = "libre", onLayout }: LienzoProps) {
     setReady(true);
     // Solo al montar: después manda lo que la persona mueva.
   }, []);
+
+  useEffect(() => () => clearTimeout(asentarTimer.current), []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -176,12 +280,18 @@ export function Lienzo({ items, layout = "libre", onLayout }: LienzoProps) {
     const itemEl = event.target.closest<HTMLElement>("[data-lienzo-item]");
     if (itemEl) {
       const id = itemEl.dataset.lienzoItem!;
-      setOrder((current) => [...current.filter((other) => other !== id), id]);
-      if (!event.target.closest("[data-lienzo-asa]") || event.target.closest(NOT_DRAG)) return;
       const item = items.find((candidate) => candidate.id === id);
+      setOrder((current) => [...current.filter((other) => other !== id), id]);
       if (!item) return;
-      gesture.current = { kind: "item", id, startX: event.clientX, startY: event.clientY, rect: rectOf(item) };
-      setFlotando(id);
+      const borde = event.target.closest<HTMLElement>("[data-lienzo-borde]")?.dataset.lienzoBorde as LienzoBorde | undefined;
+      if (borde) {
+        gesture.current = { kind: "borde", id, borde, startX: event.clientX, startY: event.clientY, rect: rectOf(item) };
+        setActivo({ id, modo: "borde" });
+      } else if (event.target.closest("[data-lienzo-asa]") && !event.target.closest(NOT_DRAG)) {
+        gesture.current = { kind: "item", id, startX: event.clientX, startY: event.clientY, rect: rectOf(item) };
+        clearTimeout(asentarTimer.current);
+        setActivo({ id, modo: "flotando" });
+      } else return;
     } else {
       gesture.current = { kind: "pan", startX: event.clientX, startY: event.clientY, view };
     }
@@ -195,23 +305,20 @@ export function Lienzo({ items, layout = "libre", onLayout }: LienzoProps) {
     if (!current) return;
     const dx = event.clientX - current.startX, dy = event.clientY - current.startY;
     if (current.kind === "pan") setView({ ...current.view, x: current.view.x + dx, y: current.view.y + dy });
-    else setRects((all) => ({ ...all, [current.id]: { ...current.rect, x: alinear(current.rect.x + dx / view.zoom, opciones.iman), y: alinear(current.rect.y + dy / view.zoom, opciones.iman) } }));
+    else if (current.kind === "item") setRects((all) => ({ ...all, [current.id]: { ...current.rect, x: alinear(current.rect.x + dx / view.zoom, opciones.iman), y: alinear(current.rect.y + dy / view.zoom, opciones.iman) } }));
+    else setRects((all) => ({ ...all, [current.id]: redimensionar(current.rect, current.borde, dx / view.zoom, dy / view.zoom, opciones.iman) }));
   };
 
   const endGesture = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const current = gesture.current;
     gesture.current = null;
-    setFlotando(null);
     delete event.currentTarget.dataset.arrastrando;
+    if (current?.kind === "item") {
+      // Al soltarlo, el panel baja y se asienta con un pequeño rebote antes de quedar quieto.
+      setActivo({ id: current.id, modo: "asentando" });
+      asentarTimer.current = setTimeout(() => setActivo(null), ASENTAR_MS);
+    } else setActivo(null);
   };
-
-  const onResize = useCallback((id: string, w: number, h: number) => {
-    setRects((all) => {
-      const item = items.find((candidate) => candidate.id === id);
-      const base = all[id] ?? item?.rect;
-      if (!base || (Math.abs(base.w - w) < 2 && Math.abs(base.h - h) < 2)) return all;
-      return { ...all, [id]: { ...base, w: Math.max(PANEL_MIN.w, Math.round(w)), h: Math.max(PANEL_MIN.h, Math.round(h)) } };
-    });
-  }, [items]);
 
   const zoomBy = (factor: number) => {
     const canvas = canvasRef.current;
@@ -224,22 +331,11 @@ export function Lienzo({ items, layout = "libre", onLayout }: LienzoProps) {
     if (canvas) setView(fitView(items.map((item) => item.rect), canvas.clientWidth, canvas.clientHeight));
   };
 
-  const onMenu = (key: Key) => {
-    if (key === "encuadrar") fit();
-    else if (key === "restablecer") resetLayout();
-  };
-  const onModo = (selection: Selection) => {
-    if (selection === "all") return;
-    const next = [...selection][0];
-    if (next === "libre" || next === "lado" || next === "enfoque") onLayout?.(next);
-  };
-  const onOpciones = (selection: Selection) => {
-    if (selection === "all") return;
-    setOpciones({ mapa: selection.has("mapa"), iman: selection.has("iman") });
-  };
-
   const zIndex = (id: string) => order.indexOf(id) + 1;
   const panelRects = items.map((item) => ({ id: item.id, rect: rectOf(item) }));
+  const controles: LienzoControles = {
+    zoom: view.zoom, onZoomIn: () => zoomBy(ZOOM_STEP), onZoomOut: () => zoomBy(1 / ZOOM_STEP), onFit: fit, onReset: resetLayout, opciones, onOpciones: setOpciones,
+  };
 
   return (
     <div className="relative min-h-0 grow">
@@ -255,56 +351,16 @@ export function Lienzo({ items, layout = "libre", onLayout }: LienzoProps) {
       >
         <div ref={layerRef} className={`hubly-lienzo-capa ${ready ? "" : "invisible"}`}>
           {items.map((item) => (
-            <LienzoPanel key={item.id} id={item.id} rect={rectOf(item)} z={zIndex(item.id)} flotando={flotando === item.id} iman={opciones.iman} onResize={onResize}>{item.node}</LienzoPanel>
+            <LienzoPanel key={item.id} id={item.id} rect={rectOf(item)} z={zIndex(item.id)} estado={activo?.id === item.id ? activo.modo : undefined}>{item.node}</LienzoPanel>
           ))}
         </div>
       </div>
-
-      <div className="absolute bottom-3 left-3 z-10 flex flex-col items-start gap-2">
-        {opciones.mapa && size.w > 0 && <MiniMapa panels={panelRects} view={view} size={size} onCenter={(x, y) => setView((current) => ({ ...current, x: size.w / 2 - x * current.zoom, y: size.h / 2 - y * current.zoom }))} />}
-        <div className="hubly-glass flex items-center rounded-xl p-1">
-          <Tooltip delay={400}>
-            <ToggleButton isIconOnly size="sm" variant="ghost" aria-label="Mapa del lienzo" isSelected={opciones.mapa} onChange={(mapa) => setOpciones((current) => ({ ...current, mapa }))}
-              className={`${CONTROL} data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary)`}>
-              <Icon name="mapa" className="size-4" />
-            </ToggleButton>
-            <Tooltip.Content placement="top">Mapa del lienzo</Tooltip.Content>
-          </Tooltip>
+      {opciones.mapa && size.w > 0 && (
+        <div className="absolute right-3 bottom-3 z-10">
+          <MiniMapa panels={panelRects} view={view} size={size} onCenter={(x, y) => setView((current) => ({ ...current, x: size.w / 2 - x * current.zoom, y: size.h / 2 - y * current.zoom }))} />
         </div>
-      </div>
-
-      <div role="toolbar" aria-label="Controles del lienzo" className="hubly-glass absolute right-3 bottom-3 z-10 flex items-center gap-0.5 rounded-xl p-1">
-        <Dropdown>
-          <Dropdown.Trigger aria-label="Opciones del lienzo" className={`flex cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent hover:bg-(--glass-hover) ${CONTROL}`}>
-            <Icon name="tuerca" className="size-4" />
-          </Dropdown.Trigger>
-          <Dropdown.Popover placement="top end" className={MENU}>
-            <Dropdown.Menu aria-label="Opciones del lienzo" onAction={onMenu} className="hubly-sin-anillo">
-              <Dropdown.Section aria-label="Modo de los paneles" selectionMode="single" selectedKeys={[layout]} onSelectionChange={onModo} className="border-b border-(--glass-line) pb-1.5">
-                {MODOS.map((modo) => (
-                  <Dropdown.Item key={modo.id} id={modo.id} textValue={modo.label} className={ITEM}>
-                    <Icon name={modo.icon} /> <span className="grow">{modo.label}</span>{layout === modo.id && <Icon name="check" className="size-4 text-(--accent-primary)" />}
-                  </Dropdown.Item>
-                ))}
-              </Dropdown.Section>
-              <Dropdown.Section aria-label="Opciones" selectionMode="multiple" selectedKeys={[...(opciones.mapa ? ["mapa"] : []), ...(opciones.iman ? ["iman"] : [])]} onSelectionChange={onOpciones} className="border-b border-(--glass-line) py-1.5">
-                <Dropdown.Item id="mapa" textValue="Mostrar el mapa" className={ITEM}><Icon name="mapa" /> <span className="grow">Mostrar el mapa</span>{opciones.mapa && <Icon name="check" className="size-4 text-(--accent-primary)" />}</Dropdown.Item>
-                <Dropdown.Item id="iman" textValue="Alinear a la cuadrícula" className={ITEM}><Icon name="paneles" /> <span className="grow">Alinear a la cuadrícula</span>{opciones.iman && <Icon name="check" className="size-4 text-(--accent-primary)" />}</Dropdown.Item>
-              </Dropdown.Section>
-              <Dropdown.Section aria-label="Acomodo" className="pt-1.5">
-                <Dropdown.Item id="encuadrar" textValue="Ver todos los paneles" className={ITEM}><Icon name="encuadrar" /> Ver todos los paneles</Dropdown.Item>
-                <Dropdown.Item id="restablecer" textValue="Volver al acomodo inicial" className={ITEM}><Icon name="deshacer" /> Volver al acomodo inicial</Dropdown.Item>
-              </Dropdown.Section>
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown>
-        <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-(--glass-line-strong)" />
-        <Control icon="menos" label="Alejar" onPress={() => zoomBy(1 / ZOOM_STEP)} />
-        <span aria-live="polite" className="min-w-12 text-center text-xs font-semibold text-(--text-secondary) tabular-nums">{Math.round(view.zoom * 100)} %</span>
-        <Control icon="mas" label="Acercar" onPress={() => zoomBy(ZOOM_STEP)} />
-        <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-(--glass-line-strong)" />
-        <Control icon="encuadrar" label="Ver todos los paneles" onPress={fit} />
-      </div>
+      )}
+      {barra?.slot && createPortal(<LienzoBarra {...barra} lienzo={controles} />, barra.slot)}
     </div>
   );
 }
@@ -325,7 +381,7 @@ function MiniMapa({ panels, view, size, onCenter }: { panels: { id: string; rect
   const r = (rect: LienzoRect) => ({ x: (rect.x - minX) * scale, y: (rect.y - minY) * scale, width: Math.max(2, rect.w * scale), height: Math.max(2, rect.h * scale) });
 
   return (
-    <div className="hubly-glass hubly-pop overflow-hidden rounded-xl p-1.5">
+    <div className="hubly-glass hubly-pop rounded-xl p-1.5">
       <svg ref={svgRef} role="img" aria-label="Mapa del lienzo: toca un punto para ir ahí" viewBox={`0 0 ${MAPA.w} ${MAPA.h}`} width={MAPA.w} height={MAPA.h}
         className="block cursor-pointer touch-none"
         onPointerDown={(event) => { arrastrando.current = true; event.currentTarget.setPointerCapture(event.pointerId); go(event); }}
@@ -338,7 +394,7 @@ function MiniMapa({ panels, view, size, onCenter }: { panels: { id: string; rect
   );
 }
 
-function LienzoPanel({ id, rect, z, flotando, iman, onResize, children }: { id: string; rect: LienzoRect; z: number; flotando: boolean; iman: boolean; onResize: (id: string, w: number, h: number) => void; children: ReactNode }) {
+function LienzoPanel({ id, rect, z, estado, children }: { id: string; rect: LienzoRect; z: number; estado: "flotando" | "borde" | "asentando" | undefined; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -349,24 +405,13 @@ function LienzoPanel({ id, rect, z, flotando, iman, onResize, children }: { id: 
     el.style.setProperty("--item-w", `${rect.w}px`);
     el.style.setProperty("--item-h", `${rect.h}px`);
     el.style.setProperty("--item-z", String(z));
-    // La esquina nativa deja un ancho y alto en línea; ya quedaron en las variables, así que se quitan.
-    el.style.removeProperty("width");
-    el.style.removeProperty("height");
   }, [rect, z]);
 
-  // El tamaño cambia con la esquina nativa (resize de CSS); se guarda en unidades del lienzo, sin el zoom.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => onResize(id, alinear(el.offsetWidth, iman), alinear(el.offsetHeight, iman)));
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [id, iman, onResize]);
-
   return (
-    <div ref={ref} data-lienzo-item={id} data-flotando={flotando || undefined} className="hubly-lienzo-item">
+    <div ref={ref} data-lienzo-item={id} data-estado={estado} className="hubly-lienzo-item">
       <div className="hubly-lienzo-cuerpo">{children}</div>
-      <span aria-hidden="true" className="hubly-lienzo-esquina" />
+      {/* Bordes invisibles para cambiar el tamaño desde cualquier lado o esquina. */}
+      {BORDES.map((borde) => <span key={borde} aria-hidden="true" data-lienzo-borde={borde} className="hubly-lienzo-borde" />)}
     </div>
   );
 }
