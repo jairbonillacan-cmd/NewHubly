@@ -1,4 +1,7 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { DockStatus } from "./Dock";
 import { createShortcutRegistry, createTodayDock } from "./dockConfig";
 import type { EspacioTodo } from "./types";
 
@@ -48,5 +51,21 @@ describe("Registro de atajos", () => {
     expect(run).toHaveBeenCalledOnce();
     expect(search).toHaveBeenCalledOnce();
     expect(preventDefault).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Lengüeta de Hubi", () => {
+  it("se oculta cuando no hay nada útil que decir", () => {
+    expect(renderToStaticMarkup(createElement(DockStatus, { suggestion: null }))).toBe("");
+  });
+
+  it("muestra una sola sugerencia y su acción", () => {
+    const run = vi.fn();
+    const html = renderToStaticMarkup(createElement(DockStatus, {
+      suggestion: { message: "Tienes 2 vencidos", action: { label: "Pasarlos a hoy", run } },
+    }));
+    expect(html).toContain('role="status"');
+    expect(html).toContain("Tienes 2 vencidos");
+    expect(html).toContain("Pasarlos a hoy");
   });
 });

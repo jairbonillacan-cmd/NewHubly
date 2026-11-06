@@ -3,10 +3,11 @@
 import { Button, Chip, Kbd, Popover, Slider, ToggleButton } from "@heroui/react";
 import { forwardRef, useId, useState, type FormEvent, type ReactNode } from "react";
 import { FileTrigger } from "react-aria-components";
+import { HubiFace } from "../components/brand/HublyLogo";
 import { useHublyTheme } from "../landing/ThemeToggle";
 import { Icon } from "./icons";
 import { WALLPAPERS, type EspacioPreferencias, type PreferenciasPatch } from "./preferencias";
-import type { CaptureFieldProps, DockConfig } from "./dockConfig";
+import type { CaptureFieldProps, DockConfig, DockSuggestion } from "./dockConfig";
 import { WallpaperSwatch } from "./Wallpaper";
 
 const DOCK_BUTTON = "size-10 shrink-0 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
@@ -236,15 +237,29 @@ function DockActions({ actions }: Pick<DockConfig, "actions">) {
   ));
 }
 
+export function DockStatus({ suggestion }: { suggestion: DockSuggestion | null }) {
+  if (!suggestion) return null;
+  return (
+    <div role="status" className="hubly-pop-surface relative mx-auto flex h-7.5 w-fit max-w-full items-center gap-2 rounded-t-xl px-3 text-xs text-(--text-primary)">
+      <HubiFace className="size-5" />
+      <span className="min-w-0 truncate">{suggestion.message}</span>
+      {suggestion.action && <Button variant="ghost" onPress={suggestion.action.run} isDisabled={suggestion.action.pending ?? false} className="-mt-3.5 h-11 min-h-11 shrink-0 px-2 pt-3.5 text-xs text-(--accent-primary)">{suggestion.action.label}</Button>}
+    </div>
+  );
+}
+
 /** El marco elige la configuración. El dock solo presenta sus controles. */
 export const Dock = forwardRef<HTMLInputElement, { config: DockConfig; extra?: ReactNode }>(function Dock({ config, extra }, ref) {
   return (
-    <div role="toolbar" aria-label={config.label} data-delay="3" className="hubly-glass hubly-enter flex h-16 w-full min-w-0 items-center gap-1 rounded-(--glass-radius-access-card) px-2">
-      <span className="w-16 shrink-0 px-1 text-xs font-semibold">{config.context}</span>
-      <DockActions actions={config.actions} />
-      <CaptureField ref={ref} {...config.entry} />
-      <DockDetails config={config} />
-      {extra}
+    <div>
+      <DockStatus suggestion={config.suggestion ?? null} />
+      <div role="toolbar" aria-label={config.label} data-delay="3" className="hubly-glass hubly-enter flex h-16 w-full min-w-0 items-center gap-1 rounded-(--glass-radius-access-card) px-2">
+        <span className="w-16 shrink-0 px-1 text-xs font-semibold">{config.context}</span>
+        <DockActions actions={config.actions} />
+        <CaptureField ref={ref} {...config.entry} />
+        <DockDetails config={config} />
+        {extra}
+      </div>
     </div>
   );
 });

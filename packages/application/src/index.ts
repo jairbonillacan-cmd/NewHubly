@@ -8,7 +8,7 @@ import {
   getEffectiveVisibility, getInvitationStatus, isDoneView, isNoDate, isToday, isUpcoming, normalizeInvitationEmail,
   pinNote as domainPinNote, sortTodosForView, toggleTodo as domainToggleTodo, unlinkIncompatibleTodosOnNotePrivatized,
 } from '@hubly/domain';
-export { addDaysToDateString, parseQuickCapture, type QuickCaptureAnalysis } from '@hubly/domain';
+export { addDaysToDateString, canEditItem, parseQuickCapture, suggestOverdueTodos, type QuickCaptureAnalysis } from '@hubly/domain';
 import {
   changeMemberRoleInputSchema, createAgencyInputSchema, inviteMemberInputSchema, removeMemberInputSchema, revokeInvitationInputSchema,
   type ChangeMemberRoleInput, type CreateAgencyInput, type CreateNoteInput, type CreateTodoInput, type ExportData,
