@@ -6,17 +6,14 @@ import type { Key, Selection } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { useHublyTheme } from "../landing/ThemeToggle";
 import { Icon, type IconName } from "./icons";
+import type { Shortcut } from "./dockConfig";
 import type { PanelId } from "./preferencias";
-import { ROLE_LABEL, longDateLabel, type EspacioWorkspace, type HoyFilter, type NoteSaveState } from "./types";
+import { ROLE_LABEL, longDateLabel, type EspacioWorkspace } from "./types";
 
 export interface TopBarProps {
   todayDate: string;
   timezone?: string | undefined;
-  overdueCount: number;
-  todayCount: number;
-  filter: HoyFilter;
-  saveState: NoteSaveState;
-  onFilter: (filter: HoyFilter) => void;
+  shortcuts: readonly Shortcut[];
   onOpenPalette: () => void;
   onOpenBackground: () => void;
   onExport: (format: "json" | "md") => void;
@@ -40,12 +37,6 @@ export interface TopBarProps {
 
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
 const ITEM = "flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover) data-[disabled]:cursor-default data-[disabled]:opacity-60";
-
-const SAVE_CHIP: Record<NoteSaveState, { label: string; color: "success" | "default" | "danger" }> = {
-  saved: { label: "Todo guardado", color: "success" },
-  saving: { label: "Guardando…", color: "default" },
-  error: { label: "Sin guardar", color: "danger" },
-};
 
 function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAgency, onOpenTeam }: Pick<TopBarProps, "workspaces" | "activeWorkspace" | "onSelectWorkspace" | "onCreateAgency" | "onOpenTeam">) {
   const isAgency = activeWorkspace.kind === "agency";
@@ -136,30 +127,6 @@ function AccountMenu({ timezone, userEmail, onOpenBackground, onExport, onSignOu
   );
 }
 
-function FilterBadges({ overdueCount, todayCount, filter, onFilter }: Pick<TopBarProps, "overdueCount" | "todayCount" | "filter" | "onFilter">) {
-  const badge = "h-7 min-w-0 rounded-full border-2 border-transparent px-2.5 text-xs font-semibold";
-  return (
-    <div role="group" aria-label="Filtrar el panel Hoy" className="flex items-center gap-2">
-      <ToggleButton
-        size="sm"
-        isSelected={filter === "vencidos"}
-        onChange={(on) => onFilter(on ? "vencidos" : null)}
-        className={`${badge} bg-(--status-danger-bg) text-(--status-danger-text) data-[selected]:border-(--status-danger-text) data-[selected]:bg-(--status-danger-bg)`}
-      >
-        <span key={overdueCount} className="hubly-pop inline-block">{overdueCount} {overdueCount === 1 ? "vencido" : "vencidos"}</span>
-      </ToggleButton>
-      <ToggleButton
-        size="sm"
-        isSelected={filter === "hoy"}
-        onChange={(on) => onFilter(on ? "hoy" : null)}
-        className={`${badge} bg-(--accent-primary-subtle) text-(--accent-primary) data-[selected]:border-(--accent-primary) data-[selected]:bg-(--accent-primary-subtle)`}
-      >
-        <span key={todayCount} className="hubly-pop inline-block">{todayCount} para hoy</span>
-      </ToggleButton>
-    </div>
-  );
-}
-
 const CONTROL = "size-11 min-w-11 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
 
 /** Botón de icono del grupo de controles, con su nombre en el tooltip. */
@@ -202,14 +169,8 @@ const PANELES: { id: PanelId; label: string; icon: IconName }[] = [
   { id: "notas", label: "Panel Notas fijadas", icon: "pin" },
 ];
 
-const SHORTCUTS: { keys: string[]; label: string }[] = [
-  { keys: ["Ctrl", "K"], label: "Buscar o ejecutar" },
-  { keys: ["/"], label: "Abrir la búsqueda" },
-  { keys: ["C"], label: "Escribir un pendiente" },
-];
-
 /** Grupo de controles de la barra superior (#105, sección 2), en el orden de la maqueta. */
-function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, onExport, panels, onTogglePanel }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "onOpenBackground" | "onExport" | "panels" | "onTogglePanel">) {
+function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, onExport, panels, onTogglePanel, shortcuts }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "onOpenBackground" | "onExport" | "panels" | "onTogglePanel" | "shortcuts">) {
   const [theme, setTheme] = useHublyTheme();
   return (
     <div role="toolbar" aria-label="Controles del espacio" className="flex items-center gap-0.5">
@@ -231,10 +192,10 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, o
         <Control icon={theme === "dark" ? "sol" : "luna"} label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} onPress={() => setTheme(theme === "dark" ? "light" : "dark")} />
         <ControlPopover icon="ayuda" label="Ayuda y atajos" title="Atajos de teclado">
           <ul className="m-0 flex list-none flex-col gap-2 p-0 text-sm">
-            {SHORTCUTS.map((shortcut) => (
-              <li key={shortcut.label} className="flex items-center justify-between gap-3">
+            {shortcuts.map((shortcut) => (
+              <li key={shortcut.key} className="flex items-center justify-between gap-3">
                 <span className="text-(--text-secondary)">{shortcut.label}</span>
-                <span className="flex gap-1">{shortcut.keys.map((key) => <Kbd key={key}><Kbd.Content>{key}</Kbd.Content></Kbd>)}</span>
+                <span className="flex gap-1"><Kbd><Kbd.Content>{shortcut.key}</Kbd.Content></Kbd></span>
               </li>
             ))}
           </ul>
@@ -273,8 +234,7 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, o
 
 /** Barra superior fija (#105): Hubi, espacio, herramienta activa y fecha; a la derecha, los controles y el avatar. */
 export function TopBar(props: TopBarProps) {
-  const { todayDate, saveState } = props;
-  const save = SAVE_CHIP[saveState];
+  const { todayDate } = props;
   return (
     <div className="flex flex-col gap-2">
       <header className="hubly-glass hubly-enter flex h-14 items-center gap-2 rounded-(--glass-radius-access-bar) pr-1.5 pl-3 lg:gap-3">
@@ -286,22 +246,9 @@ export function TopBar(props: TopBarProps) {
         <h1 className="m-0 text-sm font-semibold">{props.toolName}</h1>
         <span className="hidden text-sm text-(--text-muted) first-letter:uppercase 2xl:inline">{longDateLabel(todayDate)}</span>
         <span className="grow" />
-        <div className="hidden xl:block">
-          <FilterBadges {...props} />
-        </div>
-        <span aria-live="polite" className="hidden xl:inline-flex">
-          <Chip color={save.color} variant="soft" size="sm">
-            {saveState === "saved" && <Icon name="check" className="size-3" strokeWidth={2.5} />}
-            {save.label}
-          </Chip>
-        </span>
         <Controls {...props} />
         <AccountMenu {...props} />
       </header>
-      <div className="flex items-center justify-between gap-2 px-1 xl:hidden">
-        <FilterBadges {...props} />
-        <span className="truncate text-xs text-(--text-muted) first-letter:uppercase">{longDateLabel(todayDate)}</span>
-      </div>
     </div>
   );
 }

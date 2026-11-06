@@ -1,14 +1,16 @@
 "use client";
 
-import { Button } from "@heroui/react";
+import { Button, Dropdown } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { HubiFace } from "../components/brand/HublyLogo";
 import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { useHublyTheme, type HublyTheme } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
-import { BackgroundPicker, CaptureField, Dock, findNoteByQuery, type WallpaperImageControls } from "./Dock";
+import { BackgroundPicker, CaptureField, Dock, DockMore, type WallpaperImageControls } from "./Dock";
+import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery } from "./dockConfig";
 import { Carril, Proximamente, resumenSemana } from "./Carril";
-import { herramientaPorId, isHerramientaId, type HerramientaId } from "./herramientas";
+import { HERRAMIENTAS, herramientaPorId, isHerramientaId, type HerramientaId } from "./herramientas";
 import { HoyPanel } from "./HoyPanel";
 import { Icon } from "./icons";
 import { NotaPanel } from "./NotaPanel";
@@ -83,12 +85,6 @@ export const PERSONAL_WORKSPACE: EspacioWorkspace = { id: "personal", name: "Esp
 const noop = () => {};
 
 interface ToastState { id: number; message: string; undo?: (() => void) | undefined }
-
-const isTypingTarget = (target: EventTarget | null) => {
-  const el = target as HTMLElement | null;
-  const tag = el?.tagName ?? "";
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || Boolean(el?.isContentEditable);
-};
 
 /** Espacio de Hoy con paneles de cristal sobre fondo personal (propuesta B, #75). Sin datos propios: todo llega por props. */
 export function EspacioHoy(props: EspacioHoyProps) {
@@ -186,26 +182,6 @@ export function EspacioHoy(props: EspacioHoyProps) {
     target?.focus();
   }, []);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setPaletteOpen(true);
-        return;
-      }
-      if (event.ctrlKey || event.metaKey || event.altKey || isTypingTarget(event.target)) return;
-      if (event.key === "/") {
-        event.preventDefault();
-        setPaletteOpen(true);
-      } else if (event.key === "c" || event.key === "C") {
-        event.preventDefault();
-        focusCapture();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [focusCapture]);
-
   const showToast = (message: string, undo?: () => void) => setToast({ id: Date.now(), message, undo });
 
   const toggleTodo = async (id: string) => {
@@ -236,6 +212,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   };
 
   const createNote = async () => {
+    selectHerramienta("hoy");
     const id = await onCreateNote();
     if (id) {
       setOpenNoteId(id);
@@ -244,6 +221,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   };
 
   const openNote = (id: string) => {
+    selectHerramienta("hoy");
     setOpenNoteId(id);
     setPrefs({ paneles: { nota: true } });
     if (!isDesktop()) document.getElementById("panel-nota")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -254,10 +232,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
     focusCapture();
   };
 
-  const openBackground = () => setPickerOpen(isDesktop() ? "desktop" : "mobile");
+  const openBackground = () => {
+    selectHerramienta("hoy");
+    setPickerOpen(isDesktop() ? "desktop" : "mobile");
+  };
 
   const paletteActions: PaletteAction[] = [
-    { id: "pendiente", label: "Nuevo pendiente", icon: "mas", run: () => setTimeout(focusCapture, 0) },
+    { id: "pendiente", label: "Nuevo pendiente", icon: "mas", run: () => { selectHerramienta("hoy"); setTimeout(focusCapture, 0); } },
     { id: "nota", label: "Nueva nota", icon: "nota", run: () => void createNote() },
     { id: "fondo", label: "Cambiar fondo", icon: "imagen", run: () => setTimeout(openBackground, 0) },
     prefs.distribucion === "enfoque"
@@ -288,20 +269,30 @@ export function EspacioHoy(props: EspacioHoyProps) {
         ? "lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1.15fr)_minmax(0,1fr)]"
         : "lg:grid lg:auto-cols-fr lg:grid-flow-col";
 
-  const mobileNav: { label: string; icon: "sol" | "pin" | "buscar"; run: () => void }[] = [
-    { label: "Hoy", icon: "sol", run: () => document.getElementById("panel-hoy")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
-    { label: "Notas", icon: "pin", run: () => document.getElementById("panel-notas")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
-    { label: "Buscar", icon: "buscar", run: () => setPaletteOpen(true) },
+  const linkedNote = notes.find((note) => note.id === linkedNoteId);
+  const dock = herramienta === "hoy" ? createTodayDock({
+    todos, date: todayDate, layout, onLayout: (distribucion) => setPrefs({ distribucion }),
+    filter, onFilter: (next) => { setFilter(next); setPrefs({ paneles: { hoy: true } }); },
+    createNote: () => void createNote(), exportData: () => onExport("json"), saveState,
+    entry: {
+      label: "Capturar pendiente", hint: "Captura… prueba «llamar a Lumen mañana !alta»", shortcut: "C",
+      submitIcon: <HubiFace className="size-5" />,
+      linked: linkedNote ? { label: linkedNote.title || "sin título", remove: () => setLinkedNoteId(null) } : undefined,
+      chips: (text) => captureChips(analyzeCapture(text), notes),
+      onSubmit: (text) => void submitCapture(text), error: captureError,
+    },
+  }) : null;
+  const shortcuts = [
+    { key: "Ctrl K", label: "Buscar o ejecutar", run: () => setPaletteOpen(true) },
+    { key: "/", label: "Abrir la búsqueda", run: () => setPaletteOpen(true) },
+    ...(dock ? [{ key: dock.entry.shortcut, label: "Escribir un pendiente", run: focusCapture }, ...dock.actions] : []),
   ];
 
-  const captureProps = {
-    notes,
-    linkedNote: notes.find((note) => note.id === linkedNoteId) ?? null,
-    onUnlinkNote: () => setLinkedNoteId(null),
-    analyze: analyzeCapture,
-    onSubmit: (text: string) => void submitCapture(text),
-    error: captureError,
-  };
+  useEffect(() => {
+    const onKeyDown = createShortcutRegistry(shortcuts);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [shortcuts]);
 
   return (
     // Marco fijo (#105): en escritorio, una cuadrícula con la barra superior, el carril y el dock fijos; solo el contenido se desliza.
@@ -313,11 +304,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         <TopBar
           todayDate={todayDate}
           timezone={timezone}
-          overdueCount={overdueCount}
-          todayCount={todayCount}
-          filter={filter}
-          saveState={saveState}
-          onFilter={setFilter}
+          shortcuts={shortcuts}
           onOpenPalette={() => setPaletteOpen(true)}
           onOpenBackground={openBackground}
           onExport={onExport}
@@ -399,28 +386,31 @@ export function EspacioHoy(props: EspacioHoyProps) {
       )}
       </main>
 
-      <div className="z-20 hidden justify-center lg:col-start-2 lg:row-start-3 lg:flex">
-        <Dock ref={desktopCapture} imagen={imagenControls} prefs={prefs} onPrefs={setPrefs} pickerOpen={pickerOpen === "desktop"} onPickerOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} {...captureProps} />
-      </div>
+      {dock && <div className="z-20 hidden min-w-0 lg:col-start-2 lg:row-start-3 lg:block">
+        <Dock ref={desktopCapture} config={dock} extra={<BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs}
+          isOpen={pickerOpen === "desktop"} onOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} triggerClassName="size-11 min-w-11 shrink-0" />} />
+      </div>}
 
-      <div className="hubly-glass fixed inset-x-2 bottom-2 z-30 flex flex-col gap-2 rounded-2xl p-2 lg:hidden">
-        <CaptureField ref={mobileCapture} {...captureProps} />
+      <div {...(dock ? { role: "toolbar", "aria-label": dock.label } : {})} className="hubly-glass fixed inset-x-2 bottom-2 z-30 flex flex-col gap-2 rounded-(--glass-radius-access-card) p-2 lg:hidden">
+        {dock && <CaptureField ref={mobileCapture} {...dock.entry} />}
         <nav aria-label="Navegación del espacio" className="grid grid-cols-4">
-          {mobileNav.map((item) => (
-            <Button key={item.label} variant="ghost" onPress={item.run} className="h-auto min-h-11 flex-col gap-0.5 text-xs text-(--text-secondary)">
-              <Icon name={item.icon} className="size-5" />
-              {item.label}
-            </Button>
-          ))}
-          <BackgroundPicker
-            imagen={imagenControls}
-            prefs={prefs}
-            onChange={setPrefs}
-            isOpen={pickerOpen === "mobile"}
-            onOpenChange={(open) => setPickerOpen(open ? "mobile" : null)}
-            triggerLabel="Fondo"
-            triggerClassName="h-auto min-h-11 w-full flex-col gap-0.5 text-xs text-(--text-secondary)"
-          />
+          <Button variant="ghost" className="min-h-11" {...(herramienta === "hoy" ? { "aria-current": "page" } : {})} onPress={() => {
+            selectHerramienta("hoy");
+            document.getElementById("panel-hoy")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}>Hoy</Button>
+          <Dropdown>
+            <Dropdown.Trigger className="min-h-11 px-1 text-xs">Herramientas</Dropdown.Trigger>
+            <Dropdown.Popover placement="top" className="hubly-pop-surface rounded-xl p-1">
+              <Dropdown.Menu aria-label="Herramientas" onAction={(id) => { if (typeof id === "string" && isHerramientaId(id)) selectHerramienta(id); }}>
+                {HERRAMIENTAS.filter((tool) => tool.id !== "hoy").map((tool) => <Dropdown.Item key={tool.id} id={tool.id} className="min-h-11">{tool.nombre} · Pronto</Dropdown.Item>)}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown>
+          {dock && <>
+            <BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs} isOpen={pickerOpen === "mobile"}
+              onOpenChange={(open) => setPickerOpen(open ? "mobile" : null)} triggerLabel="Fondo" triggerClassName="min-h-11 w-full" />
+            <DockMore config={dock} extra={<Button variant="ghost" className="min-h-11" onPress={() => document.getElementById("panel-notas")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Notas</Button>} />
+          </>}
         </nav>
       </div>
 
@@ -460,6 +450,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         todos={todos}
         onOpenNote={openNote}
         onFocusTodo={(id) => {
+          selectHerramienta("hoy");
           setFilter(null);
           setPrefs({ paneles: { hoy: true } });
           setTimeout(() => document.getElementById(`pendiente-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);

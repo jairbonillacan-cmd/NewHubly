@@ -9,6 +9,7 @@ export * from "./NotaPanel";
 export * from "./NotasPanel";
 export * from "./TopBar";
 export * from "./Dock";
+export * from "./dockConfig";
 export * from "./CommandPalette";
 export * from "./BienvenidaDialog";
 export * from "./Carril";
