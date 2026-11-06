@@ -2,9 +2,11 @@
 
 import type { ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
 import { Button } from "@hubly/ui";
-import React, { useEffect, useLayoutEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { personName, type ChatViewCommand } from "./MemberList";
-import { MessageItem } from "./MessageItem";
+import {
+  MessageItem, jumpToQuotedMessage, type ChatMessageView, type ChatReactionSummary,
+} from "./MessageItem";
 import { isMessageEndVisible } from "./sync";
 
 const control = "min-h-11";
@@ -28,21 +30,36 @@ export function shouldGroupMessages(previous: ChatMessage | undefined, current: 
 }
 
 export function MessageList({
-  conversation, messages, people, userId, loading, hasOlder, loadingOlder, freshMessageIds, now, onOlder, onVisible, onCommand,
+  conversation, messages, people, userId, loading, hasOlder, loadingOlder, freshMessageIds,
+  highlightedMessageId, reactionsByMessage, reactionErrorsByMessage, now,
+  onOlder, onVisible, onCommand, onReply, onOpenThread, onJumpToMessage, onToggleReaction,
 }: {
-  conversation: ChatConversation; messages: ChatMessage[]; people: Map<string, ChatParticipant>; userId: string;
+  conversation: ChatConversation; messages: readonly ChatMessageView[]; people: Map<string, ChatParticipant>; userId: string;
   loading: boolean; hasOlder: boolean; loadingOlder: boolean; freshMessageIds?: ReadonlySet<string> | undefined;
+  highlightedMessageId?: string | null | undefined;
+  reactionsByMessage?: Readonly<Record<string, readonly ChatReactionSummary[]>> | undefined;
+  reactionErrorsByMessage?: Readonly<Record<string, string | null | undefined>> | undefined;
   now?: Date | undefined; onOlder: () => void; onVisible: (conversationId: string, number: number) => void;
   onCommand: (input: ChatViewCommand) => Promise<boolean>;
+  onReply?: ((message: ChatMessageView) => void) | undefined;
+  onOpenThread?: ((message: ChatMessageView) => void) | undefined;
+  onJumpToMessage?: ((messageId: string) => void) | undefined;
+  onToggleReaction?: ((messageId: string, emoji: string) => Promise<boolean | void> | boolean | void) | undefined;
 }) {
   const scroll = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
   const earlier = useRef<{ height: number; top: number } | null>(null);
   const baselineMax = useRef<number | null>(null);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [localHighlightId, setLocalHighlightId] = useState<string | null>(null);
 
   if (!loading && baselineMax.current === null) {
     baselineMax.current = messages.reduce((max, item) => Math.max(max, item.number), 0);
   }
+
+  useEffect(() => () => {
+    if (highlightTimer.current !== null) clearTimeout(highlightTimer.current);
+  }, []);
 
   function visible() {
     const element = scroll.current;
@@ -77,6 +94,19 @@ export function MessageList({
     visible();
   });
 
+  function handleJump(targetId: string) {
+    onJumpToMessage?.(targetId);
+    const reduced = typeof window !== "undefined" && typeof window.matchMedia === "function"
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    jumpToQuotedMessage(targetId, null, reduced);
+    setLocalHighlightId(targetId);
+    if (highlightTimer.current !== null) clearTimeout(highlightTimer.current);
+    highlightTimer.current = setTimeout(() => setLocalHighlightId(null), 1800);
+  }
+
+  const messagesById = new Map(messages.map((item) => [item.id, item]));
+  const activeHighlight = highlightedMessageId ?? localHighlightId;
+
   return <div ref={scroll} onScroll={visible} tabIndex={0} aria-label="Historial de la conversación" className="min-h-0 grow overflow-y-auto px-3">
     {hasOlder && <Button variant="ghost" size="sm" className={control} isPending={loadingOlder} onPress={() => {
       if (scroll.current) earlier.current = { height: scroll.current.scrollHeight, top: scroll.current.scrollTop };
@@ -91,6 +121,7 @@ export function MessageList({
           const isOwn = entry.authorId === userId;
           const isNew = freshMessageIds ? freshMessageIds.has(entry.id) : baselineMax.current !== null && entry.number > baselineMax.current;
           const dayLabel = showDaySeparator ? daySeparatorLabel(entry.sentAt, now) : null;
+          const quoted = entry.replyToId ? messagesById.get(entry.replyToId) ?? undefined : undefined;
           return <React.Fragment key={entry.id}>
             {dayLabel && <li className="my-2 px-2">
               <div role="separator" aria-label={dayLabel} className="flex items-center gap-2 text-xs font-semibold text-(--text-muted)">
@@ -100,8 +131,13 @@ export function MessageList({
               </div>
             </li>}
             <MessageItem entry={entry} name={isOwn ? "Tú" : personName(entry.authorId, people.get(entry.authorId))}
-              person={people.get(entry.authorId)} isOwn={isOwn} canEdit={conversation.writable && isOwn}
-              grouped={grouped} isNew={isNew} now={now} onCommand={onCommand} />
+              person={people.get(entry.authorId)} people={people} viewerId={userId} isOwn={isOwn}
+              writable={conversation.writable} canEdit={conversation.writable && isOwn}
+              grouped={grouped} isNew={isNew} highlighted={activeHighlight === entry.id}
+              quotedMessage={quoted} reactions={reactionsByMessage?.[entry.id] ?? entry.reactions}
+              reactionError={reactionErrorsByMessage?.[entry.id]} now={now} onCommand={onCommand}
+              onReply={onReply} onOpenThread={onOpenThread} onJumpToMessage={handleJump}
+              onToggleReaction={onToggleReaction} />
           </React.Fragment>;
         })}
       </ol> : <p className="p-4 text-sm text-(--text-secondary)">Todavía no hay mensajes.</p>}
