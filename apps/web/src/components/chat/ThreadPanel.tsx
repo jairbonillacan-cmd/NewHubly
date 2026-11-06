@@ -4,12 +4,14 @@ import type { ChatParticipant } from "@hubly/contracts";
 import { Button, TextArea } from "@hubly/ui";
 import React, { useEffect, useState } from "react";
 import { ChatAvatar, personName } from "./MemberList";
+import { ChatAttachmentList, type ChatAttachmentItem } from "./ChatAttachmentView";
 import { formatMessageTime, type ChatMessageView } from "./MessageItem";
 
 const control = "min-h-11";
+export type ThreadMessageView = ChatMessageView & { attachments?: readonly ChatAttachmentItem[] | undefined };
 
 export interface ThreadPanelProps {
-  rootMessage: ChatMessageView; replies: readonly ChatMessageView[];
+  rootMessage: ThreadMessageView; replies: readonly ThreadMessageView[];
   people: Map<string, ChatParticipant>; userId: string; writable: boolean;
   now?: Date | undefined; initialDraft?: string; sending?: boolean;
   onClose: () => void;
@@ -59,6 +61,7 @@ export function ThreadPanel({
             <time dateTime={rootMessage.sentAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>{formatMessageTime(rootMessage.sentAt, now)}</time>
           </div>
           <p className={`mt-1 text-sm wrap-anywhere whitespace-pre-wrap ${rootMessage.body === null ? "text-(--text-muted) italic" : ""}`}>{rootMessage.body ?? "Mensaje eliminado"}</p>
+          {rootMessage.body !== null && <ChatAttachmentList attachments={rootMessage.attachments} />}
         </div>
       </article>
       {replies.length > 0 ? <ol aria-label="Respuestas del hilo" className="space-y-2">
@@ -73,6 +76,7 @@ export function ThreadPanel({
                 <time dateTime={reply.sentAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>{formatMessageTime(reply.sentAt, now)}</time>
               </div>
               <p className={`mt-0.5 text-sm wrap-anywhere whitespace-pre-wrap ${reply.body === null ? "text-(--text-muted) italic" : ""}`}>{reply.body ?? "Mensaje eliminado"}</p>
+              {reply.body !== null && <ChatAttachmentList attachments={reply.attachments} />}
             </div>
           </li>;
         })}
