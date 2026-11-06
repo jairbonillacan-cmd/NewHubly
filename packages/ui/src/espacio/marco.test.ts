@@ -78,7 +78,7 @@ describe("Carril de herramientas", () => {
   });
 
   it("abre Calendario desde el estado inicial y muestra Próximamente en lugar de los paneles", () => {
-    const content = (html: string) => html.match(/<main\b[^>]*>(.*?)<\/main>/s)?.[1];
+    const content = (html: string) => html.match(/<main\b[^>]*>(?:<div class="hubly-espacio-escena[^>]*>)?(.*?)(?:<\/div>)?<\/main>/s)?.[1];
     expect(content(render())).toContain("Hoy");
     expect(content(render({ initialHerramienta: "calendario" }))).toMatch(/^<section[^>]*aria-labelledby="proximamente-titulo"[\s\S]*>Calendario<\/h2>[\s\S]*<\/section>$/);
   });
