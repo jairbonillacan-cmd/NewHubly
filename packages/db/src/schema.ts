@@ -1,5 +1,5 @@
 import "server-only";
-import { boolean, date, foreignKey, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, foreignKey, index, integer, jsonb, pgTable, primaryKey, text, time, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 // Fuente de verdad: migraciones SQL (supabase/migrations). No usar drizzle-kit push ni generate.
 
 export const workspaces = pgTable("workspaces", {
@@ -77,3 +77,53 @@ export type WorkspaceInvitation = typeof workspaceInvitations.$inferSelect; expo
 export type Note = typeof notes.$inferSelect; export type NewNote = typeof notes.$inferInsert;
 export type Todo = typeof todos.$inferSelect; export type NewTodo = typeof todos.$inferInsert;
 export type UserPreferencesRow = typeof userPreferences.$inferSelect;
+
+export const brands = pgTable("brands", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  createdBy: uuid("created_by").notNull(),
+  name: text("name").notNull(),
+  color: text("color", { enum: ["azul", "arena", "verde", "lila"] }).notNull().default("azul"),
+  visibility: text("visibility", { enum: ["private", "workspace"] }).notNull().default("workspace"),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("brands_workspace_archived_idx").on(t.workspaceId, t.archivedAt)]);
+
+export const contentPieces = pgTable("content_pieces", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  brandId: uuid("brand_id").notNull().references(() => brands.id, { onDelete: "restrict" }),
+  createdBy: uuid("created_by").notNull(),
+  title: text("title").notNull(),
+  brief: text("brief").notNull().default(""),
+  campaign: text("campaign").notNull().default(""),
+  channel: text("channel", { enum: ["instagram", "facebook", "tiktok", "linkedin", "x", "youtube", "blog", "email", "otro"] }).notNull().default("instagram"),
+  plannedDate: date("planned_date", { mode: "string" }).notNull(),
+  plannedTime: time("planned_time"),
+  assigneeId: uuid("assignee_id"),
+  status: text("status", { enum: ["idea", "borrador", "revision", "aprobacion_cliente", "programada", "aprobada", "publicada", "medida"] }).notNull().default("idea"),
+  publishedDate: date("published_date", { mode: "string" }),
+  visibility: text("visibility", { enum: ["private", "workspace"] }).notNull().default("workspace"),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("content_pieces_workspace_planned_date_idx").on(t.workspaceId, t.plannedDate),
+  index("content_pieces_workspace_brand_idx").on(t.workspaceId, t.brandId),
+]);
+
+export const contentPieceEvents = pgTable("content_piece_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  pieceId: uuid("piece_id").notNull().references(() => contentPieces.id, { onDelete: "cascade" }),
+  kind: text("kind", { enum: ["created", "status", "rescheduled", "assigned"] }).notNull(),
+  from: text("from"),
+  to: text("to"),
+  actorId: uuid("actor_id").notNull(),
+  at: timestamp("at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [index("content_piece_events_piece_at_idx").on(t.pieceId, t.at)]);
+
+export type BrandRow = typeof brands.$inferSelect; export type NewBrandRow = typeof brands.$inferInsert;
+export type ContentPieceRow = typeof contentPieces.$inferSelect; export type NewContentPieceRow = typeof contentPieces.$inferInsert;
+export type ContentPieceEventRow = typeof contentPieceEvents.$inferSelect;
