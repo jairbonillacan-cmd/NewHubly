@@ -96,15 +96,15 @@ export function FotoRecorte({ file, busy, error, onCancel, onConfirm }: FotoReco
   };
 
   return (
-    <ModalOverlay isOpen={file !== null} onOpenChange={(open) => { if (!open && !busy) onCancel(); }} isDismissable={!busy} className="fixed inset-0 z-60 flex items-start justify-center bg-(--glass-hover) px-3 pt-16 backdrop-blur-xs">
-      <Modal className="hubly-pop w-full max-w-sm">
+    <ModalOverlay isOpen={file !== null} onOpenChange={(open) => { if (!open && !busy) onCancel(); }} isDismissable={!busy} className="hubly-modal-overlay fixed inset-0 z-60 bg-(--glass-hover) backdrop-blur-xs">
+      <Modal className="hubly-pop hubly-modal max-w-sm">
         <Dialog className="hubly-pop-surface flex flex-col overflow-hidden rounded-2xl text-(--text-primary) outline-none">
-          <div className="flex items-center gap-2.5 border-b border-(--glass-line) px-4 py-3">
+          <div className="flex shrink-0 items-center gap-2.5 border-b border-(--glass-line) px-4 py-3">
             <Icon name="camara" className="size-4 text-(--accent-primary)" />
             <Heading slot="title" className="m-0 grow text-base font-semibold">Ajusta tu foto</Heading>
             <Button isIconOnly size="sm" variant="ghost" aria-label="Cerrar" isDisabled={busy} onPress={onCancel}><Icon name="cerrar" /></Button>
           </div>
-          <div className="flex flex-col items-center gap-4 px-4 py-5">
+          <div className="flex min-h-0 flex-col items-center gap-4 overflow-y-auto px-4 py-5">
             <div
               role="img"
               aria-label="Vista previa de tu foto. Arrástrala para moverla."
@@ -129,7 +129,7 @@ export function FotoRecorte({ file, busy, error, onCancel, onConfirm }: FotoReco
             </div>
             {error && <p role="alert" className="hubly-pop m-0 text-sm text-(--status-danger-text)">{error}</p>}
           </div>
-          <div className="flex justify-end gap-2 border-t border-(--glass-line) px-4 py-3">
+          <div className="flex shrink-0 justify-end gap-2 border-t border-(--glass-line) px-4 py-3">
             <Button variant="ghost" isDisabled={busy} onPress={onCancel}>Cancelar</Button>
             <Button variant="primary" isDisabled={busy || !img} onPress={guardar}>{busy ? "Guardando…" : "Guardar foto"}</Button>
           </div>

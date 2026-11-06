@@ -46,7 +46,7 @@ export interface TopBarProps {
   onChangePresence?: ((status: EspacioPresence) => void) | undefined;
 }
 
-const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
+const MENU = "hubly-pop-surface hubly-popover-scroll min-w-64 rounded-xl p-1.5 text-(--text-primary)";
 const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover) data-[disabled]:cursor-default data-[disabled]:opacity-60";
 
 function SpaceMenu({ workspaces, activeWorkspace, switchingTo, onSelectWorkspace, onCreateAgency, onOpenTeam }: Pick<TopBarProps, "workspaces" | "activeWorkspace" | "switchingTo" | "onSelectWorkspace" | "onCreateAgency" | "onOpenTeam">) {
@@ -277,7 +277,7 @@ function ControlPopover({ icon, label, title, children }: { icon: IconName; labe
       <Popover.Trigger>
         <Button isIconOnly variant="ghost" aria-label={label} className={CONTROL}><Icon name={icon} className="size-5" /></Button>
       </Popover.Trigger>
-      <Popover.Content placement="bottom end" className="hubly-pop-surface w-72 rounded-2xl p-4 text-(--text-primary)">
+      <Popover.Content placement="bottom end" className="hubly-pop-surface hubly-popover-scroll w-72 rounded-2xl p-4 text-(--text-primary)">
         <Popover.Dialog aria-label={title} className="flex flex-col gap-3 outline-none">
           <Popover.Heading className="m-0 text-sm font-semibold">{title}</Popover.Heading>
           {children}

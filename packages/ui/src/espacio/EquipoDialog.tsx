@@ -163,15 +163,15 @@ function Equipo(props: Omit<EquipoDialogProps, "mode" | "onClose" | "onCreateAge
 export function EquipoDialog({ mode, onClose, onCreateAgency, ...rest }: EquipoDialogProps) {
   const title = mode === "crear" ? "Crear agencia" : `Equipo de ${rest.workspace.name}`;
   return (
-    <ModalOverlay isOpen={mode !== null} onOpenChange={(open) => { if (!open) onClose(); }} isDismissable className="fixed inset-0 z-50 flex items-start justify-center bg-(--glass-hover) px-3 pt-20 backdrop-blur-xs">
-      <Modal className="hubly-pop w-full max-w-lg">
-        <Dialog className="hubly-pop-surface flex max-h-160 flex-col overflow-hidden rounded-2xl text-(--text-primary) outline-none">
+    <ModalOverlay isOpen={mode !== null} onOpenChange={(open) => { if (!open) onClose(); }} isDismissable className="hubly-modal-overlay fixed inset-0 z-50 bg-(--glass-hover) backdrop-blur-xs">
+      <Modal className="hubly-pop hubly-modal max-w-lg">
+        <Dialog className="hubly-pop-surface flex flex-col overflow-hidden rounded-2xl text-(--text-primary) outline-none">
           <div className="flex items-center gap-2.5 border-b border-(--glass-line) px-4 py-3">
             <Icon name={mode === "crear" ? "mas" : "equipo"} className="size-4 text-(--accent-primary)" />
             <Heading slot="title" className="m-0 grow text-base font-semibold">{title}</Heading>
             <Button isIconOnly size="sm" variant="ghost" aria-label="Cerrar" onPress={onClose}><Icon name="cerrar" /></Button>
           </div>
-          <div className="overflow-y-auto px-4 py-4">
+          <div className="min-h-0 overflow-y-auto px-4 py-4">
             {mode === "crear" ? <CrearAgencia onCreate={onCreateAgency} /> : <Equipo {...rest} />}
           </div>
         </Dialog>

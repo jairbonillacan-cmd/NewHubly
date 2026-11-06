@@ -449,7 +449,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
       <Wallpaper fondo={prefs.fondo === "imagen" && !wallpaperUrl ? "contornos" : prefs.fondo} imagenUrl={wallpaperUrl} />
       <a href="#contenido" className="sr-only z-50 rounded-lg bg-(--surface-raised) px-3 py-2 text-sm font-semibold focus:not-sr-only focus:fixed focus:top-3 focus:left-3">Saltar al contenido</a>
 
-      <div className="sticky top-0 z-30 shrink-0 p-3 lg:static lg:col-span-2 lg:p-0">
+      <div className="hubly-marco-arriba sticky top-0 z-30 shrink-0 p-3 lg:static lg:col-span-2 lg:p-0">
         <TopBar
           todayDate={todayDate}
           timezone={timezone}
@@ -526,7 +526,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         </div>
       </div>}
 
-      <div {...(dock ? { role: "toolbar", "aria-label": dock.label } : {})} className="hubly-glass fixed inset-x-2 bottom-2 z-30 flex flex-col gap-2 rounded-(--glass-radius-access-card) p-2 lg:hidden">
+      <div {...(dock ? { role: "toolbar", "aria-label": dock.label } : {})} className="hubly-glass hubly-barra-movil fixed z-30 flex flex-col gap-2 rounded-(--glass-radius-access-card) p-2 lg:hidden">
         {dock && <div className="hubly-espacio-escena flex flex-col gap-2" {...hide}><DockStatus suggestion={dock.suggestion ?? null} /><CaptureField ref={mobileCapture} {...dock.entry} /></div>}
         <nav aria-label="Navegación del espacio" className={`grid ${chat ? dock ? "grid-cols-5" : "grid-cols-3" : "grid-cols-4"}`}>
           <Button variant="ghost" className="min-h-11" {...(!chat?.active && herramienta === "hoy" ? { "aria-current": "page" } : {})} onPress={() => {
@@ -537,7 +537,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
             className="flex min-h-11 items-center justify-center rounded-xl text-sm font-semibold hover:bg-(--glass-hover)">Chat</a>}
           <Dropdown>
             <Dropdown.Trigger className="min-h-11 px-1 text-xs">Herramientas</Dropdown.Trigger>
-            <Dropdown.Popover placement="top" className="hubly-pop-surface rounded-xl p-1">
+            <Dropdown.Popover placement="top" className="hubly-pop-surface hubly-popover-scroll rounded-xl p-1">
               <Dropdown.Menu aria-label="Herramientas" onAction={(id) => { if (typeof id === "string" && isHerramientaId(id)) selectHerramienta(id); }}>
                 {HERRAMIENTAS.filter((tool) => tool.id !== "hoy").map((tool) => <Dropdown.Item key={tool.id} id={tool.id} className="min-h-11">{tool.nombre} · Pronto</Dropdown.Item>)}
               </Dropdown.Menu>
