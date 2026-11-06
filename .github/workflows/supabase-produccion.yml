@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   validar:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/produccion'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -34,13 +34,15 @@ jobs:
         run: |
           set -euo pipefail
           test "$EXPECTED_SHA" = "$GITHUB_SHA"
-      - name: Exigir revisores en el entorno de producción
+      - name: Exigir revisores y ramas limitadas en el entorno de producción
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh api "repos/$GITHUB_REPOSITORY/environments/production" |
-            jq -e 'any(.protection_rules[]; .type == "required_reviewers" and (.reviewers | length > 0))' >/dev/null
+            jq -e 'any(.protection_rules[]; .type == "required_reviewers" and (.reviewers | length > 0))
+              and .deployment_branch_policy != null
+              and .deployment_branch_policy.custom_branch_policies == true' >/dev/null
 
   migrar:
     needs: validar
