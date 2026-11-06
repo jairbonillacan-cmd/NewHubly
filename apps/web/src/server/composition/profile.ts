@@ -65,10 +65,58 @@ export async function uploadUserAvatar(userId: string, input: Uint8Array): Promi
   return signed;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function signUserAvatar(userId: string): Promise<string | null> {
   const bucket = (await createSupabaseServerClient()).storage.from(AVATAR_BUCKET);
   const { data, error } = await bucket.createSignedUrl(avatarObjectPath(userId), AVATAR_SIGNED_URL_SECONDS);
   return error || !data?.signedUrl ? null : data.signedUrl;
+}
+
+/** Firma la URL temporal (1 h) del avatar de un compañero usando siempre la sesión verificada (RLS decide; nunca service_role). */
+export async function signCoworkerAvatar(userId: string): Promise<string | null> {
+  const normalized = userId.trim();
+  if (!UUID_PATTERN.test(normalized)) return null;
+  try {
+    return await signUserAvatar(normalized);
+  } catch {
+    return null;
+  }
+}
+
+/** Firma en lote los avatares de miembros del directorio omitiendo quienes no tienen foto o tienen ID inválido. */
+export async function signCoworkerAvatars(
+  entries: ReadonlyArray<{ id: string; hasAvatar?: boolean }>,
+): Promise<Map<string, string | null>> {
+  const result = new Map<string, string | null>();
+  const toSign: string[] = [];
+  for (const entry of entries) {
+    const id = entry.id.trim();
+    if (result.has(entry.id)) continue;
+    if (entry.hasAvatar === false || !UUID_PATTERN.test(id)) {
+      result.set(entry.id, null);
+    } else {
+      result.set(entry.id, null);
+      toSign.push(entry.id);
+    }
+  }
+  if (!toSign.length) return result;
+  try {
+    const bucket = (await createSupabaseServerClient()).storage.from(AVATAR_BUCKET);
+    await Promise.all(
+      toSign.map(async (id) => {
+        try {
+          const { data, error } = await bucket.createSignedUrl(avatarObjectPath(id.trim()), AVATAR_SIGNED_URL_SECONDS);
+          result.set(id, error || !data?.signedUrl ? null : data.signedUrl);
+        } catch {
+          result.set(id, null);
+        }
+      }),
+    );
+  } catch {
+    // Si la sesión o Storage fallan, el directorio sigue funcionando con iniciales.
+  }
+  return result;
 }
 
 export async function removeUserAvatar(userId: string): Promise<void> {
