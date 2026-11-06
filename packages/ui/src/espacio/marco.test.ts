@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { EspacioHoy, type EspacioHoyProps } from "../index";
+import { Carril, EspacioHoy, Proximamente, herramientaPorId, resumenSemana, type CarrilProps, type EspacioHoyProps } from "../index";
 
 const noop = () => {};
 const base: EspacioHoyProps = {
@@ -40,5 +40,56 @@ describe("Marco fijo de Tu espacio (issue 105): barra superior, carril y dock fi
     const enfoque = render({ initialPreferences: { fondo: "contornos", opacidad: 78, distribucion: "enfoque", paneles: { hoy: true, nota: true, notas: true } } });
     expect(enfoque).toMatch(/aria-pressed="true"[^>]*>(?:(?!<\/button>).)*Enfoque/);
     expect(render()).toMatch(/aria-pressed="false"[^>]*>(?:(?!<\/button>).)*Enfoque/);
+  });
+});
+
+describe("Carril de herramientas", () => {
+  const renderRail = (props: Partial<CarrilProps> = {}) => renderToStaticMarkup(createElement(Carril, {
+    expandido: false, activa: "hoy", onToggleExpandido: noop, onSelect: noop, hoyPendientes: 3,
+    semana: { hechos: 1, total: 3 }, ...props,
+  }));
+
+  it("en compacto marca Hoy como página activa y permite expandir el carril", () => {
+    const html = renderRail();
+    expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Hoy")(?=[^>]*aria-current="page")/);
+    expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Expandir el carril")(?=[^>]*aria-expanded="false")/);
+    expect(html).not.toContain("Tu semana");
+  });
+
+  it("en completo muestra las fichas, el progreso y la acción de agregar desactivada", () => {
+    const html = renderRail({ expandido: true, activa: "calendario" });
+    expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Calendario, próximamente")(?=[^>]*aria-current="page")/);
+    expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Contraer el carril")(?=[^>]*aria-expanded="true")/);
+    expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Agregar una herramienta, muy pronto")(?=[^>]* disabled="")/);
+    expect(html).toContain(">Pronto<");
+    expect(html).toContain(">Tu semana<");
+    expect(html).toMatch(/<progress[^>]*value="1"[^>]*max="3"/);
+  });
+
+  it("presenta una herramienta futura con su icono, nombre y descripción", () => {
+    const tool = herramientaPorId("calendario");
+    const html = renderToStaticMarkup(createElement(Proximamente, { herramienta: tool }));
+    expect(html).toContain("<svg");
+    expect(html).toContain(">Próximamente<");
+    expect(html).toContain(">Calendario</h2>");
+    expect(html).toContain(tool.descripcion);
+  });
+
+  it("abre Calendario desde el estado inicial y muestra Próximamente en lugar de los paneles", () => {
+    const content = (html: string) => html.match(/<main\b[^>]*>(.*?)<\/main>/s)?.[1];
+    expect(content(render())).toContain("Hoy");
+    expect(content(render({ initialHerramienta: "calendario" }))).toMatch(/^<section[^>]*aria-labelledby="proximamente-titulo"[\s\S]*>Calendario<\/h2>[\s\S]*<\/section>$/);
+  });
+
+  it.each(["2026-11-02", "2026-11-05", "2026-11-08"])("incluye lunes y domingo de la semana de %s", (date) => {
+    expect(resumenSemana([
+      { dueDate: "2026-11-01", isDone: true },
+      { dueDate: "2026-11-02", isDone: true },
+      { dueDate: "2026-11-04", isDone: false },
+      { dueDate: "2026-11-08", isDone: true },
+      { dueDate: "2026-11-09", isDone: true },
+      { dueDate: null, isDone: true },
+    ], date)).toEqual({ hechos: 2, total: 3 });
   });
 });

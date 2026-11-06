@@ -1,6 +1,7 @@
-import { createElement } from "react";
+import { Dropdown } from "@heroui/react";
+import { createElement, Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { EspacioHoy, HoyPanel, NotaPanel, assignableRoles, canRemoveMember, type EspacioMember } from "../index";
 
 const member = (role: EspacioMember["role"], isCurrentUser = false): EspacioMember => ({ userId: `u-${role}-${String(isCurrentUser)}`, role, isCurrentUser });
@@ -21,16 +22,21 @@ describe("Agencias en el espacio de Hoy (#64, #78)", () => {
     expect(canRemoveMember("owner", member("editor", true), 1)).toBe(false);
   });
 
-  it("muestra la agencia activa en el menú y el carril, y la visibilidad de notas y pendientes", () => {
+  it("muestra la agencia activa y las acciones de espacios en el selector, y la visibilidad de notas y pendientes", () => {
     const agency = { id: "ag-1", name: "Agencia Pulso", kind: "agency" as const, role: "editor" as const };
+    // Renderiza el contenido del selector sin el portal del navegador.
+    using popover = vi.spyOn(Dropdown, "Popover").mockImplementation(({ children }) => createElement(Fragment, null, children));
     const html = renderToStaticMarkup(createElement(EspacioHoy, {
       todayDate: "2026-11-05", todos: [], notes: [], noteSaveStates: {}, analyzeCapture: (text: string) => ({ title: text, dueDate: null, dueKeyword: null, priority: null, noteQuery: null }),
       onCapture: async () => true, onToggleTodo: noop, onCreateNote: async () => null, onSaveNote: noop, onTogglePin: noop, onToggleArchive: noop, onExport: noop, onSignOut: noop,
       workspaces: [{ id: "p-1", name: "Mi Espacio", kind: "personal" as const, role: "owner" as const }, agency], activeWorkspace: agency,
     }));
     expect(html).toContain("Cambiar de espacio (actual: Agencia Pulso)");
-    expect(html).toContain("Agencia Pulso (activo)");
-    expect(html).toContain('aria-label="Crear agencia"');
+    expect(popover).toHaveBeenCalled();
+    const menu = html.slice(html.indexOf('aria-label="Tus espacios"'), html.indexOf('aria-label="Menú de tu cuenta"'));
+    expect(menu).toContain('aria-label="Agencia Pulso (activo), Editor"');
+    expect(menu).toContain(">Espacio personal<");
+    expect(menu).toContain(">Crear agencia<");
 
     const shared = { id: "n-1", title: "Pauta", content: "", isPinned: false, isArchived: false, visibility: "workspace" as const, canChangeVisibility: true };
     const notaHtml = renderToStaticMarkup(createElement(NotaPanel, { note: shared, linkedTodos: [], saveState: "saved", onSave: noop, onTogglePin: noop, onToggleArchive: noop, onCreateTodoFromNote: noop, onCreateNote: noop, onChangeVisibility: noop }));

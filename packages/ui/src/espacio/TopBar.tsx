@@ -6,6 +6,7 @@ import type { Key, Selection } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { useHublyTheme } from "../landing/ThemeToggle";
 import { Icon, type IconName } from "./icons";
+import type { PanelId } from "./preferencias";
 import { ROLE_LABEL, longDateLabel, type EspacioWorkspace, type HoyFilter, type NoteSaveState } from "./types";
 
 export interface TopBarProps {
@@ -25,6 +26,11 @@ export interface TopBarProps {
   onSelectWorkspace: (id: string) => void;
   onCreateAgency: () => void;
   onOpenTeam: () => void;
+  /** Herramienta abierta en el carril; su nombre va junto al espacio. */
+  toolName: string;
+  /** Paneles visibles de Hoy; se encienden y se apagan desde Ajustes. */
+  panels: Record<PanelId, boolean>;
+  onTogglePanel: (id: PanelId) => void;
   /** «Modo enfoque» del espacio (#79): el grupo de controles lo activa y lo desactiva. */
   focusMode: boolean;
   onToggleFocus: () => void;
@@ -60,7 +66,8 @@ function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAge
         <Dropdown.Menu aria-label="Tus espacios" onAction={onAction}>
           <Dropdown.Section aria-label="Espacios" className="border-b border-(--glass-line) pb-1.5">
             {workspaces.map((ws) => (
-              <Dropdown.Item key={ws.id} id={`ws:${ws.id}`} textValue={ws.kind === "personal" ? "Espacio personal" : ws.name} className={ITEM}>
+              <Dropdown.Item key={ws.id} id={`ws:${ws.id}`} textValue={ws.kind === "personal" ? "Espacio personal" : ws.name}
+                {...(ws.id === activeWorkspace.id ? { "aria-label": `${label} (activo)${isAgency ? `, ${ROLE_LABEL[ws.role]}` : ""}` } : {})} className={ITEM}>
                 <Icon name={ws.kind === "personal" ? "usuario" : "equipo"} />
                 <span className="grow truncate">{ws.kind === "personal" ? "Espacio personal" : ws.name}</span>
                 {ws.kind === "agency" && <span className="text-xs text-(--text-muted)">{ROLE_LABEL[ws.role]}</span>}
@@ -189,6 +196,12 @@ function ControlPopover({ icon, label, title, children }: { icon: IconName; labe
   );
 }
 
+const PANELES: { id: PanelId; label: string; icon: IconName }[] = [
+  { id: "hoy", label: "Panel Hoy", icon: "sol" },
+  { id: "nota", label: "Panel Nota abierta", icon: "nota" },
+  { id: "notas", label: "Panel Notas fijadas", icon: "pin" },
+];
+
 const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["Ctrl", "K"], label: "Buscar o ejecutar" },
   { keys: ["/"], label: "Abrir la búsqueda" },
@@ -196,7 +209,7 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
 ];
 
 /** Grupo de controles de la barra superior (#105, sección 2), en el orden de la maqueta. */
-function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, onExport }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "onOpenBackground" | "onExport">) {
+function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, onExport, panels, onTogglePanel }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "onOpenBackground" | "onExport" | "panels" | "onTogglePanel">) {
   const [theme, setTheme] = useHublyTheme();
   return (
     <div role="toolbar" aria-label="Controles del espacio" className="flex items-center gap-0.5">
@@ -232,9 +245,24 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, o
           </Dropdown.Trigger>
           <Dropdown.Popover placement="bottom end" className={MENU}>
             <Dropdown.Menu aria-label="Ajustes del espacio" onAction={(key) => { if (key === "fondo") onOpenBackground(); else if (key === "json" || key === "md") onExport(key); }}>
-              <Dropdown.Item id="fondo" textValue="Cambiar fondo" className={ITEM}><Icon name="imagen" /> Cambiar fondo</Dropdown.Item>
-              <Dropdown.Item id="json" textValue="Exportar en JSON" className={ITEM}><Icon name="descargar" /> Exportar en JSON</Dropdown.Item>
-              <Dropdown.Item id="md" textValue="Exportar en Markdown" className={ITEM}><Icon name="descargar" /> Exportar en Markdown</Dropdown.Item>
+              <Dropdown.Section aria-label="Paneles de Hoy" selectionMode="multiple" selectedKeys={PANELES.filter((panel) => panels[panel.id]).map((panel) => panel.id)}
+                onSelectionChange={(selection) => {
+                  if (selection === "all") return;
+                  const changed = PANELES.find((panel) => selection.has(panel.id) !== panels[panel.id]);
+                  if (changed) onTogglePanel(changed.id);
+                }} className="border-b border-(--glass-line) pb-1.5">
+                {PANELES.map((panel) => (
+                  <Dropdown.Item key={panel.id} id={panel.id} textValue={panel.label} className={ITEM}>
+                    <Icon name={panel.icon} /> <span className="grow">{panel.label}</span>
+                    <Dropdown.ItemIndicator />
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Section>
+              <Dropdown.Section aria-label="Acciones" className="pt-1.5">
+                <Dropdown.Item id="fondo" textValue="Cambiar fondo" className={ITEM}><Icon name="imagen" /> Cambiar fondo</Dropdown.Item>
+                <Dropdown.Item id="json" textValue="Exportar en JSON" className={ITEM}><Icon name="descargar" /> Exportar en JSON</Dropdown.Item>
+                <Dropdown.Item id="md" textValue="Exportar en Markdown" className={ITEM}><Icon name="descargar" /> Exportar en Markdown</Dropdown.Item>
+              </Dropdown.Section>
             </Dropdown.Menu>
           </Dropdown.Popover>
         </Dropdown>
@@ -255,7 +283,7 @@ export function TopBar(props: TopBarProps) {
         </a>
         <SpaceMenu {...props} />
         <span aria-hidden="true" className="hidden text-sm text-(--text-muted) lg:inline">/</span>
-        <h1 className="m-0 text-sm font-semibold">Hoy</h1>
+        <h1 className="m-0 text-sm font-semibold">{props.toolName}</h1>
         <span className="hidden text-sm text-(--text-muted) first-letter:uppercase 2xl:inline">{longDateLabel(todayDate)}</span>
         <span className="grow" />
         <div className="hidden xl:block">
