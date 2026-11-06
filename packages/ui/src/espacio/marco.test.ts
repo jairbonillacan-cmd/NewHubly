@@ -10,7 +10,7 @@ const base: EspacioHoyProps = {
 };
 const render = (props: Partial<EspacioHoyProps> = {}) => renderToStaticMarkup(createElement(EspacioHoy, { ...base, ...props }));
 
-describe("Marco fijo de Tu espacio (#105): barra superior, carril y dock fijos; solo el contenido se desliza", () => {
+describe("Marco fijo de Tu espacio (issue 105): barra superior, carril y dock fijos; solo el contenido se desliza", () => {
   it("en escritorio es una cuadrícula a pantalla completa y solo el contenido tiene desplazamiento propio", () => {
     const html = render();
     expect(html).toMatch(/class="[^"]*lg:grid lg:h-dvh[^"]*lg:overflow-hidden/);
