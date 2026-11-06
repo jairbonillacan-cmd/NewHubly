@@ -132,9 +132,9 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
   const activeId = options[active] ? `${listId}-${options[active].key}` : undefined;
 
   return (
-    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable className="hubly-palette-overlay fixed inset-0 z-50 flex items-start justify-center bg-(--glass-hover) px-3 pt-20 backdrop-blur-sm">
-      <Modal className="hubly-palette w-full max-w-2xl">
-        <Dialog aria-label="Buscar o ejecutar" className="hubly-pop-surface flex max-h-160 flex-col overflow-hidden rounded-3xl text-(--text-primary) outline-none">
+    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable className="hubly-palette-overlay hubly-modal-overlay fixed inset-0 z-50 bg-(--glass-hover) backdrop-blur-sm">
+      <Modal className="hubly-palette hubly-modal max-w-2xl">
+        <Dialog aria-label="Buscar o ejecutar" className="hubly-pop-surface flex flex-col overflow-hidden rounded-3xl text-(--text-primary) outline-none">
           <div className="flex items-center gap-4 border-b border-(--glass-line) px-6">
             <Icon name="buscar" className="size-6 shrink-0 text-(--text-muted)" strokeWidth={2.25} />
             <input

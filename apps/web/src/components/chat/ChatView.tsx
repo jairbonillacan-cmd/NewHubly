@@ -320,8 +320,8 @@ export function ChatView(props: ChatViewProps) {
   const listHeading = useRef<HTMLHeadingElement>(null);
   return <div className="flex min-h-0 min-w-0 grow flex-col gap-3">
     {conversation && <h1 className="sr-only lg:hidden">Chat</h1>}
-    <header className={`hubly-glass shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl p-3 ${conversation ? "hidden lg:flex" : "flex"}`}>
-      <div>
+    <header className={`hubly-glass shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl p-3 hubly-corto-compacto ${conversation ? "hidden lg:flex" : "flex"}`}>
+      <div className="hubly-corto-sr">
         <p className={sectionLabel}>{props.workspaceName}</p>
         <h1 className="text-2xl font-semibold">Chat</h1>
       </div>

@@ -97,7 +97,7 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
         <Icon name="imagen" className="size-5" />
         {triggerLabel && <span className="text-xs">{triggerLabel}</span>}
       </Button>
-      <Popover.Content placement="top" className="hubly-pop-surface w-80 rounded-2xl p-4 text-(--text-primary)">
+      <Popover.Content placement="top" className="hubly-pop-surface hubly-popover-scroll w-80 rounded-2xl p-4 text-(--text-primary)">
         <Popover.Dialog aria-label="Elegir fondo" className="hubly-sin-anillo flex flex-col gap-4 outline-none">
           <div className="flex items-baseline justify-between">
             <Popover.Heading className="m-0 text-sm font-semibold">Fondo de tu espacio</Popover.Heading>
@@ -190,7 +190,7 @@ function Waiting({ waiting }: Pick<DockConfig, "waiting">) {
         <span>Te esperan <strong className="text-(--status-danger-text)">{waiting.items.length}</strong></span>
         <span className="text-(--text-secondary)">{waiting.detail}</span>
       </Button>
-      <Popover.Content placement="top" className="hubly-pop-surface w-64 rounded-xl p-3">
+      <Popover.Content placement="top" className="hubly-pop-surface hubly-popover-scroll w-64 rounded-xl p-3">
         <Popover.Dialog aria-label="Pendientes que te esperan">
           <Popover.Heading className="text-sm font-semibold">Te esperan</Popover.Heading>
           {waiting.items.length ? <ul className="my-2 max-h-48 list-disc overflow-y-auto ps-5 text-sm">{waiting.items.map((item) => <li key={item.id}>{item.title}</li>)}</ul> : <p className="my-2 text-sm">Estás al día.</p>}
@@ -269,7 +269,7 @@ export function DockMore({ config, extra }: { config: DockConfig; extra?: ReactN
   return (
     <Popover>
       <Button variant="ghost" className="min-h-11">Más</Button>
-      <Popover.Content placement="top" className="hubly-pop-surface w-72 rounded-xl p-3">
+      <Popover.Content placement="top" className="hubly-pop-surface hubly-popover-scroll w-72 rounded-xl p-3">
         <Popover.Dialog aria-label={`Más opciones · ${config.label}`} className="flex flex-wrap items-center gap-2">
           <DockDetails config={config} />
           <DockActions actions={config.actions} />

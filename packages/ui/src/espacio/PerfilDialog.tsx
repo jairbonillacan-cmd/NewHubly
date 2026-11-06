@@ -80,15 +80,16 @@ export function PerfilDialog({ isOpen, onClose, profile, onNameSaved, onAvatarCh
   };
 
   return (
-    <ModalOverlay isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} isDismissable className="fixed inset-0 z-50 flex items-start justify-center bg-(--glass-hover) px-3 pt-20 backdrop-blur-xs">
-      <Modal className="hubly-pop w-full max-w-md">
+    <ModalOverlay isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} isDismissable className="hubly-modal-overlay fixed inset-0 z-50 bg-(--glass-hover) backdrop-blur-xs">
+      <Modal className="hubly-pop hubly-modal max-w-md">
         <Dialog className="hubly-pop-surface flex flex-col overflow-hidden rounded-2xl text-(--text-primary) outline-none">
-          <div className="flex items-center gap-2.5 border-b border-(--glass-line) px-4 py-3">
+          <div className="flex shrink-0 items-center gap-2.5 border-b border-(--glass-line) px-4 py-3">
             <Icon name="lapiz" className="size-4 text-(--accent-primary)" />
             <Heading slot="title" className="m-0 grow text-base font-semibold">Editar perfil</Heading>
             <Button isIconOnly size="sm" variant="ghost" aria-label="Cerrar" onPress={onClose}><Icon name="cerrar" /></Button>
           </div>
-          <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-5 px-4 py-5">
+          <form onSubmit={(event) => void submit(event)} className="flex min-h-0 flex-col">
+            <div className="flex min-h-0 flex-col gap-5 overflow-y-auto px-4 py-5">
             <div className="flex items-center gap-4">
               <Avatar url={profile.avatarUrl} initial={profile.initial} className="size-20 text-3xl" iconClassName="size-8" />
               <div className="flex flex-col gap-2">
@@ -111,7 +112,8 @@ export function PerfilDialog({ isOpen, onClose, profile, onNameSaved, onAvatarCh
             </TextField>
             {profile.email && <p className="m-0 text-sm text-(--text-secondary)">Entras con <span className="font-semibold text-(--text-primary)">{profile.email}</span></p>}
             {error && <p role="alert" className="hubly-pop m-0 text-sm text-(--status-danger-text)">{error}</p>}
-            <div className="flex justify-end gap-2">
+            </div>
+            <div className="flex shrink-0 justify-end gap-2 border-t border-(--glass-line) px-4 py-3">
               <Button variant="ghost" onPress={onClose}>Cancelar</Button>
               <Button type="submit" variant="primary" isDisabled={busy !== null}>{busy === "nombre" ? "Guardando…" : "Guardar"}</Button>
             </div>
