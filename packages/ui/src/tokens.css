@@ -409,11 +409,12 @@ body {
   --hi-acento: var(--text-on-accent); --hi-relieve: var(--accent-primary); --hi-brillo: var(--accent-primary); --hi-fondo: var(--accent-primary); }
 /* Carril (issue 150): el ancho se abre con un muelle suave y los textos entran después, deslizándose. */
 /* Botón del carril: el mismo cristal y borde que el carril, un poco más opaco porque asoma sobre el hueco. */
-.hubly-carril-asa { background-color: rgb(var(--glass-rgb) / 0.96); border: var(--border-width-thin) solid var(--glass-line-strong); box-shadow: var(--glass-panel-shadow);
+.hubly-carril-asa { top: calc(50% - 0.75rem); right: -0.75rem; background-color: rgb(var(--glass-rgb) / 0.96); border: var(--border-width-thin) solid var(--glass-line-strong); box-shadow: var(--glass-panel-shadow);
   backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%); -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%);
-  transition: transform var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease); }
-.hubly-carril-asa[data-hovered] { border-color: var(--accent-primary); transform: translate(50%, -50%) scale(1.12); }
-.hubly-carril { transition: width 0.42s cubic-bezier(0.32, 1.15, 0.4, 1); }
+  transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
+/* Sin transformaciones al pasar el ratón: el botón no se mueve, solo se marca su borde. */
+.hubly-carril-asa[data-hovered] { border-color: var(--accent-primary); box-shadow: 0 0 0 3px var(--accent-primary-subtle); }
+.hubly-carril { transition: width 0.34s cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes hubly-carril-texto { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
 .hubly-carril-texto { animation: hubly-carril-texto 0.32s var(--motion-ease) 0.12s both; }
 /* Recorte de la foto de perfil (issue 150): el componente pone el tamaño natural y el encuadre en variables. */

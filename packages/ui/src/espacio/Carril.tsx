@@ -85,13 +85,10 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
       )}
     </nav>
       {/* Botón redondo sobre el borde derecho del carril (issues 142 y 150): mismo cristal y borde; sale solo lo que mide el hueco. */}
-      <Tooltip delay={400}>
-        <Button variant="ghost" aria-expanded={expandido} aria-label={expandido ? "Contraer el carril" : "Expandir el carril"} onPress={onToggleExpandido}
-          className="group/asa hubly-carril-asa absolute top-1/2 right-0 z-10 flex size-6 min-w-6 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full p-0 text-(--text-secondary) data-[hovered]:text-(--accent-primary)">
-          <Icon name="chevron" className={`size-3.5 transition-transform duration-300 ${expandido ? "rotate-180" : ""}`} />
-        </Button>
-        <Tooltip.Content placement="right">{expandido ? "Contraer" : "Expandir"}</Tooltip.Content>
-      </Tooltip>
+      <Button variant="ghost" aria-expanded={expandido} aria-label={expandido ? "Contraer el carril" : "Expandir el carril"} onPress={onToggleExpandido}
+        className="hubly-carril-asa absolute z-10 flex size-6 min-w-6 items-center justify-center rounded-full p-0 text-(--text-secondary) data-[hovered]:text-(--accent-primary)">
+        <Icon name="chevron" className={`size-3.5 transition-transform duration-300 ${expandido ? "rotate-180" : ""}`} />
+      </Button>
     </div>
   );
 }
