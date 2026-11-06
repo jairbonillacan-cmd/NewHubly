@@ -306,3 +306,5 @@ export async function saveUserPreferences(repo: UserPreferencesRepository, patch
   return repo.upsert(ctx.userId, userPreferencesSchema.parse({ ...current, ...changes }));
 }
 
+
+export * from "./chat";

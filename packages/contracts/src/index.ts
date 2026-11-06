@@ -115,3 +115,5 @@ export type AcceptInvitationInput = z.input<typeof acceptInvitationInputSchema>;
 export type ChangeMemberRoleInput = z.input<typeof changeMemberRoleInputSchema>; export type RemoveMemberInput = z.input<typeof removeMemberInputSchema>;
 export type ChangeItemVisibilityInput = z.input<typeof changeItemVisibilityInputSchema>;
 export type UserPreferences = z.infer<typeof userPreferencesSchema>; export type UpdateUserPreferencesInput = z.input<typeof updateUserPreferencesSchema>;
+
+export * from "./chat";
