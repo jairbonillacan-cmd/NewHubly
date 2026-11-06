@@ -34,6 +34,8 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [listReady, setListReady] = useState(false);
+  const announced = useRef(0);
   const active = useRef<string | null>(null);
   const bootstrapped = useRef(false);
   const directoryAt = useRef(0);
@@ -63,6 +65,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
     setLoading(id !== null);
     setActionError(null);
     setNotice(null);
+    announced.current = 0;
   }, []);
 
   const revokeConversation = useCallback((id: string, reason: string) => {
@@ -79,7 +82,6 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
     const { signal } = controller;
     let cursor = 0;
     let latestNumber = 0;
-    let announced = 0;
     let loaded = !currentId;
     async function update() {
       try {
@@ -107,6 +109,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
         const update = await api.sync(currentId, cursor, signal);
         if (signal.aborted) return false;
         setConversations(update.conversations);
+        setListReady(true);
         if (currentId && !update.conversationAvailable) {
           revokeConversation(currentId, "La conversación ya no está disponible.");
           return false;
@@ -117,8 +120,8 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
           const incoming = update.changes.filter((item) => item.number > latestNumber && item.authorId !== userId && item.body !== null).length;
           latestNumber = Math.max(latestNumber, ...update.changes.map((item) => item.number));
           if (incoming) {
-            announced += incoming;
-            setNotice(incomingChatNotice(announced));
+            announced.current += incoming;
+            setNotice(incomingChatNotice(announced.current));
           }
         }
         setLoading(false);
@@ -219,9 +222,12 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
     }
   }
 
-  function markVisible(number: number) {
+  function markVisible(conversationId: string, number: number) {
+    // La vista indica de qué conversación es el número: tras un cambio rápido de conversación no se marca la equivocada.
     const id = active.current;
-    if (!id || (readThrough.current.get(id) ?? 0) >= number) return;
+    if (!id || id !== conversationId || (readThrough.current.get(id) ?? 0) >= number) return;
+    announced.current = 0;
+    setNotice(null);
     readThrough.current.set(id, number);
     const signal = selection.current?.signal;
     void api.command({ kind: "read", workspaceId, conversationId: id, through: number }, signal)
@@ -239,11 +245,16 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
 
   return <ChatView workspaceName={workspaceName} userId={userId} canManage={role === "owner" || role === "admin"}
     canSend={role !== "viewer"} unreadOnly={unreadOnly} conversations={conversations} people={people} currentId={currentId}
-    messages={before === null ? messages : messages.filter((entry) => entry.number >= before)} loading={loading} hasOlder={before !== null} loadingOlder={loadingOlder}
+    listLoading={!listReady} messages={before === null ? messages : messages.filter((entry) => entry.number >= before)} loading={loading} hasOlder={before !== null} loadingOlder={loadingOlder}
     draft={draft.text} sending={draft.sending} failedSend={draft.failed} error={actionError ?? connectionError} notice={notice}
     download={api.download} onFilter={setUnreadOnly} onSelect={select} onOlder={() => void loadOlder()}
     onVisible={markVisible} onCommand={submit}
     onDraft={(text) => {
-      if (currentId) setDrafts((previous) => ({ ...previous, [currentId]: { text, sending: false, failed: false } }));
+      // Se conserva la clave de reintento mientras el texto enviado no cambie: así un reintento no duplica un envío que sí llegó.
+      if (currentId) setDrafts((previous) => {
+        const old = previous[currentId];
+        const keep = old?.key !== undefined && old.text.trim() === text.trim();
+        return { ...previous, [currentId]: keep && old.key ? { text, key: old.key, sending: false, failed: old.failed } : { text, sending: false, failed: false } };
+      });
     }} onSend={() => void send()} />;
 }

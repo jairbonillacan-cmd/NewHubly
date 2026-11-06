@@ -63,4 +63,20 @@ describe("Sincronización de chat en el navegador", () => {
     await vi.advanceTimersByTimeAsync(3000);
     expect(sync).toHaveBeenCalledTimes(4);
   });
+
+  it("encola una sincronización inmediata si se pide mientras otra sigue en curso", async () => {
+    vi.useFakeTimers();
+    const page = Object.assign(new EventTarget(), { hidden: false });
+    const win = Object.assign(new EventTarget(), { navigator: { onLine: true } });
+    let finish: (value: boolean) => void = () => {};
+    const sync = vi.fn(() => new Promise<boolean>((resolve) => { finish = resolve; }));
+    const poll = startChatPolling(sync, win as unknown as Window, page as unknown as Document);
+    expect(sync).toHaveBeenCalledTimes(1);
+    poll.refresh();
+    expect(sync).toHaveBeenCalledTimes(1);
+    finish(false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sync).toHaveBeenCalledTimes(2);
+    poll.stop();
+  });
 });

@@ -18,6 +18,7 @@ export interface ChatViewProps {
   people: ChatParticipant[];
   currentId: string | null;
   messages: ChatMessage[];
+  listLoading?: boolean;
   loading: boolean;
   hasOlder: boolean;
   loadingOlder: boolean;
@@ -30,7 +31,7 @@ export interface ChatViewProps {
   onFilter: (enabled: boolean) => void;
   onSelect: (id: string | null) => void;
   onOlder: () => void;
-  onVisible: (number: number) => void;
+  onVisible: (conversationId: string, number: number) => void;
   onCommand: (input: LocalCommand) => Promise<boolean>;
   onDraft: (value: string) => void;
   onSend: () => void;
@@ -38,7 +39,6 @@ export interface ChatViewProps {
 
 // Los controles son Button de HeroUI (#165): cada variante trae su propio hover, sin clases que compitan entre sí.
 const control = "min-h-11";
-const input = "min-h-11 w-full rounded-xl border border-(--border-control) bg-(--surface-raised) px-3 py-2 text-sm text-(--text-primary)";
 const sectionLabel = "text-xs font-semibold tracking-wide text-(--text-secondary) uppercase";
 const statusLabel = { online: "En línea", away: "Ausente", dnd: "No molestar" };
 const statusIcon = { online: "en-linea", away: "ausente", dnd: "no-molestar" } as const;
@@ -135,7 +135,7 @@ function DirectForm({ people, userId, onCommand }: Pick<ChatViewProps, "people" 
       <Select selectedKey={recipientId ?? null} placeholder="Elige una persona"
         onSelectionChange={(key) => setSelected(typeof key === "string" ? key : null)} className="w-full">
         <Label className="mb-1 text-xs">Persona</Label>
-        <Select.Trigger className={input}>
+        <Select.Trigger className="min-h-11 w-full">
           <Select.Value />
           <Select.Indicator />
         </Select.Trigger>
@@ -163,7 +163,12 @@ function MessageItem({ entry, name, person, canEdit, onCommand }: {
   const editInput = useRef<HTMLTextAreaElement>(null);
   const confirmRemove = useRef<HTMLButtonElement>(null);
   const editButton = useRef<HTMLButtonElement>(null);
+  const item = useRef<HTMLLIElement>(null);
   const returnFocus = useRef(false);
+  // Un mensaje retirado ya no tiene «Editar»: si el foco se quedó sin dueño, pasa al propio mensaje.
+  useEffect(() => {
+    if (entry.body === null && document.activeElement === document.body) item.current?.focus();
+  }, [entry.body]);
   // Al abrir una acción el foco entra en ella; al cerrarla vuelve a «Editar» para no perderse en <body>.
   useEffect(() => {
     if (mode === "edit") editInput.current?.focus();
@@ -177,7 +182,7 @@ function MessageItem({ entry, name, person, canEdit, onCommand }: {
     try { if (await onCommand(command)) setMode(null); }
     finally { setBusy(false); }
   }
-  return <li className="flex gap-3 rounded-xl px-2 py-3">
+  return <li ref={item} tabIndex={-1} className="flex gap-3 rounded-xl px-2 py-3 outline-none focus-visible:ring-2 focus-visible:ring-(--focus-ring-color)">
     <Avatar name={name} person={person} />
     <div className="min-w-0 grow">
       <div className="flex flex-wrap items-baseline gap-x-2">
@@ -217,8 +222,11 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
   const heading = useRef<HTMLHeadingElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
   const pinned = useRef(true);
-  const notified = useRef(0);
   const earlier = useRef<{ height: number; top: number } | null>(null);
+  // Al archivar con éxito desaparece «Administrar canal»; el foco pasa al título para no caer en <body>.
+  useEffect(() => {
+    if (conversation.archived && document.activeElement === document.body) heading.current?.focus({ preventScroll: true });
+  }, [conversation.archived]);
   useEffect(() => {
     window.scrollTo(0, 0);
     heading.current?.focus({ preventScroll: true });
@@ -230,11 +238,10 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
     pinned.current = element.scrollHeight - element.clientHeight - element.scrollTop < 32;
     const latest = props.messages.at(-1);
     const end = element.querySelector("li:last-child")?.getBoundingClientRect();
-    // Solo se avisa una vez por mensaje: así un contenedor que actualiza estado en onVisible no entra en bucle.
-    if (pinned.current && latest && latest.number > notified.current && end && !document.hidden &&
+    // El contenedor deduplica por conversación y número, y vuelve a permitir el aviso si la marca de lectura falla.
+    if (pinned.current && latest && end && !document.hidden &&
         isMessageEndVisible(end.bottom, element.getBoundingClientRect(), window.innerHeight)) {
-      notified.current = latest.number;
-      props.onVisible(latest.number);
+      props.onVisible(conversation.id, latest.number);
     }
   }
 
@@ -353,7 +360,8 @@ export function ChatView(props: ChatViewProps) {
             })}</ul>
           </section>;
         })}
-        {!rows.length && <p className="mt-3 text-sm text-(--text-secondary)">{props.unreadOnly ? "Ya estás al día." : "Aún no hay conversaciones."}</p>}
+        {props.listLoading ? <p role="status" className="mt-3 text-sm text-(--text-secondary)">Cargando conversaciones…</p>
+          : !rows.length && <p className="mt-3 text-sm text-(--text-secondary)">{props.unreadOnly ? "Ya estás al día." : "Aún no hay conversaciones."}</p>}
       </aside>
       {conversation ? <ConversationView key={conversation.id} conversation={conversation} people={people} props={{
         ...props, onSelect: (id) => { props.onSelect(id); if (!id) requestAnimationFrame(() => { window.scrollTo(0, 0); listHeading.current?.focus({ preventScroll: true }); }); },

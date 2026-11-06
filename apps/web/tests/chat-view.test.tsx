@@ -47,4 +47,10 @@ describe("Interfaz del chat", () => {
     expect(html).toContain("Enviando…");
     expect(html).not.toContain("hover:bg-(--surface-interactive)");
   });
+
+  it("muestra la carga de la lista en lugar de un vacío falso", () => {
+    const html = renderToStaticMarkup(<ChatView {...props} conversations={[]} currentId={null} listLoading />);
+    expect(html).toContain("Cargando conversaciones…");
+    expect(html).not.toContain("Aún no hay conversaciones.");
+  });
 });
