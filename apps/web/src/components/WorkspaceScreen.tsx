@@ -27,6 +27,8 @@ export interface WorkspaceScreenProps {
   initialWallpaperImageUrl?: string | null;
   /** Primera entrada después de confirmar la cuenta: se abre la bienvenida (?bienvenida=1). */
   showWelcome?: boolean;
+  /** Correo de la sesión, para la inicial del avatar. */
+  currentUserEmail?: string | null;
   onSavePreferences?: (patch: Partial<UserPreferences>) => Promise<unknown>;
   onRetry?: () => void; onLoginRedirect?: () => void; onTimezoneRefresh?: () => void; onSignOut?: () => Promise<void>;
   onSaveNote?: (note: WorkspaceNote, nextTitle: string, nextContent: string) => Promise<WorkspaceNote>;
@@ -104,7 +106,7 @@ const toEspacioWorkspace = (w: WorkspaceSummary): EspacioWorkspace => ({ id: w.i
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialTodos = [], initialNotes = [], initialActionError = null,
-  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, onSavePreferences,
+  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, currentUserEmail = null, onSavePreferences,
   onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
@@ -301,6 +303,7 @@ export function WorkspaceScreen({
       onPreferencesChange={(prefs) => persistPreferences(fromEspacioPreferencias(prefs))}
       onThemeChange={(theme) => persistPreferences({ theme }, 0)}
       wallpaperImageUrl={initialWallpaperImageUrl}
+      userEmail={currentUserEmail}
       onUploadWallpaper={async (file) => {
         const form = new FormData();
         form.set("imagen", file);

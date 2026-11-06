@@ -1,10 +1,11 @@
 "use client";
 
-import { Avatar, Button, Chip, Dropdown, Kbd, ToggleButton } from "@heroui/react";
+import { Button, Chip, Dropdown, Kbd, Popover, ToggleButton, Tooltip } from "@heroui/react";
+import type { ReactNode } from "react";
 import type { Key, Selection } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { useHublyTheme } from "../landing/ThemeToggle";
-import { Icon } from "./icons";
+import { Icon, type IconName } from "./icons";
 import { ROLE_LABEL, longDateLabel, type EspacioWorkspace, type HoyFilter, type NoteSaveState } from "./types";
 
 export interface TopBarProps {
@@ -24,6 +25,11 @@ export interface TopBarProps {
   onSelectWorkspace: (id: string) => void;
   onCreateAgency: () => void;
   onOpenTeam: () => void;
+  /** «Modo enfoque» del espacio (#79): el grupo de controles lo activa y lo desactiva. */
+  focusMode: boolean;
+  onToggleFocus: () => void;
+  /** Correo de la sesión: da la inicial del avatar. */
+  userEmail?: string | null | undefined;
 }
 
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
@@ -72,7 +78,9 @@ function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAge
   );
 }
 
-function AccountMenu({ timezone, onOpenBackground, onExport, onSignOut }: Pick<TopBarProps, "timezone" | "onOpenBackground" | "onExport" | "onSignOut">) {
+const initialOf = (email: string | null | undefined) => email?.trim().charAt(0).toUpperCase() || null;
+
+function AccountMenu({ timezone, userEmail, onOpenBackground, onExport, onSignOut }: Pick<TopBarProps, "timezone" | "userEmail" | "onOpenBackground" | "onExport" | "onSignOut">) {
   const [theme, setTheme] = useHublyTheme();
   const onAction = (key: Key) => {
     if (key === "fondo") onOpenBackground();
@@ -86,13 +94,17 @@ function AccountMenu({ timezone, onOpenBackground, onExport, onSignOut }: Pick<T
   };
   return (
     <Dropdown>
-      <Dropdown.Trigger aria-label="Menú de tu cuenta" className="size-9 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0 transition-transform data-[hovered]:scale-105">
-        <Avatar size="sm" color="accent" variant="soft">
-          <Avatar.Fallback><Icon name="usuario" /></Avatar.Fallback>
-        </Avatar>
+      <Dropdown.Trigger aria-label="Menú de tu cuenta" className="relative size-11 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0 transition-transform data-[hovered]:scale-105">
+        <span aria-hidden="true" className="flex size-11 items-center justify-center rounded-full bg-(--accent-primary) text-base font-bold text-(--text-on-accent)">
+          {initialOf(userEmail) ?? <Icon name="usuario" className="size-5" />}
+        </span>
+        <span aria-hidden="true" className="absolute -right-0.5 -bottom-0.5 flex size-4.5 items-center justify-center rounded-full border-2 border-(--surface-raised) bg-(--surface-raised) text-(--text-primary)">
+          <Icon name="lapiz" className="size-2.5" strokeWidth={2.5} />
+        </span>
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom end" className={MENU}>
         <p className="m-0 px-2.5 pt-2 pb-1 text-sm font-semibold">Tu cuenta</p>
+        {userEmail && <p className="m-0 truncate px-2.5 pb-1 text-xs text-(--text-secondary)">{userEmail}</p>}
         {timezone && <p className="m-0 px-2.5 pb-2 text-xs text-(--text-muted)">Zona horaria: {timezone.replaceAll("_", " ")}</p>}
         <Dropdown.Menu aria-label="Opciones de tu cuenta" onAction={onAction}>
           <Dropdown.Section aria-label="Tema" selectionMode="single" selectedKeys={[theme]} onSelectionChange={onTheme} className="border-b border-(--glass-line) pb-1.5">
@@ -141,39 +153,124 @@ function FilterBadges({ overdueCount, todayCount, filter, onFilter }: Pick<TopBa
   );
 }
 
-/** Barra superior flotante (#75): espacio, fecha, filtros, guardado, búsqueda y cuenta. En móvil se compacta. */
+const CONTROL = "size-11 min-w-11 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
+
+/** Botón de icono del grupo de controles, con su nombre en el tooltip. */
+function Control({ icon, label, onPress, pressed }: { icon: IconName; label: string; onPress?: () => void; pressed?: boolean }) {
+  return (
+    <Tooltip delay={400}>
+      {pressed === undefined ? (
+        <Button isIconOnly variant="ghost" aria-label={label} onPress={() => onPress?.()} className={CONTROL}><Icon name={icon} className="size-5" /></Button>
+      ) : (
+        <ToggleButton isIconOnly variant="ghost" aria-label={label} isSelected={pressed} onChange={() => onPress?.()}
+          className={`${CONTROL} data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary)`}>
+          <Icon name={icon} className="size-5" />
+        </ToggleButton>
+      )}
+      <Tooltip.Content placement="bottom">{label}</Tooltip.Content>
+    </Tooltip>
+  );
+}
+
+/** Botón de icono que abre una ventanita (avisos y ayuda). */
+function ControlPopover({ icon, label, title, children }: { icon: IconName; label: string; title: string; children: ReactNode }) {
+  return (
+    <Popover>
+      <Popover.Trigger>
+        <Button isIconOnly variant="ghost" aria-label={label} className={CONTROL}><Icon name={icon} className="size-5" /></Button>
+      </Popover.Trigger>
+      <Popover.Content placement="bottom end" className="hubly-pop-surface w-72 rounded-2xl p-4 text-(--text-primary)">
+        <Popover.Dialog aria-label={title} className="flex flex-col gap-3 outline-none">
+          <Popover.Heading className="m-0 text-sm font-semibold">{title}</Popover.Heading>
+          {children}
+        </Popover.Dialog>
+      </Popover.Content>
+    </Popover>
+  );
+}
+
+const SHORTCUTS: { keys: string[]; label: string }[] = [
+  { keys: ["Ctrl", "K"], label: "Buscar o ejecutar" },
+  { keys: ["/"], label: "Abrir la búsqueda" },
+  { keys: ["C"], label: "Escribir un pendiente" },
+];
+
+/** Grupo de controles de la barra superior (#105, sección 2), en el orden de la maqueta. */
+function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, onExport }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "onOpenBackground" | "onExport">) {
+  const [theme, setTheme] = useHublyTheme();
+  return (
+    <div role="toolbar" aria-label="Controles del espacio" className="flex items-center gap-0.5">
+      <Button variant="ghost" onPress={onOpenPalette} aria-label="Buscar o ejecutar (Ctrl K)" className="h-11 gap-2 px-3 text-sm text-(--text-secondary) data-[hovered]:text-(--text-primary)">
+        <Icon name="buscar" className="size-5" />
+        <span className="hidden lg:inline">Buscar</span>
+        <Kbd className="hidden lg:inline-flex"><Kbd.Abbr keyValue="ctrl" /><Kbd.Content>K</Kbd.Content></Kbd>
+      </Button>
+      <ToggleButton isSelected={focusMode} onChange={onToggleFocus}
+        className="hidden h-11 gap-2 rounded-xl border-0 bg-transparent px-3 text-sm font-semibold text-(--text-secondary) data-[hovered]:text-(--text-primary) data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary) lg:inline-flex">
+        <Icon name="enfoque" className="size-5" /> Enfoque
+      </ToggleButton>
+      <span aria-hidden="true" className="mx-1.5 hidden h-6 w-px bg-(--glass-line-strong) lg:block" />
+      <div className="hidden items-center gap-0.5 lg:flex">
+        <ControlPopover icon="campana" label="Avisos" title="Avisos">
+          <p className="m-0 text-sm text-(--text-secondary)">Aquí llegarán los avisos de tu espacio.</p>
+          <Chip size="sm" variant="soft" className="self-start">Próximamente</Chip>
+        </ControlPopover>
+        <Control icon={theme === "dark" ? "sol" : "luna"} label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} onPress={() => setTheme(theme === "dark" ? "light" : "dark")} />
+        <ControlPopover icon="ayuda" label="Ayuda y atajos" title="Atajos de teclado">
+          <ul className="m-0 flex list-none flex-col gap-2 p-0 text-sm">
+            {SHORTCUTS.map((shortcut) => (
+              <li key={shortcut.label} className="flex items-center justify-between gap-3">
+                <span className="text-(--text-secondary)">{shortcut.label}</span>
+                <span className="flex gap-1">{shortcut.keys.map((key) => <Kbd key={key}><Kbd.Content>{key}</Kbd.Content></Kbd>)}</span>
+              </li>
+            ))}
+          </ul>
+        </ControlPopover>
+        <Dropdown>
+          <Dropdown.Trigger aria-label="Ajustes" className={`flex cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent hover:bg-(--glass-hover) ${CONTROL}`}>
+            <Icon name="engrane" className="size-5" />
+          </Dropdown.Trigger>
+          <Dropdown.Popover placement="bottom end" className={MENU}>
+            <Dropdown.Menu aria-label="Ajustes del espacio" onAction={(key) => { if (key === "fondo") onOpenBackground(); else if (key === "json" || key === "md") onExport(key); }}>
+              <Dropdown.Item id="fondo" textValue="Cambiar fondo" className={ITEM}><Icon name="imagen" /> Cambiar fondo</Dropdown.Item>
+              <Dropdown.Item id="json" textValue="Exportar en JSON" className={ITEM}><Icon name="descargar" /> Exportar en JSON</Dropdown.Item>
+              <Dropdown.Item id="md" textValue="Exportar en Markdown" className={ITEM}><Icon name="descargar" /> Exportar en Markdown</Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown>
+      </div>
+    </div>
+  );
+}
+
+/** Barra superior fija (#105): Hubi, espacio, herramienta activa y fecha; a la derecha, los controles y el avatar. */
 export function TopBar(props: TopBarProps) {
-  const { todayDate, saveState, onOpenPalette } = props;
+  const { todayDate, saveState } = props;
   const save = SAVE_CHIP[saveState];
   return (
     <div className="flex flex-col gap-2">
-      <header className="hubly-glass hubly-enter flex h-13 items-center gap-2 rounded-xl pr-2 pl-3 lg:h-12 lg:gap-3">
-        <a href="/" aria-label="Hubly, inicio" className="flex items-center">
+      <header className="hubly-glass hubly-enter flex h-14 items-center gap-2 rounded-(--glass-radius-access-bar) pr-1.5 pl-3 lg:gap-3">
+        <a href="/" aria-label="Hubly, inicio" className="flex min-h-11 items-center">
           <HubiFace className="size-7" />
         </a>
-        <span aria-hidden="true" className="hidden h-5 w-px bg-(--glass-line-strong) lg:block" />
         <SpaceMenu {...props} />
-        <span aria-hidden="true" className="hidden text-sm text-(--text-muted) lg:inline">›</span>
-        <h1 className="m-0 hidden text-sm font-semibold lg:block">Hoy</h1>
-        <span className="hidden text-sm text-(--text-muted) first-letter:uppercase xl:inline">{longDateLabel(todayDate)}</span>
+        <span aria-hidden="true" className="hidden text-sm text-(--text-muted) lg:inline">/</span>
+        <h1 className="m-0 text-sm font-semibold">Hoy</h1>
+        <span className="hidden text-sm text-(--text-muted) first-letter:uppercase 2xl:inline">{longDateLabel(todayDate)}</span>
         <span className="grow" />
-        <div className="hidden lg:block">
+        <div className="hidden xl:block">
           <FilterBadges {...props} />
         </div>
-        <span aria-live="polite" className="hidden lg:inline-flex">
+        <span aria-live="polite" className="hidden xl:inline-flex">
           <Chip color={save.color} variant="soft" size="sm">
             {saveState === "saved" && <Icon name="check" className="size-3" strokeWidth={2.5} />}
             {save.label}
           </Chip>
         </span>
-        <Button variant="tertiary" size="sm" onPress={onOpenPalette} aria-label="Buscar o ejecutar (Ctrl K)" className="text-(--text-muted) lg:w-60 lg:justify-start">
-          <Icon name="buscar" />
-          <span className="hidden grow text-left lg:inline">Buscar o ejecutar…</span>
-          <Kbd className="hidden lg:inline-flex"><Kbd.Abbr keyValue="ctrl" /><Kbd.Content>K</Kbd.Content></Kbd>
-        </Button>
+        <Controls {...props} />
         <AccountMenu {...props} />
       </header>
-      <div className="flex items-center justify-between gap-2 px-1 lg:hidden">
+      <div className="flex items-center justify-between gap-2 px-1 xl:hidden">
         <FilterBadges {...props} />
         <span className="truncate text-xs text-(--text-muted) first-letter:uppercase">{longDateLabel(todayDate)}</span>
       </div>

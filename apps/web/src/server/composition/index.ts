@@ -43,7 +43,7 @@ export function setClockNowForTests(fn: (() => Date) | null): void {
 }
 
 export interface CompositionContext extends AppContext {
-  claims: UserClaims; role: WorkspaceRole; workspaceKind: WorkspaceKind; workspaceName: string; workspaceSlug: string | null;
+  claims: UserClaims; userEmail: string | null; role: WorkspaceRole; workspaceKind: WorkspaceKind; workspaceName: string; workspaceSlug: string | null;
   timezone: string; todayDate: string; db?: DbInstance;
 }
 
@@ -67,7 +67,7 @@ export async function completeEmailLinkSignIn(supabase: SupabaseServerClient, fl
 }
 
 export async function ensureAuthenticatedWorkspace(workspaceId?: string, defaultName?: string): Promise<CompositionContext> {
-  const [{ claims }, timezone, cookieWsId] = await Promise.all([
+  const [{ claims, email }, timezone, cookieWsId] = await Promise.all([
     // En producción Next oculta el mensaje de los errores de una Server Action; una redirección sí llega al cliente (#92).
     getVerifiedServerSession().catch((err: unknown) => { if (isSessionExpiredError(err)) redirect("/login"); throw err; }),
     resolveRequestTimeZone(), resolveActiveWorkspaceCookie(),
@@ -92,7 +92,7 @@ export async function ensureAuthenticatedWorkspace(workspaceId?: string, default
   if (!member) throw new Error(`No autorizado en el espacio de trabajo: ${resolvedWorkspaceId}`);
   const role: WorkspaceRole = member.role as WorkspaceRole, workspaceKind: WorkspaceKind = (ws?.kind as WorkspaceKind | undefined) ?? "personal";
   const todayDate = createSystemClock(timezone).todayIsoDate();
-  return { claims, workspaceId: resolvedWorkspaceId, userId: claims.sub, role, workspaceKind, workspaceName: ws?.name ?? defaultName ?? "Mi Espacio", workspaceSlug: ws?.slug ?? null, timezone, todayDate, ...(resolvedDb ? { db: resolvedDb } : {}) };
+  return { claims, userEmail: email, workspaceId: resolvedWorkspaceId, userId: claims.sub, role, workspaceKind, workspaceName: ws?.name ?? defaultName ?? "Mi Espacio", workspaceSlug: ws?.slug ?? null, timezone, todayDate, ...(resolvedDb ? { db: resolvedDb } : {}) };
 }
 
 export const getWorkspaceContext = ensureAuthenticatedWorkspace;

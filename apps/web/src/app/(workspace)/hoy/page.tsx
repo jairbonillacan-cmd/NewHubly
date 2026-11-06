@@ -12,7 +12,7 @@ export async function HoyPage({ todayDate, showWelcome = false }: { todayDate?: 
         initialStatus="ready" todayDate={todayDate ?? data.todayDate} initialTimezone={data.timezone}
         initialNotes={data.notes} initialTodos={data.todos} currentUserId={data.currentUserId}
         initialActiveWorkspace={data.activeWorkspace} initialWorkspaces={data.workspaces}
-        initialMembers={data.members} initialPendingInvitations={data.pendingInvitations} initialPreferences={data.preferences} initialWallpaperImageUrl={data.wallpaperImageUrl} showWelcome={showWelcome}
+        initialMembers={data.members} initialPendingInvitations={data.pendingInvitations} initialPreferences={data.preferences} initialWallpaperImageUrl={data.wallpaperImageUrl} showWelcome={showWelcome} currentUserEmail={data.currentUserEmail}
       />
     );
   } catch (err) {
