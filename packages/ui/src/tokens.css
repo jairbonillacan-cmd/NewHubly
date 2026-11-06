@@ -24,6 +24,7 @@
   --accent-primary: #1D4ED8;
   --accent-primary-hover: #1A43BD;
   --accent-primary-subtle: #EEF2FB;
+  --logo-color: var(--accent-primary);
   --status-success-bg: #eaf4ee;
   --status-success-text: #165632;
   --status-warning-bg: #fbf2e1;
@@ -136,6 +137,7 @@
   --accent-primary: #6F98FF;
   --accent-primary-hover: #8FB0FF;
   --accent-primary-subtle: #1A2238;
+  --logo-color: var(--text-primary);
   --status-success-bg: #132a1e;
   --status-success-text: #8ce0ad;
   --status-warning-bg: #2d210c;
@@ -337,6 +339,7 @@ body {
 @keyframes hubly-drop { 0% { opacity: 0; transform: translateY(-120%) rotate(-8deg); } 60% { opacity: 1; transform: translateY(6%) rotate(3deg); } 80% { transform: translateY(-3%) rotate(-1deg); } 100% { opacity: 1; transform: none; } }
 .hubly-drop { animation: hubly-drop 1.1s var(--motion-ease) calc(var(--motion-step) * 6) both; }
 @keyframes hubly-underline { to { background-size: 100% 0.32em; } }
+.hubly-logo { color: var(--logo-color); }
 .hubly-underline { --hubly-underline-color: color-mix(in srgb, var(--accent-primary) 24%, transparent); background: linear-gradient(var(--hubly-underline-color), var(--hubly-underline-color)) no-repeat 0 88% / 0% 0.32em; animation: hubly-underline 0.9s var(--motion-ease) calc(var(--motion-step) * 5) forwards; }
 @media (prefers-reduced-motion: reduce) {
   .hubly-reveal, .hubly-bars > span { transition: none; }
