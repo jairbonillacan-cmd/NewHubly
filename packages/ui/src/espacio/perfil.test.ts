@@ -26,4 +26,17 @@ describe("Menú del perfil", () => {
     expect(html).toMatch(/<button[^>]*aria-label="Cambiar foto, muy pronto"[^>]*data-disabled="true"/);
     expect(html).toMatch(/<div[^>]*aria-disabled="true"[^>]*aria-label="Editar perfil, muy pronto"/);
   });
+
+  it("con perfil conectado deja cambiar la foto y editar el perfil, y muestra el nombre guardado", () => {
+    using popover = vi.spyOn(Dropdown, "Popover").mockImplementation(({ children }) => createElement(Fragment, null, children));
+    const ok = async () => ({ ok: true as const, value: "" });
+    const profile = { name: "Ana López", avatarUrl: "https://example.test/foto.png", onUploadAvatar: ok, onRemoveAvatar: async () => ({ ok: true as const, value: null }), onSaveName: ok };
+    const html = renderToStaticMarkup(createElement(EspacioHoy, { ...base, userEmail: "ana.perez@agencia.es", profile }));
+    expect(popover).toHaveBeenCalled();
+    expect(html).toContain("Ana López");
+    expect(html).toContain('src="https://example.test/foto.png"');
+    expect(html).not.toContain("Muy pronto");
+    expect(html).toMatch(/<button[^>]*aria-label="Cambiar foto"/);
+    expect(html).not.toMatch(/aria-label="Editar perfil, muy pronto"/);
+  });
 });

@@ -14,11 +14,12 @@ import { HERRAMIENTAS, herramientaPorId, isHerramientaId, type HerramientaId } f
 import { HoyPanel } from "./HoyPanel";
 import { NotaPanel } from "./NotaPanel";
 import { NotasPanel } from "./NotasPanel";
+import { PerfilDialog, avatarFileError } from "./PerfilDialog";
 import { useEspacioPreferencias, type EspacioPreferencias } from "./preferencias";
 import { TopBar } from "./TopBar";
 import {
   relativeDateLabel, type CaptureAnalysis, type CaptureInput, type EspacioInvitation, type EspacioInviteRole, type EspacioMember,
-  type EspacioNote, type EspacioRole, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type HoyFilter, type NoteSaveState,
+  type EspacioNote, type EspacioProfile, type EspacioRole, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type HoyFilter, type NoteSaveState,
 } from "./types";
 import { Wallpaper } from "./Wallpaper";
 
@@ -76,6 +77,8 @@ export interface EspacioHoyProps {
   onChangeTodoVisibility?: (id: string, visibility: EspacioVisibility) => void;
   /** Correo de la sesión, para la inicial del avatar. */
   userEmail?: string | null | undefined;
+  /** Nombre, foto y cómo cambiarlos (issue 135). Sin él, editar el perfil sale como «Muy pronto». */
+  profile?: EspacioProfile | undefined;
   /** Herramienta abierta al cargar (?herramienta=); por defecto, Hoy. */
   initialHerramienta?: HerramientaId | undefined;
 }
@@ -143,6 +146,10 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [herramienta, setHerramienta] = useState<HerramientaId>(props.initialHerramienta ?? "hoy");
   const [carrilExpandido, setCarrilExpandido] = useState(false);
+  const [profileName, setProfileName] = useState<string | null>(props.profile?.name ?? null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(props.profile?.avatarUrl ?? null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     try { setCarrilExpandido(localStorage.getItem(CARRIL_STORAGE_KEY) === "completo"); } catch { /* sin almacenamiento: compacto */ }
@@ -245,6 +252,17 @@ export function EspacioHoy(props: EspacioHoyProps) {
     setPickerOpen(isDesktop() ? "desktop" : "mobile");
   };
 
+  const pickAvatar = async (file: File) => {
+    if (!props.profile) return;
+    const invalid = avatarFileError(file);
+    if (invalid) return showToast(invalid);
+    setAvatarBusy(true);
+    const result = await props.profile.onUploadAvatar(file);
+    setAvatarBusy(false);
+    if (result.ok) { setAvatarUrl(result.value); showToast("Foto actualizada"); }
+    else showToast(result.message);
+  };
+
   const paletteActions: PaletteAction[] = [
     { id: "pendiente", label: "Nuevo pendiente", hint: "Escríbelo en la captura de Hoy", icon: "mas", run: () => { selectHerramienta("hoy"); setTimeout(focusCapture, 0); } },
     { id: "nota", label: "Nueva nota", hint: "Se abre lista para escribir", icon: "nota", run: () => void createNote() },
@@ -253,6 +271,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
       ? { id: "libre", label: "Salir del modo enfoque", hint: "Vuelven todos tus paneles", icon: "libre", run: () => setPrefs({ distribucion: "libre" }) }
       : { id: "enfoque", label: "Modo enfoque", hint: "Solo el panel de Hoy", icon: "enfoque", run: () => setPrefs({ distribucion: "enfoque" }) },
     { id: "tema", label: theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro", hint: "Cambia los colores de tu espacio", icon: theme === "dark" ? "sol" : "luna", run: () => setTheme(theme === "dark" ? "light" : "dark") },
+    ...(props.profile ? [{ id: "perfil", label: "Editar perfil", hint: "Tu nombre y tu foto", icon: "usuario" as const, run: () => setTimeout(() => setProfileOpen(true), 0) }] : []),
     { id: "agencia", label: "Crear agencia", hint: "Para trabajar con tu equipo", icon: "mas", run: () => setTimeout(() => setTeamMode("crear"), 0) },
     ...(activeWorkspace.kind === "agency" ? [{ id: "equipo", label: "Equipo e invitaciones", hint: "Quién está y a quién invitaste", icon: "equipo" as const, run: () => setTimeout(() => setTeamMode("equipo"), 0) }] : []),
     { id: "json", label: "Exportar en JSON", hint: "Descarga todo lo que escribiste", icon: "descargar", run: () => onExport("json") },
@@ -331,6 +350,10 @@ export function EspacioHoy(props: EspacioHoyProps) {
           focusMode={layout === "enfoque"}
           onToggleFocus={() => setPrefs({ distribucion: layout === "enfoque" ? "libre" : "enfoque" })}
           userEmail={props.userEmail}
+          userName={profileName}
+          avatarUrl={avatarUrl}
+          avatarBusy={avatarBusy}
+          {...(props.profile ? { onEditProfile: () => setProfileOpen(true), onPickAvatar: (file: File) => void pickAvatar(file) } : {})}
         />
       </div>
 
@@ -450,6 +473,16 @@ export function EspacioHoy(props: EspacioHoyProps) {
         onLeave={() => { setTeamMode(null); props.onLeaveAgency?.(); }}
         onExportOwn={() => onExport("json")}
       />
+
+      {props.profile && (
+        <PerfilDialog
+          isOpen={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          profile={{ ...props.profile, name: profileName, avatarUrl, email: props.userEmail ?? null, initial: (profileName || props.userEmail)?.trim().charAt(0).toUpperCase() || null }}
+          onNameSaved={(name) => { setProfileName(name); showToast("Perfil guardado"); }}
+          onAvatarChanged={setAvatarUrl}
+        />
+      )}
 
       <CommandPalette
         isOpen={paletteOpen}
