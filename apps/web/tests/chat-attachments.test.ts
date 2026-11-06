@@ -2,14 +2,42 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 let messageRetired = false;
 const storedRows: Array<{ id: string; message_id: string; object_path: string; file_name: string; mime_type: string; byte_size: number; width: number | null; height: number | null }> = [];
+const reservedRows = new Map<string, { id: string; file_name: string; mime_type: string; byte_size: number; quarantine_path: string; final_path: string }>();
+const bucketFiles = new Map<string, Uint8Array>();
+
 vi.mock("@hubly/db", () => ({
-  sql: () => ({}),
-  withUserContext: async (_claims: unknown, fn: (tx: { execute: (q: unknown) => Promise<unknown[]> }) => Promise<unknown>) =>
-    fn({ execute: async () => (messageRetired ? [] : storedRows.length > 0 ? storedRows : [{ id: "33333333-3333-4333-8333-333333333333" }]) }),
+  sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ text: strings.join("?"), values }),
+  withUserContext: async (_claims: unknown, fn: (tx: { execute: (q: { text?: string; values?: unknown[] }) => Promise<unknown[]> }) => Promise<unknown>) =>
+    fn({
+      execute: async (q) => {
+        const text = q?.text ?? "";
+        const vals = q?.values ?? [];
+        if (text.includes("chat_reserve_attachment_upload")) {
+          const [wsId, convId, , fileName, mimeType, byteSize] = vals as [string, string, string, string, string, number];
+          const id = `44444444-4444-4444-8444-${String(reservedRows.size + 1).padStart(12, "0")}`;
+          const row = { id, file_name: fileName, mime_type: mimeType, byte_size: byteSize, quarantine_path: `${wsId}/${convId}/quarantine/${id}`, final_path: `${wsId}/${convId}/${id}` };
+          reservedRows.set(id, row);
+          return [row];
+        }
+        if (text.includes("from private.chat_attachment_reservations")) {
+          const id = String(vals[0] ?? "");
+          const row = reservedRows.get(id);
+          return row ? [row] : [];
+        }
+        if (text.includes("chat_register_attachment")) {
+          const [wsId, convId, msgId, id, fileName, mimeType, byteSize, width, height] = vals as [string, string, string, string, string, string, number, number | null, number | null];
+          reservedRows.delete(id);
+          storedRows.push({ id, message_id: msgId, object_path: `${wsId}/${convId}/${id}`, file_name: fileName, mime_type: mimeType, byte_size: byteSize, width, height });
+          return [{ id }];
+        }
+        if (messageRetired) return [];
+        return storedRows.length > 0 ? storedRows : [{ id: "33333333-3333-4333-8333-333333333333" }];
+      },
+    }),
 }));
 import { GET, POST } from "../src/app/api/chat/attachments/route";
 import { setSupabaseServerClientFactoryForTests } from "../src/server/composition/auth";
-import { CHAT_ATTACHMENT_MAX_BYTES, sanitizeChatAttachment } from "../src/server/composition/chat-attachments";
+import { CHAT_ATTACHMENT_MAX_BYTES, purgeMessageAttachmentsFromStorage, sanitizeAttachmentFileName, sanitizeChatAttachment } from "../src/server/composition/chat-attachments";
 
 const crcTable = Array.from({ length: 256 }, (_, n) => {
   let c = n; for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0;
@@ -40,56 +68,78 @@ const makeGif = () => new Uint8Array([
   0x2c, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x06, 0x00, 0x00, 0x02, 0x02, 0x4c, 0x01, 0x00, 0x3b,
 ]);
 const makePdf = (extra = "") => new TextEncoder().encode(`%PDF-1.7\n1 0 obj\n<< /Type /Catalog ${extra} >>\nendobj\n%%EOF\n`);
-const multipartRequest = (form: FormData, origin = "http://localhost:3100"): Request =>
-  Object.assign(new Request("http://localhost:3100/api/chat/attachments", { method: "POST", headers: { origin, "content-type": "multipart/form-data; boundary=hubly" } }), { formData: async () => form });
+const jsonRequest = (body: unknown, origin = "http://localhost:3100"): Request =>
+  new Request("http://localhost:3100/api/chat/attachments", { method: "POST", headers: { origin, "content-type": "application/json" }, body: JSON.stringify(body) });
 
-describe("Adjuntos de chat: firma binaria, limpieza, 10 MB y ruta privada (Issue 205, ADR 0012)", () => {
-  afterEach(() => { setSupabaseServerClientFactoryForTests(null); storedRows.length = 0; messageRetired = false; });
+describe("Adjuntos de chat: firma binaria, limpieza, cuarentena y ruta privada (Issue 205, ADR 0012)", () => {
+  afterEach(() => { setSupabaseServerClientFactoryForTests(null); storedRows.length = 0; reservedRows.clear(); bucketFiles.clear(); messageRetired = false; });
 
-  it("valida firma binaria real, limpia metadatos, extrae dimensiones y rechaza tipos falsificados o > 10 MB", () => {
+  it("valida firma binaria real, conserva apóstrofos, limpia metadatos y rechaza PDFs con escapes hex o acciones", () => {
+    expect(sanitizeAttachmentFileName("plan d'action.pdf")).toBe("plan d'action.pdf");
     const cleanPng = sanitizeChatAttachment(makePng(24, 18, true), "../captura.png");
     expect(cleanPng).toMatchObject({ mimeType: "image/png", fileName: "captura.png", width: 24, height: 18 });
     expect(new TextDecoder().decode(cleanPng.bytes)).not.toContain("Secreto");
     const cleanGif = sanitizeChatAttachment(makeGif(), "anim.gif");
     expect(cleanGif).toMatchObject({ mimeType: "image/gif", width: 8, height: 6 });
     expect(new TextDecoder().decode(cleanGif.bytes)).not.toContain("GPS!");
-    expect(sanitizeChatAttachment(makePdf(), "informe.pdf")).toMatchObject({ mimeType: "application/pdf", width: null, height: null });
+    expect(sanitizeChatAttachment(makePdf(), "plan d'action.pdf")).toMatchObject({ mimeType: "application/pdf", fileName: "plan d'action.pdf", width: null, height: null });
     expect(() => sanitizeChatAttachment(new TextEncoder().encode("<svg><script>alert(1)</script></svg>"), "falso.png")).toThrow();
-    expect(() => sanitizeChatAttachment(makePdf("/JS (app.alert(1))"), "malicioso.pdf")).toThrow(/scripts/i);
+    for (const payload of [
+      "/JS (app.alert(1))",
+      "/S/J\x2361vaScript/J\x2353(app.alert(1))",
+      "/S/L\x2361unch/F(cmd.exe)",
+      "/OpenAction << /S /URI >>",
+      "/Names << /EmbeddedFile 2 0 R >>",
+      "/Type /ObjStm /N 1",
+    ]) {
+      expect(() => sanitizeChatAttachment(makePdf(payload), "malicioso.pdf")).toThrow(/scripts/i);
+    }
     expect(() => sanitizeChatAttachment(new Uint8Array(CHAT_ATTACHMENT_MAX_BYTES + 1), "enorme.png")).toThrow(/10 MB/);
   });
 
-  it("sube y firma por 1h con Content-Disposition attachment, exige mismo origen/tope 5 y oculta al retirar", async () => {
+  it("reserva subida firmada a cuarentena, sanea en commit, firma por 1h y purga objetos de Storage al retirar", async () => {
     const wsId = "11111111-1111-4111-8111-111111111111", convId = "22222222-2222-4222-8222-222222222222", msgId = "33333333-3333-4333-8333-333333333333";
     process.env.HUBLY_CHAT_PILOT_WORKSPACE_IDS = wsId;
     setSupabaseServerClientFactoryForTests(() => ({
       auth: { getUser: async () => ({ data: { user: { id: wsId, email: "ana@test.local" } }, error: null }) },
       storage: {
         from: () => ({
-          upload: async (path: string) => {
-            storedRows.push({ id: path.split("/")[2]!, message_id: msgId, object_path: path, file_name: "plano.png", mime_type: "image/png", byte_size: 80, width: 16, height: 12 });
-            return { data: { path }, error: null };
+          createSignedUploadUrl: async (path: string) => ({ data: { signedUrl: `https://storage.test/upload/${path}`, token: "tok" }, error: null }),
+          download: async (path: string) => {
+            const bytes = bucketFiles.get(path);
+            return bytes ? { data: new Blob([Uint8Array.from(bytes)]), error: null } : { data: null, error: { message: "404" } };
           },
-          remove: async () => ({ data: [], error: null }),
-          createSignedUrl: async (p: string, s: number, opts?: { download?: string | boolean }) => ({
-            data: { signedUrl: `https://storage.test/${p}?exp=${s}${opts?.download ? `&download=${encodeURIComponent(String(opts.download))}` : ""}` }, error: null,
-          }),
+          upload: async (path: string, bytes: Uint8Array) => { bucketFiles.set(path, new Uint8Array(bytes)); return { data: { path }, error: null }; },
+          remove: async (paths: string[]) => { for (const p of paths) bucketFiles.delete(p); return { data: [], error: null }; },
+          createSignedUrl: async (p: string, s: number, opts?: { download?: string | boolean }) =>
+            bucketFiles.has(p)
+              ? { data: { signedUrl: `https://storage.test/${p}?exp=${s}${opts?.download ? `&download=${encodeURIComponent(String(opts.download))}` : ""}` }, error: null }
+              : { data: null, error: { message: "404" } },
         }),
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any);
 
-    expect((await POST(multipartRequest(new FormData(), "https://evil.example"))).status).toBe(403);
-    const form = new FormData();
-    form.set("workspaceId", wsId); form.set("conversationId", convId); form.set("messageId", msgId);
-    form.append("files", new File([makePng(16, 12, true)], "plano.png", { type: "image/png" }));
-    const postRes = await POST(multipartRequest(form));
-    expect(postRes.status).toBe(200);
-    const body = (await postRes.json()) as { attachments: Array<{ url: string; downloadUrl: string; width: number; height: number }> };
-    expect(body.attachments[0]).toMatchObject({ width: 16, height: 12 });
+    expect((await POST(jsonRequest({ op: "reserve" }, "https://evil.example"))).status).toBe(403);
+    const png = makePng(16, 12, true);
+    const resReserve = await POST(jsonRequest({ op: "reserve", workspaceId: wsId, conversationId: convId, messageId: msgId, files: [{ fileName: "l'image.png", mimeType: "image/png", byteSize: png.byteLength }] }));
+    expect(resReserve.status).toBe(200);
+    const { reservations } = (await resReserve.json()) as { reservations: Array<{ id: string; quarantinePath: string; signedUrl: string }> };
+    expect(reservations[0]?.signedUrl).toContain("/quarantine/");
+    bucketFiles.set(reservations[0]!.quarantinePath, png);
+
+    const resCommit = await POST(jsonRequest({ op: "commit", workspaceId: wsId, conversationId: convId, messageId: msgId, reservationIds: [reservations[0]!.id] }));
+    expect(resCommit.status).toBe(200);
+    const body = (await resCommit.json()) as { attachments: Array<{ id: string; fileName: string; url: string; downloadUrl: string; width: number; height: number }> };
+    expect(body.attachments[0]).toMatchObject({ fileName: "l'image.png", width: 16, height: 12 });
     expect(body.attachments[0]?.url).toContain("exp=3600");
-    expect(body.attachments[0]?.downloadUrl).toContain("download=plano.png");
+    expect(body.attachments[0]?.downloadUrl).toContain("download=l'image.png");
+    expect(bucketFiles.has(reservations[0]!.quarantinePath)).toBe(false);
+
     expect((await GET(new Request(`http://localhost:3100/api/chat/attachments?workspaceId=${wsId}&conversationId=${convId}&messageId=${msgId}`))).status).toBe(200);
+    const purged = await purgeMessageAttachmentsFromStorage(wsId, convId, msgId);
+    expect(purged).toHaveLength(1);
+    expect(bucketFiles.size).toBe(0);
     messageRetired = true;
     expect((await GET(new Request(`http://localhost:3100/api/chat/attachments?workspaceId=${wsId}&conversationId=${convId}&messageId=${msgId}`))).status).toBe(404);
   });

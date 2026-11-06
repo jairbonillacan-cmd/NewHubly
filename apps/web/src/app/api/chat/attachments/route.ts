@@ -2,7 +2,8 @@ import { ChatAccessError, ChatRequestError } from "@hubly/application";
 import { SessionExpiredError } from "../../../../server/composition/auth";
 import {
   CHAT_ATTACHMENT_MAX_BYTES, CHAT_ATTACHMENT_MAX_COUNT, ChatAttachmentError,
-  listSignedChatMessageAttachments, uploadChatMessageAttachments,
+  commitChatAttachmentUploads, listSignedChatMessageAttachments,
+  reserveChatAttachmentUploads, uploadChatMessageAttachments,
 } from "../../../../server/composition/chat-attachments";
 
 export const dynamic = "force-dynamic";
@@ -44,8 +45,28 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  if (!sameOrigin(request) || !request.headers.get("content-type")?.toLowerCase().startsWith("multipart/form-data")) {
+  const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!sameOrigin(request) || (!contentType.startsWith("multipart/form-data") && !contentType.startsWith("application/json"))) {
     return json({ error: "La solicitud de adjuntos no está permitida." }, 403);
+  }
+  if (contentType.startsWith("application/json")) {
+    const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!body) return json({ error: "La solicitud de adjuntos no es válida." }, 400);
+    const workspaceId = String(body.workspaceId ?? ""), conversationId = String(body.conversationId ?? ""), messageId = String(body.messageId ?? "");
+    try {
+      if (body.op === "reserve") {
+        const rawFiles = Array.isArray(body.files) ? body.files : [];
+        return json({ reservations: await reserveChatAttachmentUploads({
+          workspaceId, conversationId, messageId,
+          files: rawFiles.map((f: Record<string, unknown>) => ({ fileName: String(f?.fileName ?? "adjunto"), mimeType: String(f?.mimeType ?? ""), byteSize: Number(f?.byteSize ?? 0) })),
+        }) });
+      }
+      if (body.op === "commit") {
+        const reservationIds = Array.isArray(body.reservationIds) ? body.reservationIds.map(String) : [];
+        return json({ attachments: await commitChatAttachmentUploads({ workspaceId, conversationId, messageId, reservationIds }) });
+      }
+      return json({ error: "Operación de adjuntos no válida." }, 400);
+    } catch (error) { return failed(error); }
   }
   const form = await request.formData().catch(() => null);
   if (!form) return json({ error: "El formulario de adjuntos no es válido." }, 400);

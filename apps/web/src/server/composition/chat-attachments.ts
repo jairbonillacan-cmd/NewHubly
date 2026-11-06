@@ -1,6 +1,6 @@
 import "server-only";
 import { ChatAccessError } from "@hubly/application";
-import { withUserContext } from "@hubly/db";
+import { sql, withUserContext } from "@hubly/db";
 import { createSupabaseServerClient, getVerifiedServerSession } from "./auth";
 import { isChatEnabled } from "./chat";
 import { sanitizeWallpaperImage, sniffWallpaperType, WallpaperImageError } from "./wallpaper-image";
@@ -11,6 +11,7 @@ export const CHAT_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 export const CHAT_ATTACHMENT_MAX_COUNT = 5;
 export const CHAT_ATTACHMENT_SIGNED_URL_SECONDS = 60 * 60;
 export type ChatAttachmentMimeType = "image/jpeg" | "image/png" | "image/webp" | "image/gif" | "application/pdf";
+const ALLOWED_MIMES = new Set<ChatAttachmentMimeType>(["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"]);
 
 export class ChatAttachmentError extends Error {
   constructor(message: string) { super(message); this.name = "ChatAttachmentError"; }
@@ -18,19 +19,24 @@ export class ChatAttachmentError extends Error {
 export interface SanitizedChatAttachment {
   bytes: Uint8Array; mimeType: ChatAttachmentMimeType; fileName: string; byteSize: number; width: number | null; height: number | null;
 }
+export interface ReservedChatAttachmentUpload {
+  id: string; fileName: string; mimeType: ChatAttachmentMimeType; byteSize: number; quarantinePath: string; signedUrl: string; token: string;
+}
 export interface SignedChatAttachment {
   id: string; messageId: string; fileName: string; mimeType: ChatAttachmentMimeType;
   byteSize: number; width: number | null; height: number | null; url: string; downloadUrl: string;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PDF_DANGER_RE = /\/(?:JavaScript|JS|Launch|OpenAction|AA|EmbeddedFiles?|RichMedia|ObjStm|URI|SubmitForm|ImportData|GoToR|GoToE|XFA)(?![A-Za-z0-9_])/;
 const ascii = (text: string) => Array.from(text, (c) => c.charCodeAt(0));
 const startsWith = (b: Uint8Array, sig: readonly number[], off = 0) => b.length >= off + sig.length && sig.every((v, i) => b[off + i] === v);
 const invalidFile = (msg = "El archivo no es una imagen (JPEG, PNG, WebP, GIF) ni un PDF válido.") => new ChatAttachmentError(msg);
 export const chatAttachmentObjectPath = (wsId: string, convId: string, attId: string) => `${wsId}/${convId}/${attId}`;
+export const chatAttachmentQuarantinePath = (wsId: string, convId: string, attId: string) => `${wsId}/${convId}/quarantine/${attId}`;
 
 export function sanitizeAttachmentFileName(raw: string): string {
-  const cleaned = (raw.split(/[/\\]/).pop() ?? "").replace(/[\u0000-\u001f\u007f"'`<>|?*:\\]/g, "_").trim().slice(0, 120);
+  const cleaned = (raw.split(/[/\\]/).pop() ?? "").replace(/[\u0000-\u001f\u007f"<>|?*:\\]/g, "_").trim().slice(0, 120);
   return cleaned.length > 0 && /\S/.test(cleaned) ? cleaned : "adjunto";
 }
 
@@ -110,7 +116,10 @@ function sanitizePdf(bytes: Uint8Array): Uint8Array {
   if (bytes.length < 16 || !startsWith(bytes, ascii("%PDF-"))) throw invalidFile();
   const text = new TextDecoder("latin1").decode(bytes), eof = text.lastIndexOf("%%EOF");
   if (eof < 0 || bytes.length - eof > 1024) throw invalidFile();
-  if (/\/(?:JavaScript|JS|Launch)\b/.test(text)) throw invalidFile("Por seguridad no se admiten archivos PDF con acciones o scripts incrustados.");
+  const decoded = text.replace(/\x23([0-9a-fA-F]{2})/g, (_, hex: string) => String.fromCharCode(Number.parseInt(hex, 16)));
+  if (PDF_DANGER_RE.test(text) || PDF_DANGER_RE.test(decoded)) {
+    throw invalidFile("Por seguridad no se admiten archivos PDF con acciones o scripts incrustados.");
+  }
   let end = eof + 5;
   while (end < bytes.length && (bytes[end] === 0x0a || bytes[end] === 0x0d)) end += 1;
   return bytes.subarray(0, end);
@@ -142,6 +151,106 @@ async function signAttachmentObject(objectPath: string, fileName: string): Promi
   return viewRes.error || !viewRes.data?.signedUrl || dlRes.error || !dlRes.data?.signedUrl ? null : { url: viewRes.data.signedUrl, downloadUrl: dlRes.data.signedUrl };
 }
 
+export async function reserveChatAttachmentUploads(params: {
+  workspaceId: string; conversationId: string; messageId: string;
+  files: ReadonlyArray<{ fileName: string; mimeType: string; byteSize: number }>;
+}): Promise<ReservedChatAttachmentUpload[]> {
+  const { workspaceId, conversationId, messageId, files } = params;
+  if (!UUID_RE.test(workspaceId) || !UUID_RE.test(conversationId) || !UUID_RE.test(messageId)) throw new ChatAttachmentError("Identificadores de mensaje o conversación inválidos.");
+  const { claims } = await getVerifiedServerSession();
+  if (!isChatEnabled(workspaceId)) throw new ChatAccessError();
+  if (files.length === 0 || files.length > CHAT_ATTACHMENT_MAX_COUNT) throw new ChatAttachmentError("Puedes adjuntar entre 1 y 5 archivos por mensaje.");
+  const specs = files.map((f) => {
+    if (!ALLOWED_MIMES.has(f.mimeType as ChatAttachmentMimeType)) throw invalidFile();
+    if (!Number.isFinite(f.byteSize) || f.byteSize <= 0) throw invalidFile();
+    if (f.byteSize > CHAT_ATTACHMENT_MAX_BYTES) throw new ChatAttachmentError("El archivo supera el límite de 10 MB.");
+    return { fileName: sanitizeAttachmentFileName(f.fileName), mimeType: f.mimeType as ChatAttachmentMimeType, byteSize: Math.trunc(f.byteSize) };
+  });
+  const rows = await withUserContext(claims, async (tx) => {
+    const out: Array<{ id: string; file_name: string; mime_type: ChatAttachmentMimeType; byte_size: number; quarantine_path: string }> = [];
+    for (const s of specs) {
+      const [row] = await tx.execute<{ id: string; file_name: string; mime_type: ChatAttachmentMimeType; byte_size: number; quarantine_path: string }>(
+        sql`select id, file_name, mime_type, byte_size, quarantine_path from private.chat_reserve_attachment_upload(${workspaceId}::uuid, ${conversationId}::uuid, ${messageId}::uuid, ${s.fileName}, ${s.mimeType}, ${s.byteSize}::integer)`,
+      );
+      if (!row) throw new ChatAccessError();
+      out.push(row);
+    }
+    return out;
+  });
+  const bucket = (await createSupabaseServerClient()).storage.from(CHAT_ATTACHMENTS_BUCKET);
+  const reservations: ReservedChatAttachmentUpload[] = [];
+  for (const r of rows) {
+    const quarantinePath = r.quarantine_path || chatAttachmentQuarantinePath(workspaceId, conversationId, r.id);
+    const signed = await bucket.createSignedUploadUrl(quarantinePath);
+    if (signed.error || !signed.data?.signedUrl) throw new ChatAccessError();
+    reservations.push({
+      id: r.id, fileName: r.file_name ?? "adjunto", mimeType: r.mime_type, byteSize: r.byte_size,
+      quarantinePath, signedUrl: signed.data.signedUrl, token: signed.data.token ?? "",
+    });
+  }
+  return reservations;
+}
+
+export async function commitChatAttachmentUploads(params: {
+  workspaceId: string; conversationId: string; messageId: string; reservationIds: readonly string[];
+}): Promise<SignedChatAttachment[]> {
+  const { workspaceId, conversationId, messageId, reservationIds } = params;
+  if (!UUID_RE.test(workspaceId) || !UUID_RE.test(conversationId) || !UUID_RE.test(messageId)) throw new ChatAttachmentError("Identificadores de mensaje o conversación inválidos.");
+  if (reservationIds.length === 0 || reservationIds.length > CHAT_ATTACHMENT_MAX_COUNT || new Set(reservationIds).size !== reservationIds.length || !reservationIds.every((id) => UUID_RE.test(id))) {
+    throw new ChatAttachmentError("Reservas de adjuntos inválidas.");
+  }
+  const { claims } = await getVerifiedServerSession();
+  if (!isChatEnabled(workspaceId)) throw new ChatAccessError();
+  const reserved = await withUserContext(claims, async (tx) => {
+    const out: Array<{ id: string; file_name: string; quarantine_path: string; final_path: string }> = [];
+    for (const id of reservationIds) {
+      const [row] = await tx.execute<{ id: string; file_name: string; quarantine_path: string; final_path: string }>(
+        sql`select id, file_name, quarantine_path, final_path from private.chat_attachment_reservations where id = ${id}::uuid and workspace_id = ${workspaceId}::uuid and conversation_id = ${conversationId}::uuid and message_id = ${messageId}::uuid and author_id = ${claims.sub}::uuid and expires_at > clock_timestamp()`,
+      );
+      if (!row) throw new ChatAccessError();
+      out.push({
+        id: row.id || id, file_name: row.file_name || "adjunto",
+        quarantine_path: row.quarantine_path || chatAttachmentQuarantinePath(workspaceId, conversationId, id),
+        final_path: row.final_path || chatAttachmentObjectPath(workspaceId, conversationId, id),
+      });
+    }
+    return out;
+  });
+  const bucket = (await createSupabaseServerClient()).storage.from(CHAT_ATTACHMENTS_BUCKET);
+  const quarantinePaths = reserved.map((r) => r.quarantine_path);
+  const uploadedFinalPaths: string[] = [];
+  const prepared: Array<SanitizedChatAttachment & { id: string; finalPath: string }> = [];
+  try {
+    for (const r of reserved) {
+      const dl = await bucket.download(r.quarantine_path);
+      if (dl.error || !dl.data) throw new ChatAttachmentError("No se encontró el archivo subido en cuarentena.");
+      const clean = sanitizeChatAttachment(new Uint8Array(await dl.data.arrayBuffer()), r.file_name);
+      const { error: uploadError } = await bucket.upload(r.final_path, clean.bytes, { contentType: clean.mimeType, upsert: false, cacheControl: "3600" });
+      if (uploadError) throw new ChatAccessError();
+      uploadedFinalPaths.push(r.final_path);
+      prepared.push({ id: r.id, finalPath: r.final_path, ...clean });
+    }
+    await withUserContext(claims, async (tx) => {
+      for (const item of prepared) {
+        await tx.execute(
+          sql`select private.chat_register_attachment(${workspaceId}::uuid, ${conversationId}::uuid, ${messageId}::uuid, ${item.id}::uuid, ${item.fileName}, ${item.mimeType}, ${Math.trunc(item.byteSize)}::integer, ${item.width}::integer, ${item.height}::integer)`,
+        );
+      }
+    });
+  } catch (error) {
+    await bucket.remove([...quarantinePaths, ...uploadedFinalPaths]).catch(() => undefined);
+    throw error;
+  }
+  await bucket.remove(quarantinePaths).catch(() => undefined);
+  const results: SignedChatAttachment[] = [];
+  for (const item of prepared) {
+    const signed = await signAttachmentObject(item.finalPath, item.fileName);
+    if (!signed) throw new ChatAccessError();
+    results.push({ id: item.id, messageId, fileName: item.fileName, mimeType: item.mimeType, byteSize: item.byteSize, width: item.width, height: item.height, ...signed });
+  }
+  return results;
+}
+
 export async function uploadChatMessageAttachments(params: {
   workspaceId: string; conversationId: string; messageId: string; files: ReadonlyArray<{ name: string; bytes: Uint8Array }>;
 }): Promise<SignedChatAttachment[]> {
@@ -150,26 +259,66 @@ export async function uploadChatMessageAttachments(params: {
   const { claims } = await getVerifiedServerSession();
   if (!isChatEnabled(workspaceId)) throw new ChatAccessError();
   if (files.length === 0 || files.length > CHAT_ATTACHMENT_MAX_COUNT) throw new ChatAttachmentError("Puedes adjuntar entre 1 y 5 archivos por mensaje.");
-  const items = files.map((f) => ({ id: crypto.randomUUID(), ...sanitizeChatAttachment(f.bytes, f.name) }));
+  const sanitized = files.map((f) => sanitizeChatAttachment(f.bytes, f.name));
+  const reserved = await withUserContext(claims, async (tx) => {
+    const out: Array<SanitizedChatAttachment & { id: string; objectPath: string }> = [];
+    for (const item of sanitized) {
+      const [row] = await tx.execute<{ id: string; final_path?: string }>(
+        sql`select id, final_path from private.chat_reserve_attachment_upload(${workspaceId}::uuid, ${conversationId}::uuid, ${messageId}::uuid, ${item.fileName}, ${item.mimeType}, ${Math.trunc(item.byteSize)}::integer)`,
+      );
+      if (!row) throw new ChatAccessError();
+      const id = UUID_RE.test(row.id ?? "") ? row.id : crypto.randomUUID();
+      out.push({ ...item, id, objectPath: row.final_path || chatAttachmentObjectPath(workspaceId, conversationId, id) });
+    }
+    return out;
+  });
   const bucket = (await createSupabaseServerClient()).storage.from(CHAT_ATTACHMENTS_BUCKET);
+  const uploadedPaths: string[] = [];
+  try {
+    for (const item of reserved) {
+      const { error: uploadError } = await bucket.upload(item.objectPath, item.bytes, { contentType: item.mimeType, upsert: false, cacheControl: "3600" });
+      if (uploadError) throw new ChatAccessError();
+      uploadedPaths.push(item.objectPath);
+    }
+    await withUserContext(claims, async (tx) => {
+      for (const item of reserved) {
+        await tx.execute(
+          sql`select private.chat_register_attachment(${workspaceId}::uuid, ${conversationId}::uuid, ${messageId}::uuid, ${item.id}::uuid, ${item.fileName}, ${item.mimeType}, ${Math.trunc(item.byteSize)}::integer, ${item.width}::integer, ${item.height}::integer)`,
+        );
+      }
+    });
+  } catch (error) {
+    if (uploadedPaths.length > 0) await bucket.remove(uploadedPaths).catch(() => undefined);
+    throw error;
+  }
   const results: SignedChatAttachment[] = [];
-  for (const item of items) {
-    const objectPath = chatAttachmentObjectPath(workspaceId, conversationId, item.id);
-    const { error: uploadError } = await bucket.upload(objectPath, item.bytes, { contentType: item.mimeType, upsert: false, cacheControl: "3600" });
-    if (uploadError) throw new ChatAccessError();
-    try {
-      const safeName = item.fileName.replaceAll("'", "_");
-      const wSql = item.width === null ? "null" : String(Math.trunc(item.width));
-      const hSql = item.height === null ? "null" : String(Math.trunc(item.height));
-      await withUserContext(claims, (tx) => tx.execute(
-        `select private.chat_register_attachment('${workspaceId}'::uuid, '${conversationId}'::uuid, '${messageId}'::uuid, '${item.id}'::uuid, '${safeName}', '${item.mimeType}', ${Math.trunc(item.byteSize)}::integer, ${wSql}::integer, ${hSql}::integer)`,
-      ));
-    } catch (error) { await bucket.remove([objectPath]).catch(() => undefined); throw error; }
-    const signed = await signAttachmentObject(objectPath, item.fileName);
+  for (const item of reserved) {
+    const signed = await signAttachmentObject(item.objectPath, item.fileName);
     if (!signed) throw new ChatAccessError();
     results.push({ id: item.id, messageId, fileName: item.fileName, mimeType: item.mimeType, byteSize: item.byteSize, width: item.width, height: item.height, ...signed });
   }
   return results;
+}
+
+export async function purgeMessageAttachmentsFromStorage(
+  workspaceId: string, conversationId: string, messageId: string, objectPaths?: readonly string[],
+): Promise<string[]> {
+  if (!UUID_RE.test(workspaceId) || !UUID_RE.test(conversationId) || !UUID_RE.test(messageId)) throw new ChatAttachmentError("Identificadores de mensaje o conversación inválidos.");
+  const { claims } = await getVerifiedServerSession();
+  if (!isChatEnabled(workspaceId)) throw new ChatAccessError();
+  const paths = objectPaths
+    ? [...objectPaths]
+    : (await withUserContext(claims, (tx) =>
+        tx.execute<{ object_path: string }>(
+          sql`select a.object_path from private.chat_attachments a join private.chat_messages m on m.workspace_id = a.workspace_id and m.conversation_id = a.conversation_id and m.id = a.message_id where a.workspace_id = ${workspaceId}::uuid and a.conversation_id = ${conversationId}::uuid and a.message_id = ${messageId}::uuid and m.author_id = ${claims.sub}::uuid`,
+        ),
+      )).map((r: { object_path: string }) => r.object_path).filter(Boolean);
+  if (paths.length > 0) {
+    const bucket = (await createSupabaseServerClient()).storage.from(CHAT_ATTACHMENTS_BUCKET);
+    const { error } = await bucket.remove(paths);
+    if (error) throw new ChatAccessError();
+  }
+  return paths;
 }
 
 export async function listSignedChatMessageAttachments(params: { workspaceId: string; conversationId: string; messageId: string }): Promise<SignedChatAttachment[]> {
@@ -179,11 +328,11 @@ export async function listSignedChatMessageAttachments(params: { workspaceId: st
   if (!isChatEnabled(workspaceId)) throw new ChatAccessError();
   const rows = await withUserContext(claims, async (tx) => {
     const [msg] = await tx.execute<{ id: string }>(
-      `select id from private.chat_messages where workspace_id = '${workspaceId}'::uuid and conversation_id = '${conversationId}'::uuid and id = '${messageId}'::uuid and deleted_at is null`,
+      sql`select id from private.chat_messages where workspace_id = ${workspaceId}::uuid and conversation_id = ${conversationId}::uuid and id = ${messageId}::uuid and deleted_at is null`,
     );
     if (!msg) throw new ChatAccessError();
     return tx.execute<{ id: string; message_id: string; object_path: string; file_name: string; mime_type: ChatAttachmentMimeType; byte_size: number; width: number | null; height: number | null }>(
-      `select id, message_id, object_path, file_name, mime_type, byte_size, width, height from private.chat_attachments where workspace_id = '${workspaceId}'::uuid and conversation_id = '${conversationId}'::uuid and message_id = '${messageId}'::uuid order by created_at asc, id asc`,
+      sql`select id, message_id, object_path, file_name, mime_type, byte_size, width, height from private.chat_attachments where workspace_id = ${workspaceId}::uuid and conversation_id = ${conversationId}::uuid and message_id = ${messageId}::uuid order by created_at asc, id asc`,
     );
   });
   const out: SignedChatAttachment[] = [];
