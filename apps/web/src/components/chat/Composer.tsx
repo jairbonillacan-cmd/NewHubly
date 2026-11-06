@@ -2,7 +2,7 @@
 
 import type { ChatParticipant } from "@hubly/contracts";
 import { Button, EmojiPicker, TextArea } from "@hubly/ui";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { formatAttachmentBytes, type ChatAttachmentItem } from "./ChatAttachmentView";
 import { ChatAvatar, personName, statusLabel } from "./MemberList";
 
@@ -22,6 +22,12 @@ export interface ComposerAttachmentDraft {
   byteSize: number;
   previewUrl?: string | null | undefined;
 }
+
+/** Libera la memoria de una vista previa creada con URL.createObjectURL. */
+export function revokePreviewUrl(url: string | null | undefined): void {
+  if (url?.startsWith("blob:") && typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") URL.revokeObjectURL(url);
+}
+const revokeAttachmentPreview = (item: ComposerAttachmentDraft) => revokePreviewUrl(item.previewUrl);
 
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
@@ -215,6 +221,14 @@ export function Composer({
   const activeCandidate = mentionOpen ? candidates[safeMentionIndex] : undefined;
   const displayedError = localError ?? attachmentError ?? null;
 
+  // Si el padre controla los adjuntos y los limpia tras enviar, revoca las vistas previas que ya no se muestran.
+  const shownPreviews = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const current = new Set(activeAttachments.map((item) => item.previewUrl).filter((url): url is string => Boolean(url?.startsWith("blob:"))));
+    for (const url of shownPreviews.current) if (!current.has(url)) revokePreviewUrl(url);
+    shownPreviews.current = current;
+  }, [activeAttachments]);
+
   if (loading) return null;
   if (!writable) return <p className="border-t border-(--border-default) p-3 text-sm text-(--text-secondary)">Conversación de solo lectura.</p>;
 
@@ -240,6 +254,8 @@ export function Composer({
   }
 
   function removeAttachment(id: string) {
+    const removed = activeAttachments.find((item) => item.id === id);
+    if (removed) revokeAttachmentPreview(removed);
     const next = activeAttachments.filter((item) => item.id !== id);
     setLocalAttachments(next);
     setLocalError(null);
@@ -298,13 +314,14 @@ export function Composer({
       {candidates.map((person, idx) => {
         const selected = idx === safeMentionIndex;
         const name = personName(person.id, person);
-        return <li key={person.id} id={`chat-mention-opt-${person.id}`} role="option" aria-selected={selected}>
-          <button type="button" onClick={() => selectMention(person)}
-            className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-left text-sm ${selected ? "bg-(--accent-primary-subtle) text-(--text-primary)" : "hover:bg-(--glass-hover)"}`}>
-            <ChatAvatar person={person} />
-            <span className="min-w-0 grow truncate font-medium">{name}</span>
-            {person.status && <span className="shrink-0 text-xs text-(--text-secondary)">{statusLabel[person.status]}</span>}
-          </button>
+        // Sin <button> dentro: role="option" ya es interactivo y el foco lo lleva el campo con aria-activedescendant.
+        // onMouseDown evita que el campo pierda el foco antes del clic; el teclado se maneja en handleKeyDown.
+        return <li key={person.id} id={`chat-mention-opt-${person.id}`} role="option" aria-selected={selected}
+          onMouseDown={(event) => event.preventDefault()} onClick={() => selectMention(person)}
+          className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-left text-sm ${selected ? "bg-(--accent-primary-subtle) text-(--text-primary)" : "hover:bg-(--glass-hover)"}`}>
+          <ChatAvatar person={person} />
+          <span className="min-w-0 grow truncate font-medium">{name}</span>
+          {person.status && <span className="shrink-0 text-xs text-(--text-secondary)">{statusLabel[person.status]}</span>}
         </li>;
       })}
     </ul>}
@@ -349,7 +366,10 @@ export function Composer({
         composer.current?.focus();
         onSubmitWithExtras?.({ body: draft, mentionedUserIds: [...activeMentions], attachments: [...activeAttachments] });
         onSend();
-        if (attachments === undefined) setLocalAttachments([]);
+        if (attachments === undefined) {
+          activeAttachments.forEach(revokeAttachmentPreview);
+          setLocalAttachments([]);
+        }
         if (mentionedUserIds === undefined) setLocalMentions([]);
       }}>
       <label className="min-w-0">
