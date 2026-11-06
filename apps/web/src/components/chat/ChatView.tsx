@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChatCommand, ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
-import { Icon, IconoHubly } from "@hubly/ui";
+import { Icon, IconoHubly, Label, ListBox, Select } from "@hubly/ui";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 type LocalCommand = ChatCommand extends infer C ? C extends ChatCommand ? Omit<C, "workspaceId"> : never : never;
@@ -109,25 +109,37 @@ function DirectForm({ people, userId, onCommand }: Pick<ChatViewProps, "people" 
   const details = useRef<HTMLDetailsElement>(null);
   const [busy, setBusy] = useState(false);
   const eligible = people.filter((person) => person.id !== userId && person.role !== "viewer");
+  const [selected, setSelected] = useState<string | null>(null);
+  const recipientId = eligible.find((person) => person.id === selected)?.id;
   return <details ref={details} className="text-sm">
     <summary className="min-h-11 cursor-pointer rounded-xl px-2 py-3 font-semibold">Nuevo directo</summary>
     {eligible.length ? <form className="space-y-2 p-2" onSubmit={async (event) => {
       event.preventDefault();
-      if (busy) return;
-      const recipientId = String(new FormData(event.currentTarget).get("recipient") ?? "");
+      if (busy || !recipientId) return;
       setBusy(true);
       try {
         if (await onCommand({ kind: "openDirect", recipientId }) && details.current) details.current.open = false;
       } finally { setBusy(false); }
     }}>
-      <label className="block">
-        <span className="mb-1 block text-xs">Persona</span>
-        <select name="recipient" aria-label="Persona" className={input} required>
-          <option value="">Elige una persona</option>
-          {eligible.map((person) => <option key={person.id} value={person.id}>{personName(person.id, person)}</option>)}
-        </select>
-      </label>
-      <button type="submit" className={outline} disabled={busy}>Abrir conversación</button>
+      <Select selectedKey={recipientId ?? null} placeholder="Elige una persona"
+        onSelectionChange={(key) => setSelected(typeof key === "string" ? key : null)} className="w-full">
+        <Label className="mb-1 text-xs">Persona</Label>
+        <Select.Trigger className={input}>
+          <Select.Value />
+          <Select.Indicator />
+        </Select.Trigger>
+        <Select.Popover>
+          <ListBox>
+            {eligible.map((person) => {
+              const name = personName(person.id, person);
+              return <ListBox.Item key={person.id} id={person.id} textValue={name}>
+                {name}<ListBox.ItemIndicator />
+              </ListBox.Item>;
+            })}
+          </ListBox>
+        </Select.Popover>
+      </Select>
+      <button type="submit" className={outline} disabled={busy || !recipientId}>Abrir conversación</button>
     </form> : <p className="p-2 text-(--text-muted)">No hay compañeros disponibles para un directo.</p>}
   </details>;
 }
