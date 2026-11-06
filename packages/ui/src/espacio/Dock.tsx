@@ -1,20 +1,14 @@
 "use client";
 
-import { Button, Chip, Dropdown, Kbd, Popover, Slider, ToggleButton, ToggleButtonGroup } from "@heroui/react";
-import { forwardRef, useState, type FormEvent } from "react";
-import { FileTrigger, type Selection } from "react-aria-components";
+import { Button, Chip, Kbd, Popover, Slider, ToggleButton } from "@heroui/react";
+import { forwardRef, useId, useState, type FormEvent, type ReactNode } from "react";
+import { FileTrigger } from "react-aria-components";
 import { useHublyTheme } from "../landing/ThemeToggle";
-import { Icon, type IconName } from "./icons";
-import { WALLPAPERS, type EspacioPreferencias, type LayoutId, type PanelId, type PreferenciasPatch } from "./preferencias";
-import { PRIORITY_LABEL, type CaptureAnalysis, type EspacioNote } from "./types";
+import { Icon } from "./icons";
+import { WALLPAPERS, type EspacioPreferencias, type PreferenciasPatch } from "./preferencias";
+import type { CaptureFieldProps, DockConfig } from "./dockConfig";
 import { WallpaperSwatch } from "./Wallpaper";
 
-const PANEL_LABEL: Record<PanelId, string> = { hoy: "Hoy", nota: "Nota abierta", notas: "Notas fijadas" };
-const LAYOUTS: { id: LayoutId; label: string; icon: IconName }[] = [
-  { id: "libre", label: "Paneles libres", icon: "libre" },
-  { id: "lado", label: "Lado a lado", icon: "lado" },
-  { id: "enfoque", label: "Modo enfoque", icon: "enfoque" },
-];
 const DOCK_BUTTON = "size-10 shrink-0 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
 
 /** «Tu imagen» (#84): URL firmada actual y acciones del servidor. Sin esto, el selector la muestra como no disponible. */
@@ -98,12 +92,10 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
   const [theme] = useHublyTheme();
   return (
     <Popover isOpen={isOpen} onOpenChange={onOpenChange}>
-      <Popover.Trigger>
-        <Button variant="ghost" isIconOnly={!triggerLabel} aria-label="Fondo" className={triggerClassName ?? DOCK_BUTTON}>
-          <Icon name="imagen" className="size-5" />
-          {triggerLabel && <span className="text-xs">{triggerLabel}</span>}
-        </Button>
-      </Popover.Trigger>
+      <Button variant="ghost" isIconOnly={!triggerLabel} aria-label="Fondo" className={triggerClassName ?? DOCK_BUTTON}>
+        <Icon name="imagen" className="size-5" />
+        {triggerLabel && <span className="text-xs">{triggerLabel}</span>}
+      </Button>
       <Popover.Content placement="top" className="hubly-pop-surface w-80 rounded-2xl p-4 text-(--text-primary)">
         <Popover.Dialog aria-label="Elegir fondo" className="flex flex-col gap-4 outline-none">
           <div className="flex items-baseline justify-between">
@@ -160,139 +152,114 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
   );
 }
 
-function PanelsMenu({ prefs, onChange }: { prefs: EspacioPreferencias; onChange: (patch: PreferenciasPatch) => void }) {
-  const selected = (Object.keys(prefs.paneles) as PanelId[]).filter((id) => prefs.paneles[id]);
-  const onSelectionChange = (selection: Selection) => {
-    const keys = selection === "all" ? new Set<string>(["hoy", "nota", "notas"]) : new Set([...selection].map(String));
-    onChange({ paneles: { hoy: keys.has("hoy"), nota: keys.has("nota"), notas: keys.has("notas") } });
-  };
-  return (
-    <Dropdown>
-      <Dropdown.Trigger aria-label="Paneles visibles" className={DOCK_BUTTON}>
-        <Icon name="paneles" className="size-5" />
-      </Dropdown.Trigger>
-      <Dropdown.Popover placement="top" className="hubly-pop-surface min-w-56 rounded-xl p-1.5 text-(--text-primary)">
-        <Dropdown.Menu aria-label="Mostrar paneles" selectionMode="multiple" selectedKeys={selected} onSelectionChange={onSelectionChange}>
-          {(Object.keys(PANEL_LABEL) as PanelId[]).map((id) => (
-            <Dropdown.Item key={id} id={id} textValue={PANEL_LABEL[id]} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover)">
-              <span className="grow">{PANEL_LABEL[id]}</span>
-              <Dropdown.ItemIndicator />
-            </Dropdown.Item>
-          ))}
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown>
-  );
-}
-
-function LayoutSwitch({ value, onChange }: { value: LayoutId; onChange: (layout: LayoutId) => void }) {
-  return (
-    <ToggleButtonGroup
-      aria-label="Distribución"
-      selectionMode="single"
-      disallowEmptySelection
-      selectedKeys={[value]}
-      onSelectionChange={(keys) => {
-        const next = [...keys][0];
-        if (next === "libre" || next === "lado" || next === "enfoque") onChange(next);
-      }}
-      className="flex gap-0.5 rounded-lg bg-(--glass-hover) p-0.5"
-    >
-      {LAYOUTS.map((layout) => (
-        <ToggleButton
-          key={layout.id}
-          id={layout.id}
-          aria-label={layout.label}
-          className="flex size-9 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-(--text-secondary) transition-colors data-[selected]:bg-(--surface-raised) data-[selected]:text-(--accent-primary) data-[selected]:shadow-sm"
-        >
-          <Icon name={layout.icon} />
-        </ToggleButton>
-      ))}
-    </ToggleButtonGroup>
-  );
-}
-
-export interface CaptureFieldProps {
-  notes: EspacioNote[];
-  linkedNote: EspacioNote | null;
-  onUnlinkNote: () => void;
-  analyze: (text: string) => CaptureAnalysis;
-  onSubmit: (text: string) => void;
-  error?: string | null | undefined;
-  className?: string | undefined;
-}
-
-export function findNoteByQuery(notes: EspacioNote[], query: string | null): EspacioNote | null {
-  if (!query) return null;
-  const q = query.toLowerCase();
-  return notes.find((note) => !note.isArchived && note.title.toLowerCase().includes(q)) ?? null;
-}
-
-/** Captura inteligente (#80): las palabras clave se ven como etiquetas antes de guardar. */
-export const CaptureField = forwardRef<HTMLInputElement, CaptureFieldProps>(function CaptureField({ notes, linkedNote, onUnlinkNote, analyze, onSubmit, error, className }, ref) {
+export const CaptureField = forwardRef<HTMLInputElement, CaptureFieldProps>(function CaptureField({ label, hint, shortcut, submitIcon, chips, linked, onSubmit, error }, ref) {
   const [text, setText] = useState("");
-  const analysis = text.trim() ? analyze(text) : null;
-  const queryNote = findNoteByQuery(notes, analysis?.noteQuery ?? null);
-  const chips: { label: string; color: "accent" | "warning" | "success" | "default" }[] = [];
-  if (analysis?.dueKeyword) chips.push({ label: analysis.dueKeyword === "hoy" ? "Hoy" : "Mañana", color: "accent" });
-  if (analysis?.priority) chips.push({ label: PRIORITY_LABEL[analysis.priority], color: "warning" });
-  if (analysis?.noteQuery) chips.push(queryNote ? { label: `Nota: ${queryNote.title}`, color: "success" } : { label: `Sin nota «${analysis.noteQuery}»`, color: "default" });
-
+  const tokens = text.trim() ? chips(text) : [];
+  const errorId = useId();
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!text.trim()) return;
     onSubmit(text);
     setText("");
   };
-
   return (
-    <form onSubmit={submit} className={`flex min-w-0 items-center gap-2 ${className ?? ""}`}>
-      <label className="flex h-11 min-w-0 grow items-center gap-2 rounded-xl border border-(--glass-line) bg-(--glass-field) px-3 transition-colors focus-within:border-(--accent-primary)">
-        <Icon name="mas" className="size-4 shrink-0 text-(--accent-primary)" />
-        <span className="sr-only">Capturar pendiente</span>
-        <input
-          ref={ref}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder="Captura… prueba «llamar a Lumen mañana !alta»"
-          aria-describedby={error ? "captura-error" : undefined}
-          className="min-w-0 grow border-0 bg-transparent text-base text-(--text-primary) outline-none placeholder:text-(--text-muted) lg:text-sm"
-        />
-        {linkedNote && (
-          <Button size="sm" variant="secondary" onPress={onUnlinkNote} aria-label={`Quitar el vínculo con la nota ${linkedNote.title || "sin título"}`} className="hubly-pop h-6 shrink-0 text-(--status-success-text)">
-            Nota: {linkedNote.title || "sin título"} ×
-          </Button>
-        )}
-        {chips.map((chip) => (
-          <Chip key={chip.label} color={chip.color} variant="soft" size="sm" className="hubly-pop hidden shrink-0 sm:inline-flex">{chip.label}</Chip>
-        ))}
-        <Kbd className="hidden shrink-0 lg:inline-flex"><Kbd.Content>C</Kbd.Content></Kbd>
+    <form onSubmit={submit} className="relative flex min-w-0 grow items-center gap-2">
+      {(tokens.length > 0 || linked) && (
+        <div className="hubly-pop hubly-pop-surface absolute right-0 bottom-full left-0 mb-2 flex flex-wrap items-center gap-1 rounded-xl p-2">
+          {linked && <Button size="sm" variant="secondary" onPress={linked.remove} aria-label={`Quitar el vínculo con la nota ${linked.label}`} className="min-h-11">Nota: {linked.label} ×</Button>}
+          {tokens.map((chip) => <Chip key={chip.label} color={chip.color} variant="soft" size="sm">{chip.label}</Chip>)}
+        </div>
+      )}
+      <label className="flex h-11 min-w-0 grow items-center gap-2 rounded-xl border border-(--glass-line) bg-(--glass-field) px-3 focus-within:border-(--accent-primary)">
+        <span className="sr-only">{label}</span>
+        <input ref={ref} value={text} onChange={(event) => setText(event.target.value)} placeholder={hint} aria-describedby={error ? errorId : undefined}
+          className="min-w-0 grow border-0 bg-transparent text-base text-(--text-primary) outline-none placeholder:text-(--text-muted) lg:text-sm" />
+        <Kbd className="hidden shrink-0 xl:inline-flex"><Kbd.Content>{shortcut}</Kbd.Content></Kbd>
       </label>
-      <Button type="submit" variant="primary" className="h-11 shrink-0">
-        Agregar
-      </Button>
-      {error && <span id="captura-error" role="alert" className="sr-only">{error}</span>}
+      <Button type="submit" variant="primary" className="h-11 shrink-0 gap-1 px-2">{submitIcon} Agregar</Button>
+      {error && <span id={errorId} role="alert" className="sr-only">{error}</span>}
     </form>
   );
 });
 
-export interface DockProps extends CaptureFieldProps {
-  imagen?: WallpaperImageControls | undefined;
-  prefs: EspacioPreferencias;
-  onPrefs: (patch: PreferenciasPatch) => void;
-  pickerOpen: boolean;
-  onPickerOpenChange: (open: boolean) => void;
+function Waiting({ waiting }: Pick<DockConfig, "waiting">) {
+  return (
+    <Popover>
+      <Button variant="ghost" className="h-11 shrink-0 flex-col gap-0 px-1 text-xs" aria-label={`Te esperan: ${waiting.detail}`}>
+        <span>Te esperan <strong className="text-(--status-danger-text)">{waiting.items.length}</strong></span>
+        <span className="text-(--text-secondary)">{waiting.detail}</span>
+      </Button>
+      <Popover.Content placement="top" className="hubly-pop-surface w-64 rounded-xl p-3">
+        <Popover.Dialog aria-label="Pendientes que te esperan">
+          <Popover.Heading className="text-sm font-semibold">Te esperan</Popover.Heading>
+          {waiting.items.length ? <ul className="my-2 max-h-48 list-disc overflow-y-auto ps-5 text-sm">{waiting.items.map((item) => <li key={item.id}>{item.title}</li>)}</ul> : <p className="my-2 text-sm">Estás al día.</p>}
+          <div className="flex flex-wrap gap-1">{waiting.filters.map((filter) => (
+            <ToggleButton key={filter.label} variant="default" className="min-h-11" isSelected={filter.selected} onChange={filter.run}>{filter.label}</ToggleButton>
+          ))}</div>
+        </Popover.Dialog>
+      </Popover.Content>
+    </Popover>
+  );
 }
 
-/** Dock flotante de escritorio (#75): fondo, paneles, distribución y captura. */
-export const Dock = forwardRef<HTMLInputElement, DockProps>(function Dock({ imagen, prefs, onPrefs, pickerOpen, onPickerOpenChange, ...capture }, ref) {
+function DockDetails({ config }: { config: DockConfig }) {
+  const name = useId();
+  const { done, total } = config.pace;
   return (
-    <div className="hubly-glass hubly-enter flex w-full max-w-4xl items-center gap-1.5 rounded-2xl p-2" data-delay="3">
-      <BackgroundPicker imagen={imagen} prefs={prefs} onChange={onPrefs} isOpen={pickerOpen} onOpenChange={onPickerOpenChange} />
-      <PanelsMenu prefs={prefs} onChange={onPrefs} />
-      <LayoutSwitch value={prefs.distribucion} onChange={(distribucion) => onPrefs({ distribucion })} />
-      <span aria-hidden="true" className="mx-1 h-7 w-px bg-(--glass-line-strong)" />
-      <CaptureField ref={ref} {...capture} className="grow" />
+    <>
+      <Waiting waiting={config.waiting} />
+      <div className="flex shrink-0 items-center gap-1 text-xs text-(--text-secondary)">
+        <svg viewBox="0 0 24 24" className="size-7 text-(--accent-primary)" aria-hidden="true" fill="none" strokeWidth={2.5}>
+          <circle cx="12" cy="12" r="9" className="stroke-(--glass-line-strong)" />
+          <circle cx="12" cy="12" r="9" pathLength="100" stroke="currentColor" strokeDasharray={`${total ? 100 * done / total : 0} 100`} transform="rotate(-90 12 12)" />
+        </svg>
+        <span className="lg:sr-only xl:not-sr-only">{config.pace.label}</span>
+      </div>
+      <div role="radiogroup" aria-label="Distribución" className="flex shrink-0 rounded-lg bg-(--glass-hover)">
+        {config.views.map((view) => (
+          <label key={view.id} title={view.label} className="cursor-pointer">
+            <input type="radio" name={name} aria-label={view.label} checked={view.selected} onChange={view.run} className="peer sr-only" />
+            <span className="flex size-11 items-center justify-center rounded-md text-(--text-secondary) peer-checked:bg-(--surface-raised) peer-checked:text-(--accent-primary) peer-focus-visible:ring-2 peer-focus-visible:ring-(--accent-primary)"><Icon name={view.icon} /></span>
+          </label>
+        ))}
+      </div>
+      <span aria-live="polite" title={config.saved} className="shrink-0 text-xs text-(--text-secondary) lg:sr-only xl:not-sr-only">{config.saved}</span>
+    </>
+  );
+}
+
+function DockActions({ actions }: Pick<DockConfig, "actions">) {
+  return actions.map((action) => (
+    <button key={action.key} type="button" onClick={action.run} title={`${action.label} (${action.key})`} className="flex size-11 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg text-xs text-(--text-secondary) hover:bg-(--glass-hover) focus-visible:ring-2 focus-visible:ring-(--accent-primary)">
+      <Icon name={action.icon} className="size-4 rounded-sm bg-(--icon-fill) text-(--accent-primary)" />{action.label}
+    </button>
+  ));
+}
+
+/** El marco elige la configuración. El dock solo presenta sus controles. */
+export const Dock = forwardRef<HTMLInputElement, { config: DockConfig; extra?: ReactNode }>(function Dock({ config, extra }, ref) {
+  return (
+    <div role="toolbar" aria-label={config.label} data-delay="3" className="hubly-glass hubly-enter flex h-16 w-full min-w-0 items-center gap-1 rounded-(--glass-radius-access-card) px-2">
+      <span className="w-16 shrink-0 px-1 text-xs font-semibold">{config.context}</span>
+      <DockActions actions={config.actions} />
+      <CaptureField ref={ref} {...config.entry} />
+      <DockDetails config={config} />
+      {extra}
     </div>
   );
 });
+
+export function DockMore({ config, extra }: { config: DockConfig; extra?: ReactNode }) {
+  return (
+    <Popover>
+      <Button variant="ghost" className="min-h-11">Más</Button>
+      <Popover.Content placement="top" className="hubly-pop-surface w-72 rounded-xl p-3">
+        <Popover.Dialog aria-label={`Más opciones · ${config.label}`} className="flex flex-wrap items-center gap-2">
+          <DockDetails config={config} />
+          <DockActions actions={config.actions} />
+          {extra}
+        </Popover.Dialog>
+      </Popover.Content>
+    </Popover>
+  );
+}
