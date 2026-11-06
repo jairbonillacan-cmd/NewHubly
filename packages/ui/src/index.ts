@@ -32,3 +32,7 @@ export * from "./landing/LegalPage";
 
 // Espacio de Hoy con paneles de cristal sobre fondo personal (propuesta B, #75)
 export * from "./espacio";
+export { PresenceDot } from "./espacio/TopBar";
+
+// Componentes de chat de agencia (Issue #201)
+export * from "./chat/EmojiPicker";

@@ -309,6 +309,8 @@ body {
 .hubly-bars > span:nth-child(8) { transition-delay: calc(var(--motion-step) * 3.5); }
 @keyframes hubly-pop { 0% { transform: scale(0.96); opacity: 0; } 100% { transform: none; opacity: 1; } }
 .hubly-pop { animation: hubly-pop var(--motion-fast) var(--motion-ease) both; }
+@keyframes hubly-chat-msg-in { 0% { opacity: 0; transform: translateY(var(--space-2)); } 100% { opacity: 1; transform: none; } }
+.hubly-chat-msg-enter { animation: hubly-chat-msg-in var(--motion-fast) var(--motion-ease) both; }
 /* Buscador (issue 133): baja con un rebote suave, las filas entran en cascada y el campo no lleva recuadro (el cursor ya indica el foco). */
 @keyframes hubly-palette-in { 0% { transform: translateY(-14px) scale(0.97); opacity: 0; filter: blur(6px); } 100% { transform: none; opacity: 1; filter: none; } }
 @keyframes hubly-palette-row { 0% { transform: translateY(6px); opacity: 0; } 100% { transform: none; opacity: 1; } }
@@ -341,7 +343,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .hubly-reveal, .hubly-bars > span { transition: none; }
   .hubly-motion .hubly-reveal:not([data-visible="true"]), .hubly-motion .hubly-bars:not([data-visible="true"]) > span { opacity: 1; transform: none; }
-  .hubly-enter, .hubly-float, .hubly-pop, .hubly-palette, .hubly-palette-overlay, .hubly-palette-row { animation: none; }
+  .hubly-enter, .hubly-float, .hubly-pop, .hubly-chat-msg-enter, .hubly-palette, .hubly-palette-overlay, .hubly-palette-row { animation: none; }
   .hubly-peek { transition: none; }
   .hubly-motion .hubly-reveal:not([data-visible="true"]) .hubly-peek { opacity: 1; transform: none; }
   .hubly-wiggle:hover { animation: none; }
