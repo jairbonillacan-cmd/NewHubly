@@ -168,14 +168,25 @@ function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, pre
         </div>
         <Dropdown.Menu aria-label="Menú de tu perfil" onAction={onAction} className="hubly-sin-anillo pt-1.5">
           {onChangePresence ? (
-            <Dropdown.Section aria-label="Tu estado" selectionMode="single" selectedKeys={[status]} onSelectionChange={onPresence} className="border-b border-(--glass-line) pb-1.5">
-              {(Object.keys(PRESENCE) as EspacioPresence[]).map((id) => (
-                <Dropdown.Item key={id} id={id} textValue={PRESENCE[id].label} className={ITEM}>
-                  <PresenceDot status={id} className="size-3 border-0" />
-                  <span className="flex grow flex-col"><span>{PRESENCE[id].label}</span><span className="text-xs text-(--text-muted)">{PRESENCE[id].hint}</span></span>
-                  {check(status === id)}
+            <Dropdown.Section aria-label="Tu estado" className="border-b border-(--glass-line) pb-1.5">
+              <Dropdown.SubmenuTrigger>
+                <Dropdown.Item id="estado" textValue={`Estado: ${PRESENCE[status].label}`} className={ITEM}>
+                  <PresenceDot status={status} className="size-3 border-0" />
+                  <span className="grow">{PRESENCE[status].label}</span>
+                  <span className="mr-5 text-xs text-(--text-muted)">Cambiar</span><Dropdown.SubmenuIndicator />
                 </Dropdown.Item>
-              ))}
+                <Dropdown.Popover placement="left top" className={MENU}>
+                  <Dropdown.Menu aria-label="Tu estado" selectionMode="single" selectedKeys={[status]} onSelectionChange={onPresence}>
+                    {(Object.keys(PRESENCE) as EspacioPresence[]).map((id) => (
+                      <Dropdown.Item key={id} id={id} textValue={PRESENCE[id].label} className={ITEM}>
+                        <PresenceDot status={id} className="size-3 border-0" />
+                        <span className="flex grow flex-col"><span>{PRESENCE[id].label}</span><span className="text-xs text-(--text-muted)">{PRESENCE[id].hint}</span></span>
+                        {check(status === id)}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.SubmenuTrigger>
             </Dropdown.Section>
           ) : null}
           <Dropdown.Section aria-label="Perfil" className="py-1.5">

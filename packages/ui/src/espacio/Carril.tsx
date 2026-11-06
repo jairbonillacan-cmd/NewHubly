@@ -35,7 +35,7 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
           <span aria-hidden="true" className={`absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs leading-none font-bold ${activa ? "bg-(--text-on-accent) text-(--accent-primary)" : "bg-(--accent-primary) text-(--text-on-accent)"}`}>{ficha}</span>
         )}
       </span>
-      {expandido && <span className="grow text-left text-sm font-semibold">{herramienta.nombre}</span>}
+      {expandido && <span className="hubly-carril-texto grow text-left text-sm font-semibold">{herramienta.nombre}</span>}
       {expandido && ficha && (
         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${activa ? "bg-(--icon-fill-active)" : herramienta.disponible ? "bg-(--accent-primary-subtle) text-(--accent-primary)" : "bg-(--glass-hover) text-(--text-secondary)"}`}>{ficha}</span>
       )}
@@ -57,10 +57,10 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
   return (
     <div className="group/carril relative h-full">
     <nav aria-label="Herramientas" data-delay="1"
-      className={`hubly-glass hubly-enter flex h-full flex-col gap-1 overflow-y-auto rounded-(--glass-radius-access-bar) p-2 transition-[width] ${expandido ? "w-58" : "w-16 items-center"}`}>
+      className={`hubly-glass hubly-enter hubly-carril flex h-full flex-col gap-1 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) py-2 pr-4 pl-2 whitespace-nowrap ${expandido ? "w-60" : "w-18 items-center"}`}>
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
       <span aria-hidden="true" className="mx-2 my-1.5 h-px bg-(--glass-line-strong)" />
-      {expandido && <p className="m-0 px-3 pb-1 text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">Herramientas</p>}
+      {expandido && <p className="hubly-carril-texto m-0 px-3 pb-1 text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">Herramientas</p>}
       <ul aria-label="Herramientas" className="m-0 flex list-none flex-col gap-1 p-0">
         {herramientas.map((herramienta) => (
           <li key={herramienta.id}>
@@ -71,12 +71,12 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
       <Button variant="ghost" isDisabled aria-label="Agregar una herramienta, muy pronto"
         className={`${ITEM} mt-1 border border-dashed border-(--glass-line-strong) bg-transparent text-(--text-secondary) ${expandido ? "h-11 justify-start gap-3 px-3" : "h-11 justify-center px-0"}`}>
         <Icon name="mas" className="size-5" />
-        {expandido && <span className="grow text-left text-sm">Agregar una herramienta</span>}
-        {expandido && <span className="text-xs">Muy pronto</span>}
+        {expandido && <span className="hubly-carril-texto grow text-left text-sm">Agregar una herramienta</span>}
+        {expandido && <span className="hubly-carril-texto text-xs">Muy pronto</span>}
       </Button>
       <span className="grow" />
       {expandido && (
-        <div className="mb-1 flex flex-col gap-2 rounded-xl bg-(--glass-hover) p-3">
+        <div className="hubly-carril-texto mb-1 flex flex-col gap-2 rounded-xl bg-(--glass-hover) p-3 whitespace-normal">
           <p className="m-0 text-sm font-semibold">Tu semana</p>
           <p className="m-0 text-xs text-(--text-secondary)">{semana.hechos} de {semana.total} pendientes hechos</p>
           <progress value={semana.hechos} max={Math.max(semana.total, 1)} aria-label="Pendientes hechos esta semana"
@@ -84,11 +84,11 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
         </div>
       )}
     </nav>
-      {/* Flecha a media altura en el borde derecho (issue 142): despliega o retrae el carril. */}
+      {/* Asa integrada en el borde derecho del carril (issues 142 y 150): mismo cristal y color; despliega o retrae. */}
       <Tooltip delay={400}>
-        <Button isIconOnly variant="ghost" aria-expanded={expandido} aria-label={expandido ? "Contraer el carril" : "Expandir el carril"} onPress={onToggleExpandido}
-          className="hubly-pop-surface absolute top-1/2 -right-3.5 z-10 size-7 min-w-7 -translate-y-1/2 rounded-full p-0 text-(--text-secondary) transition-transform data-[hovered]:scale-110 data-[hovered]:text-(--accent-primary)">
-          <Icon name="chevron" className={`size-4 transition-transform ${expandido ? "rotate-180" : ""}`} strokeWidth={2.25} />
+        <Button variant="ghost" aria-expanded={expandido} aria-label={expandido ? "Contraer el carril" : "Expandir el carril"} onPress={onToggleExpandido}
+          className="group/asa absolute top-1/2 right-0.5 z-10 flex h-14 w-3.5 min-w-3.5 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-(--glass-hover) p-0 text-(--text-muted) data-[hovered]:bg-(--accent-primary-subtle) data-[hovered]:text-(--accent-primary)">
+          <Icon name="chevron" className={`size-3.5 opacity-70 transition-[opacity,transform] duration-300 group-data-[hovered]/asa:opacity-100 ${expandido ? "rotate-180" : ""}`} />
         </Button>
         <Tooltip.Content placement="right">{expandido ? "Contraer" : "Expandir"}</Tooltip.Content>
       </Tooltip>
