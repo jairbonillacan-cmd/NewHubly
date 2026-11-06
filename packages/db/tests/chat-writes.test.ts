@@ -51,7 +51,7 @@ afterAll(async () => {
   }
 });
 
-describe("Chat: operaciones transaccionales", () => {
+describe("Chat: operaciones transaccionales", { timeout: 30000 }, () => {
   it("crea un solo general y protege creación, renombre y archivado", async () => {
     const agency = await makeAgency();
     const [channel, sameChannel] = await Promise.all([general(agency), general(agency, editor)]);
@@ -152,5 +152,94 @@ describe("Chat: operaciones transaccionales", () => {
     await expect(send(agency, id, editor, "Excede la cuota")).rejects.toMatchObject({ code: "P0429" });
     expect(await send(agency, id, editor, "Primero", key)).toBe(first);
     await expect(send(agency, id, peer, "Cuota de otra persona")).resolves.toEqual(expect.any(String));
+  });
+
+  it("gestiona citas, hilos sin anidación de segundo nivel y actualiza contadores al responder o retirar", async () => {
+    const agency = await makeAgency();
+    const channel = await general(agency);
+    const other = await direct(agency, editor, peer);
+    const root = await send(agency, channel, editor, "Mensaje raíz");
+    const otherMsg = await send(agency, other, editor, "En otra conversación");
+
+    await expect(asMember(peer, (tx) => tx`select private.chat_send_message(${agency}, ${channel}, ${randomUUID()}, 'Cita ajena', ${otherMsg})`)).rejects.toMatchObject({ code: "22023" });
+    await expect(asMember(peer, (tx) => tx`select private.chat_send_message(${agency}, ${channel}, ${randomUUID()}, 'Hilo ajeno', null, ${otherMsg})`)).rejects.toMatchObject({ code: "22023" });
+
+    const reply1 = await asMember(peer, async (tx) => (await tx<{ id: string }[]>`select private.chat_send_message(${agency}, ${channel}, ${randomUUID()}, 'Primera respuesta', ${root}, ${root}) as id`)[0]!.id);
+    const reply2 = await asMember(editor, async (tx) => (await tx<{ id: string }[]>`select private.chat_send_message(${agency}, ${channel}, ${randomUUID()}, 'Segunda respuesta', ${reply1}, ${root}) as id`)[0]!.id);
+    await expect(asMember(editor, (tx) => tx`select private.chat_send_message(${agency}, ${channel}, ${randomUUID()}, 'Subhilo prohibido', null, ${reply1})`)).rejects.toMatchObject({ code: "22023" });
+
+    expect((await db`select thread_reply_count, thread_last_reply_at is not null as has_last, change_number from private.chat_messages where id = ${root}`)[0])
+      .toMatchObject({ thread_reply_count: 2, has_last: true, change_number: 4 });
+    await asMember(editor, (tx) => tx`select private.chat_change_message(${agency}, ${channel}, ${reply2}, null)`);
+    expect((await db`select thread_reply_count, thread_last_reply_at is not null as has_last, change_number from private.chat_messages where id = ${root}`)[0])
+      .toMatchObject({ thread_reply_count: 1, has_last: true, change_number: 7 });
+    await asMember(peer, (tx) => tx`select private.chat_change_message(${agency}, ${channel}, ${reply1}, null)`);
+    expect((await db`select thread_reply_count, thread_last_reply_at from private.chat_messages where id = ${root}`)[0])
+      .toMatchObject({ thread_reply_count: 0, thread_last_reply_at: null });
+  });
+
+  it("alterna reacciones con validación de emoji, limpia al retirar y aplica cuota por minuto", async () => {
+    const agency = await makeAgency();
+    const channel = await general(agency);
+    const msg = await send(agency, channel, editor, "Mensaje para reaccionar");
+
+    for (const emoji of ["👍🏽", "❤️", "👩‍💻", "🇲🇽"]) {
+      expect((await asMember(peer, (tx) => tx<{ ok: boolean }[]>`select private.chat_toggle_reaction(${agency}, ${channel}, ${msg}, ${emoji}) as ok`))[0]!.ok).toBe(true);
+    }
+    expect((await asMember(peer, (tx) => tx<{ ok: boolean }[]>`select private.chat_toggle_reaction(${agency}, ${channel}, ${msg}, '❤️') as ok`))[0]!.ok).toBe(false);
+    expect(await asMember(viewer, (tx) => tx`select emoji from private.chat_reactions where message_id = ${msg} order by emoji`))
+      .toEqual([{ emoji: "🇲🇽" }, { emoji: "👍🏽" }, { emoji: "👩‍💻" }]);
+    for (const bad of ["", "a", " ", "👍👍", "👍a", "👨‍👩‍👧‍👦"]) {
+      await expect(asMember(peer, (tx) => tx`select private.chat_toggle_reaction(${agency}, ${channel}, ${msg}, ${bad})`)).rejects.toMatchObject({ code: "22023" });
+    }
+    await asMember(editor, (tx) => tx`select private.chat_toggle_reaction(${agency}, ${channel}, ${msg}, '🔥') from generate_series(1, 60)`);
+    await expect(asMember(editor, (tx) => tx`select private.chat_toggle_reaction(${agency}, ${channel}, ${msg}, '🔥')`)).rejects.toMatchObject({ code: "P0429" });
+
+    await asMember(editor, (tx) => tx`select private.chat_change_message(${agency}, ${channel}, ${msg}, null)`);
+    expect(await db`select 1 from private.chat_reactions where message_id = ${msg}`).toHaveLength(0);
+    await expect(asMember(peer, (tx) => tx`select private.chat_toggle_reaction(${agency}, ${channel}, ${msg}, '👍')`)).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("valida pertenencia de menciones, marca leídas con cuota y controla estado escribiendo (3s/6s) sin filtrar existencia", async () => {
+    const agency = await makeAgency();
+    const channel = await general(agency);
+    const dm = await direct(agency, editor, peer);
+
+    await expect(asMember(editor, (tx) => tx`select private.chat_send_message(${agency}, ${channel}, ${randomUUID()}, 'Intruso', null, null, ${[stranger]}::uuid[])`)).rejects.toMatchObject({ code: "22023" });
+    await expect(asMember(editor, (tx) => tx`select private.chat_send_message(${agency}, ${dm}, ${randomUUID()}, 'Fuera del directo', null, null, ${[owner]}::uuid[])`)).rejects.toMatchObject({ code: "22023" });
+
+    const m1 = (await asMember(editor, (tx) => tx<{ id: string }[]>`select private.chat_send_message(${agency}, ${channel}, ${randomUUID()}, 'Hola @visor y @par', null, null, ${[viewer, peer, viewer]}::uuid[]) as id`))[0]!.id;
+    const m2 = (await asMember(editor, (tx) => tx<{ id: string }[]>`select private.chat_send_message(${agency}, ${channel}, ${randomUUID()}, 'Segunda mención', null, null, ${[viewer]}::uuid[]) as id`))[0]!.id;
+    expect(await asMember(viewer, (tx) => tx`select message_id from private.chat_mentions where mentioned_user_id = ${viewer} and read_at is null`)).toHaveLength(2);
+
+    expect((await asMember(viewer, (tx) => tx<{ c: number }[]>`select private.chat_mark_mentions_read(${agency}, ${channel}, 1) as c`))[0]!.c).toBe(1);
+    await asMember(editor, (tx) => tx`select private.chat_change_message(${agency}, ${channel}, ${m2}, null)`);
+    expect(await db`select 1 from private.chat_mentions where message_id = ${m2}`).toHaveLength(0);
+    expect(await db`select 1 from private.chat_mentions where message_id = ${m1} and mentioned_user_id = ${viewer} and read_at is not null`).toHaveLength(1);
+
+    await asMember(viewer, (tx) => tx`select private.chat_mark_mentions_read(${agency}, ${channel}) from generate_series(1, 59)`);
+    await expect(asMember(viewer, (tx) => tx`select private.chat_mark_mentions_read(${agency}, ${channel})`)).rejects.toMatchObject({ code: "P0429" });
+
+    const [expRow] = await asMember(editor, (tx) => tx<{ exp: Date }[]>`select private.chat_set_typing(${agency}, ${channel}) as exp`);
+    const [typingRow] = await db<{ diff: number }[]>`select extract(epoch from (expires_at - updated_at))::int as diff from private.chat_typing where workspace_id = ${agency} and conversation_id = ${channel} and user_id = ${editor}`;
+    expect(expRow?.exp).toBeInstanceOf(Date);
+    expect(typingRow?.diff).toBe(6);
+    await expect(asMember(editor, (tx) => tx`select private.chat_set_typing(${agency}, ${channel})`)).rejects.toMatchObject({ code: "P0429" });
+
+    const denied = await Promise.all([
+      asMember(stranger, (tx) => tx`select private.chat_toggle_reaction(${agency}, ${channel}, ${m1}, '👍')`).catch((e: unknown) => e),
+      asMember(viewer, (tx) => tx`select private.chat_toggle_reaction(${agency}, ${channel}, ${m1}, '👍')`).catch((e: unknown) => e),
+      asMember(owner, (tx) => tx`select private.chat_toggle_reaction(${agency}, ${dm}, ${m1}, '👍')`).catch((e: unknown) => e),
+      asMember(editor, (tx) => tx`select private.chat_toggle_reaction(${agency}, ${randomUUID()}, ${m1}, '👍')`).catch((e: unknown) => e),
+      asMember(stranger, (tx) => tx`select private.chat_set_typing(${agency}, ${channel})`).catch((e: unknown) => e),
+      asMember(viewer, (tx) => tx`select private.chat_set_typing(${agency}, ${channel})`).catch((e: unknown) => e),
+      asMember(owner, (tx) => tx`select private.chat_set_typing(${agency}, ${dm})`).catch((e: unknown) => e),
+      asMember(editor, (tx) => tx`select private.chat_set_typing(${agency}, ${randomUUID()})`).catch((e: unknown) => e),
+      asMember(stranger, (tx) => tx`select private.chat_mark_mentions_read(${agency}, ${channel})`).catch((e: unknown) => e),
+      asMember(viewer, (tx) => tx`select private.chat_mark_mentions_read(${agency}, ${dm})`).catch((e: unknown) => e),
+      asMember(owner, (tx) => tx`select private.chat_mark_mentions_read(${agency}, ${dm})`).catch((e: unknown) => e),
+      asMember(viewer, (tx) => tx`select private.chat_mark_mentions_read(${agency}, ${randomUUID()})`).catch((e: unknown) => e),
+    ]);
+    for (const err of denied) expect(err).toMatchObject({ code: "42501", message: "Conversación no disponible" });
   });
 });
