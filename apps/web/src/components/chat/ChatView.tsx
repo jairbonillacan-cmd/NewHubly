@@ -3,6 +3,7 @@
 import type { ChatCommand, ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
 import { Icon, IconoHubly, Label, ListBox, Select } from "@hubly/ui";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { isMessageEndVisible } from "./sync";
 
 type LocalCommand = ChatCommand extends infer C ? C extends ChatCommand ? Omit<C, "workspaceId"> : never : never;
 export type ChatViewCommand = LocalCommand;
@@ -206,7 +207,8 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
     pinned.current = element.scrollHeight - element.clientHeight - element.scrollTop < 32;
     const latest = props.messages.at(-1);
     const end = element.querySelector("li:last-child")?.getBoundingClientRect();
-    if (pinned.current && latest && end && end.bottom <= window.innerHeight + 1 && end.bottom > 0 && !document.hidden) {
+    if (pinned.current && latest && end && !document.hidden &&
+        isMessageEndVisible(end.bottom, element.getBoundingClientRect(), window.innerHeight)) {
       props.onVisible(latest.number);
     }
   }

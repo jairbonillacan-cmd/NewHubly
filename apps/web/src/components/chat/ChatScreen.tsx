@@ -3,7 +3,7 @@
 import type { ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatView, type ChatViewCommand } from "./ChatView";
-import { mergeChatMessages, startChatPolling } from "./sync";
+import { incomingChatNotice, mergeChatMessages, startChatPolling } from "./sync";
 import { ChatRequestError, chatTransport } from "./transport";
 
 interface ChatScreenProps {
@@ -79,6 +79,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
     const { signal } = controller;
     let cursor = 0;
     let latestNumber = 0;
+    let announced = 0;
     let loaded = !currentId;
     async function update() {
       try {
@@ -115,7 +116,10 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
           setMessages((previous) => mergeChatMessages(previous, update.changes));
           const incoming = update.changes.filter((item) => item.number > latestNumber && item.authorId !== userId && item.body !== null).length;
           latestNumber = Math.max(latestNumber, ...update.changes.map((item) => item.number));
-          if (incoming) setNotice(incoming === 1 ? "Llegó un mensaje nuevo." : `Llegaron ${incoming} mensajes nuevos.`);
+          if (incoming) {
+            announced += incoming;
+            setNotice(incomingChatNotice(announced));
+          }
         }
         setLoading(false);
         setConnectionError(null);
