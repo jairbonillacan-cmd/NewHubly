@@ -22,12 +22,15 @@ describe("Modales que no se cortan", () => {
   });
 
   it("cada modal con cuerpo largo lo desplaza por dentro y deja cabecera y acciones fijas", () => {
-    for (const name of ["BienvenidaDialog", "EquipoDialog", "PerfilDialog", "FotoRecorte"]) expect(read(`./${name}.tsx`), name).toMatch(/min-h-0[^"]*overflow-y-auto/);
-    for (const name of ["PerfilDialog", "FotoRecorte", "BienvenidaDialog"]) expect(read(`./${name}.tsx`), name).toMatch(/shrink-0[^"]*border-t/);
+    for (const name of DIALOGS) expect(read(`./${name}.tsx`), name).toMatch(/min-h-0[^"]*overflow-y-auto/);
+    for (const name of ["PerfilDialog", "FotoRecorte", "BienvenidaDialog", "CommandPalette"]) expect(read(`./${name}.tsx`), name).toMatch(/shrink-0[^"]*border-t/);
+    for (const name of ["PerfilDialog", "FotoRecorte", "EquipoDialog", "CommandPalette"]) expect(read(`./${name}.tsx`), name).toMatch(/shrink-0[^"]*border-b/);
+    expect(read("./FotoRecorte.tsx")).toMatch(/hubly-recorte-visor[^"]*shrink-0/);
   });
 
   it("los menús y ventanas emergentes se desplazan si no caben", () => {
     expect(read("./TopBar.tsx")).toContain("hubly-popover-scroll");
+    expect(read("./EquipoDialog.tsx")).toContain("hubly-popover-scroll");
     expect(read("./Dock.tsx").match(/hubly-popover-scroll/g)).toHaveLength(3);
   });
 

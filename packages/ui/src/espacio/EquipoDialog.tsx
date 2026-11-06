@@ -39,7 +39,7 @@ function RoleSelect<R extends EspacioRole>({ label, value, options, onChange }: 
         <Select.Value />
         <Select.Indicator />
       </Select.Trigger>
-      <Select.Popover>
+      <Select.Popover className="hubly-pop-surface hubly-popover-scroll rounded-xl p-1 text-(--text-primary)">
         <ListBox>
           {options.map((option) => (
             <ListBox.Item key={option} id={option} textValue={ROLE_LABEL[option]}>
@@ -166,7 +166,7 @@ export function EquipoDialog({ mode, onClose, onCreateAgency, ...rest }: EquipoD
     <ModalOverlay isOpen={mode !== null} onOpenChange={(open) => { if (!open) onClose(); }} isDismissable className="hubly-modal-overlay fixed inset-0 z-50 bg-(--glass-hover) backdrop-blur-xs">
       <Modal className="hubly-pop hubly-modal max-w-lg">
         <Dialog className="hubly-pop-surface flex flex-col overflow-hidden rounded-2xl text-(--text-primary) outline-none">
-          <div className="flex items-center gap-2.5 border-b border-(--glass-line) px-4 py-3">
+          <div className="flex shrink-0 items-center gap-2.5 border-b border-(--glass-line) px-4 py-3">
             <Icon name={mode === "crear" ? "mas" : "equipo"} className="size-4 text-(--accent-primary)" />
             <Heading slot="title" className="m-0 grow text-base font-semibold">{title}</Heading>
             <Button isIconOnly size="sm" variant="ghost" aria-label="Cerrar" onPress={onClose}><Icon name="cerrar" /></Button>

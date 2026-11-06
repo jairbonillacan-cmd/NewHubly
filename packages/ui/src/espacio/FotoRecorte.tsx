@@ -111,18 +111,18 @@ export function FotoRecorte({ file, busy, error, onCancel, onConfirm }: FotoReco
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={() => { arrastre.current = null; }}
-              className="hubly-recorte-visor relative size-64 cursor-grab touch-none overflow-hidden rounded-full bg-(--glass-hover) active:cursor-grabbing"
+              className="hubly-recorte-visor relative size-64 shrink-0 cursor-grab touch-none overflow-hidden rounded-full bg-(--glass-hover) active:cursor-grabbing"
             >
               {url && <img ref={imgRef} src={url} alt="" draggable={false} onLoad={(event) => setImg(event.currentTarget)} className="hubly-recorte-foto" />}
             </div>
-            <label className="flex w-full items-center gap-3 text-sm text-(--text-secondary)">
+            <label className="flex w-full shrink-0 items-center gap-3 text-sm text-(--text-secondary)">
               <Icon name="menos" className="size-4" />
               <span className="sr-only">Acercar</span>
               <input type="range" min={1} max={RECORTE_ZOOM_MAX} step={0.01} value={encuadre.zoom} onChange={(event) => ajustar({ ...encuadre, zoom: Number(event.target.value) })}
                 className="grow accent-(--accent-primary)" />
               <Icon name="mas" className="size-4" />
             </label>
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex shrink-0 flex-wrap justify-center gap-2">
               <Button size="sm" variant="secondary" onPress={() => rotar(-90)} className="min-h-11"><Icon name="deshacer" /> Girar a la izquierda</Button>
               <Button size="sm" variant="secondary" onPress={() => rotar(90)} className="min-h-11"><span className="-scale-x-100"><Icon name="deshacer" /></span> Girar a la derecha</Button>
               <Button size="sm" variant="ghost" onPress={() => setEncuadre(INICIAL)} className="min-h-11">Restablecer</Button>
