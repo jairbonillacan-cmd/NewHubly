@@ -1,4 +1,6 @@
-// Set único de iconos del espacio (#75): trazos propios de 24×24, sin dependencias nuevas.
+// Set único de iconos del espacio (#75): trazos propios de 24×24, sin dependencias nuevas. Los que tienen versión en
+// la identidad nueva (issue 148) se dibujan con ella; el resto sigue con su trazo.
+import { ICONOS_HUBLY, type IconoHublyNombre } from "./iconos/iconosHubly";
 
 /** Tuerca de 8 dientes con su hueco central; se calcula una vez al cargar el módulo. */
 const TUERCA = (() => {
@@ -53,7 +55,25 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS;
 
+const HUBLY: Partial<Record<IconName, IconoHublyNombre>> = {
+  sol: "claro", luna: "oscuro", mas: "agregar", menos: "alejar", buscar: "buscar", imagen: "fondos", libre: "lienzo-libre",
+  lado: "lado-a-lado", enfoque: "enfoque", descargar: "descargar", salir: "cerrar-sesion", teclado: "teclado", hoy: "hoy",
+  campana: "avisos", ayuda: "ayuda", ajustes: "ajustes", lapiz: "editar-perfil", tuerca: "opciones-lienzo", mapa: "mapa",
+  encuadrar: "ver-paneles", deshacer: "restablecer", paneles: "cuadricula", chevron: "submenu",
+};
+
+/** Icono de la identidad (issue 148), a color; `activo` lo pasa a los colores sobre el acento. */
+export function IconoHubly({ name, className, activo = false }: { name: IconoHublyNombre; className?: string | undefined; activo?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`${activo ? "hubly-icono-activo " : ""}${className ?? "size-4"}`}>
+      {ICONOS_HUBLY[name]}
+    </svg>
+  );
+}
+
 export function Icon({ name, className, strokeWidth = 1.75 }: { name: IconName; className?: string; strokeWidth?: number }) {
+  const hubly = HUBLY[name];
+  if (hubly) return <IconoHubly name={hubly} className={className} />;
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className ?? "size-4"}>
       <path d={PATHS[name]} />

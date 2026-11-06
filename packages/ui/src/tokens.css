@@ -104,6 +104,9 @@
   --wallpaper-line: rgba(17, 19, 22, 0.09); --wallpaper-line-accent: rgba(29, 78, 216, 0.28);
   --wallpaper-pattern: rgba(17, 19, 22, 0.05); --wallpaper-pattern-accent: rgba(29, 78, 216, 0.14);
   --wallpaper-image-veil: rgba(247, 247, 248, 0.30);
+  /* Iconos de la identidad (issue 148): grafito y azul tinta. */
+  --hi-borde: #262C36; --hi-tono-1: #515968; --hi-tono-2: #303743; --hi-relieve: #E5EAF3; --hi-brillo: #DCE5F8; --hi-acento: #1D4ED8;
+  --hi-medio: #606A7B; --hi-fondo: #FFFFFF; --hi-peligro: #8C1D18; --hi-aviso: #6E4506; --hi-exito: #165632; --hi-papel: #F7F7F8;
   --avatar-veil: rgba(12, 13, 15, 0.45);
   --presence-online: #16A34A; --presence-away: #F59E0B; --presence-dnd: #DC2626;
   --wallpaper-puntos: #EEF0F4; --wallpaper-cuadricula: #F5F6F8; --wallpaper-aurora: #EEF1F8; --wallpaper-hubis: #E8EEFB; --wallpaper-arena: #F3EEE6;
@@ -163,6 +166,8 @@
   --wallpaper-line: rgba(232, 232, 235, 0.09); --wallpaper-line-accent: rgba(111, 152, 255, 0.34);
   --wallpaper-pattern: rgba(232, 232, 235, 0.06); --wallpaper-pattern-accent: rgba(111, 152, 255, 0.16);
   --wallpaper-image-veil: rgba(12, 13, 15, 0.40);
+  --hi-borde: #818B9E; --hi-tono-1: #E8E8EB; --hi-tono-2: #B9BCC4; --hi-relieve: #24272D; --hi-brillo: #FFFFFF; --hi-acento: #6F98FF;
+  --hi-medio: #A6ADBC; --hi-fondo: #0C0D0F; --hi-peligro: #F99B96; --hi-aviso: #F3C677; --hi-exito: #8CE0AD; --hi-papel: #16181C;
   --wallpaper-puntos: #0D0F14; --wallpaper-cuadricula: #111318; --wallpaper-aurora: #0A0C14; --wallpaper-hubis: #0C1328; --wallpaper-arena: #0B1020;
   --wallpaper-dot: rgba(232, 232, 235, 0.16); --wallpaper-aurora-1: rgba(59, 108, 255, 0.40); --wallpaper-aurora-2: rgba(139, 92, 246, 0.32); --wallpaper-aurora-3: rgba(14, 165, 233, 0.26);
   --glass-rgb: 16 17 21; --panel-alpha: 0.80; --glass-line: rgba(255, 255, 255, 0.09); --glass-line-strong: rgba(255, 255, 255, 0.15);
@@ -377,6 +382,9 @@ body {
 .hubly-lienzo-item[data-flotando] { outline-color: var(--accent-primary); box-shadow: 0 1.75rem 3.5rem -1rem rgb(0 0 0 / 0.38); transform: translateY(-6px) rotate(-0.6deg) scale(1.015); animation: hubly-flotar 2.4s ease-in-out var(--motion-fast) infinite; }
 .hubly-lienzo-cuerpo, .hubly-lienzo-cuerpo > * { height: 100%; }
 .hubly-lienzo-item [data-lienzo-asa] { cursor: grab; }
+/* Icono sobre el fondo de acento (carril seleccionado): siluetas en el color sobre acento y relieve en el acento. */
+.hubly-icono-activo { --hi-borde: var(--text-on-accent); --hi-tono-1: var(--text-on-accent); --hi-tono-2: var(--text-on-accent); --hi-medio: var(--text-on-accent);
+  --hi-acento: var(--text-on-accent); --hi-relieve: var(--accent-primary); --hi-brillo: var(--accent-primary); --hi-fondo: var(--accent-primary); }
 .hubly-wallpaper { transition: background-color var(--motion-base) var(--motion-ease); }
 .hubly-wallpaper svg { transition: opacity var(--motion-base) var(--motion-ease); }
 /* Aurora (issue 134): manchas de color que se mueven muy despacio detrás de los paneles. */
