@@ -37,7 +37,7 @@ export type ChatFailure = "conflict" | "rate-limit" | "invalid";
 export class ChatRequestError extends Error {
   constructor(readonly reason: ChatFailure) {
     super(reason === "conflict" ? "Ya existe un canal con ese nombre."
-      : reason === "rate-limit" ? "Has enviado muchos mensajes. Espera un momento." : "La solicitud de chat no es válida.");
+      : reason === "rate-limit" ? "Vas demasiado rápido. Espera un momento y vuelve a intentarlo." : "La solicitud de chat no es válida.");
   }
 }
 
@@ -56,7 +56,7 @@ const guarded = <T>(run: () => Promise<T>) => run().catch(translate);
 
 export function createChatService(ctx: ChatContext, repo: ChatRepository) {
   function requireAgency(workspaceId: string) {
-    if (!ctx.enabled || ctx.workspaceKind !== "agency" || ctx.workspaceId !== workspaceId) {
+    if (!ctx.enabled || ctx.workspaceKind !== "agency" || ctx.workspaceId.toLowerCase() !== workspaceId.toLowerCase()) {
       throw new ChatAccessError();
     }
   }
@@ -94,17 +94,17 @@ export function createChatService(ctx: ChatContext, repo: ChatRepository) {
       if (input.kind === "createChannel" || input.kind === "renameChannel" || input.kind === "archiveChannel") {
         if (ctx.role !== "owner" && ctx.role !== "admin") throw new ChatAccessError();
       }
-      if (input.kind === "openDirect" && (input.recipientId === ctx.userId || !await repo.canContact(input.recipientId))) {
+      if (input.kind === "openDirect" && (input.recipientId === ctx.userId || !await guarded(() => repo.canContact(input.recipientId)))) {
         throw new ChatAccessError();
       }
       if ("conversationId" in input) {
-        const conversation = await repo.conversation(input.conversationId);
+        const conversation = await guarded(() => repo.conversation(input.conversationId));
         if (!conversation || (input.kind !== "read" && !conversation.writable)) throw new ChatAccessError();
         if ((input.kind === "renameChannel" || input.kind === "archiveChannel")
             && (conversation.kind !== "channel" || conversation.slug === "general")) throw new ChatAccessError();
       }
       if ((input.kind === "edit" || input.kind === "remove")
-          && !await repo.ownsMessage(input.conversationId, input.messageId)) throw new ChatAccessError();
+          && !await guarded(() => repo.ownsMessage(input.conversationId, input.messageId))) throw new ChatAccessError();
       return await guarded(() => repo.command(input));
     },
     async directory(workspaceId: string) {

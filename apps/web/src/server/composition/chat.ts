@@ -21,7 +21,7 @@ export async function getChatService(workspaceId: string) {
   const { claims } = await getVerifiedServerSession();
   if (!isChatEnabled(workspaceId)) throw new ChatAccessError();
   const repo = new DrizzleWorkspaceRepository(claims);
-  const workspace = (await repo.listUserWorkspaces()).find((item) => item.id === workspaceId);
+  const workspace = (await repo.listUserWorkspaces()).find((item) => item.id.toLowerCase() === workspaceId.toLowerCase());
   if (!workspace || workspace.kind !== "agency") throw new ChatAccessError();
   return composeChatService(workspace, claims);
 }

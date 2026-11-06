@@ -21,7 +21,7 @@ function failed(error: unknown) {
   switch (failure?.cause?.code ?? failure?.code) {
     case "42501": return json({ error: "Chat o conversación no disponible." }, 404);
     case "23505": return json({ error: "Ya existe un canal con ese nombre." }, 409);
-    case "P0429": return json({ error: "Has enviado muchos mensajes. Espera un momento." }, 429);
+    case "P0429": return json({ error: "Vas demasiado rápido. Espera un momento y vuelve a intentarlo." }, 429);
     case "22023":
     case "23514": return json({ error: "La solicitud de chat no es válida." }, 400);
     default:

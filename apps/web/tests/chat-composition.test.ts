@@ -8,10 +8,11 @@ vi.mock("../src/server/composition/auth", async (original) => ({
   ...await original<typeof import("../src/server/composition/auth")>(),
   getVerifiedServerSession: vi.fn(),
 }));
-const listUserWorkspaces = vi.fn();
-vi.mock("@hubly/db", async (original) => ({
-  ...await original<typeof import("@hubly/db")>(),
+// Sustituto sin importar @hubly/db: las pruebas de web no pueden depender de infraestructura (ADR 0002).
+const { listUserWorkspaces } = vi.hoisted(() => ({ listUserWorkspaces: vi.fn() }));
+vi.mock("@hubly/db", () => ({
   DrizzleWorkspaceRepository: vi.fn(function () { return { listUserWorkspaces }; }),
+  DrizzleChatRepository: vi.fn(function () { return {}; }),
 }));
 
 const agency = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -28,9 +29,13 @@ describe("Composición autenticada del chat", () => {
     ]);
   });
 
-  it("normaliza mayúsculas y espacios de la lista de pilotos", () => {
+  it("normaliza mayúsculas y espacios de la lista de pilotos y del espacio", async () => {
     expect(isChatEnabled(agency.toUpperCase())).toBe(true);
     expect(isChatEnabled("")).toBe(false);
+    vi.mocked(getVerifiedServerSession).mockResolvedValue(session);
+    const chat = await getChatService(agency.toUpperCase());
+    await expect(chat.command({ kind: "createChannel", workspaceId: agency.toUpperCase(), slug: "produccion" }))
+      .rejects.toBeInstanceOf(ChatAccessError);
   });
 
   it("exige sesión antes de consultar espacios", async () => {
