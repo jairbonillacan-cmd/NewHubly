@@ -165,9 +165,13 @@ function MessageItem({ entry, name, person, canEdit, onCommand }: {
   const editButton = useRef<HTMLButtonElement>(null);
   const item = useRef<HTMLLIElement>(null);
   const returnFocus = useRef(false);
-  // Un mensaje retirado ya no tiene «Editar»: si el foco se quedó sin dueño, pasa al propio mensaje.
+  const removedHere = useRef(false);
+  // Solo tras una retirada iniciada aquí: el mensaje ya no tiene «Editar» y el foco pasa al propio mensaje.
   useEffect(() => {
-    if (entry.body === null && document.activeElement === document.body) item.current?.focus();
+    if (entry.body === null && removedHere.current) {
+      removedHere.current = false;
+      if (document.activeElement === document.body) item.current?.focus({ preventScroll: true });
+    }
   }, [entry.body]);
   // Al abrir una acción el foco entra en ella; al cerrarla vuelve a «Editar» para no perderse en <body>.
   useEffect(() => {
@@ -210,7 +214,7 @@ function MessageItem({ entry, name, person, canEdit, onCommand }: {
       </div>}
       {canEdit && entry.body !== null && mode === "remove" && <div className="flex flex-wrap gap-2">
         <Button ref={confirmRemove} variant="danger-soft" size="sm" className={control} isPending={busy}
-          onPress={() => void save({ kind: "remove", conversationId: entry.conversationId, messageId: entry.id })}>Confirmar retiro</Button>
+          onPress={() => { removedHere.current = true; void save({ kind: "remove", conversationId: entry.conversationId, messageId: entry.id }); }}>Confirmar retiro</Button>
         <Button variant="ghost" size="sm" className={control} onPress={() => setMode(null)}>Cancelar</Button>
       </div>}
     </div>

@@ -3,7 +3,7 @@
 import type { ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatView, type ChatViewCommand } from "./ChatView";
-import { incomingChatNotice, mergeChatMessages, startChatPolling } from "./sync";
+import { CHAT_POLL_MS, incomingChatNotice, mergeChatMessages, startChatPolling } from "./sync";
 import { ChatRequestError, chatTransport } from "./transport";
 
 interface ChatScreenProps {
@@ -36,6 +36,8 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
   const [notice, setNotice] = useState<string | null>(null);
   const [listReady, setListReady] = useState(false);
   const announced = useRef(0);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const readRetryAt = useRef(new Map<string, number>());
   const active = useRef<string | null>(null);
   const bootstrapped = useRef(false);
   const directoryAt = useRef(0);
@@ -48,6 +50,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
   const draft = currentId ? drafts[currentId] ?? emptyDraft : emptyDraft;
 
   useEffect(() => () => {
+    clearTimeout(noticeTimer.current);
     older.current?.abort();
     for (const controller of mutations.current) controller.abort();
   }, []);
@@ -121,6 +124,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
           latestNumber = Math.max(latestNumber, ...update.changes.map((item) => item.number));
           if (incoming) {
             announced.current += incoming;
+            clearTimeout(noticeTimer.current);
             setNotice(incomingChatNotice(announced.current));
           }
         }
@@ -139,6 +143,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
         return update.hasMore;
       } catch (error) {
         if (signal.aborted) return false;
+        setListReady(true);
         setConnectionError(displayError(error));
         if (hasStatus(error, 401) || hasStatus(error, 404)) {
           poll.stop();
@@ -226,13 +231,20 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
     // La vista indica de qué conversación es el número: tras un cambio rápido de conversación no se marca la equivocada.
     const id = active.current;
     if (!id || id !== conversationId || (readThrough.current.get(id) ?? 0) >= number) return;
-    announced.current = 0;
-    setNotice(null);
+    // Tras un fallo se espera a la siguiente sincronización en vez de reintentar en cada render.
+    if (Date.now() < (readRetryAt.current.get(id) ?? 0)) return;
+    // El aviso se borra unos segundos después: vaciarlo en el mismo render impediría que el lector de pantalla lo anuncie.
+    if (announced.current) {
+      announced.current = 0;
+      clearTimeout(noticeTimer.current);
+      noticeTimer.current = setTimeout(() => setNotice(null), 5000);
+    }
     readThrough.current.set(id, number);
     const signal = selection.current?.signal;
     void api.command({ kind: "read", workspaceId, conversationId: id, through: number }, signal)
       .then(() => { if (!signal?.aborted) refresh.current(); }, (error: unknown) => {
         if (readThrough.current.get(id) === number) readThrough.current.delete(id);
+        readRetryAt.current.set(id, Date.now() + CHAT_POLL_MS);
         if (hasStatus(error, 401) || hasStatus(error, 404)) refresh.current();
       });
   }
