@@ -65,6 +65,20 @@ describe("Chat: casos de uso y repositorio", () => {
     expect(await writer.exportOwn(workspaceId)).toEqual([]);
   });
 
+  it("limita el directorio a nombre, rol y presencia dentro de la agencia", async () => {
+    try {
+      await db`insert into auth.users (id, email, raw_user_meta_data)
+        values (${editor}, ${editor + "@example.test"}, '{"display_name":"  Ana   Pérez  "}'::jsonb)`;
+      await db`insert into public.user_presence (user_id, status) values (${editor}, 'dnd')`;
+      expect((await reader.directory(workspaceId)).find((person) => person.id === editor))
+        .toEqual({ id: editor, name: "Ana Pérez", role: "editor", status: "dnd" });
+      const outsider = new DrizzleChatRepository({ sub: randomUUID(), role: "authenticated" }, workspaceId);
+      expect(await outsider.directory()).toEqual([]);
+    } finally {
+      await db`delete from auth.users where id = ${editor}`;
+    }
+  });
+
   it("pagina por orden del servidor y entrega los cambios faltantes sin saltos", async () => {
     const channel = randomUUID();
     await db.begin(async (tx) => {

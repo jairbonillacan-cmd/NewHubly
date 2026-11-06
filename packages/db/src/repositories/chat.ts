@@ -1,6 +1,6 @@
 import "server-only";
 import { sql } from "drizzle-orm";
-import type { ChatCommand, ChatCommandResult, ChatConversation, ChatMessage, ChatRepository } from "@hubly/application";
+import type { ChatCommand, ChatCommandResult, ChatConversation, ChatMessage, ChatParticipant, ChatRepository } from "@hubly/application";
 import { withUserContext, type DbTransaction, type UserClaims } from "../context";
 
 type DbInstance = Parameters<typeof withUserContext>[2];
@@ -153,6 +153,13 @@ export class DrizzleChatRepository implements ChatRepository {
         }
       }
     });
+  }
+
+  directory() {
+    return this.scoped(async (tx) => [...await tx.execute<ChatParticipant>(sql`
+      select user_id as id, display_name as name, role, status
+      from private.chat_directory(${this.workspaceId}::uuid)
+    `)]);
   }
 
   ownMessages() {

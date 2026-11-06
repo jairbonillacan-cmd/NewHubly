@@ -64,3 +64,11 @@ export type ChatCommand = z.infer<typeof chatCommandSchema>;
 export type ChatHistory = z.infer<typeof chatHistoryResultSchema>;
 export type ChatSync = z.infer<typeof chatSyncResultSchema>;
 export type ChatCommandResult = { conversationId: string; message?: ChatMessage; through?: number };
+
+export const chatParticipantSchema = z.object({
+  id: z.uuid(),
+  name: z.string().max(60).nullable(),
+  role: z.enum(["owner", "admin", "editor", "viewer"]),
+  status: z.enum(["online", "away", "dnd"]).nullable(),
+});
+export type ChatParticipant = z.infer<typeof chatParticipantSchema>;
