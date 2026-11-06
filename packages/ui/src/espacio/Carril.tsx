@@ -29,9 +29,6 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
       className={`${ITEM} ${tono} ${expandido ? "h-11 justify-start gap-3 px-3" : "h-11 justify-center px-0"}`}>
       <span className="relative">
         <HerramientaIcono id={herramienta.id} activo={activa} />
-        {!herramienta.disponible && !expandido && (
-          <span aria-hidden="true" className="absolute -top-0.5 -right-1 size-2 rounded-full border-2 border-(--text-muted)" />
-        )}
         {herramienta.disponible && !expandido && ficha && (
           <span aria-hidden="true" className={`absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs leading-none font-bold ${activa ? "bg-(--text-on-accent) text-(--accent-primary)" : "bg-(--accent-primary) text-(--text-on-accent)"}`}>{ficha}</span>
         )}

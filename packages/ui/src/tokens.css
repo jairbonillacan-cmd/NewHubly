@@ -435,9 +435,9 @@ body {
   backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%); -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%);
   transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
 /* Sin transformaciones al pasar el ratón: el botón no se mueve, solo se marca su borde. */
-.hubly-carril-asa[data-hovered] { border-color: var(--accent-primary); box-shadow: 0 0 0 3px var(--accent-primary-subtle); }
-.hubly-carril-asa::before { content: ""; position: absolute; inset: -0.625rem; } /* área táctil de 44 px alrededor del botón de 24 px */
-.hubly-carril { transition: width 0.34s cubic-bezier(0.22, 1, 0.36, 1); }
+/* Al pasar el ratón solo cambia el color de la flecha, sin anillo; la zona activa es el propio botón de 24 px. */
+.hubly-carril { transition: width 0.34s cubic-bezier(0.22, 1, 0.36, 1); scrollbar-width: none; }
+.hubly-carril::-webkit-scrollbar { display: none; }
 @keyframes hubly-carril-texto { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
 .hubly-carril-texto { animation: hubly-carril-texto 0.32s var(--motion-ease) 0.12s both; }
 /* Recorte de la foto de perfil (issue 150): el componente pone el tamaño natural y el encuadre en variables. */
