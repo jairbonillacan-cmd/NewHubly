@@ -282,7 +282,7 @@ body {
 
 /* Movimiento del landing (#85). Solo se ocultan elementos si el script de arranque marcó <html class="hubly-motion">;
    sin JavaScript o con movimiento reducido todo se ve de inmediato. */
-:root { --motion-fast: 180ms; --motion-base: 600ms; --motion-slow: 900ms; --motion-ease: cubic-bezier(0.22, 1, 0.36, 1); --motion-step: 90ms; --motion-rise: 1.25rem; }
+:root { --motion-fast: 180ms; --motion-base: 600ms; --motion-slow: 900ms; --motion-ease: cubic-bezier(0.22, 1, 0.36, 1); --motion-step: 90ms; --motion-rise: 1.25rem; --motion-space: 240ms; }
 .hubly-reveal { transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
 .hubly-motion .hubly-reveal:not([data-visible="true"]) { opacity: 0; transform: translateY(var(--motion-rise)); }
 .hubly-reveal[data-delay="1"] { transition-delay: calc(var(--motion-step) * 1); }
@@ -310,6 +310,13 @@ body {
 .hubly-bars > span:nth-child(7) { transition-delay: calc(var(--motion-step) * 3); }
 .hubly-bars > span:nth-child(8) { transition-delay: calc(var(--motion-step) * 3.5); }
 @keyframes hubly-pop { 0% { transform: scale(0.96); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.hubly-espacio-escena { transition: opacity calc(var(--motion-space) / 2) var(--motion-ease), visibility 0s linear calc(var(--motion-space) / 2); }
+.hubly-espacio-escena[data-cambiando] { opacity: 0; visibility: hidden; pointer-events: none; }
+@keyframes hubly-espacio-entra { from { opacity: 0; transform: translateY(calc(var(--motion-rise) * 0.4)); } to { opacity: 1; transform: none; } }
+.hubly-espacio-entra { animation: hubly-espacio-entra var(--motion-space) var(--motion-ease) backwards; }
+/* El aviso de carga espera un instante: si el espacio llega rápido, no parpadea. */
+.hubly-espacio-carga { animation: hubly-espacio-entra var(--motion-space) var(--motion-ease) var(--motion-fast) backwards; }
+@media (prefers-reduced-motion: reduce) { .hubly-espacio-escena { transition: none; } .hubly-espacio-entra, .hubly-espacio-carga { animation: none; } }
 .hubly-pop { animation: hubly-pop var(--motion-fast) var(--motion-ease) both; }
 /* Buscador (issue 133): baja con un rebote suave, las filas entran en cascada y el campo no lleva recuadro (el cursor ya indica el foco). */
 @keyframes hubly-palette-in { 0% { transform: translateY(-14px) scale(0.97); opacity: 0; filter: blur(6px); } 100% { transform: none; opacity: 1; filter: none; } }

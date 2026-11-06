@@ -69,6 +69,8 @@ export interface EspacioHoyProps {
   members?: EspacioMember[];
   invitations?: EspacioInvitation[];
   inviteLink?: string | null;
+  /** Espacio al que se está cambiando: mientras llega, se oculta lo del anterior y se muestra un estado de carga (#215). */
+  switchingTo?: string | null;
   onSelectWorkspace?: (id: string) => void;
   onCreateAgency?: (name: string) => Promise<boolean | void> | void;
   onInvite?: (email: string, role: EspacioInviteRole) => void;
@@ -122,6 +124,14 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const chat = props.chat;
   const activeWorkspace = props.activeWorkspace ?? PERSONAL_WORKSPACE;
   const workspaces = props.workspaces ?? [activeWorkspace];
+  const switching = props.switchingTo != null;
+  const target = workspaces.find((ws) => ws.id === props.switchingTo);
+  const targetName = target ? (target.kind === "agency" ? target.name : "Espacio personal") : "tu espacio";
+  const targetKind = target?.kind ?? "agency";
+  // La entrada animada solo se usa después de un cambio: al abrir la página ya entran los paneles.
+  const [switched, setSwitched] = useState(false);
+  if (switching && !switched) setSwitched(true);
+  const hide = switching ? { "data-cambiando": "", inert: true } : {};
   const [teamMode, setTeamMode] = useState<EquipoDialogMode | null>(null);
   const [prefs, setPrefs] = useEspacioPreferencias(props.initialPreferences, props.onPreferencesChange);
   const [theme, setTheme] = useHublyTheme();
@@ -450,6 +460,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           onSignOut={onSignOut}
           workspaces={workspaces}
           activeWorkspace={activeWorkspace}
+          {...(switching ? { switchingTo: { name: targetName, kind: targetKind } } : {})}
           onSelectWorkspace={props.onSelectWorkspace ?? noop}
           onCreateAgency={() => setTeamMode("crear")}
           onOpenTeam={() => setTeamMode("equipo")}
@@ -475,12 +486,14 @@ export function EspacioHoy(props: EspacioHoyProps) {
           activa={chat?.active ? undefined : herramienta}
           chat={chat}
           onSelect={selectHerramienta}
+          cargando={switching}
           hoyPendientes={overdueCount + todayCount}
           semana={resumenSemana(todos, todayDate)}
         />
       </div>
 
-      <main id="contenido" tabIndex={-1} className={`flex flex-col gap-3 px-3 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:p-0 ${chat?.active ? "min-h-0 grow overflow-hidden pb-20" : "pb-44 lg:overflow-y-auto"}`}>
+      <main id="contenido" tabIndex={-1} className={`relative flex flex-col gap-3 px-3 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:p-0 ${chat?.active ? "min-h-0 grow overflow-hidden pb-20" : "pb-44 lg:overflow-y-auto"}`} aria-busy={switching}>
+      <div key={activeWorkspace.id} className={`hubly-espacio-escena flex min-h-0 grow flex-col gap-3 ${switched ? "hubly-espacio-entra" : ""}`} {...hide}>
       {actionError && (
         <div role="alert" className="hubly-pop hubly-glass relative z-30 flex shrink-0 items-center justify-between gap-3 rounded-xl border-(--status-danger-text) px-4 py-3 text-sm text-(--status-danger-text)">
           <span>{actionError.message}</span>
@@ -501,9 +514,11 @@ export function EspacioHoy(props: EspacioHoyProps) {
         {panels.notas && notasPanel(sideClass)}
       </div>
       )}
+      </div>
+      {switching && <div role="status" className="hubly-espacio-carga hubly-glass pointer-events-none absolute inset-x-3 top-0 flex items-center gap-3 rounded-2xl p-4 text-sm font-semibold lg:inset-x-0">Abriendo {targetName}…</div>}
       </main>
 
-      {dock && <div className="z-20 hidden min-w-0 gap-3 lg:col-start-2 lg:row-start-3 lg:flex lg:items-end">
+      {dock && <div className="hubly-espacio-escena z-20 hidden min-w-0 gap-3 lg:col-start-2 lg:row-start-3 lg:flex lg:items-end" {...hide}>
         <div className="min-w-0 grow"><Dock ref={desktopCapture} config={dock} sinVista /></div>
         {/* Barra propia del lienzo (issue 147): en el lienzo libre la llena el propio lienzo; si no, solo el modo y el fondo. */}
         <div ref={setBarraSlot} className="contents">
@@ -512,7 +527,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
       </div>}
 
       <div {...(dock ? { role: "toolbar", "aria-label": dock.label } : {})} className="hubly-glass fixed inset-x-2 bottom-2 z-30 flex flex-col gap-2 rounded-(--glass-radius-access-card) p-2 lg:hidden">
-        {dock && <><DockStatus suggestion={dock.suggestion ?? null} /><CaptureField ref={mobileCapture} {...dock.entry} /></>}
+        {dock && <div className="hubly-espacio-escena flex flex-col gap-2" {...hide}><DockStatus suggestion={dock.suggestion ?? null} /><CaptureField ref={mobileCapture} {...dock.entry} /></div>}
         <nav aria-label="Navegación del espacio" className={`grid ${chat ? dock ? "grid-cols-5" : "grid-cols-3" : "grid-cols-4"}`}>
           <Button variant="ghost" className="min-h-11" {...(!chat?.active && herramienta === "hoy" ? { "aria-current": "page" } : {})} onPress={() => {
             selectHerramienta("hoy");

@@ -21,6 +21,8 @@ export interface TopBarProps {
   onSignOut: () => void;
   workspaces: EspacioWorkspace[];
   activeWorkspace: EspacioWorkspace;
+  /** Espacio al que se está cambiando; su nombre y su icono se muestran ya, antes de que lleguen sus datos (#215). */
+  switchingTo?: { name: string; kind: EspacioWorkspace["kind"] } | undefined;
   onSelectWorkspace: (id: string) => void;
   onCreateAgency: () => void;
   onOpenTeam: () => void;
@@ -47,9 +49,13 @@ export interface TopBarProps {
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
 const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover) data-[disabled]:cursor-default data-[disabled]:opacity-60";
 
-function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAgency, onOpenTeam }: Pick<TopBarProps, "workspaces" | "activeWorkspace" | "onSelectWorkspace" | "onCreateAgency" | "onOpenTeam">) {
-  const isAgency = activeWorkspace.kind === "agency";
-  const label = isAgency ? activeWorkspace.name : "Espacio personal";
+function SpaceMenu({ workspaces, activeWorkspace, switchingTo, onSelectWorkspace, onCreateAgency, onOpenTeam }: Pick<TopBarProps, "workspaces" | "activeWorkspace" | "switchingTo" | "onSelectWorkspace" | "onCreateAgency" | "onOpenTeam">) {
+  const shown = switchingTo ?? activeWorkspace;
+  const isAgency = shown.kind === "agency";
+  const label = isAgency ? shown.name : "Espacio personal";
+  // El menú sigue describiendo el espacio activo (con sus datos) hasta que llega el nuevo.
+  const activeIsAgency = activeWorkspace.kind === "agency";
+  const activeLabel = activeIsAgency ? activeWorkspace.name : "Espacio personal";
   const onAction = (key: Key) => {
     if (key === "crear-agencia") onCreateAgency();
     else if (key === "equipo") onOpenTeam();
@@ -57,7 +63,7 @@ function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAge
   };
   return (
     <Dropdown>
-      <Dropdown.Trigger aria-label={`Cambiar de espacio (actual: ${label})`} className="flex h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-sm font-semibold whitespace-nowrap text-(--text-primary) hover:bg-(--glass-hover)">
+      <Dropdown.Trigger aria-label={`Cambiar de espacio (actual: ${label})`} aria-busy={switchingTo !== undefined} className="flex h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-sm font-semibold whitespace-nowrap text-(--text-primary) hover:bg-(--glass-hover)">
         <span aria-hidden="true" className="hidden size-5 items-center justify-center rounded-md bg-(--accent-primary) text-(--text-on-accent) sm:flex"><Icon name={isAgency ? "equipo" : "usuario"} className="size-3.5" /></span>
         <span className="max-w-40 truncate">{label}</span>
         <Icon name="chevrones" className="size-3.5 text-(--text-muted)" />
@@ -67,7 +73,7 @@ function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAge
           <Dropdown.Section aria-label="Espacios" className="border-b border-(--glass-line) pb-1.5">
             {workspaces.map((ws) => (
               <Dropdown.Item key={ws.id} id={`ws:${ws.id}`} textValue={ws.kind === "personal" ? "Espacio personal" : ws.name}
-                {...(ws.id === activeWorkspace.id ? { "aria-label": `${label} (activo)${isAgency ? `, ${ROLE_LABEL[ws.role]}` : ""}` } : {})} className={ITEM}>
+                {...(ws.id === activeWorkspace.id ? { "aria-label": `${activeLabel} (activo)${activeIsAgency ? `, ${ROLE_LABEL[ws.role]}` : ""}` } : {})} className={ITEM}>
                 <Icon name={ws.kind === "personal" ? "usuario" : "equipo"} />
                 <span className="grow truncate">{ws.kind === "personal" ? "Espacio personal" : ws.name}</span>
                 {ws.kind === "agency" && <span className="text-xs text-(--text-muted)">{ROLE_LABEL[ws.role]}</span>}
@@ -76,7 +82,7 @@ function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAge
             ))}
           </Dropdown.Section>
           <Dropdown.Section aria-label="Agencias" className="pt-1.5">
-            {isAgency ? <Dropdown.Item id="equipo" textValue="Equipo e invitaciones" className={ITEM}><Icon name="equipo" /> <span className="grow">Equipo e invitaciones</span></Dropdown.Item> : null}
+            {activeIsAgency && !switchingTo ? <Dropdown.Item id="equipo" textValue="Equipo e invitaciones" className={ITEM}><Icon name="equipo" /> <span className="grow">Equipo e invitaciones</span></Dropdown.Item> : null}
             <Dropdown.Item id="crear-agencia" textValue="Crear agencia" className={ITEM}><Icon name="mas" /> <span className="grow">Crear agencia</span></Dropdown.Item>
           </Dropdown.Section>
         </Dropdown.Menu>
