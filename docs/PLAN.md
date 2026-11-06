@@ -79,3 +79,8 @@ Lienzo presenta dos o tres direcciones como páginas reales. El dueño del produ
 ## Piloto de chat de agencia
 
 Canales, directos de dos personas, mensajes de texto e indicadores de lectura dentro de una agencia, según el [ADR 0010](adr/0010-chat-interno-de-agencia.md). Se habilita por agencia con `HUBLY_CHAT_PILOT_WORKSPACE_IDS`. Se cierra cuando dos cuentas de una agencia de prueba se escriben en canal y directo desde laptop y teléfono, el mensaje aparece en la otra sesión en menos de cinco segundos y otra agencia no ve nada en pruebas contra Postgres real. Hilos, menciones y búsqueda quedan para después del piloto.
+
+
+## Piloto de calendario editorial
+
+Marcas ligeras por espacio, piezas con ciclo de vida (`idea ↔ borrador → revision → aprobada → publicada`), historial inmutable por trigger, vistas de mes, semana y lista (por defecto en móvil), reprogramación con arrastrar y soltar o teclado («Mover a…») y exportación en JSON, Markdown e `.ics`, según el [ADR 0011](adr/0011-marcas-piezas-y-calendario-editorial.md). Se habilita por espacio con `HUBLY_CONTENT_PILOT_WORKSPACE_IDS`. Se cierra cuando dos cuentas crean, filtran, reprograman (con ratón y solo con teclado) y llevan una pieza de idea a publicada con cada transición registrada en el historial, las tres exportaciones abren (y el `.ics` se importa en un calendario), un `viewer` no puede editar y otra agencia no ve ningún dato en pruebas contra Postgres real. Aprobación del cliente, programación automática en redes, recurrencia y medios adjuntos quedan para la Fase 3.
