@@ -11,7 +11,7 @@ import {
   type WorkspaceInvitationSummary, type WorkspaceMemberSummary, type WorkspaceNote, type WorkspaceSummary, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
 import { signOutAction } from "../actions/auth";
-import { fromEspacioPreferencias, themeToApply, toEspacioPreferencias } from "./preferences";
+import { fromEspacioPreferencias, toEspacioPreferencias } from "./preferences";
 
 export type ScreenStatus = "loading" | "unauthenticated" | "error" | "ready";
 export type AutosaveState = NoteSaveState;
@@ -323,7 +323,7 @@ export function WorkspaceScreen({
     <BienvenidaDialog isOpen={welcomeOpen} onClose={closeWelcome} {...(activeWs ? { workspaceName: activeWs.name } : {})} />
     <EspacioHoy
       todayDate={todayDate}
-      {...(initialPreferences ? { initialPreferences: toEspacioPreferencias(initialPreferences), initialTheme: themeToApply(initialPreferences.theme) } : {})}
+      {...(initialPreferences ? { initialPreferences: toEspacioPreferencias(initialPreferences), initialThemePreference: initialPreferences.theme } : {})}
       onPreferencesChange={(prefs) => persistPreferences(fromEspacioPreferencias(prefs))}
       onThemeChange={(theme) => persistPreferences({ theme }, 0)}
       wallpaperImageUrl={initialWallpaperImageUrl}
