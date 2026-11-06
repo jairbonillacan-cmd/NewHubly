@@ -35,8 +35,8 @@ const ROLES = [
 
 export const LANDING_FEATURES: readonly Feature[] = [
   {
-    id: "hoy", title: "Tu día, en una lista.", status: "disponible", tint: "bg-(--landing-mist)", visual: <TodayVisual />,
-    body: "Abres y ves lo vencido, lo de hoy y lo de mañana. Lo demás puede esperar en Próximos, Sin fecha y Hechos.",
+    id: "hoy", title: "Organiza ideas y tareas.", status: "disponible", tint: "bg-(--landing-mist)", visual: <TodayVisual />,
+    body: "Anotas la idea, sacas de ella los pendientes y abres Hoy para ver qué sigue: lo vencido arriba, lo de hoy y lo de mañana.",
     details: <>
       <dl className="grid grid-cols-2 gap-2">
         {TODAY_POINTS.map(([title, body]) => (
@@ -58,7 +58,7 @@ export const LANDING_FEATURES: readonly Feature[] = [
     </ul>,
   },
   {
-    id: "equipo", title: "Cada quien sabe lo suyo.", status: "pronto", tint: "bg-(--landing-ice)", visual: <TeamVisual />, hubi: "comunidad",
+    id: "equipo", title: "Trabaja por tu cuenta o con tu equipo.", status: "pronto", tint: "bg-(--landing-ice)", visual: <TeamVisual />, hubi: "comunidad",
     body: "Creas tu agencia, invitas a tu equipo con un enlace y eliges qué ve cada persona. Lo privado sigue siendo tuyo.",
     details: <dl className="grid gap-2 text-sm">
       {ROLES.map(([role, body]) => (
@@ -69,8 +69,8 @@ export const LANDING_FEATURES: readonly Feature[] = [
     </dl>,
   },
   {
-    id: "aprobacion", title: "El cliente dice sí desde su celular.", status: "proximamente", tint: "bg-(--landing-mist)", visual: <ApprovalVisual />, hubi: "correo",
-    body: "Le mandas un enlace, lo revisa y aprueba o pide cambios. No tiene que crear cuenta ni recordar contraseñas.",
+    id: "aprobacion", title: "Revisa el trabajo con otras personas.", status: "proximamente", tint: "bg-(--landing-mist)", visual: <ApprovalVisual />, hubi: "correo",
+    body: "Tu equipo comenta cada pieza y tu cliente la aprueba desde su celular con un enlace, sin crear cuenta.",
     details: <ul className="list-disc space-y-1 pl-5 text-sm text-(--text-secondary)">
       {["Un enlace solo para esa revisión", "Comentarios en cada pieza", "Sabes quién aprobó y cuándo"].map((item) => <li key={item}>{item}</li>)}
     </ul>,
@@ -81,7 +81,7 @@ export function FeatureGrid() {
   return (
     <section id="producto" aria-labelledby="producto-titulo" data-landing-section="producto" className="mx-auto max-w-(--landing-width) scroll-mt-6 px-4 pt-20 lg:pt-28">
       <Reveal>
-        <SectionIntro id="producto-titulo" label="Producto" title="Lo que ya usas y lo que viene." body="Cada cosa lleva su etiqueta: ya disponible, muy pronto o próximamente." />
+        <SectionIntro id="producto-titulo" label="Producto" title="Tu trabajo, conectado." body="Agrupado por lo que haces cada día. Cada cosa lleva su etiqueta: ya disponible, muy pronto o próximamente." />
       </Reveal>
       <div className="mt-8 grid gap-12 lg:mt-12 lg:gap-13">
         {LANDING_FEATURES.map((feature, index) => (

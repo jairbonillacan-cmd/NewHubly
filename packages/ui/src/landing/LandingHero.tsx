@@ -8,16 +8,16 @@ export function LandingHero() {
           <span aria-hidden="true">● </span>Ya disponible: tu espacio personal
         </p>
         <h1 id="landing-titulo" data-delay="2" className="landing-display hubly-enter mx-auto max-w-5xl text-(length:--landing-hero-size) leading-none font-normal tracking-(--tracking-tighter)">
-          Deja de preguntar <em className="block text-(--landing-accent-text)"><span className="hubly-underline box-decoration-clone">«¿quién tiene esto?»</span></em>
+          Un solo espacio para <em className="block text-(--landing-accent-text)"><span className="hubly-underline box-decoration-clone">todo tu marketing.</span></em>
         </h1>
         <p data-delay="3" className="hubly-enter mx-auto mt-5 max-w-xl text-base leading-relaxed text-(--text-secondary) lg:mt-6 lg:text-lg">
-          Hubly junta las ideas, los pendientes y las aprobaciones de cada cliente. Abres y ya sabes qué sigue y quién lo tiene.
+          Organiza tus ideas, tu contenido y tus marcas en el mismo lugar. Trabaja por tu cuenta o con tu equipo, sin repartir todo entre tantas herramientas.
         </p>
         <div data-delay="3" className="hubly-enter mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href="/login?modo=registro" className="inline-flex min-h-12 items-center justify-center rounded-full bg-(--accent-primary) px-6 font-semibold text-(--text-on-accent) hover:underline">Crear cuenta →</a>
+          <a href="/login?modo=registro" className="inline-flex min-h-12 items-center justify-center rounded-full bg-(--accent-primary) px-6 font-semibold text-(--text-on-accent) hover:underline">Empezar con Hubly →</a>
           <a href="#producto" className="inline-flex min-h-12 items-center justify-center rounded-full border border-(--text-primary) px-6 font-semibold hover:bg-(--landing-ice)">Ver cómo funciona</a>
         </div>
-        <p data-delay="4" className="hubly-enter mt-4 text-sm text-(--text-muted)">Hoy ya puedes usar tu espacio personal. Lo de equipo llega por partes.</p>
+        <p data-delay="4" className="hubly-enter mt-4 text-sm text-(--text-muted)">Hoy ya puedes organizar tus ideas y pendientes. Lo demás llega por partes.</p>
         <div data-delay="4" className="hubly-enter">
           <AppPreview />
         </div>

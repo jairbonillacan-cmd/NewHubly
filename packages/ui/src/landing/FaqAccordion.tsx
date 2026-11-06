@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 
 export const LANDING_FAQ = [
-  { q: "¿Para quién es Hubly?", a: "Para agencias y equipos de redes que hoy se coordinan entre chats, hojas y notas sueltas. También si trabajas solo." },
+  { q: "¿Para quién es Hubly?", a: "Para quien lleva el marketing de su propia marca, aunque trabaje solo, y para agencias y equipos que manejan varias. Es el mismo Hubly: empiezas con tu espacio y creces cuando lo necesites." },
   { q: "¿Qué puedo usar hoy?", a: "Tu espacio personal: tus pendientes del día, tus notas, la captura en una línea y tu propio fondo. Lo de equipo y clientes llega por partes." },
   { q: "¿Funciona en el celular?", a: "Sí. Hubly funciona en el navegador del celular y de la laptop, sin instalar nada. Lo que guardas en uno lo ves en el otro." },
   { q: "¿Mi cliente tiene que crear cuenta?", a: "No. Cuando llegue la aprobación, le mandas un enlace y listo." },

@@ -6,13 +6,13 @@ import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import {
   AppPreview, AudienceSection, DataSection, DiaSection, FaqSection, FeatureGrid, FinalCta, LANDING_FAQ, LANDING_FEATURES, LANDING_NAV_LINKS,
-  HubiSection, LandingFooter, LandingHero, LandingNav, LegalPage, PLANES, PricingSection, formatPrecio, PainSection, RoadmapSection, ShortcutsSection, ThemeToggle, WorkspaceSection,
+  GrowSection, HubiSection, LandingFooter, LandingHero, LandingNav, LegalPage, PLANES, PricingSection, formatPrecio, PainSection, RoadmapSection, ShortcutsSection, ThemeToggle, WorkspaceSection,
 } from "../index";
 import { FaqAccordion, nextFaqIndex } from "./FaqAccordion";
 
 const currentDir = fileURLToPath(new URL(".", import.meta.url));
 const tokensCssPath = resolve(currentDir, "../tokens.css");
-const blocks = [LandingNav, LandingHero, AudienceSection, PainSection, DiaSection, FeatureGrid, WorkspaceSection, ShortcutsSection, HubiSection, RoadmapSection, DataSection, FaqSection, FinalCta, LandingFooter];
+const blocks = [LandingNav, LandingHero, AudienceSection, PainSection, DiaSection, FeatureGrid, WorkspaceSection, ShortcutsSection, GrowSection, HubiSection, RoadmapSection, DataSection, FaqSection, FinalCta, LandingFooter];
 
 const render = (component: (props: never) => unknown) => renderToStaticMarkup(createElement(component as () => null));
 const htmlForLanding = () => blocks.map(render).join("\n");
@@ -71,7 +71,7 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
   });
 
   it("no promete precios, cifras ni testimonios, ni usa frases genéricas (#56)", () => {
-    expect(htmlForLanding()).not.toMatch(/gratis|\$\s?\d|\+\d[\d,.]*\s|testimonio|lorem ipsum|potencia tu|todo en un solo lugar|sin fricción/i);
+    expect(htmlForLanding()).not.toMatch(/gratis|\$\s?\d|\+\d[\d,.]*\s|testimonio|lorem ipsum|potencia tu|todo en un solo lugar|sin fricción|revoluciona|siguiente nivel|desbloquea|sin precedentes|transforma tu|impulsad[ao] por (?:la )?IA|solución definitiva|marketing os/i);
     expect(LANDING_FAQ).toHaveLength(6);
   });
 
@@ -166,7 +166,7 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
   it("el pie enlaza a rutas y secciones que existen y ofrece cambiar el tema", () => {
     const html = render(LandingFooter);
     const hrefs = [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1] ?? "");
-    for (const href of hrefs) expect(href).toMatch(/^\/(?:$|#(?:producto|dia|lo-que-viene|hubi|privacidad|preguntas)$|precios$|login(?:\?modo=registro)?$|hoy$|privacidad$|terminos$)/);
+    for (const href of hrefs) expect(href).toMatch(/^\/(?:$|#(?:producto|dia|crece|lo-que-viene|hubi|privacidad|preguntas)$|precios$|login(?:\?modo=registro)?$|hoy$|privacidad$|terminos$)/);
     expect(html).toContain("Cambiar a tema");
   });
 });

@@ -24,6 +24,7 @@ export * from "./landing/WorkspaceSection";
 export * from "./landing/ShortcutsSection";
 export * from "./landing/DiaSection";
 export * from "./landing/HubiSection";
+export * from "./landing/GrowSection";
 export * from "./landing/PricingSection";
 export * from "./landing/RoadmapSection";
 export * from "./landing/LandingSections";
