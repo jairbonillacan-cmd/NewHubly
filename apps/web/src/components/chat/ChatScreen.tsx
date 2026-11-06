@@ -39,6 +39,33 @@ export function syncDocumentTitleMentions(
   };
 }
 
+export function discountUnreadMentions(params: {
+  unreadMentionIds: ReadonlySet<string>;
+  extraUnreadMentions: number;
+  readMessageIds: readonly string[];
+}): { unreadMentionIds: ReadonlySet<string>; extraUnreadMentions: number } {
+  if (params.readMessageIds.length === 0) {
+    return {
+      unreadMentionIds: params.unreadMentionIds,
+      extraUnreadMentions: params.extraUnreadMentions,
+    };
+  }
+  let changed = false;
+  let extraDiscount = 0;
+  const next = new Set(params.unreadMentionIds);
+  for (const id of params.readMessageIds) {
+    if (next.delete(id)) {
+      changed = true;
+    } else {
+      extraDiscount += 1;
+    }
+  }
+  return {
+    unreadMentionIds: changed ? next : params.unreadMentionIds,
+    extraUnreadMentions: Math.max(0, params.extraUnreadMentions - extraDiscount),
+  };
+}
+
 export function notifyHiddenTabMention(params: {
   authorName: string;
   conversationTitle: string;
@@ -409,6 +436,7 @@ export function ChatScreen({
 
   function handleMarkMentionsRead(conversationId: string, upToNumber: number, messageIds: string[]) {
     if (messageIds.length === 0) return;
+    const extraDiscount = messageIds.filter((id) => !unreadMentionIds.has(id)).length;
     setUnreadMentionIds((previous) => {
       let changed = false;
       const next = new Set(previous);
@@ -417,7 +445,9 @@ export function ChatScreen({
       }
       return changed ? next : previous;
     });
-    setExtraUnreadMentions((previous) => Math.max(0, previous - messageIds.length));
+    if (extraDiscount > 0) {
+      setExtraUnreadMentions((previous) => Math.max(0, previous - extraDiscount));
+    }
     markVisible(conversationId, upToNumber);
   }
 

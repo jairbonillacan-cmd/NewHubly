@@ -4,6 +4,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
+  discountUnreadMentions,
   formatDocumentTitleWithMentions,
   notifyHiddenTabMention,
   syncDocumentTitleMentions,
@@ -92,7 +93,8 @@ describe("Notificaciones y resaltado de menciones en el chat (issue 208)", () =>
     expect(html).toContain('data-mentions-viewer="true"');
     expect(html).toContain('data-mention="viewer"');
     expect(html).toContain('data-mention="member"');
-    expect(html).toContain("bg-(--surface-brand-soft)");
+    expect(html).toContain("bg-(--accent-primary-subtle)");
+    expect(html).not.toContain("--surface-brand-soft");
     expect(html).toContain("border-(--accent-primary)");
     expect(html).toContain('data-chat-unread-mentions="1"');
   });
@@ -111,6 +113,7 @@ describe("Notificaciones y resaltado de menciones en el chat (issue 208)", () =>
     );
     expect(carrilHtml).toContain('data-carril-mentions="3"');
     expect(carrilHtml).toContain("Chat, 3 menciones sin leer");
+    expect(carrilHtml).toContain('>Chat</span> <span data-carril-mentions="3"');
 
     const carrilCollapsedHtml = renderToStaticMarkup(
       <Carril
@@ -155,6 +158,8 @@ describe("Notificaciones y resaltado de menciones en el chat (issue 208)", () =>
     expect(hoyHtml).toContain('data-hoy-mentions="2"');
     expect(hoyHtml).toContain("2 menciones sin leer");
     expect(hoyHtml).toContain('data-carril-mentions="2"');
+    expect(hoyHtml).toContain("bg-(--accent-primary-subtle)");
+    expect(hoyHtml).not.toContain("--surface-brand-soft");
   });
 
   it("actualiza el título de la pestaña con (N) cuando hay menciones sin leer y lo restaura al llegar a 0 o desmontar", () => {
@@ -336,5 +341,59 @@ describe("Notificaciones y resaltado de menciones en el chat (issue 208)", () =>
       messageIds: ["m-1", "m-3"],
       maxMessageNumber: 3,
     });
+
+    // Detecta menciones del historial marcadas con unreadMention: true aunque unreadMentionIds esté vacío.
+    const historyMessages: ChatMessageView[] = [
+      { ...messages[0]!, unreadMention: true },
+      messages[1]!,
+    ];
+    expect(
+      collectVisibleUnreadMentions({
+        conversationId: channel.id,
+        visibleThroughNumber: 2,
+        visibilityState: "visible",
+        messages: historyMessages,
+        unreadMentionIds: new Set(),
+        viewerId: "viewer-1",
+        people: peopleMap,
+      }),
+    ).toEqual({
+      messageIds: ["m-1"],
+      maxMessageNumber: 1,
+    });
+
+    // No vuelve a reportar IDs que ya fueron reportados previamente (alreadyReportedIds).
+    expect(
+      collectVisibleUnreadMentions({
+        conversationId: channel.id,
+        visibleThroughNumber: 3,
+        visibilityState: "visible",
+        messages,
+        unreadMentionIds: unreadSet,
+        alreadyReportedIds: new Set(["m-1"]),
+        viewerId: "viewer-1",
+        people: peopleMap,
+      }),
+    ).toEqual({
+      messageIds: ["m-3"],
+      maxMessageNumber: 3,
+    });
+
+    // Descuento exacto sin doble resta entre unreadMentionIds y extraUnreadMentions.
+    const afterLiveRead = discountUnreadMentions({
+      unreadMentionIds: new Set(["m-3"]),
+      extraUnreadMentions: 2,
+      readMessageIds: ["m-3"],
+    });
+    expect(afterLiveRead.unreadMentionIds.size).toBe(0);
+    expect(afterLiveRead.extraUnreadMentions).toBe(2);
+
+    const afterHistoryRead = discountUnreadMentions({
+      unreadMentionIds: new Set(["m-3"]),
+      extraUnreadMentions: 2,
+      readMessageIds: ["m-1", "m-3"],
+    });
+    expect(afterHistoryRead.unreadMentionIds.size).toBe(0);
+    expect(afterHistoryRead.extraUnreadMentions).toBe(1);
   });
 });

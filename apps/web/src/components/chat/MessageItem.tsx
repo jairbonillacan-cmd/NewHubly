@@ -95,11 +95,15 @@ export function parseMessageMentions(
 }
 
 export function messageMentionsViewer(
-  entry: ChatMessageView,
+  entry: ChatMessageView | string,
   people: Map<string, ChatParticipant>,
   viewerId: string,
 ): boolean {
-  if (!viewerId || entry.body === null) return false;
+  if (!viewerId) return false;
+  if (typeof entry === "string") {
+    return parseMessageMentions(entry, people, viewerId).some((seg) => seg.isMention && seg.mentionsViewer);
+  }
+  if (entry.body === null) return false;
   if (entry.mentionsViewer || entry.unreadMention || entry.mentionedUserIds?.includes(viewerId)) return true;
   return parseMessageMentions(entry.body, people, viewerId).some((seg) => seg.isMention && seg.mentionsViewer);
 }
@@ -250,7 +254,7 @@ export function MessageItem({
     onPointerDown={() => longPress.current.start()} onPointerUp={() => longPress.current.cancel()}
     onPointerCancel={() => longPress.current.cancel()} onPointerLeave={() => longPress.current.cancel()}
     onKeyDown={(event) => { if (event.key === "Escape" && (pickerOpen || actionsOpen)) { event.stopPropagation(); setPickerOpen(false); setActionsOpen(false); } }}
-    className={`group flex gap-3 rounded-xl px-2 outline-none transition-colors duration-(--motion-fast) ease-(--motion-ease) focus-visible:ring-2 focus-visible:ring-(--focus-ring-color) motion-reduce:transition-none ${grouped ? "py-1" : "py-2.5"} ${highlighted ? "bg-(--accent-primary-subtle) ring-1 ring-(--accent-primary)" : mentionsMe ? "border-l-2 border-(--accent-primary) bg-(--surface-brand-soft)" : ""} ${isNew ? "hubly-chat-msg-enter" : ""}`}>
+    className={`group flex gap-3 rounded-xl px-2 outline-none transition-colors duration-(--motion-fast) ease-(--motion-ease) focus-visible:ring-2 focus-visible:ring-(--focus-ring-color) motion-reduce:transition-none ${grouped ? "py-1" : "py-2.5"} ${highlighted ? "bg-(--accent-primary-subtle) ring-1 ring-(--accent-primary)" : mentionsMe ? "border-l-2 border-(--accent-primary) bg-(--accent-primary-subtle)" : ""} ${isNew ? "hubly-chat-msg-enter" : ""}`}>
     {grouped ? <span className="flex w-8 shrink-0 items-baseline justify-center pt-0.5">
       <time dateTime={entry.sentAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>{hhmm(entry.sentAt)}</time>
     </span> : <ChatAvatar person={person} fallbackName={isOwn ? "Tú" : undefined} />}
@@ -278,7 +282,7 @@ export function MessageItem({
       </form> : <p className={`text-sm wrap-anywhere whitespace-pre-wrap ${entry.body === null ? "text-(--text-muted) italic" : ""}`}>
         {entry.body === null ? "Mensaje eliminado" : bodySegments.map((seg, idx) => seg.isMention ? (
           <mark key={idx} data-mention={seg.mentionsViewer ? "viewer" : "member"}
-            className={`rounded px-1 font-semibold ${seg.mentionsViewer ? "border border-(--accent-primary) bg-(--surface-brand-soft) text-(--accent-primary)" : "bg-(--accent-primary-subtle) text-(--accent-primary)"}`}>
+            className={`rounded px-1 font-semibold ${seg.mentionsViewer ? "border border-(--accent-primary) bg-(--accent-primary-subtle) text-(--accent-primary)" : "bg-(--accent-primary-subtle) text-(--accent-primary)"}`}>
             {seg.text}
           </mark>
         ) : seg.text)}

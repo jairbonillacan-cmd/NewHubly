@@ -506,7 +506,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           <span className="grow">{chat.unread === null ? "Abrir chat" : chat.unread === 0 ? "Chat al día" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
           {mentions > 0 && (
             <span data-hoy-mentions={mentions} aria-label={mentionText}
-              className="rounded-full border border-(--accent-primary) bg-(--surface-brand-soft) px-2.5 py-0.5 text-xs font-semibold text-(--accent-primary)">
+              className="rounded-full border border-(--accent-primary) bg-(--accent-primary-subtle) px-2.5 py-0.5 text-xs font-semibold text-(--accent-primary)">
               {mentionText}
             </span>
           )}

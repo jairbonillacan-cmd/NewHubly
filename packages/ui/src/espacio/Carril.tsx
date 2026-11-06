@@ -76,10 +76,13 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
           </span>
           {expandido && <span className="hubly-carril-texto grow text-sm font-semibold">Chat</span>}
           {expandido && mentions > 0 && (
-            <span data-carril-mentions={mentions} aria-label={mentionText}
-              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${chat.active ? "bg-(--icon-fill-active)" : "bg-(--accent-primary-subtle) text-(--accent-primary)"}`}>
-              {mentions}
-            </span>
+            <>
+              {" "}
+              <span data-carril-mentions={mentions} aria-label={mentionText}
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${chat.active ? "bg-(--icon-fill-active)" : "bg-(--accent-primary-subtle) text-(--accent-primary)"}`}>
+                {mentions}
+              </span>
+            </>
           )}
         </a>;
       })()}

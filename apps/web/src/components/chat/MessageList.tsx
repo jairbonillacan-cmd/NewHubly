@@ -20,6 +20,7 @@ export function collectVisibleUnreadMentions(params: {
   visibilityState?: DocumentVisibilityState | undefined;
   messages: readonly ChatMessageView[];
   unreadMentionIds?: ReadonlySet<string> | undefined;
+  alreadyReportedIds?: ReadonlySet<string> | undefined;
   viewerId: string;
   people: Map<string, ChatParticipant>;
 }): { messageIds: string[]; maxMessageNumber: number | null } {
@@ -30,10 +31,14 @@ export function collectVisibleUnreadMentions(params: {
   let maxMessageNumber: number | null = null;
   for (const entry of params.messages) {
     if (entry.conversationId !== params.conversationId || entry.number > params.visibleThroughNumber) continue;
-    const isUnreadMention = params.unreadMentionIds
-      ? params.unreadMentionIds.has(entry.id)
-      : entry.unreadMention === true
-        || (entry.unreadMention !== false && messageMentionsViewer(entry, params.people, params.viewerId));
+    if (params.alreadyReportedIds?.has(entry.id)) continue;
+    const isUnreadMention = (params.unreadMentionIds?.has(entry.id) ?? false)
+      || entry.unreadMention === true
+      || (
+        params.unreadMentionIds === undefined
+        && entry.unreadMention !== false
+        && Boolean(params.viewerId && entry.body && messageMentionsViewer(entry, params.people, params.viewerId))
+      );
     if (!isUnreadMention) continue;
     messageIds.push(entry.id);
     if (maxMessageNumber === null || entry.number > maxMessageNumber) {
@@ -82,6 +87,7 @@ export function MessageList({
   const earlier = useRef<{ height: number; top: number } | null>(null);
   const baselineMax = useRef<number | null>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reportedMentionIds = useRef<Set<string>>(new Set());
   const [localHighlightId, setLocalHighlightId] = useState<string | null>(null);
 
   if (!loading && baselineMax.current === null) {
@@ -111,10 +117,14 @@ export function MessageList({
           visibilityState: document.visibilityState,
           messages,
           unreadMentionIds: unreadMentionMessageIds,
+          alreadyReportedIds: reportedMentionIds.current,
           viewerId: userId,
           people,
         });
         if (unread.messageIds.length > 0 && unread.maxMessageNumber !== null) {
+          for (const id of unread.messageIds) {
+            reportedMentionIds.current.add(id);
+          }
           onMarkMentionsRead(conversation.id, unread.maxMessageNumber, unread.messageIds);
         }
       }
