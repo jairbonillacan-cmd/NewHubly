@@ -407,6 +407,20 @@ body {
 /* Icono sobre el fondo de acento (carril seleccionado): siluetas en el color sobre acento y relieve en el acento. */
 .hubly-icono-activo { --hi-borde: var(--text-on-accent); --hi-tono-1: var(--text-on-accent); --hi-tono-2: var(--text-on-accent); --hi-medio: var(--text-on-accent);
   --hi-acento: var(--text-on-accent); --hi-relieve: var(--accent-primary); --hi-brillo: var(--accent-primary); --hi-fondo: var(--accent-primary); }
+/* Carril (issue 150): el ancho se abre con un muelle suave y los textos entran después, deslizándose. */
+/* Botón del carril: el mismo cristal y borde que el carril, un poco más opaco porque asoma sobre el hueco. */
+.hubly-carril-asa { top: calc(50% - 0.75rem); right: -0.75rem; background-color: rgb(var(--glass-rgb) / 0.96); border: var(--border-width-thin) solid var(--glass-line-strong); box-shadow: var(--glass-panel-shadow);
+  backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%); -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%);
+  transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
+/* Sin transformaciones al pasar el ratón: el botón no se mueve, solo se marca su borde. */
+.hubly-carril-asa[data-hovered] { border-color: var(--accent-primary); box-shadow: 0 0 0 3px var(--accent-primary-subtle); }
+.hubly-carril { transition: width 0.34s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes hubly-carril-texto { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
+.hubly-carril-texto { animation: hubly-carril-texto 0.32s var(--motion-ease) 0.12s both; }
+/* Recorte de la foto de perfil (issue 150): el componente pone el tamaño natural y el encuadre en variables. */
+.hubly-recorte-visor { box-shadow: inset 0 0 0 2px var(--accent-primary-subtle); }
+.hubly-recorte-foto { position: absolute; left: 50%; top: 50%; width: var(--foto-w); height: var(--foto-h); max-width: none; user-select: none; pointer-events: none;
+  transform: translate(-50%, -50%) translate(var(--foto-x, 0), var(--foto-y, 0)) rotate(var(--foto-rot, 0deg)) scale(var(--foto-escala, 1)); }
 .hubly-wallpaper { transition: background-color var(--motion-base) var(--motion-ease); }
 .hubly-wallpaper svg { transition: opacity var(--motion-base) var(--motion-ease); }
 /* Aurora (issue 134): manchas de color que se mueven muy despacio detrás de los paneles. */
@@ -415,4 +429,4 @@ body {
 .hubly-aurora-1 { top: -25%; left: -15%; width: 60vmax; height: 60vmax; }
 .hubly-aurora-2 { top: 25%; right: -20%; width: 55vmax; height: 55vmax; animation-duration: 31s; animation-direction: reverse; }
 .hubly-aurora-3 { bottom: -33%; left: 25%; width: 50vmax; height: 50vmax; animation-duration: 38s; }
-@media (prefers-reduced-motion: reduce) { .hubly-lienzo-item, .hubly-lienzo-item[data-estado] { animation: none; transition: none; } .hubly-wallpaper, .hubly-wallpaper svg { transition: none; } .hubly-aurora { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .hubly-carril { transition: none; } .hubly-carril-texto { animation: none; } .hubly-lienzo-item, .hubly-lienzo-item[data-estado] { animation: none; transition: none; } .hubly-wallpaper, .hubly-wallpaper svg { transition: none; } .hubly-aurora { animation: none; } }

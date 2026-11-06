@@ -15,6 +15,7 @@ import { HoyPanel } from "./HoyPanel";
 import { Lienzo, LienzoBarra, type LienzoBarraProps, type LienzoItem } from "./Lienzo";
 import { NotaPanel } from "./NotaPanel";
 import { NotasPanel } from "./NotasPanel";
+import { FotoRecorte } from "./FotoRecorte";
 import { PerfilDialog, avatarFileError } from "./PerfilDialog";
 import { useEspacioPreferencias, type EspacioPreferencias } from "./preferencias";
 import { TopBar } from "./TopBar";
@@ -171,6 +172,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(props.profile?.avatarUrl ?? null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [recorte, setRecorte] = useState<{ file: File; error: string | null } | null>(null);
   const [presence, setPresence] = useState<EspacioPresence>(props.profile?.presence ?? "online");
 
   useEffect(() => {
@@ -276,15 +278,22 @@ export function EspacioHoy(props: EspacioHoyProps) {
     setPickerOpen(isDesktop() ? "desktop" : "mobile");
   };
 
-  const pickAvatar = async (file: File) => {
+  // Elegir una foto abre el recorte (issue 150); se sube lo que la persona encuadra.
+  const pickAvatar = (file: File) => {
     if (!props.profile) return;
     const invalid = avatarFileError(file);
     if (invalid) return showToast(invalid);
+    setRecorte({ file, error: null });
+  };
+  const uploadRecorte = async (file: File) => {
+    if (!props.profile || !recorte) return;
     setAvatarBusy(true);
     const result = await props.profile.onUploadAvatar(file);
     setAvatarBusy(false);
-    if (result.ok) { setAvatarUrl(result.value); showToast("Foto actualizada"); }
-    else showToast(result.message);
+    if (!result.ok) return setRecorte({ ...recorte, error: result.message });
+    setAvatarUrl(result.value);
+    setRecorte(null);
+    showToast("Foto actualizada");
   };
 
   // El punto cambia al instante; si el servidor no lo guarda, vuelve al anterior y avisa.
@@ -441,7 +450,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           avatarBusy={avatarBusy}
           presence={presence}
           {...(props.profile?.onChangePresence ? { onChangePresence: (status: EspacioPresence) => void changePresence(status) } : {})}
-          {...(props.profile ? { onEditProfile: () => setProfileOpen(true), onPickAvatar: (file: File) => void pickAvatar(file) } : {})}
+          {...(props.profile ? { onEditProfile: () => setProfileOpen(true), onPickAvatar: pickAvatar } : {})}
         />
       </div>
 
@@ -538,8 +547,11 @@ export function EspacioHoy(props: EspacioHoyProps) {
           profile={{ ...props.profile, name: profileName, avatarUrl, email: props.userEmail ?? null, initial: (profileName || props.userEmail)?.trim().charAt(0).toUpperCase() || null }}
           onNameSaved={(name) => { setProfileName(name); showToast("Perfil guardado"); }}
           onAvatarChanged={setAvatarUrl}
+          onPickAvatar={pickAvatar}
+          avatarBusy={avatarBusy}
         />
       )}
+      <FotoRecorte file={recorte?.file ?? null} busy={avatarBusy} error={recorte?.error ?? null} onCancel={() => setRecorte(null)} onConfirm={(file) => void uploadRecorte(file)} />
 
       <CommandPalette
         isOpen={paletteOpen}

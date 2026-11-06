@@ -31,10 +31,13 @@ export interface PerfilDialogProps {
   profile: EspacioProfile & { email: string | null; initial: string | null };
   onNameSaved: (name: string) => void;
   onAvatarChanged: (url: string | null) => void;
+  /** Elegir una foto abre el recorte (issue 150); quien lo abre se encarga de subirla. */
+  onPickAvatar: (file: File) => void;
+  avatarBusy: boolean;
 }
 
 /** «Editar perfil» (issue 135): cambiar la foto y el nombre visible. */
-export function PerfilDialog({ isOpen, onClose, profile, onNameSaved, onAvatarChanged }: PerfilDialogProps) {
+export function PerfilDialog({ isOpen, onClose, profile, onNameSaved, onAvatarChanged, onPickAvatar, avatarBusy }: PerfilDialogProps) {
   const [name, setName] = useState(profile.name ?? "");
   const [busy, setBusy] = useState<"foto" | "nombre" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,17 +49,13 @@ export function PerfilDialog({ isOpen, onClose, profile, onNameSaved, onAvatarCh
     }
   }, [isOpen, profile.name]);
 
-  const upload = async (files: FileList | null) => {
+  const upload = (files: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
     const invalid = avatarFileError(file);
     if (invalid) return setError(invalid);
-    setBusy("foto");
     setError(null);
-    const result = await profile.onUploadAvatar(file);
-    setBusy(null);
-    if (result.ok) onAvatarChanged(result.value);
-    else setError(result.message);
+    onPickAvatar(file);
   };
 
   const remove = async () => {
@@ -94,9 +93,9 @@ export function PerfilDialog({ isOpen, onClose, profile, onNameSaved, onAvatarCh
               <Avatar url={profile.avatarUrl} initial={profile.initial} className="size-20 text-3xl" iconClassName="size-8" />
               <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap gap-2">
-                  <FileTrigger acceptedFileTypes={AVATAR_TYPES} onSelect={(files) => void upload(files)}>
-                    <Button size="sm" variant="secondary" isDisabled={busy !== null} className="min-h-11">
-                      <Icon name="camara" /> {busy === "foto" ? "Subiendo…" : profile.avatarUrl ? "Cambiar foto" : "Subir foto"}
+                  <FileTrigger acceptedFileTypes={AVATAR_TYPES} onSelect={upload}>
+                    <Button size="sm" variant="secondary" isDisabled={busy !== null || avatarBusy} className="min-h-11">
+                      <Icon name="camara" /> {avatarBusy ? "Subiendo…" : profile.avatarUrl ? "Cambiar foto" : "Subir foto"}
                     </Button>
                   </FileTrigger>
                   {profile.avatarUrl && (
