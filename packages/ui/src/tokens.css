@@ -64,7 +64,7 @@
   --container-reading: 44rem;
   --container-workspace: 72rem;
   --measure-viewport-height: 100dvh;
-  --chat-history-max-mobile: 55dvh; --chat-list-min: 15rem; --chat-list-max: 19rem;
+  --chat-list-min: 15rem; --chat-list-max: 19rem;
   /* Tokens de dirección visual: Grafito y azul tinta, bento y liquid glass (Issues #8, #47 y #52) */
   --surface-brand: #111316; --surface-brand-subtle: #1C1F24; --surface-brand-contrast: #FFFFFF; --surface-brand-muted: #B9BCC4;
   --bento-surface-base: #F0F0F2; --bento-card-bg: #FFFFFF; --bento-card-border: #E4E4E7; --bento-card-hover: #F7F7F8;

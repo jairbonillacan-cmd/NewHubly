@@ -435,11 +435,11 @@ export function EspacioHoy(props: EspacioHoyProps) {
 
   return (
     // Marco fijo (#105): en escritorio, una cuadrícula con la barra superior, el carril y el dock fijos; solo el contenido se desliza.
-    <div ref={rootRef} className="relative isolate min-h-dvh text-(--text-primary) lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-[3.5rem_minmax(0,1fr)_auto] lg:gap-3 lg:overflow-hidden lg:p-3">
+    <div ref={rootRef} className={`relative isolate min-h-dvh text-(--text-primary) lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-[3.5rem_minmax(0,1fr)_auto] lg:gap-3 lg:overflow-hidden lg:p-3 ${chat?.active ? "flex h-dvh flex-col overflow-hidden" : ""}`}>
       <Wallpaper fondo={prefs.fondo === "imagen" && !wallpaperUrl ? "contornos" : prefs.fondo} imagenUrl={wallpaperUrl} />
       <a href="#contenido" className="sr-only z-50 rounded-lg bg-(--surface-raised) px-3 py-2 text-sm font-semibold focus:not-sr-only focus:fixed focus:top-3 focus:left-3">Saltar al contenido</a>
 
-      <div className="sticky top-0 z-30 p-3 lg:static lg:col-span-2 lg:p-0">
+      <div className="sticky top-0 z-30 shrink-0 p-3 lg:static lg:col-span-2 lg:p-0">
         <TopBar
           todayDate={todayDate}
           timezone={timezone}
@@ -480,7 +480,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         />
       </div>
 
-      <main id="contenido" tabIndex={-1} className="flex flex-col gap-3 px-3 pb-44 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:overflow-y-auto lg:p-0">
+      <main id="contenido" tabIndex={-1} className={`flex flex-col gap-3 px-3 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:p-0 ${chat?.active ? "min-h-0 grow overflow-hidden pb-20" : "pb-44 lg:overflow-y-auto"}`}>
       {actionError && (
         <div role="alert" className="hubly-pop hubly-glass relative z-30 flex shrink-0 items-center justify-between gap-3 rounded-xl border-(--status-danger-text) px-4 py-3 text-sm text-(--status-danger-text)">
           <span>{actionError.message}</span>

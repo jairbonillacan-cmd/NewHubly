@@ -221,7 +221,7 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
   });
 
   return <section className="hubly-glass flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl" aria-labelledby="chat-conversation">
-    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-(--border-default) p-3">
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-(--border-default) p-3">
       <div className="min-w-0">
         <button type="button" className={`${control} lg:hidden`} onClick={() => props.onSelect(null)}>← Conversaciones</button>
         <h2 ref={heading} id="chat-conversation" tabIndex={-1} className="text-lg font-semibold wrap-anywhere">{conversationName(conversation, people)}</h2>
@@ -233,7 +233,7 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
         <ChannelForm key={conversation.id} conversation={conversation} onCommand={props.onCommand} />}
     </header>
     <div ref={scroll} onScroll={visible} tabIndex={0} aria-label="Historial de la conversación"
-      className="max-h-(--chat-history-max-mobile) min-h-48 grow overflow-y-auto px-3 lg:max-h-none lg:min-h-0">
+      className="min-h-0 grow overflow-y-auto px-3">
       {props.hasOlder && <button type="button" className={control} disabled={props.loadingOlder} onClick={() => {
         if (scroll.current) earlier.current = { height: scroll.current.scrollHeight, top: scroll.current.scrollTop };
         props.onOlder();
@@ -245,7 +245,7 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
             person={people.get(entry.authorId)} canEdit={conversation.writable && entry.authorId === props.userId} onCommand={props.onCommand} />)}
         </ol> : <p className="p-4 text-sm text-(--text-secondary)">Todavía no hay mensajes.</p>}
     </div>
-    {conversation.writable && !props.loading ? <form className="grid gap-2 border-t border-(--border-default) p-3 sm:grid-cols-[1fr_auto] sm:items-end"
+    {conversation.writable && !props.loading ? <form className="grid shrink-0 gap-2 border-t border-(--border-default) p-3 sm:grid-cols-[1fr_auto] sm:items-end"
       onSubmit={(event) => { event.preventDefault(); props.onSend(); }}>
       <label className="min-w-0">
         <span className="mb-1 block text-sm font-semibold">Mensaje</span>
@@ -266,7 +266,7 @@ export function ChatView(props: ChatViewProps) {
   const unreadCount = props.conversations.filter((entry) => entry.unread).length;
   const listHeading = useRef<HTMLHeadingElement>(null);
   return <div className="flex min-h-0 min-w-0 grow flex-col gap-3" aria-labelledby="chat-title">
-    <header className="hubly-glass flex flex-wrap items-center justify-between gap-2 rounded-2xl p-3">
+    <header className={`hubly-glass flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl p-3 ${conversation ? "sr-only lg:not-sr-only" : ""}`}>
       <div>
         <p className={sectionLabel}>{props.workspaceName}</p>
         <h1 id="chat-title" className="text-2xl font-semibold">Chat</h1>
@@ -278,7 +278,7 @@ export function ChatView(props: ChatViewProps) {
     </header>
     {props.error && <p role="alert" className="rounded-xl bg-(--status-danger-bg) p-3 text-sm text-(--status-danger-text)">{props.error}</p>}
     <span role="status" className="sr-only">{props.notice}</span>
-    <div className="grid min-h-0 grow gap-3 lg:grid-cols-[minmax(var(--chat-list-min),var(--chat-list-max))_minmax(0,1fr)]">
+    <div className="grid min-h-0 grow grid-rows-[minmax(0,1fr)] gap-3 lg:grid-cols-[minmax(var(--chat-list-min),var(--chat-list-max))_minmax(0,1fr)]">
       <aside className={`hubly-glass min-h-0 min-w-0 overflow-y-auto rounded-2xl p-3 ${conversation ? "hidden lg:block" : ""}`} aria-labelledby="chat-list-title">
         <h2 ref={listHeading} id="chat-list-title" tabIndex={-1} className="mb-2 text-base font-semibold">Conversaciones</h2>
         <div className="flex flex-wrap gap-1 pb-2">
