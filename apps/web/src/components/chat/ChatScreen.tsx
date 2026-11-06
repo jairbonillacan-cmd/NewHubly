@@ -32,6 +32,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [accessLost, setAccessLost] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [directoryError, setDirectoryError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [listReady, setListReady] = useState(false);
@@ -41,6 +42,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
   const active = useRef<string | null>(null);
   const bootstrapped = useRef(false);
   const directoryAt = useRef(0);
+  const directoryController = useRef<AbortController | null>(null);
   const refresh = useRef<() => void>(() => {});
   const selection = useRef<AbortController | null>(null);
   const older = useRef<AbortController | null>(null);
@@ -52,6 +54,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
   useEffect(() => () => {
     clearTimeout(noticeTimer.current);
     older.current?.abort();
+    directoryController.current?.abort();
     for (const controller of mutations.current) controller.abort();
   }, []);
 
@@ -71,6 +74,43 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
     announced.current = 0;
   }, []);
 
+  const handleFatalAccess = useCallback((error: unknown) => {
+    setAccessLost(true);
+    setConversations([]);
+    setPeople([]);
+    setDrafts({});
+    readThrough.current.clear();
+    select(null);
+    if (hasStatus(error, 401)) window.location.assign("/login");
+  }, [select]);
+
+  const loadDirectory = useCallback(async (externalSignal?: AbortSignal) => {
+    directoryController.current?.abort();
+    const controller = new AbortController();
+    directoryController.current = controller;
+    if (externalSignal) {
+      if (externalSignal.aborted) return;
+      externalSignal.addEventListener("abort", () => controller.abort(), { once: true });
+    }
+    try {
+      const directory = await api.directory(controller.signal);
+      if (controller.signal.aborted) return;
+      setPeople(directory);
+      setDirectoryError(null);
+      directoryAt.current = Date.now();
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      if (hasStatus(error, 401) || hasStatus(error, 404)) {
+        setConnectionError(displayError(error));
+        handleFatalAccess(error);
+        return;
+      }
+      setDirectoryError(
+        error instanceof ChatRequestError ? error.message : "No se pudo cargar el directorio del equipo.",
+      );
+    }
+  }, [api, handleFatalAccess]);
+
   const revokeConversation = useCallback((id: string, reason: string) => {
     setDrafts((previous) => Object.fromEntries(Object.entries(previous).filter(([key]) => key !== id)));
     readThrough.current.delete(id);
@@ -86,6 +126,12 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
     let cursor = 0;
     let latestNumber = 0;
     let loaded = !currentId;
+
+    // Se solicita el directorio al montar en paralelo con la carga inicial.
+    if (directoryAt.current === 0 && !document.hidden) {
+      void loadDirectory(signal);
+    }
+
     async function update() {
       try {
         if (!bootstrapped.current) {
@@ -131,14 +177,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
         setLoading(false);
         setConnectionError(null);
         if (Date.now() - directoryAt.current >= 30_000 && !document.hidden) {
-          try {
-            const directory = await api.directory(signal);
-            if (signal.aborted) return false;
-            setPeople(directory);
-            directoryAt.current = Date.now();
-          } catch (error) {
-            if (hasStatus(error, 401) || hasStatus(error, 404)) throw error;
-          }
+          void loadDirectory(signal);
         }
         return update.hasMore;
       } catch (error) {
@@ -147,13 +186,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
         setConnectionError(displayError(error));
         if (hasStatus(error, 401) || hasStatus(error, 404)) {
           poll.stop();
-          setAccessLost(true);
-          setConversations([]);
-          setPeople([]);
-          setDrafts({});
-          readThrough.current.clear();
-          select(null);
-          if (hasStatus(error, 401)) window.location.assign("/login");
+          handleFatalAccess(error);
         }
         return false;
       }
@@ -164,7 +197,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
       controller.abort();
       poll.stop();
     };
-  }, [accessLost, api, currentId, revokeConversation, select, userId]);
+  }, [accessLost, api, currentId, handleFatalAccess, loadDirectory, revokeConversation, select, userId]);
 
   async function submit(input: ChatViewCommand): Promise<boolean> {
     const controller = new AbortController();
@@ -228,12 +261,9 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
   }
 
   function markVisible(conversationId: string, number: number) {
-    // La vista indica de qué conversación es el número: tras un cambio rápido de conversación no se marca la equivocada.
     const id = active.current;
     if (!id || id !== conversationId || (readThrough.current.get(id) ?? 0) >= number) return;
-    // Tras un fallo se espera a la siguiente sincronización en vez de reintentar en cada render.
     if (Date.now() < (readRetryAt.current.get(id) ?? 0)) return;
-    // El aviso se borra unos segundos después: vaciarlo en el mismo render impediría que el lector de pantalla lo anuncie.
     if (announced.current) {
       announced.current = 0;
       clearTimeout(noticeTimer.current);
@@ -258,11 +288,11 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
   return <ChatView workspaceName={workspaceName} userId={userId} canManage={role === "owner" || role === "admin"}
     canSend={role !== "viewer"} unreadOnly={unreadOnly} conversations={conversations} people={people} currentId={currentId}
     listLoading={!listReady} messages={before === null ? messages : messages.filter((entry) => entry.number >= before)} loading={loading} hasOlder={before !== null} loadingOlder={loadingOlder}
-    draft={draft.text} sending={draft.sending} failedSend={draft.failed} error={actionError ?? connectionError} notice={notice}
+    draft={draft.text} sending={draft.sending} failedSend={draft.failed} error={actionError ?? connectionError}
+    directoryError={directoryError} onRetryDirectory={() => void loadDirectory()} notice={notice}
     download={api.download} onFilter={setUnreadOnly} onSelect={select} onOlder={() => void loadOlder()}
     onVisible={markVisible} onCommand={submit}
     onDraft={(text) => {
-      // Se conserva la clave de reintento mientras el texto enviado no cambie: así un reintento no duplica un envío que sí llegó.
       if (currentId) setDrafts((previous) => {
         const old = previous[currentId];
         const keep = old?.key !== undefined && old.text.trim() === text.trim();
