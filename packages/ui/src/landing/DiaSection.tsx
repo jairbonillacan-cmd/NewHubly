@@ -14,7 +14,7 @@ const MOMENTOS: readonly { hora: string; titulo: string; texto: string; ejemplo:
 
 export function DiaSection() {
   return (
-    <section aria-labelledby="dia-titulo" data-landing-section="dia" className="mx-auto max-w-(--landing-width) px-4 pt-20 lg:pt-28">
+    <section id="dia" aria-labelledby="dia-titulo" data-landing-section="dia" className="scroll-mt-6 mx-auto max-w-(--landing-width) px-4 pt-20 lg:pt-28">
       <Reveal>
         <SectionIntro id="dia-titulo" label="Un martes cualquiera" title="Así se ve un día con Hubly." body="Lo que ya puedes hacer hoy, en el orden en que te pasa." />
       </Reveal>

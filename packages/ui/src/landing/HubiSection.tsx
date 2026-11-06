@@ -29,7 +29,7 @@ function Tarjeta({ pose, texto, pronto, copia }: (typeof POSES)[number] & { copi
 
 export function HubiSection() {
   return (
-    <section aria-labelledby="hubi-titulo" data-landing-section="hubi" className="pt-20 lg:pt-28">
+    <section id="hubi" aria-labelledby="hubi-titulo" data-landing-section="hubi" className="scroll-mt-6 pt-20 lg:pt-28">
       <Reveal className="mx-auto max-w-(--landing-width) px-4">
         <SectionIntro id="hubi-titulo" label="Conoce a Hubi" title="Hubi te acompaña en la app." body="No es un asistente que opina de todo. Aparece cuando algo pasa y se va." />
       </Reveal>
