@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChatCommand, ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
-import { Icon, IconoHubly } from "@hubly/ui";
+import { Alert, Button, Icon, IconoHubly, Input, Label, TextArea, TextField, buttonLinkClass } from "@hubly/ui";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 type LocalCommand = ChatCommand extends infer C ? C extends ChatCommand ? Omit<C, "workspaceId"> : never : never;
@@ -35,9 +35,8 @@ export interface ChatViewProps {
   onSend: () => void;
 }
 
-const control = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold hover:bg-(--surface-interactive) disabled:cursor-not-allowed disabled:opacity-60";
-const outline = `${control} border border-(--border-control)`;
-const primary = `${control} bg-(--accent-primary) text-(--text-on-accent) hover:bg-(--accent-primary-hover)`;
+// Los controles son Button de HeroUI (#165): cada variante trae su propio hover, sin clases que compitan entre sí.
+const control = "min-h-11";
 const input = "min-h-11 w-full rounded-xl border border-(--border-control) bg-(--surface-raised) px-3 py-2 text-sm text-(--text-primary)";
 const sectionLabel = "text-xs font-semibold tracking-wide text-(--text-secondary) uppercase";
 const statusLabel = { online: "En línea", away: "Ausente", dnd: "No molestar" };
@@ -65,8 +64,16 @@ function Avatar({ name, person }: { name: string; person?: ChatParticipant | und
 
 function ChannelForm({ conversation, onCommand }: { conversation?: ChatConversation; onCommand: ChatViewProps["onCommand"] }) {
   const details = useRef<HTMLDetailsElement>(null);
+  const archiveButton = useRef<HTMLButtonElement>(null);
+  const confirmButton = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const focusAfter = useRef<"confirm" | "archive" | null>(null);
+  useEffect(() => {
+    if (focusAfter.current === "confirm") confirmButton.current?.focus();
+    if (focusAfter.current === "archive") archiveButton.current?.focus();
+    focusAfter.current = null;
+  }, [confirmArchive]);
   async function apply(command: LocalCommand, form?: HTMLFormElement) {
     if (busy) return;
     setBusy(true);
@@ -90,16 +97,19 @@ function ChannelForm({ conversation, onCommand }: { conversation?: ChatConversat
       const slug = String(new FormData(form).get("slug") ?? "");
       void apply(conversation ? { kind: "renameChannel", conversationId: conversation.id, slug } : { kind: "createChannel", slug }, form);
     }}>
-      <label className="block">
-        <span className="mb-1 block text-xs">Nombre del canal</span>
-        <input name="slug" required maxLength={48} defaultValue={conversation?.slug ?? ""} placeholder="produccion" className={input} />
-      </label>
+      <TextField name="slug" isRequired maxLength={48} defaultValue={conversation?.slug ?? ""} className="block">
+        <Label className="mb-1 block text-xs">Nombre del canal</Label>
+        <Input placeholder="produccion" className="w-full" />
+      </TextField>
       <p className="text-xs text-(--text-muted)">Usa letras sin acento, números y guiones.</p>
-      <button type="submit" className={outline} disabled={busy}>{conversation ? "Guardar nombre" : "Crear canal"}</button>
-      {conversation && !confirmArchive && <button type="button" className={control} onClick={() => setConfirmArchive(true)}>Archivar canal</button>}
+      <Button type="submit" variant="outline" size="sm" className={control} isDisabled={busy}>{conversation ? "Guardar nombre" : "Crear canal"}</Button>
+      {conversation && !confirmArchive && <Button ref={archiveButton} variant="ghost" size="sm" className={control}
+        onPress={() => { focusAfter.current = "confirm"; setConfirmArchive(true); }}>Archivar canal</Button>}
       {conversation && confirmArchive && <div className="flex flex-wrap gap-2">
-        <button type="button" className={outline} disabled={busy} onClick={() => void apply({ kind: "archiveChannel", conversationId: conversation.id })}>Confirmar archivo</button>
-        <button type="button" className={control} onClick={() => setConfirmArchive(false)}>Cancelar</button>
+        <Button ref={confirmButton} variant="danger-soft" size="sm" className={control} isDisabled={busy}
+          onPress={() => void apply({ kind: "archiveChannel", conversationId: conversation.id })}>Confirmar archivo</Button>
+        <Button variant="ghost" size="sm" className={control}
+          onPress={() => { focusAfter.current = "archive"; setConfirmArchive(false); }}>Cancelar</Button>
       </div>}
     </form>
   </details>;
@@ -122,12 +132,12 @@ function DirectForm({ people, userId, onCommand }: Pick<ChatViewProps, "people" 
     }}>
       <label className="block">
         <span className="mb-1 block text-xs">Persona</span>
-        <select name="recipient" className={input} required>
+        <select name="recipient" className={`${input} scheme-light-dark`} required>
           <option value="">Elige una persona</option>
           {eligible.map((person) => <option key={person.id} value={person.id}>{personName(person.id, person)}</option>)}
         </select>
       </label>
-      <button type="submit" className={outline} disabled={busy}>Abrir conversación</button>
+      <Button type="submit" variant="outline" size="sm" className={control} isDisabled={busy}>Abrir conversación</Button>
     </form> : <p className="p-2 text-(--text-muted)">No hay compañeros disponibles para un directo.</p>}
   </details>;
 }
@@ -138,7 +148,16 @@ function MessageItem({ entry, name, person, canEdit, onCommand }: {
   const [mode, setMode] = useState<"edit" | "remove" | null>(null);
   const [busy, setBusy] = useState(false);
   const editInput = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { if (mode === "edit") editInput.current?.focus(); }, [mode]);
+  const confirmRemove = useRef<HTMLButtonElement>(null);
+  const editButton = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef(false);
+  // Al abrir una acción el foco entra en ella; al cerrarla vuelve a «Editar» para no perderse en <body>.
+  useEffect(() => {
+    if (mode === "edit") editInput.current?.focus();
+    if (mode === "remove") confirmRemove.current?.focus();
+    if (mode === null && returnFocus.current) editButton.current?.focus();
+    returnFocus.current = mode !== null;
+  }, [mode]);
   async function save(command: LocalCommand) {
     if (busy) return;
     setBusy(true);
@@ -160,19 +179,21 @@ function MessageItem({ entry, name, person, canEdit, onCommand }: {
         const body = String(new FormData(event.currentTarget).get("body") ?? "");
         void save({ kind: "edit", conversationId: entry.conversationId, messageId: entry.id, body });
       }}>
-        <textarea ref={editInput} aria-label="Editar mensaje" name="body" className={input} defaultValue={entry.body} required maxLength={4000} />
-        <button className={primary} type="submit" disabled={busy}>Guardar</button>
-        <button className={control} type="button" onClick={() => setMode(null)}>Cancelar</button>
+        <TextArea ref={editInput} aria-label="Editar mensaje" name="body" fullWidth defaultValue={entry.body} required maxLength={4000}
+          onKeyDown={(event) => { if (event.key === "Escape") setMode(null); }} />
+        <Button type="submit" variant="primary" size="sm" className={control} isPending={busy}>Guardar</Button>
+        <Button variant="ghost" size="sm" className={control} onPress={() => setMode(null)}>Cancelar</Button>
       </form> : <p className={`text-sm wrap-anywhere whitespace-pre-wrap ${entry.body === null ? "text-(--text-muted) italic" : ""}`}>
         {entry.body ?? "Mensaje eliminado"}
       </p>}
       {canEdit && entry.body !== null && mode === null && <div className="flex gap-1">
-        <button type="button" className={control} onClick={() => setMode("edit")}><Icon name="lapiz" /> Editar</button>
-        <button type="button" className={control} onClick={() => setMode("remove")}>Retirar</button>
+        <Button ref={editButton} variant="ghost" size="sm" className={control} onPress={() => setMode("edit")}><Icon name="lapiz" /> Editar</Button>
+        <Button variant="ghost" size="sm" className={control} onPress={() => setMode("remove")}>Retirar</Button>
       </div>}
       {canEdit && entry.body !== null && mode === "remove" && <div className="flex flex-wrap gap-2">
-        <button type="button" className={outline} disabled={busy} onClick={() => void save({ kind: "remove", conversationId: entry.conversationId, messageId: entry.id })}>Confirmar retiro</button>
-        <button type="button" className={control} onClick={() => setMode(null)}>Cancelar</button>
+        <Button ref={confirmRemove} variant="danger-soft" size="sm" className={control} isPending={busy}
+          onPress={() => void save({ kind: "remove", conversationId: entry.conversationId, messageId: entry.id })}>Confirmar retiro</Button>
+        <Button variant="ghost" size="sm" className={control} onPress={() => setMode(null)}>Cancelar</Button>
       </div>}
     </div>
   </li>;
@@ -181,7 +202,9 @@ function MessageItem({ entry, name, person, canEdit, onCommand }: {
 function ConversationView({ props, conversation, people }: { props: ChatViewProps; conversation: ChatConversation; people: Map<string, ChatParticipant> }) {
   const scroll = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
   const pinned = useRef(true);
+  const notified = useRef(0);
   const earlier = useRef<{ height: number; top: number } | null>(null);
   useEffect(() => { heading.current?.focus(); }, []);
 
@@ -191,7 +214,9 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
     pinned.current = element.scrollHeight - element.clientHeight - element.scrollTop < 32;
     const latest = props.messages.at(-1);
     const end = element.querySelector("li:last-child")?.getBoundingClientRect();
-    if (pinned.current && latest && end && end.bottom <= window.innerHeight + 1 && end.bottom > 0 && !document.hidden) {
+    // Solo se avisa una vez por mensaje: así un contenedor que actualiza estado en onVisible no entra en bucle.
+    if (pinned.current && latest && latest.number > notified.current && end && end.bottom <= window.innerHeight + 1 && end.bottom > 0 && !document.hidden) {
+      notified.current = latest.number;
       props.onVisible(latest.number);
     }
   }
@@ -220,7 +245,9 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
   return <section className="hubly-glass flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl" aria-labelledby="chat-conversation">
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-(--border-default) p-3">
       <div className="min-w-0">
-        <button type="button" className={`${control} lg:hidden`} onClick={() => props.onSelect(null)}>← Conversaciones</button>
+        <Button variant="ghost" size="sm" className={`${control} lg:hidden`} onPress={() => props.onSelect(null)}>
+          <span aria-hidden="true">←</span> Conversaciones
+        </Button>
         <h2 ref={heading} id="chat-conversation" tabIndex={-1} className="text-lg font-semibold wrap-anywhere">{conversationName(conversation, people)}</h2>
         <p className="text-xs text-(--text-secondary)">
           {conversation.archived ? "Canal archivado" : conversation.kind === "channel" ? "Canal de la agencia" : "Conversación privada"}
@@ -231,10 +258,10 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
     </header>
     <div ref={scroll} onScroll={visible} tabIndex={0} aria-label="Historial de la conversación"
       className="max-h-(--chat-history-max-mobile) min-h-48 grow overflow-y-auto px-3 lg:max-h-none lg:min-h-0">
-      {props.hasOlder && <button type="button" className={control} disabled={props.loadingOlder} onClick={() => {
+      {props.hasOlder && <Button variant="ghost" size="sm" className={control} isPending={props.loadingOlder} onPress={() => {
         if (scroll.current) earlier.current = { height: scroll.current.scrollHeight, top: scroll.current.scrollTop };
         props.onOlder();
-      }}>{props.loadingOlder ? "Cargando mensajes…" : "Ver mensajes anteriores"}</button>}
+      }}>{props.loadingOlder ? "Cargando mensajes…" : "Ver mensajes anteriores"}</Button>}
       {props.loading ? <p role="status" className="p-4 text-sm">Cargando conversación…</p>
         : props.messages.length ? <ol aria-label="Mensajes" className="divide-y divide-(--border-subtle)">
           {props.messages.map((entry) => <MessageItem key={entry.id} entry={entry}
@@ -243,15 +270,16 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
         </ol> : <p className="p-4 text-sm text-(--text-secondary)">Todavía no hay mensajes.</p>}
     </div>
     {conversation.writable && !props.loading ? <form className="grid gap-2 border-t border-(--border-default) p-3 sm:grid-cols-[1fr_auto] sm:items-end"
-      onSubmit={(event) => { event.preventDefault(); props.onSend(); }}>
+      onSubmit={(event) => { event.preventDefault(); if (props.sending) return; composer.current?.focus(); props.onSend(); }}>
       <label className="min-w-0">
         <span className="mb-1 block text-sm font-semibold">Mensaje</span>
-        <textarea className={input} rows={2} value={props.draft} disabled={props.sending} maxLength={4000}
+        {/* Mientras se envía el campo queda en solo lectura, no deshabilitado, para que el foco siga en el compositor. */}
+        <TextArea ref={composer} fullWidth rows={2} value={props.draft} readOnly={props.sending} aria-busy={props.sending} maxLength={4000}
           onChange={(event) => props.onDraft(event.target.value)} placeholder="Escribe un mensaje…" />
       </label>
-      <button type="submit" className={primary} disabled={props.sending || !props.draft.trim()}>
+      <Button type="submit" variant="primary" className={control} isPending={props.sending} isDisabled={!props.sending && !props.draft.trim()}>
         {props.sending ? "Enviando…" : props.failedSend ? "Reintentar envío" : "Enviar"}
-      </button>
+      </Button>
     </form> : !props.loading && <p className="border-t border-(--border-default) p-3 text-sm text-(--text-secondary)">Conversación de solo lectura.</p>}
   </section>;
 }
@@ -262,25 +290,28 @@ export function ChatView(props: ChatViewProps) {
   const rows = props.unreadOnly ? props.conversations.filter((entry) => entry.unread) : props.conversations;
   const unreadCount = props.conversations.filter((entry) => entry.unread).length;
   const listHeading = useRef<HTMLHeadingElement>(null);
-  return <div className="flex min-h-0 min-w-0 grow flex-col gap-3" aria-labelledby="chat-title">
+  return <div className="flex min-h-0 min-w-0 grow flex-col gap-3">
     <header className="hubly-glass flex flex-wrap items-center justify-between gap-2 rounded-2xl p-3">
       <div>
         <p className={sectionLabel}>{props.workspaceName}</p>
-        <h1 id="chat-title" className="text-2xl font-semibold">Chat</h1>
+        <h1 className="text-2xl font-semibold">Chat</h1>
       </div>
       <div className="flex gap-2">
-        <a className={control} href={props.download("json")} aria-label="Descargar mis mensajes en JSON"><Icon name="descargar" /> JSON</a>
-        <a className={control} href={props.download("md")} aria-label="Descargar mis mensajes en Markdown"><Icon name="descargar" /> Markdown</a>
+        <a className={buttonLinkClass("ghost", "sm", control)} href={props.download("json")} aria-label="Descargar mis mensajes en JSON"><Icon name="descargar" /> JSON</a>
+        <a className={buttonLinkClass("ghost", "sm", control)} href={props.download("md")} aria-label="Descargar mis mensajes en Markdown"><Icon name="descargar" /> Markdown</a>
       </div>
     </header>
-    {props.error && <p role="alert" className="rounded-xl bg-(--status-danger-bg) p-3 text-sm text-(--status-danger-text)">{props.error}</p>}
+    {props.error && <Alert status="danger" role="alert" className="bg-(--status-danger-bg) text-(--status-danger-text)">
+      <Alert.Indicator />
+      <Alert.Content><Alert.Title className="text-(--status-danger-text)">{props.error}</Alert.Title></Alert.Content>
+    </Alert>}
     <span role="status" className="sr-only">{props.notice}</span>
     <div className="grid min-h-0 grow gap-3 lg:grid-cols-[minmax(var(--chat-list-min),var(--chat-list-max))_minmax(0,1fr)]">
       <aside className={`hubly-glass min-h-0 min-w-0 overflow-y-auto rounded-2xl p-3 ${conversation ? "hidden lg:block" : ""}`} aria-labelledby="chat-list-title">
         <h2 ref={listHeading} id="chat-list-title" tabIndex={-1} className="mb-2 text-base font-semibold">Conversaciones</h2>
         <div className="flex flex-wrap gap-1 pb-2">
-          <button type="button" className={control} aria-pressed={!props.unreadOnly} onClick={() => props.onFilter(false)}>Todas</button>
-          <button type="button" className={control} aria-pressed={props.unreadOnly} onClick={() => props.onFilter(true)}>Sin leer {unreadCount}</button>
+          <Button size="sm" variant={props.unreadOnly ? "ghost" : "secondary"} className={control} aria-pressed={!props.unreadOnly} onPress={() => props.onFilter(false)}>Todas</Button>
+          <Button size="sm" variant={props.unreadOnly ? "secondary" : "ghost"} className={control} aria-pressed={props.unreadOnly} onPress={() => props.onFilter(true)}>Sin leer {unreadCount}</Button>
         </div>
         {props.canManage && <ChannelForm onCommand={props.onCommand} />}
         {props.canSend && <DirectForm people={props.people} userId={props.userId} onCommand={props.onCommand} />}
@@ -291,15 +322,15 @@ export function ChatView(props: ChatViewProps) {
             <h3 className={sectionLabel}>{kind === "channel" ? "Canales" : "Mensajes directos"}</h3>
             <ul className="mt-1 space-y-1">{group.map((entry) => {
               const name = conversationName(entry, people);
+              const current = entry.id === conversation?.id;
               return <li key={entry.id}>
-                <button type="button" aria-current={entry.id === conversation?.id ? "true" : undefined}
-                  className={`${control} w-full justify-start text-left ${entry.id === conversation?.id ? "bg-(--accent-primary-subtle)" : ""}`}
-                  onClick={() => props.onSelect(entry.id)}>
+                <Button size="sm" variant={current ? "secondary" : "ghost"} fullWidth aria-current={current}
+                  className={`${control} justify-start text-left`} onPress={() => props.onSelect(entry.id)}>
                   {entry.kind === "direct" && <Avatar name={name} person={entry.peerId ? people.get(entry.peerId) : undefined} />}
                   <span className="min-w-0 grow wrap-anywhere">{name}</span>
                   {entry.unread && <span className="text-xs text-(--accent-primary)">Sin leer</span>}
                   {entry.archived && <span className="text-xs text-(--text-muted)">Archivado</span>}
-                </button>
+                </Button>
               </li>;
             })}</ul>
           </section>;

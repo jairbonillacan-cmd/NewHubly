@@ -38,4 +38,13 @@ describe("Interfaz del chat", () => {
     expect(html).not.toContain("Nuevo directo");
     expect(html).not.toContain("<textarea");
   });
+
+  it("mantiene el compositor enfocable mientras envía y no mezcla clases de hover en los botones", () => {
+    const html = renderToStaticMarkup(<ChatView {...props} sending />);
+    const composer = html.match(/<textarea[^>]*placeholder="Escribe un mensaje…"[^>]*>/)?.[0] ?? "";
+    expect(composer).toMatch(/\sreadonly=/i);
+    expect(composer).not.toMatch(/\sdisabled/);
+    expect(html).toContain("Enviando…");
+    expect(html).not.toContain("hover:bg-(--surface-interactive)");
+  });
 });
