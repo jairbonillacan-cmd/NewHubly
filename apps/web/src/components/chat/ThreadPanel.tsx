@@ -1,0 +1,89 @@
+"use client";
+
+import type { ChatParticipant } from "@hubly/contracts";
+import { Button, TextArea } from "@hubly/ui";
+import React, { useEffect, useState } from "react";
+import { ChatAvatar, personName } from "./MemberList";
+import { formatMessageTime, type ChatMessageView } from "./MessageItem";
+
+const control = "min-h-11";
+
+export interface ThreadPanelProps {
+  rootMessage: ChatMessageView; replies: readonly ChatMessageView[];
+  people: Map<string, ChatParticipant>; userId: string; writable: boolean;
+  now?: Date | undefined; initialDraft?: string; sending?: boolean;
+  onClose: () => void;
+  onSendReply?: ((rootMessageId: string, body: string) => Promise<boolean | void> | boolean | void) | undefined;
+}
+
+export function ThreadPanel({
+  rootMessage, replies, people, userId, writable, now, initialDraft = "", sending = false, onClose, onSendReply,
+}: ThreadPanelProps) {
+  const [draft, setDraft] = useState(initialDraft);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const rootAuthor = rootMessage.authorId === userId ? "Tú" : personName(rootMessage.authorId, people.get(rootMessage.authorId));
+  const rootPerson = people.get(rootMessage.authorId);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const text = draft.trim();
+    if (!text || busy || sending || !writable) return;
+    setBusy(true);
+    try { if ((onSendReply ? await onSendReply(rootMessage.id, text) : true) !== false) setDraft(""); }
+    finally { setBusy(false); }
+  }
+
+  return <aside role="region" aria-labelledby="chat-thread-title" tabIndex={-1}
+    onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); onClose(); } }}
+    className="hubly-glass hubly-pop fixed inset-0 z-40 flex min-h-0 w-full flex-col overflow-hidden rounded-2xl lg:static lg:z-auto lg:w-96 lg:shrink-0">
+    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-(--border-subtle) px-3 py-2.5">
+      <div>
+        <h3 id="chat-thread-title" className="text-base font-semibold">Hilo</h3>
+        <p className="text-xs text-(--text-secondary)">{`${replies.length} ${replies.length === 1 ? "respuesta" : "respuestas"}`}</p>
+      </div>
+      <Button size="sm" variant="ghost" className={control} onPress={onClose}>Cerrar hilo</Button>
+    </div>
+    <div className="min-h-0 grow space-y-3 overflow-y-auto p-3">
+      <article aria-label="Mensaje principal del hilo" className="flex gap-2.5 rounded-xl border border-(--border-subtle) bg-(--surface-sunken) p-3">
+        <ChatAvatar person={rootPerson} fallbackName={rootMessage.authorId === userId ? "Tú" : undefined} />
+        <div className="min-w-0 grow">
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-sm font-semibold">{rootAuthor}</span>
+            <time dateTime={rootMessage.sentAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>{formatMessageTime(rootMessage.sentAt, now)}</time>
+          </div>
+          <p className={`mt-1 text-sm wrap-anywhere whitespace-pre-wrap ${rootMessage.body === null ? "text-(--text-muted) italic" : ""}`}>{rootMessage.body ?? "Mensaje eliminado"}</p>
+        </div>
+      </article>
+      {replies.length > 0 ? <ol aria-label="Respuestas del hilo" className="space-y-2">
+        {replies.map((reply) => {
+          const isOwn = reply.authorId === userId;
+          const author = isOwn ? "Tú" : personName(reply.authorId, people.get(reply.authorId));
+          return <li key={reply.id} className="hubly-chat-msg-enter flex gap-2.5 rounded-xl bg-(--surface-raised) p-2.5">
+            <ChatAvatar person={people.get(reply.authorId)} fallbackName={isOwn ? "Tú" : undefined} />
+            <div className="min-w-0 grow">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-sm font-semibold">{author}</span>
+                <time dateTime={reply.sentAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>{formatMessageTime(reply.sentAt, now)}</time>
+              </div>
+              <p className={`mt-0.5 text-sm wrap-anywhere whitespace-pre-wrap ${reply.body === null ? "text-(--text-muted) italic" : ""}`}>{reply.body ?? "Mensaje eliminado"}</p>
+            </div>
+          </li>;
+        })}
+      </ol> : <p className="py-2 text-xs text-(--text-secondary)">Todavía no hay respuestas en este hilo.</p>}
+    </div>
+    {writable && rootMessage.body !== null && <form onSubmit={(event) => void handleSubmit(event)} className="shrink-0 space-y-2 border-t border-(--border-subtle) p-3">
+      <TextArea aria-label="Responder en el hilo" placeholder="Responder en el hilo…" value={draft}
+        onChange={(event) => setDraft(event.target.value)} rows={2} maxLength={4000} fullWidth />
+      <div className="flex justify-end">
+        <Button type="submit" variant="primary" size="sm" className={control} isPending={busy || sending} isDisabled={!draft.trim() || busy || sending}>Enviar al hilo</Button>
+      </div>
+    </form>}
+  </aside>;
+}

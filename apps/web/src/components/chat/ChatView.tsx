@@ -1,14 +1,19 @@
 "use client";
 
-import type { ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
+import type { ChatConversation, ChatParticipant } from "@hubly/contracts";
 import { Alert, Button } from "@hubly/ui";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Composer } from "./Composer";
 import { ChannelForm, ConversationHeader } from "./ConversationHeader";
-import { ChatAvatar, DirectoryErrorBanner, MemberList, MissingNameBanner, conversationName, type ChatViewCommand } from "./MemberList";
+import {
+  ChatAvatar, DirectoryErrorBanner, MemberList, MissingNameBanner, conversationName, personName, type ChatViewCommand,
+} from "./MemberList";
+import type { ChatMessageView, ChatReactionSummary } from "./MessageItem";
 import { MessageList } from "./MessageList";
+import { ThreadPanel } from "./ThreadPanel";
 
 export type { ChatViewCommand } from "./MemberList";
+export type { ChatMessageView, ChatReactionSummary } from "./MessageItem";
 
 export interface ChatViewProps {
   workspaceName: string;
@@ -19,7 +24,7 @@ export interface ChatViewProps {
   conversations: ChatConversation[];
   people: ChatParticipant[];
   currentId: string | null;
-  messages: ChatMessage[];
+  messages: ChatMessageView[];
   listLoading?: boolean;
   loading: boolean;
   hasOlder: boolean;
@@ -31,6 +36,12 @@ export interface ChatViewProps {
   directoryError?: string | null;
   notice: string | null;
   freshMessageIds?: ReadonlySet<string>;
+  highlightedMessageId?: string | null;
+  activeThreadRootId?: string | null;
+  threadMessages?: readonly ChatMessageView[];
+  replyingToMessageId?: string | null;
+  reactionsByMessage?: Readonly<Record<string, readonly ChatReactionSummary[]>>;
+  reactionErrorsByMessage?: Readonly<Record<string, string | null | undefined>>;
   now?: Date;
   onRetryDirectory?: () => void;
   onFilter: (enabled: boolean) => void;
@@ -40,6 +51,11 @@ export interface ChatViewProps {
   onCommand: (input: ChatViewCommand) => Promise<boolean>;
   onDraft: (value: string) => void;
   onSend: () => void;
+  onReplyToMessage?: (message: ChatMessageView | null) => void;
+  onOpenThread?: (message: ChatMessageView | null) => void;
+  onJumpToMessage?: (messageId: string) => void;
+  onSendThreadReply?: (rootMessageId: string, body: string) => Promise<boolean | void> | boolean | void;
+  onToggleReaction?: (messageId: string, emoji: string) => Promise<boolean | void> | boolean | void;
 }
 
 const control = "min-h-11";
@@ -49,6 +65,17 @@ function ConversationView({ props, conversation, people }: {
   props: ChatViewProps; conversation: ChatConversation; people: Map<string, ChatParticipant>;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
+  const [threadRootId, setThreadRootId] = useState<string | null>(props.activeThreadRootId ?? null);
+  const [replyingToId, setReplyingToId] = useState<string | null>(props.replyingToMessageId ?? null);
+
+  useEffect(() => {
+    if (props.activeThreadRootId !== undefined) setThreadRootId(props.activeThreadRootId);
+  }, [props.activeThreadRootId]);
+
+  useEffect(() => {
+    if (props.replyingToMessageId !== undefined) setReplyingToId(props.replyingToMessageId);
+  }, [props.replyingToMessageId]);
+
   useEffect(() => {
     if (conversation.archived && document.activeElement === document.body) heading.current?.focus({ preventScroll: true });
   }, [conversation.archived]);
@@ -57,16 +84,51 @@ function ConversationView({ props, conversation, people }: {
     heading.current?.focus({ preventScroll: true });
   }, []);
 
-  return <section className="hubly-glass flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl" aria-labelledby="chat-conversation">
-    <ConversationHeader conversation={conversation} people={people} canManage={props.canManage}
-      headingRef={heading} onSelect={props.onSelect} onCommand={props.onCommand} />
-    <MessageList conversation={conversation} messages={props.messages} people={people} userId={props.userId}
-      loading={props.loading} hasOlder={props.hasOlder} loadingOlder={props.loadingOlder}
-      freshMessageIds={props.freshMessageIds} now={props.now} onOlder={props.onOlder}
-      onVisible={props.onVisible} onCommand={props.onCommand} />
-    <Composer writable={conversation.writable} loading={props.loading} draft={props.draft}
-      sending={props.sending} failedSend={props.failedSend} onDraft={props.onDraft} onSend={props.onSend} />
-  </section>;
+  const replyingTo = replyingToId ? props.messages.find((item) => item.id === replyingToId) ?? null : null;
+  const threadRoot = threadRootId ? props.messages.find((item) => item.id === threadRootId) ?? null : null;
+  const threadReplies = threadRoot
+    ? (props.threadMessages ?? props.messages.filter((item) => item.threadRootId === threadRoot.id))
+    : [];
+
+  return (
+    <div className="flex min-h-0 min-w-0 grow gap-3">
+      <section className="hubly-glass flex min-h-0 min-w-0 grow flex-col overflow-hidden rounded-2xl" aria-labelledby="chat-conversation">
+        <ConversationHeader conversation={conversation} people={people} canManage={props.canManage}
+          headingRef={heading} onSelect={props.onSelect} onCommand={props.onCommand} />
+        <MessageList conversation={conversation} messages={props.messages} people={people} userId={props.userId}
+          loading={props.loading} hasOlder={props.hasOlder} loadingOlder={props.loadingOlder}
+          freshMessageIds={props.freshMessageIds} highlightedMessageId={props.highlightedMessageId}
+          reactionsByMessage={props.reactionsByMessage} reactionErrorsByMessage={props.reactionErrorsByMessage}
+          now={props.now} onOlder={props.onOlder} onVisible={props.onVisible} onCommand={props.onCommand}
+          onReply={(message) => { setReplyingToId(message.id); props.onReplyToMessage?.(message); }}
+          onOpenThread={(message) => { setThreadRootId(message.id); props.onOpenThread?.(message); }}
+          onJumpToMessage={props.onJumpToMessage}
+          onToggleReaction={props.onToggleReaction} />
+        {replyingTo && conversation.writable && (
+          <div role="status" aria-label="Contexto de respuesta" className="flex flex-wrap items-center justify-between gap-2 border-t border-(--border-subtle) bg-(--surface-sunken) px-3 py-2 text-xs">
+            <div className="min-w-0 truncate">
+              <span className="font-semibold text-(--accent-primary)">
+                Respondiendo a {replyingTo.authorId === props.userId ? "Tú" : personName(replyingTo.authorId, people.get(replyingTo.authorId))}:
+              </span>{" "}
+              <span className="text-(--text-secondary)">{replyingTo.body ?? "Mensaje eliminado"}</span>
+            </div>
+            <Button size="sm" variant="ghost" className="min-h-8 text-xs"
+              onPress={() => { setReplyingToId(null); props.onReplyToMessage?.(null); }}>
+              Cancelar respuesta
+            </Button>
+          </div>
+        )}
+        <Composer writable={conversation.writable} loading={props.loading} draft={props.draft}
+          sending={props.sending} failedSend={props.failedSend} onDraft={props.onDraft} onSend={props.onSend} />
+      </section>
+      {threadRoot && (
+        <ThreadPanel rootMessage={threadRoot} replies={threadReplies} people={people} userId={props.userId}
+          writable={conversation.writable} now={props.now} sending={props.sending}
+          onClose={() => { setThreadRootId(null); props.onOpenThread?.(null); }}
+          onSendReply={props.onSendThreadReply} />
+      )}
+    </div>
+  );
 }
 
 export function ChatView(props: ChatViewProps) {
