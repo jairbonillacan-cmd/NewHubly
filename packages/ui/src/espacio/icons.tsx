@@ -1,11 +1,24 @@
 // Set único de iconos del espacio (#75): trazos propios de 24×24, sin dependencias nuevas.
 
+/** Tuerca de 8 dientes con su hueco central; se calcula una vez al cargar el módulo. */
+const TUERCA = (() => {
+  const points: string[] = [];
+  for (let i = 0; i < 32; i++) {
+    const angle = (i / 32) * Math.PI * 2 - Math.PI / 2;
+    const r = i % 4 < 2 ? 9.5 : 7.2;
+    points.push(`${(12 + r * Math.cos(angle)).toFixed(2)} ${(12 + r * Math.sin(angle)).toFixed(2)}`);
+  }
+  return `M${points.join("L")}ZM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6`;
+})();
+
 const PATHS = {
   sol: "M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
   nota: "M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6",
   pin: "M9 4h6l-1 6 3 3H7l3-3zM12 13v7",
   mas: "M12 5v14M5 12h14",
   menos: "M5 12h14",
+  tuerca: TUERCA,
+  mapa: "M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14",
   encuadrar: "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5",
   cerrar: "M6 6l12 12M18 6L6 18",
   buscar: "M11 5a6 6 0 1 0 0 12a6 6 0 1 0 0-12M20 20l-4.5-4.5",

@@ -362,8 +362,18 @@ body {
 .hubly-lienzo { touch-action: none; cursor: grab; }
 .hubly-lienzo[data-arrastrando] { cursor: grabbing; user-select: none; }
 .hubly-lienzo-capa { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: translate(var(--lienzo-x, 0), var(--lienzo-y, 0)) scale(var(--lienzo-zoom, 1)); }
-.hubly-lienzo-item { position: absolute; left: var(--item-x); top: var(--item-y); width: var(--item-w); height: var(--item-h); z-index: var(--item-z); min-width: 20rem; min-height: 12.5rem; resize: both; overflow: hidden; border-radius: 1rem; cursor: auto; }
-.hubly-lienzo-item > * { height: 100%; }
+.hubly-lienzo-item { position: absolute; left: var(--item-x); top: var(--item-y); width: var(--item-w); height: var(--item-h); z-index: var(--item-z); min-width: 20rem; min-height: 12.5rem; resize: both; overflow: hidden; border-radius: 1rem; cursor: auto;
+  outline: 2px solid transparent; outline-offset: 4px; transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease), outline-color var(--motion-fast) var(--motion-ease); }
+/* Guía azul (issue 141): al pasar el ratón, el borde y la esquina avisan que el panel se mueve y cambia de tamaño. */
+.hubly-lienzo-item:hover { outline-color: color-mix(in srgb, var(--accent-primary) 65%, transparent); }
+.hubly-lienzo-item [data-lienzo-asa] { transition: background-color var(--motion-fast) var(--motion-ease); }
+.hubly-lienzo-item [data-lienzo-asa]:hover { background-color: var(--accent-primary-subtle); }
+.hubly-lienzo-esquina { position: absolute; right: 6px; bottom: 6px; width: 14px; height: 14px; border-right: 3px solid var(--accent-primary); border-bottom: 3px solid var(--accent-primary); border-bottom-right-radius: 6px; opacity: 0; pointer-events: none; transition: opacity var(--motion-fast) var(--motion-ease); }
+.hubly-lienzo-item:hover .hubly-lienzo-esquina, .hubly-lienzo-item[data-flotando] .hubly-lienzo-esquina { opacity: 1; }
+/* Al tomarlo, el panel se eleva y flota mientras se arrastra. */
+@keyframes hubly-flotar { 0%, 100% { transform: translateY(-6px) rotate(-0.6deg) scale(1.015); } 50% { transform: translateY(-11px) rotate(0.4deg) scale(1.015); } }
+.hubly-lienzo-item[data-flotando] { outline-color: var(--accent-primary); box-shadow: 0 1.75rem 3.5rem -1rem rgb(0 0 0 / 0.38); transform: translateY(-6px) rotate(-0.6deg) scale(1.015); animation: hubly-flotar 2.4s ease-in-out var(--motion-fast) infinite; }
+.hubly-lienzo-cuerpo, .hubly-lienzo-cuerpo > * { height: 100%; }
 .hubly-lienzo-item [data-lienzo-asa] { cursor: grab; }
 .hubly-wallpaper { transition: background-color var(--motion-base) var(--motion-ease); }
 .hubly-wallpaper svg { transition: opacity var(--motion-base) var(--motion-ease); }
@@ -373,4 +383,4 @@ body {
 .hubly-aurora-1 { top: -25%; left: -15%; width: 60vmax; height: 60vmax; }
 .hubly-aurora-2 { top: 25%; right: -20%; width: 55vmax; height: 55vmax; animation-duration: 31s; animation-direction: reverse; }
 .hubly-aurora-3 { bottom: -33%; left: 25%; width: 50vmax; height: 50vmax; animation-duration: 38s; }
-@media (prefers-reduced-motion: reduce) { .hubly-wallpaper, .hubly-wallpaper svg { transition: none; } .hubly-aurora { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .hubly-lienzo-item, .hubly-lienzo-item[data-flotando] { animation: none; transition: none; } .hubly-wallpaper, .hubly-wallpaper svg { transition: none; } .hubly-aurora { animation: none; } }
