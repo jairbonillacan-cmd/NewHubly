@@ -163,9 +163,7 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
             )}
             <div role={isSent ? "status" : undefined} className="flex flex-col gap-2">
               {isSent && (
-                <span className="flex size-11 items-center justify-center rounded-xl bg-(--accent-primary-subtle) text-(--accent-primary)">
-                  <Icon name="sobre" className="size-6" />
-                </span>
+                <Hubi pose="correo" tamano={88} decorativo className="hubly-pop" />
               )}
               {screen === "error" ? <p className={HEADING}>{TITLES.signin}</p> : (
                 <h1 id="login-heading" tabIndex={-1} ref={heading} className={HEADING}>{TITLES[screen]}</h1>

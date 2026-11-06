@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Tooltip } from "@heroui/react";
+import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { HerramientaIcono, HERRAMIENTAS, type Herramienta, type HerramientaId } from "./herramientas";
 import { Icon } from "./icons";
 
@@ -87,11 +88,17 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
   );
 }
 
-/** Página de una herramienta que todavía no existe: su icono, su nombre y lo que hará. Sin datos inventados. */
+// Pose de Hubi para cada herramienta que llega (#125); sin pose, se muestra su icono.
+const POSE_PROXIMAMENTE: Partial<Record<HerramientaId, Exclude<HubiPose, "sentado" | "laptop">>> = {
+  contenido: "contenido", clientes: "comunidad", reportes: "metricas",
+};
+
+/** Página de una herramienta que todavía no existe: Hubi o su icono, su nombre y lo que hará. Sin datos inventados. */
 export function Proximamente({ herramienta }: { herramienta: Herramienta }) {
+  const pose = POSE_PROXIMAMENTE[herramienta.id];
   return (
     <section aria-labelledby="proximamente-titulo" className="hubly-glass hubly-enter flex min-h-96 grow flex-col items-center justify-center gap-4 rounded-2xl px-6 py-12 text-center">
-      <HerramientaIcono id={herramienta.id} className="size-18 text-(--text-secondary)" />
+      {pose ? <Hubi pose={pose} tamano={144} decorativo className="hubly-float" /> : <HerramientaIcono id={herramienta.id} className="size-18 text-(--text-secondary)" />}
       <p className="m-0 text-xs font-semibold tracking-wide text-(--accent-primary) uppercase">Próximamente</p>
       <h2 id="proximamente-titulo" className="m-0 text-2xl font-bold">{herramienta.nombre}</h2>
       <p className="m-0 max-w-md text-sm leading-relaxed text-(--text-secondary)">{herramienta.descripcion}</p>
