@@ -7,7 +7,7 @@ import {
   createTodoUseCase, ensureAuthenticatedWorkspace, exportDataUseCase, getUserPreferencesUseCase, issueWorkspaceInvitation, listNotesUseCase,
   listPendingInvitationsUseCase, listTodosUseCase, listUserWorkspacesUseCase, listWorkspaceMembersUseCase,
   WallpaperImageError, persistActiveWorkspaceCookie, pinNoteUseCase, removeOrLeaveMemberUseCase, removeUserWallpaper, revokePendingWorkspaceInvitation, saveUserPreferencesUseCase,
-  signUserWallpaper, uploadUserWallpaper,
+  signUserWallpaper, uploadUserWallpaper, loadUserProfile, removeUserAvatar, saveUserDisplayName, uploadUserAvatar,
   toggleTodoUseCase, updateNoteUseCase, updateTodoUseCase, type AcceptInvitationResult, type UserWorkspaceSummary, type WorkspaceInvitationRecord,
 } from "../server/composition";
 
@@ -25,6 +25,9 @@ export interface WorkspaceDashboardData {
   wallpaperImageUrl: string | null;
   /** Correo de la sesión, para la inicial del avatar. */
   currentUserEmail: string | null;
+  /** Nombre visible y URL firmada (1 h) de la foto de perfil, si la hay (issue 135). */
+  currentUserName: string | null;
+  avatarUrl: string | null;
 }
 
 const autosaveNoteSchema = updateNoteSchema.required({ expectedVersion: true });
@@ -32,15 +35,15 @@ const autosaveNoteSchema = updateNoteSchema.required({ expectedVersion: true });
 export async function loadWorkspaceDashboardAction(workspaceId?: string): Promise<WorkspaceDashboardData> {
   const ctx = await ensureAuthenticatedWorkspace(workspaceId);
   const listView = listTodosUseCase(ctx);
-  const [notes, todayTodos, upcomingTodos, noDateTodos, doneTodos, userWorkspaces, members, pendingInvitations, preferences] = await Promise.all([
+  const [notes, todayTodos, upcomingTodos, noDateTodos, doneTodos, userWorkspaces, members, pendingInvitations, preferences, profile] = await Promise.all([
     listNotesUseCase(ctx)(), listView("today"), listView("upcoming"), listView("no_date"), listView("done"),
-    listUserWorkspacesUseCase(ctx)(), listWorkspaceMembersUseCase(ctx)(), listPendingInvitationsUseCase(ctx)(), getUserPreferencesUseCase(ctx)(),
+    listUserWorkspacesUseCase(ctx)(), listWorkspaceMembersUseCase(ctx)(), listPendingInvitationsUseCase(ctx)(), getUserPreferencesUseCase(ctx)(), loadUserProfile(ctx.userId, ctx.userDisplayName),
   ]);
   const seen = new Set<string>();
   const todos = [...todayTodos, ...upcomingTodos, ...noDateTodos, ...doneTodos].filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)));
   const activeWorkspace: WorkspaceSummary = { id: ctx.workspaceId, name: ctx.workspaceName, slug: ctx.workspaceSlug ?? ctx.workspaceId, kind: ctx.workspaceKind, role: ctx.role };
   const wallpaperImageUrl = preferences.wallpaper === "imagen" ? await signUserWallpaper(ctx.userId) : null;
-  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences, wallpaperImageUrl, currentUserEmail: ctx.userEmail };
+  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences, wallpaperImageUrl, currentUserEmail: ctx.userEmail, currentUserName: profile.name, avatarUrl: profile.avatarUrl };
 }
 
 export async function createTodoAction(input: CreateTodoInput, workspaceId?: string): Promise<WorkspaceTodo> {
@@ -139,3 +142,36 @@ export async function removeWallpaperAction(): Promise<UserPreferences> {
   return saveUserPreferencesUseCase(ctx)({ wallpaper: "contornos" });
 }
 
+
+export type ProfileResult<T> = { ok: true; value: T } | { ok: false; message: string };
+
+/** Sube la foto de perfil (issue 135) con las mismas validaciones que «Tu imagen». Devuelve el error como dato (#92). */
+export async function uploadAvatarAction(formData: FormData): Promise<ProfileResult<string>> {
+  const file = formData.get("foto");
+  if (!(file instanceof File)) return { ok: false, message: "Elige una imagen JPEG, PNG o WebP." };
+  const ctx = await ensureAuthenticatedWorkspace();
+  try {
+    return { ok: true, value: await uploadUserAvatar(ctx.userId, new Uint8Array(await file.arrayBuffer())) };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "No se pudo subir tu foto." };
+  }
+}
+
+export async function removeAvatarAction(): Promise<ProfileResult<null>> {
+  const ctx = await ensureAuthenticatedWorkspace();
+  try {
+    await removeUserAvatar(ctx.userId);
+    return { ok: true, value: null };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "No se pudo quitar tu foto." };
+  }
+}
+
+export async function saveDisplayNameAction(name: string): Promise<ProfileResult<string>> {
+  await ensureAuthenticatedWorkspace();
+  try {
+    return { ok: true, value: await saveUserDisplayName(String(name)) };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "No se pudo guardar tu nombre." };
+  }
+}

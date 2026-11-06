@@ -2,11 +2,12 @@
 
 import { Button, Chip, Dropdown, Kbd, Popover, ToggleButton, Tooltip } from "@heroui/react";
 import type { ReactNode } from "react";
-import type { Key, Selection } from "react-aria-components";
+import { FileTrigger, type Key, type Selection } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { useHublyTheme, useHublyThemePreference } from "../landing/ThemeToggle";
 import { Icon, type IconName } from "./icons";
 import type { Shortcut } from "./dockConfig";
+import { AVATAR_TYPES, Avatar } from "./PerfilDialog";
 import type { PanelId } from "./preferencias";
 import { ROLE_LABEL, longDateLabel, type EspacioWorkspace } from "./types";
 
@@ -33,6 +34,12 @@ export interface TopBarProps {
   onToggleFocus: () => void;
   /** Correo de la sesión: da la inicial del avatar. */
   userEmail?: string | null | undefined;
+  /** Nombre visible y foto (issue 135); sin `onEditProfile`, editar sale como «Muy pronto». */
+  userName?: string | null | undefined;
+  avatarUrl?: string | null | undefined;
+  avatarBusy?: boolean | undefined;
+  onEditProfile?: (() => void) | undefined;
+  onPickAvatar?: ((file: File) => void) | undefined;
 }
 
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
@@ -78,19 +85,24 @@ function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAge
 
 const initialOf = (email: string | null | undefined) => email?.trim().charAt(0).toUpperCase() || null;
 
-/** Nombre visible mientras Auth no guarda uno: se deriva del correo, sin inventar datos. */
-function profileName(email: string | null | undefined): string {
+/** Nombre guardado o, sin él, uno derivado del correo, sin inventar datos. */
+export function profileName(email: string | null | undefined, saved?: string | null): string {
+  if (saved?.trim()) return saved.trim();
   const local = email?.split("@")[0]?.trim();
   if (!local) return "Tu cuenta";
   return local.split(/[._-]+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
 
-function AccountMenu({ timezone, userEmail, shortcuts, onExport, onSignOut }: Pick<TopBarProps, "timezone" | "userEmail" | "shortcuts" | "onExport" | "onSignOut">) {
+function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, onEditProfile, onPickAvatar, shortcuts, onExport, onSignOut }: Pick<TopBarProps, "timezone" | "userEmail" | "userName" | "avatarUrl" | "avatarBusy" | "onEditProfile" | "onPickAvatar" | "shortcuts" | "onExport" | "onSignOut">) {
+  const initial = initialOf(userName || userEmail);
+  const pick = (files: FileList | null) => { const file = files?.[0]; if (file) onPickAvatar?.(file); };
+  const photoLabel = avatarUrl ? "Cambiar foto" : "Subir foto";
   const [preference, , setThemePreference] = useHublyThemePreference();
   const onAction = (key: Key) => {
     if (key === "json") onExport("json");
     else if (key === "md") onExport("md");
     else if (key === "salir") onSignOut();
+    else if (key === "editar") onEditProfile?.();
   };
   const onTheme = (selection: Selection) => {
     if (selection === "all") return;
@@ -100,9 +112,7 @@ function AccountMenu({ timezone, userEmail, shortcuts, onExport, onSignOut }: Pi
   return (
     <Dropdown>
       <Dropdown.Trigger aria-label="Menú de tu cuenta" className="relative size-11 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0 transition-transform data-[hovered]:scale-105">
-        <span aria-hidden="true" className="flex size-11 items-center justify-center rounded-full bg-(--accent-primary) text-base font-bold text-(--text-on-accent)">
-          {initialOf(userEmail) ?? <Icon name="usuario" className="size-5" />}
-        </span>
+        <Avatar url={avatarUrl ?? null} initial={initial} className="size-11 text-base" />
         <span aria-hidden="true" className="absolute -right-0.5 -bottom-0.5 flex size-4.5 items-center justify-center rounded-full border-2 border-(--surface-raised) bg-(--surface-raised) text-(--text-primary)">
           <Icon name="lapiz" className="size-2.5" strokeWidth={2.5} />
         </span>
@@ -110,28 +120,48 @@ function AccountMenu({ timezone, userEmail, shortcuts, onExport, onSignOut }: Pi
       <Dropdown.Popover placement="bottom end" className={`${MENU} w-80`}>
         <div className="flex flex-col gap-3 border-b border-(--glass-line) px-2.5 pt-2 pb-3">
           <div className="flex items-start gap-3">
-            <span className="relative flex size-16 shrink-0 items-center justify-center rounded-full bg-(--accent-primary) text-2xl font-bold text-(--text-on-accent)">
-              <span aria-hidden="true">{initialOf(userEmail) ?? <Icon name="usuario" className="size-7" />}</span>
-              <Button isIconOnly isDisabled aria-label="Cambiar foto, muy pronto" className="absolute -right-1 -bottom-1 size-11 rounded-full border-2 border-(--surface-raised) bg-(--surface-raised) text-(--text-secondary)">
-                <Icon name="camara" className="size-4" />
-              </Button>
+            <span className="relative shrink-0">
+              <Avatar url={avatarUrl ?? null} initial={initial} className="size-16 text-2xl" iconClassName="size-7" />
+              {onPickAvatar ? (
+                <FileTrigger acceptedFileTypes={AVATAR_TYPES} onSelect={pick}>
+                  <Button isIconOnly isDisabled={avatarBusy === true} aria-label={photoLabel} className="absolute -right-1 -bottom-1 size-11 rounded-full border-2 border-(--surface-raised) bg-(--surface-raised) text-(--text-secondary)">
+                    <Icon name="camara" className="size-4" />
+                  </Button>
+                </FileTrigger>
+              ) : (
+                <Button isIconOnly isDisabled aria-label="Cambiar foto, muy pronto" className="absolute -right-1 -bottom-1 size-11 rounded-full border-2 border-(--surface-raised) bg-(--surface-raised) text-(--text-secondary)">
+                  <Icon name="camara" className="size-4" />
+                </Button>
+              )}
             </span>
             <div className="min-w-0 grow pt-1">
-              <p className="m-0 truncate text-sm font-semibold">{profileName(userEmail)}</p>
+              <p className="m-0 truncate text-sm font-semibold">{profileName(userEmail, userName)}</p>
               {userEmail && <p className="m-0 truncate text-xs text-(--text-secondary)">{userEmail}</p>}
               {timezone && <p className="m-0 truncate text-xs text-(--text-muted)">Zona horaria: {timezone.replaceAll("_", " ")}</p>}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="secondary" isDisabled aria-label="Cambiar foto, muy pronto" className="min-h-11">Cambiar foto</Button>
-            <Chip size="sm" variant="soft">Muy pronto</Chip>
+            {onPickAvatar ? (
+              <FileTrigger acceptedFileTypes={AVATAR_TYPES} onSelect={pick}>
+                <Button size="sm" variant="secondary" isDisabled={avatarBusy === true} className="min-h-11">{avatarBusy ? "Subiendo…" : photoLabel}</Button>
+              </FileTrigger>
+            ) : (
+              <>
+                <Button size="sm" variant="secondary" isDisabled aria-label="Cambiar foto, muy pronto" className="min-h-11">Cambiar foto</Button>
+                <Chip size="sm" variant="soft">Muy pronto</Chip>
+              </>
+            )}
           </div>
         </div>
         <Dropdown.Menu aria-label="Menú de tu perfil" onAction={onAction} className="pt-1.5">
           <Dropdown.Section aria-label="Perfil">
-            <Dropdown.Item id="editar" isDisabled textValue="Editar perfil" aria-label="Editar perfil, muy pronto" className={ITEM}>
-              <Icon name="lapiz" /> <span className="grow">Editar perfil</span><span className="text-xs text-(--text-muted)">Muy pronto</span>
-            </Dropdown.Item>
+            {onEditProfile ? (
+              <Dropdown.Item id="editar" textValue="Editar perfil" className={ITEM}><Icon name="lapiz" /> <span className="grow">Editar perfil</span></Dropdown.Item>
+            ) : (
+              <Dropdown.Item id="editar" isDisabled textValue="Editar perfil" aria-label="Editar perfil, muy pronto" className={ITEM}>
+                <Icon name="lapiz" /> <span className="grow">Editar perfil</span><span className="text-xs text-(--text-muted)">Muy pronto</span>
+              </Dropdown.Item>
+            )}
           </Dropdown.Section>
           <Dropdown.Section aria-label="Tema" selectionMode="single" selectedKeys={[preference]} onSelectionChange={onTheme} className="border-y border-(--glass-line) py-1.5">
             <Dropdown.Item id="light" textValue="Tema claro" className={ITEM}><span className="grow">Claro</span>{preference === "light" && <Icon name="check" className="size-4 text-(--accent-primary)" />}</Dropdown.Item>
