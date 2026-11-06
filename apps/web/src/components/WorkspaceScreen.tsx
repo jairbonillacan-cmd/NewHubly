@@ -1,5 +1,5 @@
 "use client";
-import { parseQuickCapture } from "@hubly/application";
+import { canEditItem, parseQuickCapture, suggestOverdueTodos } from "@hubly/application";
 import { createTodoSchema, type UserPreferences } from "@hubly/contracts";
 import { BienvenidaDialog, EspacioEstado, EspacioHoy, type HerramientaId, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
 import React, { useEffect, useRef, useState } from "react";
@@ -7,7 +7,7 @@ import {
   archiveNoteAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction, createAgencyWorkspaceAction,
   createNoteAction, createTodoAction, createTodoFromNoteAction, exportWorkspaceAction, inviteWorkspaceMemberAction, loadWorkspaceDashboardAction,
   pinNoteAction, removeOrLeaveWorkspaceMemberAction, removeWallpaperAction, revokeWorkspaceInvitationAction, saveNoteAction, saveUserPreferencesAction, selectActiveWorkspaceAction, toggleTodoAction,
-  uploadWallpaperAction,
+  updateTodoAction, uploadWallpaperAction,
   type WorkspaceInvitationSummary, type WorkspaceMemberSummary, type WorkspaceNote, type WorkspaceSummary, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
 import { signOutAction } from "../actions/auth";
@@ -112,6 +112,8 @@ export function WorkspaceScreen({
   onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
+  const [movingOverdue, setMovingOverdue] = useState(false);
+  const movingOverdueRef = useRef(false);
   const [notes, setNotes] = useState<WorkspaceNote[]>(initialNotes);
   const [activeWs, setActiveWs] = useState<WorkspaceSummary | undefined>(initialActiveWorkspace);
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>(initialWorkspaces ?? (initialActiveWorkspace ? [initialActiveWorkspace] : []));
@@ -186,6 +188,26 @@ export function WorkspaceScreen({
     const updated = onToggleTodo ? await onToggleTodo(id) : await toggleTodoAction(id, wsId);
     setTodos((prev) => prev.map((t) => (t.id === id ? (updated ?? { ...t, isDone: !t.isDone, doneAt: !t.isDone ? `${todayDate}T12:00:00.000Z` : null }) : t)));
   });
+
+  const overdue = suggestOverdueTodos(todos.filter((todo) => canEditItem(currentUserId, activeWs?.role ?? "owner", todo)), todayDate);
+  const moveOverdueToToday = (ids: readonly string[]) => {
+    const remaining = new Set(ids);
+    return runSafe("No se pudieron pasar los pendientes a hoy.", async () => {
+      if (movingOverdueRef.current) return;
+      movingOverdueRef.current = true;
+      setMovingOverdue(true);
+      try {
+        for (const id of remaining) {
+          const updated = await updateTodoAction({ id, dueDate: todayDate }, wsId);
+          setTodos((prev) => prev.map((todo) => todo.id === id ? { ...todo, dueDate: updated.dueDate } : todo));
+          remaining.delete(id);
+        }
+      } finally {
+        movingOverdueRef.current = false;
+        setMovingOverdue(false);
+      }
+    });
+  };
 
   const handleCreateNote = async (): Promise<string | null> => {
     let createdId: string | null = null;
@@ -323,6 +345,7 @@ export function WorkspaceScreen({
       noteSaveStates={noteStatus}
       actionError={actionError ? { message: actionError.message, onRetry: () => { void actionError.retry(); } } : null}
       captureError={captureError}
+      overdueSuggestion={overdue ? { message: overdue.message, action: { label: overdue.actionLabel, run: () => void moveOverdueToToday(overdue.todoIds), pending: movingOverdue } } : null}
       analyzeCapture={(text) => parseQuickCapture(text, todayDate)}
       onCapture={handleCapture}
       onToggleTodo={handleToggleTodo}

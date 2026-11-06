@@ -7,12 +7,11 @@ import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { useHublyTheme, type HublyTheme } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
-import { BackgroundPicker, CaptureField, Dock, DockMore, type WallpaperImageControls } from "./Dock";
-import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery } from "./dockConfig";
+import { BackgroundPicker, CaptureField, Dock, DockMore, DockStatus, type WallpaperImageControls } from "./Dock";
+import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery, type DockSuggestion } from "./dockConfig";
 import { Carril, Proximamente, resumenSemana } from "./Carril";
 import { HERRAMIENTAS, herramientaPorId, isHerramientaId, type HerramientaId } from "./herramientas";
 import { HoyPanel } from "./HoyPanel";
-import { Icon } from "./icons";
 import { NotaPanel } from "./NotaPanel";
 import { NotasPanel } from "./NotasPanel";
 import { useEspacioPreferencias, type EspacioPreferencias } from "./preferencias";
@@ -47,6 +46,7 @@ export interface EspacioHoyProps {
   noteSaveStates: Record<string, NoteSaveState>;
   actionError?: { message: string; onRetry: () => void } | null;
   captureError?: string | null;
+  overdueSuggestion?: DockSuggestion | null;
   analyzeCapture: (text: string) => CaptureAnalysis;
   onCapture: (input: CaptureInput) => Promise<boolean | void>;
   onToggleTodo: (id: string) => Promise<void> | void;
@@ -270,10 +270,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
         : "lg:grid lg:auto-cols-fr lg:grid-flow-col";
 
   const linkedNote = notes.find((note) => note.id === linkedNoteId);
+  const suggestion = toast
+    ? { message: toast.message, ...(toast.undo ? { action: { label: "Deshacer", run: () => { toast.undo?.(); setToast(null); } } } : {}) }
+    : props.overdueSuggestion ?? null;
   const dock = herramienta === "hoy" ? createTodayDock({
     todos, date: todayDate, layout, onLayout: (distribucion) => setPrefs({ distribucion }),
     filter, onFilter: (next) => { setFilter(next); setPrefs({ paneles: { hoy: true } }); },
-    createNote: () => void createNote(), exportData: () => onExport("json"), saveState,
+    createNote: () => void createNote(), exportData: () => onExport("json"), saveState, suggestion,
     entry: {
       label: "Capturar pendiente", hint: "Captura… prueba «llamar a Lumen mañana !alta»", shortcut: "C",
       submitIcon: <HubiFace className="size-5" />,
@@ -392,7 +395,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
       </div>}
 
       <div {...(dock ? { role: "toolbar", "aria-label": dock.label } : {})} className="hubly-glass fixed inset-x-2 bottom-2 z-30 flex flex-col gap-2 rounded-(--glass-radius-access-card) p-2 lg:hidden">
-        {dock && <CaptureField ref={mobileCapture} {...dock.entry} />}
+        {dock && <><DockStatus suggestion={dock.suggestion ?? null} /><CaptureField ref={mobileCapture} {...dock.entry} /></>}
         <nav aria-label="Navegación del espacio" className="grid grid-cols-4">
           <Button variant="ghost" className="min-h-11" {...(herramienta === "hoy" ? { "aria-current": "page" } : {})} onPress={() => {
             selectHerramienta("hoy");
@@ -414,13 +417,11 @@ export function EspacioHoy(props: EspacioHoyProps) {
         </nav>
       </div>
 
-      {toast && (
+      {herramienta !== "hoy" && toast && (
         <div role="status" key={toast.id} className="hubly-pop hubly-pop-surface fixed bottom-36 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-(--text-primary) lg:bottom-28">
           <span className="max-w-64 truncate">{toast.message}</span>
           {toast.undo && (
-            <Button size="sm" variant="ghost" onPress={() => { toast.undo?.(); setToast(null); }} className="text-(--accent-primary)">
-              <Icon name="deshacer" className="size-3.5" /> Deshacer
-            </Button>
+            <Button size="sm" variant="ghost" onPress={() => { toast.undo?.(); setToast(null); }} className="text-(--accent-primary)">Deshacer</Button>
           )}
         </div>
       )}
@@ -455,7 +456,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           setPrefs({ paneles: { hoy: true } });
           setTimeout(() => document.getElementById(`pendiente-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
         }}
-        onCreateTodo={(title) => void submitCapture(title)}
+        onCreateTodo={(title) => { selectHerramienta("hoy"); void submitCapture(title); }}
       />
     </div>
   );

@@ -17,6 +17,8 @@ export interface CaptureFieldProps {
   error?: string | null | undefined;
 }
 
+export interface DockSuggestion { message: string; action?: { label: string; run: () => void; pending?: boolean } }
+
 export interface DockConfig {
   label: string;
   context: string;
@@ -26,7 +28,7 @@ export interface DockConfig {
   pace: { done: number; total: number; label: string };
   views: { id: string; label: string; icon: IconName; selected: boolean; run: () => void }[];
   saved: string;
-  suggestion?: ReactNode;
+  suggestion?: DockSuggestion | null;
 }
 
 export function createShortcutRegistry(shortcuts: readonly Shortcut[]) {
@@ -55,10 +57,10 @@ const VIEWS = [
 ] as const;
 const SAVED = { saved: "Todo guardado", saving: "Guardando…", error: "Sin guardar" };
 
-export function createTodayDock({ todos, date, layout, onLayout, filter, onFilter, entry, createNote, exportData, saveState }: {
+export function createTodayDock({ todos, date, layout, onLayout, filter, onFilter, entry, createNote, exportData, saveState, suggestion = null }: {
   todos: EspacioTodo[]; date: string; layout: LayoutId; onLayout: (layout: LayoutId) => void;
   filter: HoyFilter; onFilter: (filter: HoyFilter) => void; entry: CaptureFieldProps;
-  createNote: () => void; exportData: () => void; saveState: NoteSaveState;
+  createNote: () => void; exportData: () => void; saveState: NoteSaveState; suggestion?: DockSuggestion | null;
 }): DockConfig {
   const due = todos.filter((todo) => todo.dueDate === date);
   const pending = due.filter((todo) => !todo.isDone);
@@ -71,7 +73,7 @@ export function createTodayDock({ todos, date, layout, onLayout, filter, onFilte
       filters: (["vencidos", "hoy"] as const).map((id) => ({ label: id === "hoy" ? "Para hoy" : "Vencidos", selected: filter === id, run: () => onFilter(filter === id ? null : id) })) },
     pace: { done: due.length - pending.length, total: due.length, label: `${due.length - pending.length} de ${due.length} · hechos hoy` },
     views: VIEWS.map((view) => ({ ...view, selected: view.id === layout, run: () => onLayout(view.id) })),
-    saved: SAVED[saveState],
+    saved: SAVED[saveState], suggestion,
   };
 }
 
