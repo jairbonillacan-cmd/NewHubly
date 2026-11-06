@@ -290,7 +290,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
     listLoading={!listReady} messages={before === null ? messages : messages.filter((entry) => entry.number >= before)} loading={loading} hasOlder={before !== null} loadingOlder={loadingOlder}
     draft={draft.text} sending={draft.sending} failedSend={draft.failed} error={actionError ?? connectionError}
     directoryError={directoryError} onRetryDirectory={() => void loadDirectory()} notice={notice}
-    download={api.download} onFilter={setUnreadOnly} onSelect={select} onOlder={() => void loadOlder()}
+    onFilter={setUnreadOnly} onSelect={select} onOlder={() => void loadOlder()}
     onVisible={markVisible} onCommand={submit}
     onDraft={(text) => {
       if (currentId) setDrafts((previous) => {

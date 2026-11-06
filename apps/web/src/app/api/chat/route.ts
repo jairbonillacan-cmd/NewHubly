@@ -34,7 +34,7 @@ function failed(error: unknown) {
 function download(messages: ChatMessage[], format: "json" | "md") {
   const content = format === "json"
     ? JSON.stringify({ version: 1, messages }, null, 2)
-    : ["# Mis mensajes de Hubly", ...messages.map(({ sentAt, conversationId, body }) =>
+    : ["# Mensajes de la agencia en Hubly", ...messages.map(({ sentAt, conversationId, body }) =>
       `## ${sentAt} · ${conversationId}\n\n${(body ?? "").split("\n").map((line) => `    ${line}`).join("\n")}`),
     ].join("\n\n");
   return new Response(content, { headers: {
@@ -71,7 +71,7 @@ export async function GET(request: Request): Promise<Response> {
       case "export": {
         const input = chatExportSchema.safeParse({ workspaceId, format: params.get("format") });
         if (!input.success) return json({ error: "El formato de descarga no es válido." }, 400);
-        return download(chatMessageSchema.array().parse(await chat.exportOwn(workspaceId)), input.data.format);
+        return download(chatMessageSchema.array().parse(await chat.exportAgency(workspaceId)), input.data.format);
       }
       default: return json({ error: "La solicitud de chat no es válida." }, 400);
     }

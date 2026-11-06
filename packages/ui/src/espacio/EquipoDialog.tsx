@@ -3,6 +3,7 @@
 import { Button, Input, Label, ListBox, Select, TextField } from "@heroui/react";
 import { useState, type FormEvent } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
+import { buttonLinkClass } from "../heroui-classes";
 import { Icon } from "./icons";
 import {
   ROLE_LABEL, assignableRoles, canRemoveMember,
@@ -27,6 +28,8 @@ export interface EquipoDialogProps {
   onRemoveMember: (userId: string) => void;
   onLeave: () => void;
   onExportOwn: () => void;
+  onExportChat?: ((format: "json" | "md") => void) | undefined;
+  chatExportHref?: ((format: "json" | "md") => string) | undefined;
 }
 
 const ROW = "flex flex-wrap items-center justify-between gap-2 rounded-lg bg-(--glass-hover) px-3 py-2";
@@ -72,7 +75,10 @@ function CrearAgencia({ onCreate }: { onCreate: (name: string) => void }) {
 }
 
 function Equipo(props: Omit<EquipoDialogProps, "mode" | "onClose" | "onCreateAgency">) {
-  const { workspace, members, invitations, inviteLink, onInvite, onCopyInvite, onRevokeInvite, onChangeRole, onRemoveMember, onLeave, onExportOwn } = props;
+  const {
+    workspace, members, invitations, inviteLink, onInvite, onCopyInvite,
+    onRevokeInvite, onChangeRole, onRemoveMember, onLeave, onExportOwn, onExportChat, chatExportHref,
+  } = props;
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<EspacioInviteRole>("editor");
   const actor = workspace.role;
@@ -80,6 +86,8 @@ function Equipo(props: Omit<EquipoDialogProps, "mode" | "onClose" | "onCreateAge
   const canInvite = actor === "owner" || actor === "admin";
   const inviteRoles: EspacioInviteRole[] = actor === "owner" ? ["admin", "editor", "viewer"] : ["editor", "viewer"];
   const soleOwner = actor === "owner" && ownerCount < 2;
+  const resolveChatExportHref = chatExportHref
+    ?? ((format: "json" | "md") => `/api/chat?op=export&workspaceId=${encodeURIComponent(workspace.id)}&format=${format}`);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!email.trim()) return;
@@ -145,6 +153,34 @@ function Equipo(props: Omit<EquipoDialogProps, "mode" | "onClose" | "onCreateAge
         </section>
       )}
 
+      <section aria-labelledby="equipo-chat" className="flex flex-col gap-2 border-t border-(--glass-line) pt-4">
+        <h3 id="equipo-chat" className="m-0 text-sm font-semibold">Chat de la agencia</h3>
+        {actor === "owner" ? (
+          <>
+            <p className="m-0 text-xs text-(--text-secondary)">
+              Incluye los canales completos de la agencia y únicamente las conversaciones directas en las que participas como propietario, nunca los directos entre otras personas.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {onExportChat ? (
+                <>
+                  <Button size="sm" variant="secondary" onPress={() => onExportChat("json")}>Exportar chat en JSON</Button>
+                  <Button size="sm" variant="secondary" onPress={() => onExportChat("md")}>Exportar chat en Markdown</Button>
+                </>
+              ) : (
+                <>
+                  <a href={resolveChatExportHref("json")} download className={buttonLinkClass("secondary", "sm")}>Exportar chat en JSON</a>
+                  <a href={resolveChatExportHref("md")} download className={buttonLinkClass("secondary", "sm")}>Exportar chat en Markdown</a>
+                </>
+              )}
+            </div>
+          </>
+        ) : (
+          <p className="m-0 text-xs text-(--text-secondary)">
+            El propietario de la agencia puede exportar los canales desde estos ajustes de equipo.
+          </p>
+        )}
+      </section>
+
       <section aria-labelledby="equipo-salir" className="flex flex-col gap-2 border-t border-(--glass-line) pt-4">
         <h3 id="equipo-salir" className="m-0 text-sm font-semibold">Tu participación</h3>
         <p className="m-0 text-xs text-(--text-secondary)">Si sales, tus elementos privados pasan a tu espacio personal. Antes puedes descargar lo que creaste aquí.</p>
@@ -162,19 +198,25 @@ function Equipo(props: Omit<EquipoDialogProps, "mode" | "onClose" | "onCreateAge
 /** Crear agencia y gestionar su equipo e invitaciones (#64, #78). Los permisos reales los aplica el servidor con RLS. */
 export function EquipoDialog({ mode, onClose, onCreateAgency, ...rest }: EquipoDialogProps) {
   const title = mode === "crear" ? "Crear agencia" : `Equipo de ${rest.workspace.name}`;
+  const content = (
+    <Dialog className="hubly-pop-surface flex max-h-160 flex-col overflow-hidden rounded-2xl text-(--text-primary) outline-none">
+      <div className="flex items-center gap-2.5 border-b border-(--glass-line) px-4 py-3">
+        <Icon name={mode === "crear" ? "mas" : "equipo"} className="size-4 text-(--accent-primary)" />
+        <Heading slot="title" className="m-0 grow text-base font-semibold">{title}</Heading>
+        <Button isIconOnly size="sm" variant="ghost" aria-label="Cerrar" onPress={onClose}><Icon name="cerrar" /></Button>
+      </div>
+      <div className="overflow-y-auto px-4 py-4">
+        {mode === "crear" ? <CrearAgencia onCreate={onCreateAgency} /> : <Equipo {...rest} />}
+      </div>
+    </Dialog>
+  );
+  if (typeof document === "undefined") {
+    return mode === null ? null : <div className="hubly-pop w-full max-w-lg">{content}</div>;
+  }
   return (
     <ModalOverlay isOpen={mode !== null} onOpenChange={(open) => { if (!open) onClose(); }} isDismissable className="fixed inset-0 z-50 flex items-start justify-center bg-(--glass-hover) px-3 pt-20 backdrop-blur-xs">
       <Modal className="hubly-pop w-full max-w-lg">
-        <Dialog className="hubly-pop-surface flex max-h-160 flex-col overflow-hidden rounded-2xl text-(--text-primary) outline-none">
-          <div className="flex items-center gap-2.5 border-b border-(--glass-line) px-4 py-3">
-            <Icon name={mode === "crear" ? "mas" : "equipo"} className="size-4 text-(--accent-primary)" />
-            <Heading slot="title" className="m-0 grow text-base font-semibold">{title}</Heading>
-            <Button isIconOnly size="sm" variant="ghost" aria-label="Cerrar" onPress={onClose}><Icon name="cerrar" /></Button>
-          </div>
-          <div className="overflow-y-auto px-4 py-4">
-            {mode === "crear" ? <CrearAgencia onCreate={onCreateAgency} /> : <Equipo {...rest} />}
-          </div>
-        </Dialog>
+        {content}
       </Modal>
     </ModalOverlay>
   );

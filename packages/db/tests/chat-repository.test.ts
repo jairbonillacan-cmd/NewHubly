@@ -23,7 +23,7 @@ const send = (body: string) => writer.command({
   kind: "send", workspaceId, conversationId: general, body, retryKey: randomUUID(),
 });
 
-describe("Chat: casos de uso y repositorio", () => {
+describe("Chat: casos de uso y repositorio", { timeout: 30000 }, () => {
   beforeAll(async () => {
     await db.begin(async (tx) => {
       await tx`insert into public.workspaces (id, name, slug, kind) values (${workspaceId}, 'Agencia', ${workspaceId}, 'agency')`;
@@ -65,7 +65,14 @@ describe("Chat: casos de uso y repositorio", () => {
     await expect(writer.command({ kind: "openDirect", workspaceId, recipientId: viewer })).rejects.toThrow("no disponible");
   });
 
-  it("sincroniza ediciones y retiros, cuenta no leídos y exporta solo mensajes propios vigentes", async () => {
+  it("sincroniza ediciones y retiros, cuenta no leídos y exporta solo para el owner canales y sus propios directos", async () => {
+    const ownerRepo = new DrizzleChatRepository({ sub: owner, role: "authenticated" }, workspaceId);
+    const ownerService = createChatService(
+      { workspaceId, userId: owner, role: "owner", workspaceKind: "agency", enabled: true },
+      ownerRepo,
+    );
+    const editorRepo = new DrizzleChatRepository({ sub: editor, role: "authenticated" }, workspaceId);
+
     const { message } = await send("Texto inicial");
     const original = message!;
     expect((await writer.list(workspaceId))[0]?.unread).toBe(false);
@@ -76,12 +83,24 @@ describe("Chat: casos de uso y repositorio", () => {
     expect(sync.changes).toMatchObject([{ id: original.id, number: original.number, body: "Texto editado" }]);
     await reader.command({ kind: "read", workspaceId, conversationId: general, through: original.number });
     expect((await reader.list(workspaceId))[0]?.unread).toBe(false);
-    expect(await reader.exportOwn(workspaceId)).toEqual([]);
-    expect(await writer.exportOwn(workspaceId)).toMatchObject([{ body: "Texto editado" }]);
+
+    const { conversationId: peerDirect } = await writer.command({ kind: "openDirect", workspaceId, recipientId: peer });
+    await writer.command({ kind: "send", workspaceId, conversationId: peerDirect, body: "Directo entre editores", retryKey: randomUUID() });
+
+    const { conversationId: ownerDirect } = await ownerService.command({ kind: "openDirect", workspaceId, recipientId: editor });
+    await writer.command({ kind: "send", workspaceId, conversationId: ownerDirect, body: "Directo con el owner", retryKey: randomUUID() });
+
+    await expect(reader.exportAgency(workspaceId)).rejects.toThrow("no disponible");
+    await expect(writer.exportAgency(workspaceId)).rejects.toThrow("no disponible");
+    expect(await editorRepo.agencyExportMessages()).toEqual([]);
+
+    const exported = await ownerService.exportAgency(workspaceId);
+    expect(exported.map((entry) => entry.body)).toEqual(["Texto editado", "Directo con el owner"]);
+    expect(exported.some((entry) => entry.conversationId === peerDirect)).toBe(false);
 
     await writer.command({ kind: "remove", workspaceId, conversationId: general, messageId: original.id });
     expect((await reader.sync(workspaceId, general, sync.after)).changes).toMatchObject([{ id: original.id, body: null }]);
-    expect(await writer.exportOwn(workspaceId)).toEqual([]);
+    expect((await ownerService.exportAgency(workspaceId)).map((entry) => entry.body)).toEqual(["Directo con el owner"]);
   });
 
   it("limita el directorio a nombre, rol y presencia dentro de la agencia", async () => {

@@ -21,7 +21,7 @@ export interface ChatRepository {
   sync(id: string | undefined, after: number): Promise<ChatSync>;
   ensureGeneral(): Promise<string>;
   command(input: ChatCommand): Promise<ChatCommandResult>;
-  ownMessages(): Promise<ChatMessage[]>;
+  agencyExportMessages(): Promise<ChatMessage[]>;
   directory(): Promise<ChatParticipant[]>;
 }
 
@@ -111,9 +111,10 @@ export function createChatService(ctx: ChatContext, repo: ChatRepository) {
       requireAgency(workspaceId);
       return await guarded(() => repo.directory());
     },
-    async exportOwn(workspaceId: string) {
+    async exportAgency(workspaceId: string) {
       requireAgency(workspaceId);
-      return await guarded(() => repo.ownMessages());
+      if (ctx.role !== "owner") throw new ChatAccessError();
+      return await guarded(() => repo.agencyExportMessages());
     },
   };
 }
