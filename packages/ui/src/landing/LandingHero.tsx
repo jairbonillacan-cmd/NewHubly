@@ -14,7 +14,7 @@ export function LandingHero() {
           Organiza tus ideas, tu contenido y tus marcas en el mismo lugar. Trabaja por tu cuenta o con tu equipo, sin repartir todo entre tantas herramientas.
         </p>
         <div data-delay="3" className="hubly-enter mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href="/login?modo=registro" className="inline-flex min-h-12 items-center justify-center rounded-full bg-(--accent-primary) px-6 font-semibold text-(--text-on-accent) hover:underline">Empezar con Hubly →</a>
+          <a href="/registro" className="inline-flex min-h-12 items-center justify-center rounded-full bg-(--accent-primary) px-6 font-semibold text-(--text-on-accent) hover:underline">Empezar con Hubly →</a>
           <a href="#producto" className="inline-flex min-h-12 items-center justify-center rounded-full border border-(--text-primary) px-6 font-semibold hover:bg-(--landing-ice)">Ver cómo funciona</a>
         </div>
         <p data-delay="4" className="hubly-enter mt-4 text-sm text-(--text-muted)">Hoy ya puedes organizar tus ideas y pendientes. Lo demás llega por partes.</p>

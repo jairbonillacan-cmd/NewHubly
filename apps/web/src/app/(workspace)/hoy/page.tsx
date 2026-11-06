@@ -1,16 +1,16 @@
-import { chatScopeSchema } from "@hubly/contracts";
-import { isHerramientaId, type HerramientaId } from "@hubly/ui";
+import { type HerramientaId } from "@hubly/ui";
 import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { loadWorkspaceDashboardAction } from "../../../actions";
 import { WorkspaceScreen } from "../../../components/WorkspaceScreen";
 
 export const dynamic = "force-dynamic";
 
-export async function HoyPage({ todayDate, showWelcome = false, herramienta, workspaceId, chatMode = false, initiallyUnread = false }: {
-  todayDate?: string; showWelcome?: boolean; herramienta?: HerramientaId; workspaceId?: string; chatMode?: boolean; initiallyUnread?: boolean;
+// El espacio activo sale de la cookie httpOnly «hubly_ws», no de la URL (#212): las rutas quedan limpias.
+export async function HoyPage({ todayDate, showWelcome = false, herramienta, chatMode = false, initiallyUnread = false }: {
+  todayDate?: string; showWelcome?: boolean; herramienta?: HerramientaId; chatMode?: boolean; initiallyUnread?: boolean;
 } = {}) {
   try {
-    const data = await loadWorkspaceDashboardAction(workspaceId);
+    const data = await loadWorkspaceDashboardAction();
     if (chatMode && !data.chat) notFound();
     return (
       <WorkspaceScreen
@@ -26,18 +26,11 @@ export async function HoyPage({ todayDate, showWelcome = false, herramienta, wor
     unstable_rethrow(err);
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("Sesión caducada")) redirect("/login");
-    if (workspaceId && msg.includes("No autorizado en el espacio")) notFound();
     return <WorkspaceScreen initialStatus="error" {...(todayDate ? { todayDate } : {})} errorMessage="No se pudo cargar tu espacio de trabajo." />;
   }
 }
 
 export default async function WorkspaceTodayPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
-  const herramienta = typeof params.herramienta === "string" && isHerramientaId(params.herramienta) ? params.herramienta : undefined;
-  const scope = chatScopeSchema.partial().safeParse({ workspaceId: params.workspaceId });
-  if (!scope.success) notFound();
-  return HoyPage({
-    showWelcome: params.bienvenida === "1", ...(herramienta ? { herramienta } : {}),
-    ...(scope.data.workspaceId ? { workspaceId: scope.data.workspaceId } : {}),
-  });
+  return HoyPage({ showWelcome: params.bienvenida === "1" });
 }
