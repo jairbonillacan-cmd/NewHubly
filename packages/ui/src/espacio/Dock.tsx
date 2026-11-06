@@ -164,7 +164,7 @@ export const CaptureField = forwardRef<HTMLInputElement, CaptureFieldProps>(func
     setText("");
   };
   return (
-    <form onSubmit={submit} className="relative flex min-w-0 grow items-center gap-2">
+    <form onSubmit={submit} className="relative flex min-w-44 grow items-center gap-2">
       {(tokens.length > 0 || linked) && (
         <div className="hubly-pop hubly-pop-surface absolute right-0 bottom-full left-0 mb-2 flex flex-wrap items-center gap-1 rounded-xl p-2">
           {linked && <Button size="sm" variant="secondary" onPress={linked.remove} aria-label={`Quitar el vínculo con la nota ${linked.label}`} className="min-h-11">Nota: {linked.label} ×</Button>}
@@ -209,7 +209,7 @@ function DockDetails({ config, sinVista = false }: { config: DockConfig; sinVist
   return (
     <>
       <Waiting waiting={config.waiting} />
-      <div className="flex shrink-0 items-center gap-1 text-xs text-(--text-secondary)">
+      <div className={`shrink-0 items-center gap-1 text-xs text-(--text-secondary) ${sinVista ? "hidden xl:flex" : "flex"}`}>
         <svg viewBox="0 0 24 24" className="size-7 text-(--accent-primary)" aria-hidden="true" fill="none" strokeWidth={2.5}>
           <circle cx="12" cy="12" r="9" className="stroke-(--glass-line-strong)" />
           <circle cx="12" cy="12" r="9" pathLength="100" stroke="currentColor" strokeDasharray={`${total ? 100 * done / total : 0} 100`} transform="rotate(-90 12 12)" />
@@ -255,7 +255,7 @@ export const Dock = forwardRef<HTMLInputElement, { config: DockConfig; extra?: R
     <div>
       <DockStatus suggestion={config.suggestion ?? null} />
       <div role="toolbar" aria-label={config.label} data-delay="3" className="hubly-glass hubly-enter flex h-16 w-full min-w-0 items-center gap-1 rounded-(--glass-radius-access-card) px-2">
-        <span className="w-16 shrink-0 px-1 text-xs font-semibold">{config.context}</span>
+        <span className={`w-16 shrink-0 px-1 text-xs font-semibold ${sinVista ? "hidden xl:block" : ""}`}>{config.context}</span>
         <DockActions actions={config.actions} />
         <CaptureField ref={ref} {...config.entry} />
         <DockDetails config={config} sinVista={sinVista} />
