@@ -60,18 +60,24 @@ describe("API privada de chat", () => {
     expect(sync).toHaveBeenCalledWith(workspaceId, conversationId, 5);
   });
 
-  it("conserva la clave de reintento, sanitiza los errores y sirve exportaciones como descargas", async () => {
+  it("conserva la clave de reintento, sanitiza los errores y sirve exportaciones del owner como descargas", async () => {
     const send = vi.fn().mockRejectedValueOnce({ cause: { code: "P0429" } });
-    const exportOwn = vi.fn().mockResolvedValue([sampleMessage]);
-    vi.mocked(getChatService).mockResolvedValue({ command: send, exportOwn } as unknown as Awaited<ReturnType<typeof getChatService>>);
+    const exportAgency = vi.fn().mockResolvedValue([sampleMessage]);
+    vi.mocked(getChatService).mockResolvedValue({ command: send, exportAgency } as unknown as Awaited<ReturnType<typeof getChatService>>);
     expect((await POST(makePost(command))).status).toBe(429);
     expect(send).toHaveBeenCalledWith(command);
 
     const json = await GET(makeGet("op=export&format=json"));
     expect(json.headers.get("content-disposition")).toContain("hubly-chat.json");
     expect(await json.json()).toEqual({ version: 1, messages: [sampleMessage] });
+    expect(exportAgency).toHaveBeenCalledWith(workspaceId);
     const markdown = await GET(makeGet("op=export&format=md"));
     expect(markdown.headers.get("content-disposition")).toContain("hubly-chat.md");
-    expect(await markdown.text()).toContain("    Mi mensaje");
+    const markdownText = await markdown.text();
+    expect(markdownText).toContain("# Mensajes de la agencia en Hubly");
+    expect(markdownText).toContain("    Mi mensaje");
+
+    exportAgency.mockRejectedValueOnce(new ChatAccessError());
+    expect((await GET(makeGet("op=export&format=json"))).status).toBe(404);
   });
 });

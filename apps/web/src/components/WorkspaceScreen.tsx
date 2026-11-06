@@ -12,7 +12,7 @@ import {
 } from "../actions";
 import { signOutAction } from "../actions/auth";
 import { ChatScreen } from "./chat/ChatScreen";
-import { ChatRequestError, chatTransport } from "./chat/transport";
+import { ChatRequestError, agencyExportHref, chatTransport } from "./chat/transport";
 import { fromEspacioPreferencias, toEspacioPreferencias } from "./preferences";
 
 export type ScreenStatus = "loading" | "unauthenticated" | "error" | "ready";
@@ -359,6 +359,7 @@ export function WorkspaceScreen({
         todayHref: `/hoy?workspaceId=${encodeURIComponent(activeWs.id)}`,
         href: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}`,
         unreadHref: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}&vista=sin-leer`,
+        exportHref: (format: "json" | "md") => agencyExportHref(activeWs.id, format),
         unread: chat.unread, active: chatMode,
         ...(chatMode ? { content: <ChatScreen key={activeWs.id} workspaceId={activeWs.id} workspaceName={activeWs.name}
           userId={currentUserId} role={activeWs.role} initiallyUnread={initiallyUnread} /> } : {}),

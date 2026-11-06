@@ -85,7 +85,15 @@ export interface EspacioHoyProps {
   profile?: EspacioProfile | undefined;
   /** Herramienta abierta al cargar (?herramienta=); por defecto, Hoy. */
   initialHerramienta?: HerramientaId | undefined;
-  chat?: { href: string; todayHref: string; unreadHref: string; unread: number | null; active: boolean; content?: ReactNode };
+  chat?: {
+    href: string;
+    todayHref: string;
+    unreadHref: string;
+    exportHref?: ((format: "json" | "md") => string) | undefined;
+    unread: number | null;
+    active: boolean;
+    content?: ReactNode;
+  };
 }
 
 /** Acomodo inicial de los paneles en el lienzo de escritorio (issue 136), en píxeles del lienzo. */
@@ -560,6 +568,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         onRemoveMember={props.onRemoveMember ?? noop}
         onLeave={() => { setTeamMode(null); props.onLeaveAgency?.(); }}
         onExportOwn={() => onExport("json")}
+        chatExportHref={chat?.exportHref}
       />
 
       {props.profile && (

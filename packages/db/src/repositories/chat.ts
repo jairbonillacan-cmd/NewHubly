@@ -162,11 +162,21 @@ export class DrizzleChatRepository implements ChatRepository {
     `)]);
   }
 
-  ownMessages() {
+  agencyExportMessages() {
     return this.scoped(async (tx) => (await tx.execute<MessageRow>(sql`
-      select ${messageColumns} from private.chat_messages
-      where workspace_id = ${this.workspaceId}::uuid and author_id = ${this.claims.sub}::uuid and deleted_at is null
-      order by created_at, conversation_id, message_number
+      select ${messageColumns} from private.chat_messages m
+      where m.workspace_id = ${this.workspaceId}::uuid
+        and private.chat_agency_role(${this.workspaceId}::uuid) = 'owner'
+        and m.deleted_at is null
+        and exists (
+          select 1 from private.chat_conversations c
+          where c.workspace_id = m.workspace_id and c.id = m.conversation_id
+            and (
+              c.kind = 'channel'
+              or (c.kind = 'direct' and ${this.claims.sub}::uuid in (c.member_low, c.member_high))
+            )
+        )
+      order by m.created_at, m.conversation_id, m.message_number
     `)).map(message));
   }
 }

@@ -1,10 +1,11 @@
 import type { ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
-import { EMOJI_CATEGORIES, EmojiPicker, filterEmojis } from "@hubly/ui";
+import { EMOJI_CATEGORIES, EmojiPicker, EquipoDialog, filterEmojis } from "@hubly/ui";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ChatView, type ChatViewProps } from "../src/components/chat/ChatView";
 import { daySeparatorLabel, shouldGroupMessages } from "../src/components/chat/MessageList";
+import { agencyExportHref } from "../src/components/chat/transport";
 
 const channel: ChatConversation = {
   id: "general", kind: "channel", slug: "general", peerId: null, archived: false,
@@ -141,5 +142,46 @@ describe("Interfaz del chat", () => {
     const emptyHtml = renderToStaticMarkup(<EmojiPicker initialQuery="inexistente-xyz" onSelect={vi.fn()} />);
     expect(emptyHtml).toContain("No hay emojis que coincidan con tu búsqueda.");
     expect(emptyHtml).not.toContain('role="grid"');
+  });
+
+  it("muestra en EquipoDialog la exportación del chat de la agencia solo al owner y un aviso a los demás miembros", () => {
+    const baseDialogProps = {
+      mode: "equipo" as const,
+      onClose: vi.fn(),
+      members: [{ userId: "actor", role: "owner" as const, isCurrentUser: true }],
+      invitations: [],
+      inviteLink: null,
+      onCreateAgency: vi.fn(),
+      onInvite: vi.fn(),
+      onCopyInvite: vi.fn(),
+      onRevokeInvite: vi.fn(),
+      onChangeRole: vi.fn(),
+      onRemoveMember: vi.fn(),
+      onLeave: vi.fn(),
+      onExportOwn: vi.fn(),
+      chatExportHref: (format: "json" | "md") => agencyExportHref("ag-1", format),
+    };
+
+    const ownerHtml = renderToStaticMarkup(
+      <EquipoDialog
+        {...baseDialogProps}
+        workspace={{ id: "ag-1", name: "Agencia Pulso", kind: "agency", role: "owner" }}
+      />,
+    );
+    expect(ownerHtml).toContain("Exportar chat en JSON");
+    expect(ownerHtml).toContain("Exportar chat en Markdown");
+    expect(ownerHtml).toContain("/api/chat?op=export&amp;workspaceId=ag-1&amp;format=json");
+    expect(ownerHtml).toContain("/api/chat?op=export&amp;workspaceId=ag-1&amp;format=md");
+    expect(ownerHtml).toContain("nunca los directos entre otras personas");
+
+    const memberHtml = renderToStaticMarkup(
+      <EquipoDialog
+        {...baseDialogProps}
+        workspace={{ id: "ag-1", name: "Agencia Pulso", kind: "agency", role: "editor" }}
+      />,
+    );
+    expect(memberHtml).not.toContain("Exportar chat en JSON");
+    expect(memberHtml).not.toContain("Exportar chat en Markdown");
+    expect(memberHtml).toContain("El propietario de la agencia puede exportar los canales desde estos ajustes de equipo.");
   });
 });

@@ -17,6 +17,10 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return await response.json() as T;
 }
 
+export function agencyExportHref(workspaceId: string, format: "json" | "md") {
+  return `${chatPath}?${new URLSearchParams({ op: "export", workspaceId, format })}`;
+}
+
 export function chatTransport(workspaceId: string) {
   function url(op: string, params: Record<string, string> = {}) {
     return `${chatPath}?${new URLSearchParams({ op, workspaceId, ...params })}`;
@@ -37,6 +41,6 @@ export function chatTransport(workspaceId: string) {
       request<ChatHistory>(url("history", { conversationId, ...(before === null ? {} : { before: String(before) }) }), { signal }),
     sync: (conversationId: string | null, after: number, signal: AbortSignal) =>
       request<ChatSync>(url("sync", { after: String(after), ...(conversationId ? { conversationId } : {}) }), { signal }),
-    download: (format: "json" | "md") => url("export", { format }),
+    agencyExportHref: (format: "json" | "md") => agencyExportHref(workspaceId, format),
   };
 }

@@ -32,7 +32,6 @@ export interface ChatViewProps {
   notice: string | null;
   freshMessageIds?: ReadonlySet<string>;
   now?: Date;
-  download?: (format: "json" | "md") => string;
   onRetryDirectory?: () => void;
   onFilter: (enabled: boolean) => void;
   onSelect: (id: string | null) => void;

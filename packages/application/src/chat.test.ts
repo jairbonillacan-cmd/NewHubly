@@ -15,7 +15,7 @@ function repo(overrides: Partial<ChatRepository> = {}): ChatRepository {
     sync: vi.fn().mockResolvedValue({ conversations: [], conversationAvailable: true, changes: [], after: 0, hasMore: false }),
     ensureGeneral: vi.fn().mockResolvedValue(conversationId),
     command: vi.fn().mockResolvedValue({ conversationId }),
-    ownMessages: vi.fn().mockResolvedValue([]),
+    agencyExportMessages: vi.fn().mockResolvedValue([]),
     directory: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
@@ -48,5 +48,22 @@ describe("Servicio de chat", () => {
     await expect(failing("42501")).rejects.toBeInstanceOf(ChatAccessError);
     const unknown = new Error("fallo de red");
     await expect(createChatService(ctx, repo({ conversations: vi.fn().mockRejectedValue(unknown) })).list(workspaceId)).rejects.toBe(unknown);
+  });
+
+  it("permite exportar el chat de la agencia solo al owner y rechaza a admin, editor y viewer", async () => {
+    const sample = [{
+      id: conversationId, conversationId, authorId: ctx.userId, body: "Mensaje en canal",
+      number: 1, change: 1, sentAt: "2026-11-05T15:00:00.000Z", editedAt: null, deletedAt: null,
+    }];
+    const storage = repo({ agencyExportMessages: vi.fn().mockResolvedValue(sample) });
+    await expect(createChatService(ctx, storage).exportAgency(workspaceId)).resolves.toEqual(sample);
+    expect(storage.agencyExportMessages).toHaveBeenCalledTimes(1);
+
+    for (const role of ["admin", "editor", "viewer"] as const) {
+      const memberRepo = repo();
+      await expect(createChatService({ ...ctx, role }, memberRepo).exportAgency(workspaceId))
+        .rejects.toBeInstanceOf(ChatAccessError);
+      expect(memberRepo.agencyExportMessages).not.toHaveBeenCalled();
+    }
   });
 });
