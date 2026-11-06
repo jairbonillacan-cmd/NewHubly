@@ -70,3 +70,16 @@ Estas poses están disponibles en `Hubi` y en el catálogo «Poses de estado» d
 | `privacidad` | Abraza un escudo para acompañar una explicación de privacidad. |
 
 Cada pose tiene dos variantes, generadas con ImageGen a partir de Hubi Volumen de cuerpo completo. Se guardaron como PNG maestros y WebP transparentes de `256×256` con el mismo proceso de exportación que las poses de bienvenida y error. [Prompts de generación](poses-hubi-coleccion-prompts.md).
+
+## Poses expresivas de marketing (#118)
+
+El catálogo «Poses de marketing» reúne cuatro ilustraciones disponibles en `Hubi`. Mantienen los ojos rectos y al mismo nivel y la sonrisa pequeña del original. Los gestos y accesorios distinguen cada contexto.
+
+| Pose | Gesto y contexto |
+| --- | --- |
+| `campana` | Levanta un megáfono al anunciar una campaña. |
+| `contenido` | Prepara una cámara para grabar contenido. |
+| `metricas` | Sostiene una tarjeta con barras para señalar los resultados. |
+| `comunidad` | Sostiene una burbuja de conversación y saluda. |
+
+Las dos variantes de cada pose usan el mismo proceso de exportación con fondo transparente. [Prompts de generación](poses-hubi-marketing-prompts.md).
