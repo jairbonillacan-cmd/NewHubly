@@ -6,6 +6,12 @@ import React, { useEffect, useRef, useState } from "react";
 import { conversationName, statusLabel, type ChatViewCommand } from "./MemberList";
 
 const control = "min-h-11";
+export type BrowserNotificationPermission = NotificationPermission | "unsupported";
+
+export function readBrowserNotificationPermission(): BrowserNotificationPermission {
+  if (typeof window === "undefined" || typeof window.Notification === "undefined") return "unsupported";
+  return window.Notification.permission;
+}
 
 export function ChannelForm({ conversation, onCommand }: {
   conversation?: ChatConversation; onCommand: (input: ChatViewCommand) => Promise<boolean>;
@@ -62,14 +68,39 @@ export function ChannelForm({ conversation, onCommand }: {
   </details>;
 }
 
-export function ConversationHeader({ conversation, people, canManage, headingRef, onSelect, onCommand }: {
+export function ConversationHeader({
+  conversation, people, canManage, headingRef, notificationPermission,
+  onRequestNotificationPermission, onSelect, onCommand,
+}: {
   conversation: ChatConversation; people: Map<string, ChatParticipant>; canManage: boolean;
-  headingRef: React.RefObject<HTMLHeadingElement | null>; onSelect: (id: string | null) => void;
+  headingRef: React.RefObject<HTMLHeadingElement | null>;
+  notificationPermission?: BrowserNotificationPermission | undefined;
+  onRequestNotificationPermission?: (() => Promise<BrowserNotificationPermission | void> | BrowserNotificationPermission | void) | undefined;
+  onSelect: (id: string | null) => void;
   onCommand: (input: ChatViewCommand) => Promise<boolean>;
 }) {
   const peer = conversation.kind === "direct" && conversation.peerId ? people.get(conversation.peerId) : undefined;
   const totalMembers = people.size;
   const onlineCount = [...people.values()].filter((p) => p.status === "online").length;
+  const [permission, setPermission] = useState<BrowserNotificationPermission>(
+    () => notificationPermission ?? readBrowserNotificationPermission(),
+  );
+
+  useEffect(() => {
+    if (notificationPermission !== undefined) setPermission(notificationPermission);
+  }, [notificationPermission]);
+
+  async function requestNotifications() {
+    if (onRequestNotificationPermission) {
+      const next = await onRequestNotificationPermission();
+      if (next) setPermission(next);
+      return;
+    }
+    if (typeof window !== "undefined" && typeof window.Notification?.requestPermission === "function") {
+      const next = await window.Notification.requestPermission();
+      setPermission(next);
+    }
+  }
 
   return <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-(--border-default) px-3 py-2.5">
     <div className="min-w-0">
@@ -94,7 +125,20 @@ export function ConversationHeader({ conversation, people, canManage, headingRef
         </span>}
       </p>
     </div>
-    {canManage && conversation.kind === "channel" && conversation.slug !== "general" && !conversation.archived &&
-      <ChannelForm key={conversation.id} conversation={conversation} onCommand={onCommand} />}
+    <div className="flex flex-wrap items-center gap-2">
+      {permission === "default" && (
+        <Button variant="outline" size="sm" className={control} onPress={() => void requestNotifications()}>
+          Activar avisos del navegador
+        </Button>
+      )}
+      {permission === "granted" && (
+        <span role="status" className="text-xs text-(--text-muted)">Avisos del navegador activos</span>
+      )}
+      {permission === "denied" && (
+        <span role="status" className="text-xs text-(--text-muted)">Avisos del navegador bloqueados</span>
+      )}
+      {canManage && conversation.kind === "channel" && conversation.slug !== "general" && !conversation.archived &&
+        <ChannelForm key={conversation.id} conversation={conversation} onCommand={onCommand} />}
+    </div>
   </header>;
 }
