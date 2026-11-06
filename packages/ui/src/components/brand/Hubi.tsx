@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 
 export type HubiFinish = "origen" | "volumen";
 type HubiBasePose = "sentado" | "laptop";
-type HubiStatePose = "bienvenida" | "buscar" | "reparar";
+type HubiStatePose = "bienvenida" | "buscar" | "reparar" | "correo" | "ideas" | "celebrar" | "privacidad";
 export type HubiPose = HubiBasePose | HubiStatePose;
 
 export type HubiProps = {
@@ -55,6 +55,22 @@ const HUBI_STATE_ASSETS: Record<HubiStatePose, ThemeAssets> = {
   reparar: {
     light: "/marca/hubi-volumen-reparar-claro-256.webp",
     dark: "/marca/hubi-volumen-reparar-oscuro-256.webp",
+  },
+  correo: {
+    light: "/marca/hubi-volumen-correo-claro-256.webp",
+    dark: "/marca/hubi-volumen-correo-oscuro-256.webp",
+  },
+  ideas: {
+    light: "/marca/hubi-volumen-ideas-claro-256.webp",
+    dark: "/marca/hubi-volumen-ideas-oscuro-256.webp",
+  },
+  celebrar: {
+    light: "/marca/hubi-volumen-celebrar-claro-256.webp",
+    dark: "/marca/hubi-volumen-celebrar-oscuro-256.webp",
+  },
+  privacidad: {
+    light: "/marca/hubi-volumen-privacidad-claro-256.webp",
+    dark: "/marca/hubi-volumen-privacidad-oscuro-256.webp",
   },
 };
 
