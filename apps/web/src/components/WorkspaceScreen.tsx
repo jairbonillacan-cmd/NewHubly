@@ -1,13 +1,13 @@
 "use client";
 import { canEditItem, parseQuickCapture, suggestOverdueTodos } from "@hubly/application";
-import { createTodoSchema, type UserPreferences } from "@hubly/contracts";
+import { createTodoSchema, type PresenceStatus, type UserPreferences } from "@hubly/contracts";
 import { BienvenidaDialog, EspacioEstado, EspacioHoy, type HerramientaId, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
 import React, { useEffect, useRef, useState } from "react";
 import {
   archiveNoteAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction, createAgencyWorkspaceAction,
   createNoteAction, createTodoAction, createTodoFromNoteAction, exportWorkspaceAction, inviteWorkspaceMemberAction, loadWorkspaceDashboardAction,
   pinNoteAction, removeOrLeaveWorkspaceMemberAction, removeWallpaperAction, revokeWorkspaceInvitationAction, saveNoteAction, saveUserPreferencesAction, selectActiveWorkspaceAction, toggleTodoAction,
-  updateTodoAction, uploadWallpaperAction, removeAvatarAction, saveDisplayNameAction, uploadAvatarAction,
+  updateTodoAction, uploadWallpaperAction, removeAvatarAction, saveDisplayNameAction, savePresenceAction, uploadAvatarAction,
   type WorkspaceInvitationSummary, type WorkspaceMemberSummary, type WorkspaceNote, type WorkspaceSummary, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
 import { signOutAction } from "../actions/auth";
@@ -32,6 +32,7 @@ export interface WorkspaceScreenProps {
   /** Nombre visible y foto de perfil firmada (issue 135). */
   currentUserName?: string | null;
   initialAvatarUrl?: string | null;
+  initialPresence?: PresenceStatus;
   /** Herramienta abierta al cargar (?herramienta=). */
   initialHerramienta?: HerramientaId;
   onSavePreferences?: (patch: Partial<UserPreferences>) => Promise<unknown>;
@@ -111,7 +112,7 @@ const toEspacioWorkspace = (w: WorkspaceSummary): EspacioWorkspace => ({ id: w.i
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialTodos = [], initialNotes = [], initialActionError = null,
-  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, currentUserEmail = null, currentUserName = null, initialAvatarUrl = null, initialHerramienta, onSavePreferences,
+  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, currentUserEmail = null, currentUserName = null, initialAvatarUrl = null, initialPresence = "online", initialHerramienta, onSavePreferences,
   onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
@@ -334,6 +335,8 @@ export function WorkspaceScreen({
       profile={{
         name: currentUserName,
         avatarUrl: initialAvatarUrl,
+        presence: initialPresence,
+        onChangePresence: async (status) => { try { return await savePresenceAction(status); } catch { return { ok: false as const, message: "No se pudo cambiar tu estado." }; } },
         onUploadAvatar: async (file) => {
           const form = new FormData();
           form.set("foto", file);

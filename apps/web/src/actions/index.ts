@@ -1,13 +1,13 @@
 "use server";
 import type { NoteFilter } from "@hubly/application";
-import { createNoteSchema, createTodoSchema, exportDataSchema, updateNoteSchema, updateTodoSchema, updateUserPreferencesSchema, type CreateNoteInput, type CreateTodoInput, type ExportData, type UpdateNoteInput, type UpdateTodoInput, type UpdateUserPreferencesInput, type UserPreferences } from "@hubly/contracts";
+import { createNoteSchema, presenceStatusSchema, type PresenceStatus, createTodoSchema, exportDataSchema, updateNoteSchema, updateTodoSchema, updateUserPreferencesSchema, type CreateNoteInput, type CreateTodoInput, type ExportData, type UpdateNoteInput, type UpdateTodoInput, type UpdateUserPreferencesInput, type UserPreferences } from "@hubly/contracts";
 import {
   acceptWorkspaceInvitationSafely, archiveNoteUseCase, changeMemberRoleUseCase, changeNoteVisibilityUseCase,
   changeTodoVisibilityUseCase, createAgencyWorkspaceUseCase, createNoteUseCase, createTodoFromNoteUseCase,
   createTodoUseCase, ensureAuthenticatedWorkspace, exportDataUseCase, getUserPreferencesUseCase, issueWorkspaceInvitation, listNotesUseCase,
   listPendingInvitationsUseCase, listTodosUseCase, listUserWorkspacesUseCase, listWorkspaceMembersUseCase,
   WallpaperImageError, persistActiveWorkspaceCookie, pinNoteUseCase, removeOrLeaveMemberUseCase, removeUserWallpaper, revokePendingWorkspaceInvitation, saveUserPreferencesUseCase,
-  signUserWallpaper, uploadUserWallpaper, loadUserProfile, removeUserAvatar, saveUserDisplayName, uploadUserAvatar,
+  signUserWallpaper, uploadUserWallpaper, loadUserProfile, removeUserAvatar, saveUserDisplayName, saveUserPresence, uploadUserAvatar,
   toggleTodoUseCase, updateNoteUseCase, updateTodoUseCase, type AcceptInvitationResult, type UserWorkspaceSummary, type WorkspaceInvitationRecord,
 } from "../server/composition";
 
@@ -28,6 +28,8 @@ export interface WorkspaceDashboardData {
   /** Nombre visible y URL firmada (1 h) de la foto de perfil, si la hay (issue 135). */
   currentUserName: string | null;
   avatarUrl: string | null;
+  /** Estado de presencia elegido (issue 143). */
+  presence: PresenceStatus;
 }
 
 const autosaveNoteSchema = updateNoteSchema.required({ expectedVersion: true });
@@ -43,7 +45,7 @@ export async function loadWorkspaceDashboardAction(workspaceId?: string): Promis
   const todos = [...todayTodos, ...upcomingTodos, ...noDateTodos, ...doneTodos].filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)));
   const activeWorkspace: WorkspaceSummary = { id: ctx.workspaceId, name: ctx.workspaceName, slug: ctx.workspaceSlug ?? ctx.workspaceId, kind: ctx.workspaceKind, role: ctx.role };
   const wallpaperImageUrl = preferences.wallpaper === "imagen" ? await signUserWallpaper(ctx.userId) : null;
-  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences, wallpaperImageUrl, currentUserEmail: ctx.userEmail, currentUserName: profile.name, avatarUrl: profile.avatarUrl };
+  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences, wallpaperImageUrl, currentUserEmail: ctx.userEmail, currentUserName: profile.name, avatarUrl: profile.avatarUrl, presence: profile.presence };
 }
 
 export async function createTodoAction(input: CreateTodoInput, workspaceId?: string): Promise<WorkspaceTodo> {
@@ -173,5 +175,17 @@ export async function saveDisplayNameAction(name: string): Promise<ProfileResult
     return { ok: true, value: await saveUserDisplayName(String(name)) };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "No se pudo guardar tu nombre." };
+  }
+}
+
+/** Cambia el estado de presencia de la persona de la sesión (issue 143). Solo puede tocar el suyo: lo impone RLS. */
+export async function savePresenceAction(status: PresenceStatus): Promise<ProfileResult<PresenceStatus>> {
+  const parsed = presenceStatusSchema.safeParse(status);
+  if (!parsed.success) return { ok: false, message: "Estado inválido." };
+  const ctx = await ensureAuthenticatedWorkspace();
+  try {
+    return { ok: true, value: await saveUserPresence(ctx.userId, parsed.data) };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "No se pudo cambiar tu estado." };
   }
 }

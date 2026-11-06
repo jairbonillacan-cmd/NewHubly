@@ -20,7 +20,7 @@ import { useEspacioPreferencias, type EspacioPreferencias } from "./preferencias
 import { TopBar } from "./TopBar";
 import {
   relativeDateLabel, type CaptureAnalysis, type CaptureInput, type EspacioInvitation, type EspacioInviteRole, type EspacioMember,
-  type EspacioNote, type EspacioProfile, type EspacioRole, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type HoyFilter, type NoteSaveState,
+  type EspacioNote, type EspacioPresence, type EspacioProfile, type EspacioRole, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type HoyFilter, type NoteSaveState,
 } from "./types";
 import { Wallpaper } from "./Wallpaper";
 
@@ -171,6 +171,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(props.profile?.avatarUrl ?? null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [presence, setPresence] = useState<EspacioPresence>(props.profile?.presence ?? "online");
 
   useEffect(() => {
     try { setCarrilExpandido(localStorage.getItem(CARRIL_STORAGE_KEY) === "completo"); } catch { /* sin almacenamiento: compacto */ }
@@ -283,6 +284,16 @@ export function EspacioHoy(props: EspacioHoyProps) {
     setAvatarBusy(false);
     if (result.ok) { setAvatarUrl(result.value); showToast("Foto actualizada"); }
     else showToast(result.message);
+  };
+
+  // El punto cambia al instante; si el servidor no lo guarda, vuelve al anterior y avisa.
+  const changePresence = async (status: EspacioPresence) => {
+    const onChange = props.profile?.onChangePresence;
+    if (!onChange || status === presence) return;
+    const previous = presence;
+    setPresence(status);
+    const result = await onChange(status);
+    if (!result.ok) { setPresence(previous); showToast(result.message); }
   };
 
   const paletteActions: PaletteAction[] = [
@@ -420,6 +431,8 @@ export function EspacioHoy(props: EspacioHoyProps) {
           userName={profileName}
           avatarUrl={avatarUrl}
           avatarBusy={avatarBusy}
+          presence={presence}
+          {...(props.profile?.onChangePresence ? { onChangePresence: (status: EspacioPresence) => void changePresence(status) } : {})}
           {...(props.profile ? { onEditProfile: () => setProfileOpen(true), onPickAvatar: (file: File) => void pickAvatar(file) } : {})}
         />
       </div>

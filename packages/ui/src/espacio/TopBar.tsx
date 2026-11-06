@@ -9,7 +9,7 @@ import { Icon, type IconName } from "./icons";
 import type { Shortcut } from "./dockConfig";
 import { AVATAR_TYPES, Avatar } from "./PerfilDialog";
 import type { PanelId } from "./preferencias";
-import { ROLE_LABEL, longDateLabel, type EspacioWorkspace } from "./types";
+import { PRESENCE, ROLE_LABEL, longDateLabel, type EspacioPresence, type EspacioWorkspace } from "./types";
 
 export interface TopBarProps {
   todayDate: string;
@@ -40,6 +40,8 @@ export interface TopBarProps {
   avatarBusy?: boolean | undefined;
   onEditProfile?: (() => void) | undefined;
   onPickAvatar?: ((file: File) => void) | undefined;
+  presence?: EspacioPresence | undefined;
+  onChangePresence?: ((status: EspacioPresence) => void) | undefined;
 }
 
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
@@ -61,7 +63,7 @@ function SpaceMenu({ workspaces, activeWorkspace, onSelectWorkspace, onCreateAge
         <Icon name="chevrones" className="size-3.5 text-(--text-muted)" />
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom start" className={MENU}>
-        <Dropdown.Menu aria-label="Tus espacios" onAction={onAction}>
+        <Dropdown.Menu aria-label="Tus espacios" className="hubly-sin-anillo" onAction={onAction}>
           <Dropdown.Section aria-label="Espacios" className="border-b border-(--glass-line) pb-1.5">
             {workspaces.map((ws) => (
               <Dropdown.Item key={ws.id} id={`ws:${ws.id}`} textValue={ws.kind === "personal" ? "Espacio personal" : ws.name}
@@ -93,10 +95,28 @@ export function profileName(email: string | null | undefined, saved?: string | n
   return local.split(/[._-]+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
 
-function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, onEditProfile, onPickAvatar, shortcuts, onExport, onSignOut }: Pick<TopBarProps, "timezone" | "userEmail" | "userName" | "avatarUrl" | "avatarBusy" | "onEditProfile" | "onPickAvatar" | "shortcuts" | "onExport" | "onSignOut">) {
+const PRESENCE_DOT: Record<EspacioPresence, string> = {
+  online: "bg-(--presence-online)",
+  away: "bg-(--presence-away)",
+  dnd: "bg-(--presence-dnd)",
+};
+
+/** Punto de estado sobre el avatar; «No molestar» lleva una raya para no depender solo del color. */
+export function PresenceDot({ status, className = "size-3.5" }: { status: EspacioPresence; className?: string }) {
+  return (
+    <span aria-hidden="true" className={`flex items-center justify-center rounded-full border-2 border-(--surface-raised) ${PRESENCE_DOT[status]} ${className}`}>
+      {status === "dnd" && <span className="h-0.5 w-1/2 rounded-full bg-(--surface-raised)" />}
+    </span>
+  );
+}
+
+const THEME_LABEL = { light: "Claro", dark: "Oscuro", system: "Sistema" } as const;
+
+function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, presence, onChangePresence, onEditProfile, onPickAvatar, shortcuts, onExport, onSignOut }: Pick<TopBarProps, "timezone" | "userEmail" | "userName" | "avatarUrl" | "avatarBusy" | "presence" | "onChangePresence" | "onEditProfile" | "onPickAvatar" | "shortcuts" | "onExport" | "onSignOut">) {
   const initial = initialOf(userName || userEmail);
   const pick = (files: FileList | null) => { const file = files?.[0]; if (file) onPickAvatar?.(file); };
   const photoLabel = avatarUrl ? "Cambiar foto" : "Subir foto";
+  const status = presence ?? "online";
   const [preference, , setThemePreference] = useHublyThemePreference();
   const onAction = (key: Key) => {
     if (key === "json") onExport("json");
@@ -109,52 +129,56 @@ function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, onE
     const next = [...selection][0];
     if (next === "light" || next === "dark" || next === "system") setThemePreference(next);
   };
+  const onPresence = (selection: Selection) => {
+    if (selection === "all") return;
+    const next = [...selection][0];
+    if (next === "online" || next === "away" || next === "dnd") onChangePresence?.(next);
+  };
+  const check = (on: boolean) => on && <Icon name="check" className="size-4 text-(--accent-primary)" />;
+  const avatarGrande = <Avatar url={avatarUrl ?? null} initial={initial} className="size-14 text-xl" iconClassName="size-6" />;
   return (
     <Dropdown>
       <Dropdown.Trigger aria-label="Menú de tu cuenta" className="relative size-11 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0 transition-transform data-[hovered]:scale-105">
         <Avatar url={avatarUrl ?? null} initial={initial} className="size-11 text-base" />
-        <span aria-hidden="true" className="absolute -right-0.5 -bottom-0.5 flex size-4.5 items-center justify-center rounded-full border-2 border-(--surface-raised) bg-(--surface-raised) text-(--text-primary)">
-          <Icon name="lapiz" className="size-2.5" strokeWidth={2.5} />
-        </span>
+        <PresenceDot status={status} className="absolute -right-0.5 -bottom-0.5 size-4" />
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom end" className={`${MENU} w-80`}>
-        <div className="flex flex-col gap-3 border-b border-(--glass-line) px-2.5 pt-2 pb-3">
-          <div className="flex items-start gap-3">
-            <span className="relative shrink-0">
-              <Avatar url={avatarUrl ?? null} initial={initial} className="size-16 text-2xl" iconClassName="size-7" />
-              {onPickAvatar ? (
-                <FileTrigger acceptedFileTypes={AVATAR_TYPES} onSelect={pick}>
-                  <Button isIconOnly isDisabled={avatarBusy === true} aria-label={photoLabel} className="absolute -right-1 -bottom-1 size-11 rounded-full border-2 border-(--surface-raised) bg-(--surface-raised) text-(--text-secondary)">
-                    <Icon name="camara" className="size-4" />
-                  </Button>
-                </FileTrigger>
-              ) : (
-                <Button isIconOnly isDisabled aria-label="Cambiar foto, muy pronto" className="absolute -right-1 -bottom-1 size-11 rounded-full border-2 border-(--surface-raised) bg-(--surface-raised) text-(--text-secondary)">
-                  <Icon name="camara" className="size-4" />
-                </Button>
-              )}
-            </span>
-            <div className="min-w-0 grow pt-1">
-              <p className="m-0 truncate text-sm font-semibold">{profileName(userEmail, userName)}</p>
-              {userEmail && <p className="m-0 truncate text-xs text-(--text-secondary)">{userEmail}</p>}
-              {timezone && <p className="m-0 truncate text-xs text-(--text-muted)">Zona horaria: {timezone.replaceAll("_", " ")}</p>}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-3 border-b border-(--glass-line) px-2.5 pt-2 pb-3">
+          <span className="relative shrink-0">
             {onPickAvatar ? (
               <FileTrigger acceptedFileTypes={AVATAR_TYPES} onSelect={pick}>
-                <Button size="sm" variant="secondary" isDisabled={avatarBusy === true} className="min-h-11">{avatarBusy ? "Subiendo…" : photoLabel}</Button>
+                <Button isIconOnly isDisabled={avatarBusy === true} aria-label={photoLabel} className="group/foto relative size-14 min-w-14 overflow-hidden rounded-full p-0">
+                  {avatarGrande}
+                  <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center bg-(--avatar-veil) text-(--text-on-accent) opacity-0 transition-opacity group-data-[hovered]/foto:opacity-100">
+                    <Icon name="camara" className="size-5" />
+                  </span>
+                </Button>
               </FileTrigger>
             ) : (
-              <>
-                <Button size="sm" variant="secondary" isDisabled aria-label="Cambiar foto, muy pronto" className="min-h-11">Cambiar foto</Button>
-                <Chip size="sm" variant="soft">Muy pronto</Chip>
-              </>
+              <Button isIconOnly isDisabled aria-label="Cambiar foto, muy pronto" className="size-14 min-w-14 rounded-full p-0">{avatarGrande}</Button>
             )}
+            <PresenceDot status={status} className="pointer-events-none absolute right-0 bottom-0 size-4" />
+          </span>
+          <div className="min-w-0 grow">
+            <p className="m-0 truncate text-sm font-semibold">{profileName(userEmail, userName)}</p>
+            {userEmail && <p className="m-0 truncate text-xs text-(--text-secondary)">{userEmail}</p>}
+            {timezone && <p className="m-0 truncate text-xs text-(--text-muted)">Zona horaria: {timezone.replaceAll("_", " ")}</p>}
+            <p className="m-0 mt-0.5 flex items-center gap-1.5 text-xs text-(--text-secondary)"><PresenceDot status={status} className="size-2.5 border-0" />{PRESENCE[status].label}</p>
           </div>
         </div>
-        <Dropdown.Menu aria-label="Menú de tu perfil" onAction={onAction} className="pt-1.5">
-          <Dropdown.Section aria-label="Perfil">
+        <Dropdown.Menu aria-label="Menú de tu perfil" onAction={onAction} className="hubly-sin-anillo pt-1.5">
+          {onChangePresence ? (
+            <Dropdown.Section aria-label="Tu estado" selectionMode="single" selectedKeys={[status]} onSelectionChange={onPresence} className="border-b border-(--glass-line) pb-1.5">
+              {(Object.keys(PRESENCE) as EspacioPresence[]).map((id) => (
+                <Dropdown.Item key={id} id={id} textValue={PRESENCE[id].label} className={ITEM}>
+                  <PresenceDot status={id} className="size-3 border-0" />
+                  <span className="flex grow flex-col"><span>{PRESENCE[id].label}</span><span className="text-xs text-(--text-muted)">{PRESENCE[id].hint}</span></span>
+                  {check(status === id)}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Section>
+          ) : null}
+          <Dropdown.Section aria-label="Perfil" className="py-1.5">
             {onEditProfile ? (
               <Dropdown.Item id="editar" textValue="Editar perfil" className={ITEM}><Icon name="lapiz" /> <span className="grow">Editar perfil</span></Dropdown.Item>
             ) : (
@@ -162,27 +186,41 @@ function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, onE
                 <Icon name="lapiz" /> <span className="grow">Editar perfil</span><span className="text-xs text-(--text-muted)">Muy pronto</span>
               </Dropdown.Item>
             )}
-          </Dropdown.Section>
-          <Dropdown.Section aria-label="Tema" selectionMode="single" selectedKeys={[preference]} onSelectionChange={onTheme} className="border-y border-(--glass-line) py-1.5">
-            <Dropdown.Item id="light" textValue="Tema claro" className={ITEM}><span className="grow">Claro</span>{preference === "light" && <Icon name="check" className="size-4 text-(--accent-primary)" />}</Dropdown.Item>
-            <Dropdown.Item id="dark" textValue="Tema oscuro" className={ITEM}><span className="grow">Oscuro</span>{preference === "dark" && <Icon name="check" className="size-4 text-(--accent-primary)" />}</Dropdown.Item>
-            <Dropdown.Item id="system" textValue="Tema del sistema" className={ITEM}><span className="grow">Sistema</span>{preference === "system" && <Icon name="check" className="size-4 text-(--accent-primary)" />}</Dropdown.Item>
-          </Dropdown.Section>
-          <Dropdown.Section aria-label="Tus datos" className="pt-1.5">
-            <Dropdown.Item id="json" textValue="Exportar mis datos en JSON" className={ITEM}><Icon name="descargar" /> <span className="grow">Exportar mis datos (JSON)</span></Dropdown.Item>
-            <Dropdown.Item id="md" textValue="Exportar mis datos en Markdown" className={ITEM}><Icon name="descargar" /> <span className="grow">Exportar mis datos (Markdown)</span></Dropdown.Item>
+            <Dropdown.SubmenuTrigger>
+              <Dropdown.Item id="tema" textValue="Tema" className={ITEM}>
+                <Icon name="luna" /> <span className="grow">Tema</span><span className="mr-5 text-xs text-(--text-muted)">{THEME_LABEL[preference]}</span><Dropdown.SubmenuIndicator />
+              </Dropdown.Item>
+              <Dropdown.Popover placement="left top" className={MENU}>
+                <Dropdown.Menu aria-label="Tema" className="hubly-sin-anillo" selectionMode="single" selectedKeys={[preference]} onSelectionChange={onTheme}>
+                  <Dropdown.Item id="light" textValue="Tema claro" className={ITEM}><Icon name="sol" /> <span className="grow">Claro</span>{check(preference === "light")}</Dropdown.Item>
+                  <Dropdown.Item id="dark" textValue="Tema oscuro" className={ITEM}><Icon name="luna" /> <span className="grow">Oscuro</span>{check(preference === "dark")}</Dropdown.Item>
+                  <Dropdown.Item id="system" textValue="Tema del sistema" className={ITEM}><Icon name="paneles" /> <span className="grow">Sistema</span>{check(preference === "system")}</Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.SubmenuTrigger>
             <Dropdown.SubmenuTrigger>
               <Dropdown.Item id="atajos" textValue="Atajos de teclado" className={ITEM}>
                 <Icon name="teclado" /> <span className="grow">Atajos de teclado</span><Dropdown.SubmenuIndicator />
               </Dropdown.Item>
-              <Dropdown.Popover placement="right top" className={MENU}>
-                <Dropdown.Menu aria-label="Atajos de teclado">
+              <Dropdown.Popover placement="left top" className={MENU}>
+                <Dropdown.Menu aria-label="Atajos de teclado" className="hubly-sin-anillo">
                   {shortcuts.map((shortcut) => (
                     <Dropdown.Item key={shortcut.key} id={`atajo:${shortcut.key}`} isDisabled textValue={`${shortcut.label}: ${shortcut.key}`} className={ITEM}>
                       <span className="grow">{shortcut.label}</span>
                       <Kbd><Kbd.Content>{shortcut.key}</Kbd.Content></Kbd>
                     </Dropdown.Item>
                   ))}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.SubmenuTrigger>
+            <Dropdown.SubmenuTrigger>
+              <Dropdown.Item id="datos" textValue="Descargar mis datos" className={ITEM}>
+                <Icon name="descargar" /> <span className="grow">Descargar mis datos</span><Dropdown.SubmenuIndicator />
+              </Dropdown.Item>
+              <Dropdown.Popover placement="left top" className={MENU}>
+                <Dropdown.Menu aria-label="Descargar mis datos" className="hubly-sin-anillo" onAction={onAction}>
+                  <Dropdown.Item id="json" textValue="Exportar mis datos en JSON" className={ITEM}><span className="grow">Exportar mis datos (JSON)</span></Dropdown.Item>
+                  <Dropdown.Item id="md" textValue="Exportar mis datos en Markdown" className={ITEM}><span className="grow">Exportar mis datos (Markdown)</span></Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown.Popover>
             </Dropdown.SubmenuTrigger>
@@ -274,7 +312,7 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, o
             <Icon name="ajustes" className="size-5" />
           </Dropdown.Trigger>
           <Dropdown.Popover placement="bottom end" className={MENU}>
-            <Dropdown.Menu aria-label="Ajustes del espacio" onAction={(key) => { if (key === "fondo") onOpenBackground(); else if (key === "json" || key === "md") onExport(key); }}>
+            <Dropdown.Menu aria-label="Ajustes del espacio" className="hubly-sin-anillo" onAction={(key) => { if (key === "fondo") onOpenBackground(); else if (key === "json" || key === "md") onExport(key); }}>
               <Dropdown.Section aria-label="Paneles de Hoy" selectionMode="multiple" selectedKeys={PANELES.filter((panel) => panels[panel.id]).map((panel) => panel.id)}
                 onSelectionChange={(selection) => {
                   if (selection === "all") return;
