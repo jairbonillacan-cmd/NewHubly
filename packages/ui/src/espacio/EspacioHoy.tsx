@@ -69,6 +69,8 @@ export interface EspacioHoyProps {
   onLeaveAgency?: () => void;
   onChangeNoteVisibility?: (id: string, visibility: EspacioVisibility) => void;
   onChangeTodoVisibility?: (id: string, visibility: EspacioVisibility) => void;
+  /** Correo de la sesión, para la inicial del avatar. */
+  userEmail?: string | null | undefined;
 }
 
 export const PERSONAL_WORKSPACE: EspacioWorkspace = { id: "personal", name: "Espacio personal", kind: "personal", role: "owner" };
@@ -95,7 +97,7 @@ interface RailProps {
 function Rail({ overdueCount, panels, onTogglePanel, workspaces, activeId, onSelect, onCreateAgency }: RailProps) {
   const railButton = "relative flex size-9 cursor-pointer items-center justify-center rounded-lg border-2 text-sm font-bold";
   return (
-    <nav aria-label="Espacios y paneles" className="hubly-glass hubly-enter flex w-14 flex-col items-center gap-2 rounded-xl py-2.5" data-delay="1">
+    <nav aria-label="Espacios y paneles" className="hubly-glass hubly-enter flex h-full w-16 flex-col items-center gap-2 overflow-y-auto rounded-(--glass-radius-access-bar) py-2.5" data-delay="1">
       <span className="text-xs font-semibold text-(--text-muted)">Espacios</span>
       {workspaces.map((ws) => {
         const active = ws.id === activeId;
@@ -314,10 +316,12 @@ export function EspacioHoy(props: EspacioHoyProps) {
   };
 
   return (
-    <div ref={rootRef} className="relative isolate min-h-dvh text-(--text-primary) lg:h-dvh lg:overflow-hidden">
+    // Marco fijo (#105): en escritorio, una cuadrícula con la barra superior, el carril y el dock fijos; solo el contenido se desliza.
+    <div ref={rootRef} className="relative isolate min-h-dvh text-(--text-primary) lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-[3.5rem_minmax(0,1fr)_auto] lg:gap-3 lg:overflow-hidden lg:p-3">
       <Wallpaper fondo={prefs.fondo === "imagen" && !wallpaperUrl ? "contornos" : prefs.fondo} imagenUrl={wallpaperUrl} />
+      <a href="#contenido" className="sr-only z-50 rounded-lg bg-(--surface-raised) px-3 py-2 text-sm font-semibold focus:not-sr-only focus:fixed focus:top-3 focus:left-3">Saltar al contenido</a>
 
-      <div className="sticky top-0 z-30 p-3 lg:absolute lg:inset-x-3 lg:top-3 lg:p-0">
+      <div className="sticky top-0 z-30 p-3 lg:static lg:col-span-2 lg:p-0">
         <TopBar
           todayDate={todayDate}
           timezone={timezone}
@@ -335,10 +339,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
           onSelectWorkspace={props.onSelectWorkspace ?? noop}
           onCreateAgency={() => setTeamMode("crear")}
           onOpenTeam={() => setTeamMode("equipo")}
+          focusMode={layout === "enfoque"}
+          onToggleFocus={() => setPrefs({ distribucion: layout === "enfoque" ? "libre" : "enfoque" })}
+          userEmail={props.userEmail}
         />
       </div>
 
-      <div className="absolute top-18 left-3 z-20 hidden lg:block">
+      <div className="z-20 hidden min-h-0 lg:col-start-1 lg:row-span-2 lg:row-start-2 lg:block">
         <Rail
           overdueCount={overdueCount}
           panels={prefs.paneles}
@@ -350,14 +357,14 @@ export function EspacioHoy(props: EspacioHoyProps) {
         />
       </div>
 
+      <main id="contenido" tabIndex={-1} className="flex flex-col gap-3 px-3 pb-44 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:overflow-y-auto lg:p-0">
       {actionError && (
-        <div role="alert" className="hubly-pop hubly-glass relative z-30 mx-3 mb-3 flex items-center justify-between gap-3 rounded-xl border-(--status-danger-text) px-4 py-3 text-sm text-(--status-danger-text) lg:absolute lg:top-18 lg:right-3 lg:left-20 lg:mx-0">
+        <div role="alert" className="hubly-pop hubly-glass relative z-30 flex shrink-0 items-center justify-between gap-3 rounded-xl border-(--status-danger-text) px-4 py-3 text-sm text-(--status-danger-text)">
           <span>{actionError.message}</span>
           <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
-
-      <main className={`flex flex-col gap-3 px-3 pb-44 lg:absolute lg:top-18 lg:right-3 lg:bottom-24 lg:left-20 lg:gap-3 lg:p-0 ${gridClass} ${actionError ? "lg:top-32" : ""}`}>
+      <div className={`flex flex-col gap-3 lg:min-h-144 lg:grow ${gridClass}`}>
         {panels.hoy && (
           <HoyPanel
             todos={todos}
@@ -397,9 +404,10 @@ export function EspacioHoy(props: EspacioHoyProps) {
             className={sideClass}
           />
         )}
+      </div>
       </main>
 
-      <div className="absolute inset-x-0 bottom-4 z-20 hidden justify-center px-24 lg:flex">
+      <div className="z-20 hidden justify-center lg:col-start-2 lg:row-start-3 lg:flex">
         <Dock ref={desktopCapture} imagen={imagenControls} prefs={prefs} onPrefs={setPrefs} pickerOpen={pickerOpen === "desktop"} onPickerOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} {...captureProps} />
       </div>
 
