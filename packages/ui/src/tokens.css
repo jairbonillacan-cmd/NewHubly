@@ -292,6 +292,19 @@ body {
 .hubly-bars > span:nth-child(8) { transition-delay: calc(var(--motion-step) * 3.5); }
 @keyframes hubly-pop { 0% { transform: scale(0.96); opacity: 0; } 100% { transform: none; opacity: 1; } }
 .hubly-pop { animation: hubly-pop var(--motion-fast) var(--motion-ease) both; }
+/* Buscador (issue 133): baja con un rebote suave, las filas entran en cascada y el campo no lleva recuadro (el cursor ya indica el foco). */
+@keyframes hubly-palette-in { 0% { transform: translateY(-14px) scale(0.97); opacity: 0; filter: blur(6px); } 100% { transform: none; opacity: 1; filter: none; } }
+@keyframes hubly-palette-row { 0% { transform: translateY(6px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes hubly-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+.hubly-palette-overlay { animation: hubly-fade-in var(--motion-fast) var(--motion-ease) both; }
+.hubly-palette { animation: hubly-palette-in calc(var(--motion-fast) * 2) cubic-bezier(0.2, 0.9, 0.3, 1.15) both; }
+.hubly-palette-row { animation: hubly-palette-row calc(var(--motion-fast) * 2) var(--motion-ease) both; transition: background-color var(--motion-fast) var(--motion-ease); }
+.hubly-palette-row:nth-child(2) { animation-delay: 30ms; }
+.hubly-palette-row:nth-child(3) { animation-delay: 60ms; }
+.hubly-palette-row:nth-child(4) { animation-delay: 90ms; }
+.hubly-palette-row:nth-child(5) { animation-delay: 120ms; }
+.hubly-palette-row:nth-child(n+6) { animation-delay: 150ms; }
+.hubly-palette-input:focus-visible { outline: none; }
 /* Landing viva (issue 127): Hubi se asoma cuando su bloque aparece, saluda al pasar el ratón y la tira de poses se desliza. */
 .hubly-peek { transition: transform var(--motion-slow) var(--motion-ease), opacity var(--motion-slow) var(--motion-ease); transition-delay: calc(var(--motion-step) * 2); }
 .hubly-motion .hubly-reveal:not([data-visible="true"]) .hubly-peek { opacity: 0; transform: translateY(40%) rotate(-6deg); }
@@ -309,7 +322,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .hubly-reveal, .hubly-bars > span { transition: none; }
   .hubly-motion .hubly-reveal:not([data-visible="true"]), .hubly-motion .hubly-bars:not([data-visible="true"]) > span { opacity: 1; transform: none; }
-  .hubly-enter, .hubly-float, .hubly-pop { animation: none; }
+  .hubly-enter, .hubly-float, .hubly-pop, .hubly-palette, .hubly-palette-overlay, .hubly-palette-row { animation: none; }
   .hubly-peek { transition: none; }
   .hubly-motion .hubly-reveal:not([data-visible="true"]) .hubly-peek { opacity: 1; transform: none; }
   .hubly-wiggle:hover { animation: none; }

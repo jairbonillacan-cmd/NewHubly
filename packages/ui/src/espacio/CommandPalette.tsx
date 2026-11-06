@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { Button, Kbd } from "@heroui/react";
+import { Kbd } from "@heroui/react";
 import { Dialog, Modal, ModalOverlay } from "react-aria-components";
 import { Icon, type IconName } from "./icons";
 import type { EspacioNote, EspacioTodo } from "./types";
@@ -9,6 +9,8 @@ import type { EspacioNote, EspacioTodo } from "./types";
 export interface PaletteAction {
   id: string;
   label: string;
+  /** Línea corta bajo el nombre: qué pasa al elegirla. */
+  hint?: string;
   icon: IconName;
   run: () => void;
 }
@@ -35,12 +37,45 @@ interface Option {
 
 const MAX_PER_GROUP = 6;
 
-/** Paleta de comandos (#81): acciones, notas y pendientes; Enter sin resultados crea el pendiente. */
+/** Ejemplos que se escriben solos en el campo vacío (issue 133); con movimiento reducido se queda el primero. */
+export const PALETTE_EXAMPLES = ["Nueva nota", "Busca una nota o un pendiente", "Cambiar fondo", "Crear agencia", "Modo enfoque"] as const;
+const TYPE_MS = 55;
+const HOLD_MS = 1600;
+
+function useTypedPlaceholder(active: boolean) {
+  const [text, setText] = useState<string>(PALETTE_EXAMPLES[0]);
+  useEffect(() => {
+    if (!active || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setText(PALETTE_EXAMPLES[0]);
+      return;
+    }
+    let example = 0;
+    let length = 0;
+    let erasing = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const target = PALETTE_EXAMPLES[example]!;
+      if (!erasing && length < target.length) length += 1;
+      else if (!erasing) { erasing = true; timer = setTimeout(tick, HOLD_MS); return; }
+      else if (length > 0) length -= 1;
+      else { erasing = false; example = (example + 1) % PALETTE_EXAMPLES.length; }
+      setText(PALETTE_EXAMPLES[example]!.slice(0, length));
+      timer = setTimeout(tick, erasing ? TYPE_MS / 2 : TYPE_MS);
+    };
+    setText("");
+    timer = setTimeout(tick, TYPE_MS * 4);
+    return () => clearTimeout(timer);
+  }, [active]);
+  return text;
+}
+
+/** Paleta de comandos (#81, rediseño issue 133): acciones, notas y pendientes; Enter sin resultados crea el pendiente. */
 export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, onOpenNote, onFocusTodo, onCreateTodo }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const listId = useId();
   const listRef = useRef<HTMLUListElement>(null);
+  const placeholder = useTypedPlaceholder(isOpen && query === "");
 
   useEffect(() => {
     if (isOpen) {
@@ -52,15 +87,15 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
   const options = useMemo<Option[]>(() => {
     const q = query.trim().toLowerCase();
     const match = (text: string) => !q || text.toLowerCase().includes(q);
-    const actionOptions = actions.filter((action) => match(action.label)).map<Option>((action) => ({ key: `a-${action.id}`, group: "Acciones", label: action.label, icon: action.icon, run: action.run }));
+    const actionOptions = actions.filter((action) => match(action.label)).map<Option>((action) => ({ key: `a-${action.id}`, group: "Acciones", label: action.label, hint: action.hint, icon: action.icon, run: action.run }));
     const noteOptions = notes
       .filter((note) => !note.isArchived && (match(note.title) || match(note.content)))
       .slice(0, MAX_PER_GROUP)
-      .map<Option>((note) => ({ key: `n-${note.id}`, group: "Notas", label: note.title || "Nota sin título", hint: note.isPinned ? "Fijada" : undefined, icon: "nota", run: () => onOpenNote(note.id) }));
+      .map<Option>((note) => ({ key: `n-${note.id}`, group: "Notas", label: note.title || "Nota sin título", hint: note.isPinned ? "Nota fijada" : "Abre la nota", icon: "nota", run: () => onOpenNote(note.id) }));
     const todoOptions = todos
       .filter((todo) => !todo.isDone && match(todo.title))
       .slice(0, MAX_PER_GROUP)
-      .map<Option>((todo) => ({ key: `t-${todo.id}`, group: "Pendientes", label: todo.title, icon: "check", run: () => onFocusTodo(todo.id) }));
+      .map<Option>((todo) => ({ key: `t-${todo.id}`, group: "Pendientes", label: todo.title, hint: "Lo muestra en Hoy", icon: "check", run: () => onFocusTodo(todo.id) }));
     return [...actionOptions, ...noteOptions, ...todoOptions];
   }, [query, actions, notes, todos, onOpenNote, onFocusTodo]);
 
@@ -96,11 +131,11 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
   const activeId = options[active] ? `${listId}-${options[active].key}` : undefined;
 
   return (
-    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable className="fixed inset-0 z-50 flex items-start justify-center bg-(--glass-hover) px-3 pt-24 backdrop-blur-xs">
-      <Modal className="hubly-pop w-full max-w-xl">
-        <Dialog aria-label="Buscar o ejecutar" className="hubly-pop-surface overflow-hidden rounded-2xl text-(--text-primary) outline-none">
-          <div className="flex items-center gap-3 border-b border-(--glass-line) px-4">
-            <Icon name="buscar" className="size-5 text-(--text-muted)" />
+    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable className="hubly-palette-overlay fixed inset-0 z-50 flex items-start justify-center bg-(--glass-hover) px-3 pt-20 backdrop-blur-sm">
+      <Modal className="hubly-palette w-full max-w-2xl">
+        <Dialog aria-label="Buscar o ejecutar" className="hubly-pop-surface flex max-h-160 flex-col overflow-hidden rounded-3xl text-(--text-primary) outline-none">
+          <div className="flex items-center gap-4 border-b border-(--glass-line) px-6">
+            <Icon name="buscar" className="size-6 shrink-0 text-(--text-muted)" strokeWidth={2.25} />
             <input
               autoFocus
               role="combobox"
@@ -112,18 +147,16 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Busca notas y pendientes, o escribe una acción"
-              className="h-14 min-w-0 grow border-0 bg-transparent text-base text-(--text-primary) outline-none placeholder:text-(--text-muted)"
+              placeholder={placeholder}
+              className="hubly-palette-input h-18 min-w-0 grow border-0 bg-transparent text-xl text-(--text-primary) placeholder:text-(--text-muted)"
             />
-            <Button size="sm" variant="ghost" onPress={close} aria-label="Cerrar (Esc)">
-              <Kbd><Kbd.Content>Esc</Kbd.Content></Kbd>
-            </Button>
+            <Kbd className="hidden sm:inline-flex"><Kbd.Abbr keyValue="ctrl" /><Kbd.Content>K</Kbd.Content></Kbd>
           </div>
-          <ul ref={listRef} id={listId} role="listbox" aria-label="Resultados" className="m-0 max-h-96 list-none overflow-y-auto p-2">
+          <ul ref={listRef} id={listId} role="listbox" aria-label="Resultados" className="m-0 min-h-0 grow list-none overflow-y-auto p-0 pb-2">
             {groups.map(({ group, items }) =>
               items.length === 0 ? null : (
                 <li key={group} role="presentation">
-                  <p className="m-0 px-2.5 pt-2 pb-1 text-xs font-semibold text-(--text-muted)">{group}</p>
+                  <p className="m-0 px-6 pt-5 pb-2 text-xs font-bold tracking-(--tracking-widest) text-(--text-muted) uppercase">{group}</p>
                   <ul role="group" aria-label={group} className="m-0 list-none p-0">
                     {items.map(({ option, index }) => (
                       <li
@@ -134,11 +167,16 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
                         data-index={index}
                         onMouseMove={() => setActive(index)}
                         onClick={() => runOption(option)}
-                        className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm aria-selected:bg-(--accent-primary-subtle) aria-selected:text-(--accent-primary)"
+                        className="hubly-palette-row group flex cursor-pointer items-center gap-4 px-6 py-3 aria-selected:bg-(--accent-primary-subtle)"
                       >
-                        <Icon name={option.icon} />
-                        <span className="grow truncate">{option.label}</span>
-                        {option.hint && <span className="text-xs text-(--text-muted)">{option.hint}</span>}
+                        <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-(--glass-hover) text-(--text-secondary) transition-colors group-aria-selected:bg-(--accent-primary) group-aria-selected:text-(--text-on-accent)">
+                          <Icon name={option.icon} className="size-5" />
+                        </span>
+                        <span className="flex min-w-0 grow flex-col">
+                          <span className="truncate text-base font-semibold group-aria-selected:text-(--accent-primary)">{option.label}</span>
+                          {option.hint && <span className="truncate text-sm text-(--text-secondary)">{option.hint}</span>}
+                        </span>
+                        <Icon name="chevron" className="size-4 shrink-0 text-(--text-muted) transition-transform group-aria-selected:translate-x-0.5 group-aria-selected:text-(--accent-primary)" />
                       </li>
                     ))}
                   </ul>
@@ -146,11 +184,16 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
               ),
             )}
             {options.length === 0 && (
-              <li role="presentation" className="px-3 py-6 text-center text-sm text-(--text-secondary)">
+              <li role="presentation" className="px-6 py-8 text-center text-sm text-(--text-secondary)">
                 Nada coincide con «{query}». Pulsa Enter para crearlo como pendiente.
               </li>
             )}
           </ul>
+          <div aria-hidden="true" className="flex items-center gap-4 border-t border-(--glass-line) bg-(--glass-hover) px-6 py-3 text-xs text-(--text-secondary)">
+            <span className="flex items-center gap-1.5"><Kbd><Kbd.Content>↑</Kbd.Content></Kbd><Kbd><Kbd.Content>↓</Kbd.Content></Kbd> Navegar</span>
+            <span className="flex items-center gap-1.5"><Kbd><Kbd.Content>↵</Kbd.Content></Kbd> Abrir</span>
+            <button type="button" tabIndex={-1} onClick={close} className="ml-auto flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-xs text-(--text-secondary)"><Kbd><Kbd.Content>Esc</Kbd.Content></Kbd> Cerrar</button>
+          </div>
         </Dialog>
       </Modal>
     </ModalOverlay>

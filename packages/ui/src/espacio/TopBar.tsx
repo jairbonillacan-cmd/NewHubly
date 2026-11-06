@@ -203,7 +203,7 @@ function ControlPopover({ icon, label, title, children }: { icon: IconName; labe
 }
 
 const PANELES: { id: PanelId; label: string; icon: IconName }[] = [
-  { id: "hoy", label: "Panel Hoy", icon: "sol" },
+  { id: "hoy", label: "Panel Hoy", icon: "hoy" },
   { id: "nota", label: "Panel Nota abierta", icon: "nota" },
   { id: "notas", label: "Panel Notas fijadas", icon: "pin" },
 ];
@@ -241,7 +241,7 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, o
         </ControlPopover>
         <Dropdown>
           <Dropdown.Trigger aria-label="Ajustes" className={`flex cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent hover:bg-(--glass-hover) ${CONTROL}`}>
-            <Icon name="engrane" className="size-5" />
+            <Icon name="ajustes" className="size-5" />
           </Dropdown.Trigger>
           <Dropdown.Popover placement="bottom end" className={MENU}>
             <Dropdown.Menu aria-label="Ajustes del espacio" onAction={(key) => { if (key === "fondo") onOpenBackground(); else if (key === "json" || key === "md") onExport(key); }}>

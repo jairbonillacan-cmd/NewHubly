@@ -84,7 +84,7 @@ export function HoyPanel({ todos, notes, todayDate, filter, recentlyDone, freshI
     <GlassPanel
       id="panel-hoy"
       title={filter === "vencidos" ? "Hoy · solo vencidos" : filter === "hoy" ? "Hoy · solo para hoy" : "Hoy"}
-      icon="sol"
+      icon="hoy"
       onClose={onClose}
       className={className}
       actions={
