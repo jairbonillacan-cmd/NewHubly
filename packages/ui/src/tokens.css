@@ -104,6 +104,8 @@
   --wallpaper-line: rgba(17, 19, 22, 0.09); --wallpaper-line-accent: rgba(29, 78, 216, 0.28);
   --wallpaper-pattern: rgba(17, 19, 22, 0.05); --wallpaper-pattern-accent: rgba(29, 78, 216, 0.14);
   --wallpaper-image-veil: rgba(247, 247, 248, 0.30);
+  --wallpaper-puntos: #EEF0F4; --wallpaper-cuadricula: #F5F6F8; --wallpaper-aurora: #EEF1F8; --wallpaper-hubis: #E8EEFB; --wallpaper-arena: #F3EEE6;
+  --wallpaper-dot: rgba(17, 19, 22, 0.16); --wallpaper-aurora-1: rgba(29, 78, 216, 0.30); --wallpaper-aurora-2: rgba(124, 92, 255, 0.24); --wallpaper-aurora-3: rgba(14, 165, 233, 0.24);
   --glass-rgb: 255 255 255; --panel-alpha: 0.78; --glass-line: rgba(17, 19, 22, 0.08); --glass-line-strong: rgba(17, 19, 22, 0.14);
   --glass-panel-shadow: 0 0.5rem 1.5rem rgba(17, 19, 22, 0.10); --pop-bg: rgba(255, 255, 255, 0.96); --pop-shadow: 0 1rem 2.5rem rgba(17, 19, 22, 0.16);
   --glass-hover: rgba(17, 19, 22, 0.05); --glass-field: rgba(17, 19, 22, 0.04); --glass-blur-panel: 18px;
@@ -159,6 +161,8 @@
   --wallpaper-line: rgba(232, 232, 235, 0.09); --wallpaper-line-accent: rgba(111, 152, 255, 0.34);
   --wallpaper-pattern: rgba(232, 232, 235, 0.06); --wallpaper-pattern-accent: rgba(111, 152, 255, 0.16);
   --wallpaper-image-veil: rgba(12, 13, 15, 0.40);
+  --wallpaper-puntos: #0D0F14; --wallpaper-cuadricula: #111318; --wallpaper-aurora: #0A0C14; --wallpaper-hubis: #0C1328; --wallpaper-arena: #0B1020;
+  --wallpaper-dot: rgba(232, 232, 235, 0.16); --wallpaper-aurora-1: rgba(59, 108, 255, 0.40); --wallpaper-aurora-2: rgba(139, 92, 246, 0.32); --wallpaper-aurora-3: rgba(14, 165, 233, 0.26);
   --glass-rgb: 16 17 21; --panel-alpha: 0.80; --glass-line: rgba(255, 255, 255, 0.09); --glass-line-strong: rgba(255, 255, 255, 0.15);
   --glass-panel-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.35); --pop-bg: rgba(20, 22, 26, 0.96); --pop-shadow: 0 1.125rem 2.75rem rgba(0, 0, 0, 0.5);
   --glass-hover: rgba(255, 255, 255, 0.06); --glass-field: rgba(255, 255, 255, 0.06);
@@ -354,4 +358,10 @@ body {
 }
 .hubly-wallpaper { transition: background-color var(--motion-base) var(--motion-ease); }
 .hubly-wallpaper svg { transition: opacity var(--motion-base) var(--motion-ease); }
-@media (prefers-reduced-motion: reduce) { .hubly-wallpaper, .hubly-wallpaper svg { transition: none; } }
+/* Aurora (issue 134): manchas de color que se mueven muy despacio detrás de los paneles. */
+@keyframes hubly-aurora { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(6%, -4%) scale(1.12); } }
+.hubly-aurora { position: absolute; border-radius: 9999px; filter: blur(80px); animation: hubly-aurora 24s ease-in-out infinite; }
+.hubly-aurora-1 { top: -25%; left: -15%; width: 60vmax; height: 60vmax; }
+.hubly-aurora-2 { top: 25%; right: -20%; width: 55vmax; height: 55vmax; animation-duration: 31s; animation-direction: reverse; }
+.hubly-aurora-3 { bottom: -33%; left: 25%; width: 50vmax; height: 50vmax; animation-duration: 38s; }
+@media (prefers-reduced-motion: reduce) { .hubly-wallpaper, .hubly-wallpaper svg { transition: none; } .hubly-aurora { animation: none; } }
