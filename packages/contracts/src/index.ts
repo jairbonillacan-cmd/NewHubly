@@ -1,15 +1,8 @@
 // Esquemas Zod compartidos para validar cada frontera (ADR 0002, ADR 0007).
 import { z } from 'zod';
+import { isValidCalendarDate } from './content';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/, TITLE_MSG = 'El título no puede superar los 200 caracteres';
-
-function isValidCalendarDate(v: string): boolean {
-  const [y = 0, m = 0, d = 0] = v.split('-').map(Number);
-  if (m < 1 || m > 12 || d < 1) return false;
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  dt.setUTCFullYear(y);
-  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
-}
 
 const dueDateSchema = z
   .string()
@@ -117,3 +110,5 @@ export type ChangeItemVisibilityInput = z.input<typeof changeItemVisibilityInput
 export type UserPreferences = z.infer<typeof userPreferencesSchema>; export type UpdateUserPreferencesInput = z.input<typeof updateUserPreferencesSchema>;
 
 export * from "./chat";
+export * from "./content";
+

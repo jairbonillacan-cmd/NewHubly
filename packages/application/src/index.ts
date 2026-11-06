@@ -308,3 +308,5 @@ export async function saveUserPreferences(repo: UserPreferencesRepository, patch
 
 
 export * from "./chat";
+export * from "./content";
+

@@ -129,3 +129,43 @@ describe('Captura inteligente (#80)', () => {
     });
   });
 });
+
+describe('Calendario editorial: dominio puro (#192)', () => {
+  it('valida colores de marca, canales y tipos de eventos de historial', async () => {
+    const { BRAND_COLORS, CONTENT_CHANNELS, CONTENT_PIECE_EVENT_KINDS, isBrandColor, isContentChannel } = await import('./index.js');
+    expect(BRAND_COLORS).toEqual(['azul', 'arena', 'verde', 'lila']);
+    expect(isBrandColor('azul') && isBrandColor('lila') && !isBrandColor('rojo')).toBe(true);
+    expect(CONTENT_CHANNELS).toContain('instagram');
+    expect(isContentChannel('linkedin') && isContentChannel('otro') && !isContentChannel('threads')).toBe(true);
+    expect(CONTENT_PIECE_EVENT_KINDS).toEqual(['created', 'status', 'rescheduled', 'assigned']);
+  });
+
+  it('aplica la máquina de estados v1 y bloquea estados reservados para Fase 3/4', async () => {
+    const { CONTENT_PIECE_STATUSES, CONTENT_V1_STATUSES, canTransitionContentStatus, getNextContentStatuses } = await import('./index.js');
+    expect(CONTENT_PIECE_STATUSES).toEqual(['idea', 'borrador', 'revision', 'aprobacion_cliente', 'programada', 'aprobada', 'publicada', 'medida']);
+    expect(CONTENT_V1_STATUSES).toEqual(['idea', 'borrador', 'revision', 'aprobada', 'publicada']);
+    expect(getNextContentStatuses('idea')).toEqual(['borrador']);
+    expect(getNextContentStatuses('borrador')).toEqual(['idea', 'revision']);
+    expect(getNextContentStatuses('revision')).toEqual(['borrador', 'aprobada']);
+    expect(getNextContentStatuses('aprobada')).toEqual(['revision', 'publicada']);
+    expect(getNextContentStatuses('publicada')).toEqual([]);
+    expect(getNextContentStatuses('aprobacion_cliente')).toEqual([]);
+    expect(canTransitionContentStatus('idea', 'borrador') && canTransitionContentStatus('borrador', 'idea')).toBe(true);
+    expect(canTransitionContentStatus('borrador', 'revision') && canTransitionContentStatus('revision', 'aprobada')).toBe(true);
+    expect(canTransitionContentStatus('aprobada', 'publicada') && canTransitionContentStatus('aprobada', 'revision')).toBe(true);
+    expect(canTransitionContentStatus('idea', 'publicada') || canTransitionContentStatus('publicada', 'borrador')).toBe(false);
+    expect(canTransitionContentStatus('revision', 'aprobacion_cliente') || canTransitionContentStatus('aprobada', 'programada')).toBe(false);
+  });
+
+  it('verifica permisos por rol para marcas y piezas editoriales', async () => {
+    const { canManageBrands, canWriteContentPiece, canDeleteContentPiece } = await import('./index.js');
+    expect(canManageBrands('owner') && canManageBrands('admin')).toBe(true);
+    expect(canManageBrands('editor') || canManageBrands('viewer') || canManageBrands(null)).toBe(false);
+    expect(canWriteContentPiece('owner') && canWriteContentPiece('admin') && canWriteContentPiece('editor')).toBe(true);
+    expect(canWriteContentPiece('viewer') || canWriteContentPiece(null)).toBe(false);
+    expect(canDeleteContentPiece('owner', false) && canDeleteContentPiece('admin', false)).toBe(true);
+    expect(canDeleteContentPiece('editor', true) && !canDeleteContentPiece('editor', false)).toBe(true);
+    expect(canDeleteContentPiece('viewer', true) || canDeleteContentPiece(null, true)).toBe(false);
+  });
+});
+
