@@ -109,7 +109,7 @@ describe("Chat: casos de uso y repositorio", { timeout: 30000 }, () => {
         values (${editor}, ${editor + "@example.test"}, '{"display_name":"  Ana   Pérez  "}'::jsonb)`;
       await db`insert into public.user_presence (user_id, status) values (${editor}, 'dnd')`;
       expect((await reader.directory(workspaceId)).find((person) => person.id === editor))
-        .toEqual({ id: editor, name: "Ana Pérez", role: "editor", status: "dnd" });
+        .toEqual({ id: editor, name: "Ana Pérez", role: "editor", status: "dnd", hasAvatar: false });
       const outsider = new DrizzleChatRepository({ sub: randomUUID(), role: "authenticated" }, workspaceId);
       expect(await outsider.directory()).toEqual([]);
     } finally {
@@ -138,5 +138,67 @@ describe("Chat: casos de uso y repositorio", { timeout: 30000 }, () => {
     expect(first.hasMore).toBe(true);
     expect((await reader.sync(workspaceId, channel, first.after)).changes.map((message) => message.number)).toEqual([51, 52, 53, 54]);
     expect((await reader.sync(workspaceId, randomUUID(), 0)).conversationAvailable).toBe(false);
+  });
+
+  it("guarda citas, hilos, reacciones agregadas, escribiendo y menciones sin leer", async () => {
+    const colleague = makeService(peer, "editor");
+    // La prueba de paginación inserta 54 mensajes del editor en el último minuto: la raíz la escribe otra persona.
+    const root = (await colleague.command({ kind: "send", workspaceId, conversationId: general, retryKey: randomUUID(), body: "Raíz del hilo" })).message!;
+    const quoted = (await colleague.command({
+      kind: "send", workspaceId, conversationId: general, retryKey: randomUUID(), body: "Te cito, @Ana",
+      replyToId: root.id, mentionedUserIds: [editor],
+    })).message!;
+    expect(quoted).toMatchObject({ replyToId: root.id, threadRootId: null, reactions: [] });
+    const threadReply = (await colleague.command({
+      kind: "send", workspaceId, conversationId: general, retryKey: randomUUID(), body: "Respuesta en hilo", threadRootId: root.id,
+    })).message!;
+    expect(threadReply.threadRootId).toBe(root.id);
+
+    const main = await writer.history(workspaceId, general);
+    expect(main.messages.some((entry) => entry.id === threadReply.id)).toBe(false);
+    expect(main.messages.find((entry) => entry.id === root.id)).toMatchObject({ threadReplyCount: 1 });
+    expect(main.messages.find((entry) => entry.id === root.id)?.threadLastReplyAt).toEqual(expect.any(String));
+    expect((await writer.history(workspaceId, general, undefined, root.id)).messages.map((entry) => entry.id)).toEqual([threadReply.id]);
+
+    const before = (await writer.history(workspaceId, general)).conversation.changeCursor;
+    expect(await writer.command({ kind: "toggleReaction", workspaceId, conversationId: general, messageId: root.id, emoji: "👍" }))
+      .toMatchObject({ added: true });
+    await colleague.command({ kind: "toggleReaction", workspaceId, conversationId: general, messageId: root.id, emoji: "👍" });
+    await colleague.command({ kind: "toggleReaction", workspaceId, conversationId: general, messageId: root.id, emoji: "🎉" });
+    const expected = [{ emoji: "👍", count: 2, userIds: [editor, peer] }, { emoji: "🎉", count: 1, userIds: [peer] }];
+    const reacted = await reader.sync(workspaceId, general, before);
+    expect(reacted.changes.find((entry) => entry.id === root.id)?.reactions).toEqual(expected);
+    expect(reacted.reactions?.[root.id]).toEqual(expected);
+    expect(await writer.command({ kind: "toggleReaction", workspaceId, conversationId: general, messageId: root.id, emoji: "👍" }))
+      .toMatchObject({ added: false });
+    await expect(writer.command({ kind: "toggleReaction", workspaceId, conversationId: general, messageId: root.id, emoji: "ab" }))
+      .rejects.toMatchObject({ reason: "invalid" });
+    await expect(reader.command({ kind: "toggleReaction", workspaceId, conversationId: general, messageId: root.id, emoji: "👍" }))
+      .rejects.toThrow("no disponible");
+
+    expect((await colleague.command({ kind: "typing", workspaceId, conversationId: general })).expiresAt).toEqual(expect.any(String));
+    await expect(colleague.command({ kind: "typing", workspaceId, conversationId: general })).rejects.toMatchObject({ reason: "rate-limit" });
+    expect((await writer.sync(workspaceId, general, 0)).typingUserIds).toEqual([peer]);
+    expect((await colleague.sync(workspaceId, general, 0)).typingUserIds).toEqual([]);
+
+    expect((await writer.sync(workspaceId, undefined, 0)).unreadMentions).toMatchObject([{ messageId: quoted.id, conversationId: general }]);
+    expect(await reader.command({ kind: "markMentionsRead", workspaceId, conversationId: general })).toMatchObject({ cleared: 0 });
+    expect(await writer.command({ kind: "markMentionsRead", workspaceId, conversationId: general, upToNumber: quoted.number }))
+      .toMatchObject({ cleared: 1 });
+    expect((await writer.sync(workspaceId, general, 0)).unreadMentions).toEqual([]);
+  });
+
+  it("indica qué compañeros tienen foto en el directorio", async () => {
+    await db`insert into storage.objects (bucket_id, name) values ('user-avatars', ${peer + "/foto"})`;
+    try {
+      const people = await writer.directory(workspaceId);
+      expect(people.find((person) => person.id === peer)?.hasAvatar).toBe(true);
+      expect(people.find((person) => person.id === viewer)?.hasAvatar).toBe(false);
+    } finally {
+      await db.begin(async (tx) => {
+        await tx`select set_config('storage.allow_delete_query', 'true', true)`;
+        await tx`delete from storage.objects where bucket_id = 'user-avatars' and name = ${peer + "/foto"}`;
+      });
+    }
   });
 });

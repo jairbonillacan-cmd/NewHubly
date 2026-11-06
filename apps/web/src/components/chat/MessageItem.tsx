@@ -12,8 +12,12 @@ const normalizeMentionKey = (value: string) => value.normalize("NFD").replace(/[
 export const QUICK_REACTIONS = ["👍", "❤️", "😂", "🎉", "👀", "🚀"] as const;
 export const LONG_PRESS_MS = 400;
 
-export interface ChatReactionSummary { emoji: string; userIds: readonly string[] }
-export interface ChatMessageView extends ChatMessage {
+export interface ChatReactionSummary {
+  emoji: string;
+  count?: number | undefined;
+  userIds: readonly string[];
+}
+export interface ChatMessageView extends Omit<ChatMessage, "reactions"> {
   replyToId?: string | null | undefined;
   threadRootId?: string | null | undefined;
   threadReplyCount?: number | undefined;

@@ -57,7 +57,9 @@ export function daySeparatorLabel(iso: string, now: Date = new Date()): string {
     .format(new Date(`${targetKey}T00:00:00Z`));
 }
 
-export function shouldGroupMessages(previous: ChatMessage | undefined, current: ChatMessage): boolean {
+type GroupedFields = Pick<ChatMessage, "authorId" | "sentAt">;
+
+export function shouldGroupMessages(previous: GroupedFields | undefined, current: GroupedFields): boolean {
   if (!previous || previous.authorId !== current.authorId || dayKey(previous.sentAt) !== dayKey(current.sentAt)) return false;
   const delta = Date.parse(current.sentAt) - Date.parse(previous.sentAt);
   return delta >= 0 && delta <= CHAT_GROUP_WINDOW_MS;

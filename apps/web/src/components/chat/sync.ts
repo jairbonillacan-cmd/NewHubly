@@ -19,7 +19,10 @@ export function isMessageEndVisible(end: number, history: Pick<DOMRect, "top" | 
   return end > Math.max(history.top, 0) && end <= Math.min(history.bottom, viewportHeight) + 1;
 }
 
-export function startChatPolling(run: () => Promise<boolean>, windowEvents: Window = window, page: Document = document) {
+export function startChatPolling(
+  run: () => Promise<boolean>, windowEvents: Window = window, page: Document = document,
+  intervalMs: () => number = () => CHAT_POLL_MS,
+) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let running = false;
   let pending = false;
@@ -35,7 +38,7 @@ export function startChatPolling(run: () => Promise<boolean>, windowEvents: Wind
     void run().then((result) => { more = result; }, () => {}).finally(() => {
       running = false;
       if (!stopped && !page.hidden && windowEvents.navigator.onLine !== false) {
-        timer = setTimeout(refresh, more || pending ? 0 : CHAT_POLL_MS);
+        timer = setTimeout(refresh, more || pending ? 0 : intervalMs());
       }
     });
   }
