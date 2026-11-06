@@ -1,18 +1,20 @@
 "use client";
 
-import { Button, Tooltip } from "@heroui/react";
+import { Button, Dropdown } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { HubiFace } from "../components/brand/HublyLogo";
 import { Hubi, type HubiPose } from "../components/brand/Hubi";
-import { useHublyTheme, type HublyTheme } from "../landing/ThemeToggle";
+import { hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyTheme, type HublyThemePreference } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
-import { BackgroundPicker, CaptureField, Dock, findNoteByQuery, type WallpaperImageControls } from "./Dock";
-import { IconButton } from "./GlassPanel";
+import { BackgroundPicker, CaptureField, Dock, DockMore, DockStatus, type WallpaperImageControls } from "./Dock";
+import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery, type DockSuggestion } from "./dockConfig";
+import { Carril, Proximamente, resumenSemana } from "./Carril";
+import { HERRAMIENTAS, herramientaPorId, isHerramientaId, type HerramientaId } from "./herramientas";
 import { HoyPanel } from "./HoyPanel";
-import { Icon } from "./icons";
 import { NotaPanel } from "./NotaPanel";
 import { NotasPanel } from "./NotasPanel";
-import { useEspacioPreferencias, type EspacioPreferencias, type PanelId } from "./preferencias";
+import { useEspacioPreferencias, type EspacioPreferencias } from "./preferencias";
 import { TopBar } from "./TopBar";
 import {
   relativeDateLabel, type CaptureAnalysis, type CaptureInput, type EspacioInvitation, type EspacioInviteRole, type EspacioMember,
@@ -32,8 +34,10 @@ export interface EspacioHoyProps {
   onPreferencesChange?: ((prefs: EspacioPreferencias) => void) | undefined;
   /** Tema guardado de la persona; si llega, manda sobre el del navegador al entrar. */
   initialTheme?: HublyTheme | undefined;
-  /** Se llama cuando la persona cambia de tema desde el menú de cuenta o la paleta. */
-  onThemeChange?: ((theme: HublyTheme) => void) | undefined;
+  /** Preferencia guardada, incluido «system» (#105); manda sobre initialTheme. */
+  initialThemePreference?: HublyThemePreference | undefined;
+  /** Se llama cuando la persona cambia de tema desde el menú del perfil o la paleta. */
+  onThemeChange?: ((theme: HublyThemePreference) => void) | undefined;
   /** «Tu imagen» (#84): URL firmada inicial y acciones de subir y quitar. Sin acciones, el mosaico sale como no disponible. */
   wallpaperImageUrl?: string | null | undefined;
   onUploadWallpaper?: WallpaperImageControls["onUpload"] | undefined;
@@ -44,6 +48,7 @@ export interface EspacioHoyProps {
   noteSaveStates: Record<string, NoteSaveState>;
   actionError?: { message: string; onRetry: () => void } | null;
   captureError?: string | null;
+  overdueSuggestion?: DockSuggestion | null;
   analyzeCapture: (text: string) => CaptureAnalysis;
   onCapture: (input: CaptureInput) => Promise<boolean | void>;
   onToggleTodo: (id: string) => Promise<void> | void;
@@ -69,62 +74,19 @@ export interface EspacioHoyProps {
   onLeaveAgency?: () => void;
   onChangeNoteVisibility?: (id: string, visibility: EspacioVisibility) => void;
   onChangeTodoVisibility?: (id: string, visibility: EspacioVisibility) => void;
+  /** Correo de la sesión, para la inicial del avatar. */
+  userEmail?: string | null | undefined;
+  /** Herramienta abierta al cargar (?herramienta=); por defecto, Hoy. */
+  initialHerramienta?: HerramientaId | undefined;
 }
+
+/** Carril compacto o completo; se recuerda en este navegador hasta que exista su preferencia en la cuenta. */
+const CARRIL_STORAGE_KEY = "hubly-carril";
 
 export const PERSONAL_WORKSPACE: EspacioWorkspace = { id: "personal", name: "Espacio personal", kind: "personal", role: "owner" };
 const noop = () => {};
 
 interface ToastState { id: number; message: string; undo?: (() => void) | undefined }
-
-const isTypingTarget = (target: EventTarget | null) => {
-  const el = target as HTMLElement | null;
-  const tag = el?.tagName ?? "";
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || Boolean(el?.isContentEditable);
-};
-
-interface RailProps {
-  overdueCount: number;
-  panels: Record<PanelId, boolean>;
-  onTogglePanel: (id: PanelId) => void;
-  workspaces: EspacioWorkspace[];
-  activeId: string;
-  onSelect: (id: string) => void;
-  onCreateAgency: () => void;
-}
-
-function Rail({ overdueCount, panels, onTogglePanel, workspaces, activeId, onSelect, onCreateAgency }: RailProps) {
-  const railButton = "relative flex size-9 cursor-pointer items-center justify-center rounded-lg border-2 text-sm font-bold";
-  return (
-    <nav aria-label="Espacios y paneles" className="hubly-glass hubly-enter flex w-14 flex-col items-center gap-2 rounded-xl py-2.5" data-delay="1">
-      <span className="text-xs font-semibold text-(--text-muted)">Espacios</span>
-      {workspaces.map((ws) => {
-        const active = ws.id === activeId;
-        const name = ws.kind === "personal" ? "Espacio personal" : ws.name;
-        return (
-          <Tooltip key={ws.id} delay={400}>
-          <Button isIconOnly variant={active ? "primary" : "tertiary"} onPress={() => { if (!active) onSelect(ws.id); }}
-            className={`${railButton} ${active ? "border-(--accent-primary)" : "border-transparent data-[hovered]:border-(--glass-line-strong)"}`}>
-            {ws.kind === "personal" ? <Icon name="usuario" /> : <span aria-hidden="true">{ws.name.trim().charAt(0).toUpperCase() || "A"}</span>}
-            <span className="sr-only">{name}{active ? " (activo)" : ""}</span>
-            {active && overdueCount > 0 && (
-              <span key={overdueCount} className="hubly-pop absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-(--status-danger-text) px-1 text-xs font-bold text-(--surface-raised)">
-                {overdueCount}
-              </span>
-            )}
-          </Button>
-          <Tooltip.Content placement="right">{name}{active ? " · activo" : ""}</Tooltip.Content>
-          </Tooltip>
-        );
-      })}
-      <IconButton icon="mas" label="Crear agencia" onPress={onCreateAgency} className="border border-dashed border-(--glass-line-strong)" />
-      <span aria-hidden="true" className="my-1 h-px w-7 bg-(--glass-line-strong)" />
-      <span className="text-xs font-semibold text-(--text-muted)">Paneles</span>
-      <IconButton icon="sol" label="Panel Hoy" pressed={panels.hoy} onPress={() => onTogglePanel("hoy")} />
-      <IconButton icon="nota" label="Panel Nota abierta" pressed={panels.nota} onPress={() => onTogglePanel("nota")} />
-      <IconButton icon="pin" label="Panel Notas fijadas" pressed={panels.notas} onPress={() => onTogglePanel("notas")} />
-    </nav>
-  );
-}
 
 /** Espacio de Hoy con paneles de cristal sobre fondo personal (propuesta B, #75). Sin datos propios: todo llega por props. */
 export function EspacioHoy(props: EspacioHoyProps) {
@@ -134,6 +96,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [teamMode, setTeamMode] = useState<EquipoDialogMode | null>(null);
   const [prefs, setPrefs] = useEspacioPreferencias(props.initialPreferences, props.onPreferencesChange);
   const [theme, setTheme] = useHublyTheme();
+  const [themePreference] = useHublyThemePreference();
   const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(props.wallpaperImageUrl ?? null);
   const imagenControls: WallpaperImageControls | undefined = props.onUploadWallpaper && props.onRemoveWallpaper
     ? {
@@ -152,20 +115,25 @@ export function EspacioHoy(props: EspacioHoyProps) {
     : undefined;
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
+  const initialPreference = props.initialThemePreference ?? props.initialTheme ?? null;
+  const lastPersistedTheme = useRef<HublyThemePreference | null>(initialPreference);
+  const skipFirstTheme = useRef(true);
 
-  // El tema guardado en el servidor manda al entrar; después, cualquier cambio de data-theme (menú de cuenta o paleta) se guarda.
+  // El tema guardado en el servidor manda al entrar; después, cada cambio de preferencia se guarda una sola vez.
   useEffect(() => {
-    if (props.initialTheme && document.documentElement.getAttribute("data-theme") !== props.initialTheme) setTheme(props.initialTheme);
-    let last = document.documentElement.getAttribute("data-theme");
-    const observer = new MutationObserver(() => {
-      const current = document.documentElement.getAttribute("data-theme");
-      if (current !== last && (current === "light" || current === "dark")) onThemeChangeRef.current?.(current);
-      last = current;
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-    // Solo al montar: initialTheme es el valor con el que se cargó la página.
+    if (initialPreference) hydrateThemePreference(initialPreference);
+    // Solo al montar: initialPreference es el valor con el que se cargó la página.
   }, []);
+  useEffect(() => {
+    if (skipFirstTheme.current) {
+      skipFirstTheme.current = false;
+      if (lastPersistedTheme.current === null) lastPersistedTheme.current = themePreference;
+      return;
+    }
+    if (themePreference === lastPersistedTheme.current) return;
+    lastPersistedTheme.current = themePreference;
+    onThemeChangeRef.current?.(themePreference);
+  }, [themePreference]);
   const [filter, setFilter] = useState<HoyFilter>(null);
   const [openNoteId, setOpenNoteId] = useState<string | null>(() => notes.find((n) => n.isPinned && !n.isArchived)?.id ?? notes.find((n) => !n.isArchived)?.id ?? null);
   const [linkedNoteId, setLinkedNoteId] = useState<string | null>(null);
@@ -173,6 +141,32 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [pickerOpen, setPickerOpen] = useState<"desktop" | "mobile" | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [herramienta, setHerramienta] = useState<HerramientaId>(props.initialHerramienta ?? "hoy");
+  const [carrilExpandido, setCarrilExpandido] = useState(false);
+
+  useEffect(() => {
+    try { setCarrilExpandido(localStorage.getItem(CARRIL_STORAGE_KEY) === "completo"); } catch { /* sin almacenamiento: compacto */ }
+    const onPopState = () => {
+      const id = new URLSearchParams(window.location.search).get("herramienta");
+      setHerramienta(isHerramientaId(id) ? id : "hoy");
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const toggleCarril = () => {
+    const next = !carrilExpandido;
+    setCarrilExpandido(next);
+    try { localStorage.setItem(CARRIL_STORAGE_KEY, next ? "completo" : "compacto"); } catch { /* se queda solo en esta visita */ }
+  };
+
+  // Cambiar de herramienta no recarga la página: el marco se queda y la URL guarda cuál está abierta.
+  const selectHerramienta = (id: HerramientaId) => {
+    if (id === herramienta) return;
+    setHerramienta(id);
+    window.history.pushState(window.history.state, "", id === "hoy" ? window.location.pathname : `${window.location.pathname}?herramienta=${id}`);
+    document.getElementById("contenido")?.focus();
+  };
   const rootRef = useRef<HTMLDivElement>(null);
   const desktopCapture = useRef<HTMLInputElement>(null);
   const mobileCapture = useRef<HTMLInputElement>(null);
@@ -195,26 +189,6 @@ export function EspacioHoy(props: EspacioHoyProps) {
     const target = isDesktop() ? desktopCapture.current : mobileCapture.current;
     target?.focus();
   }, []);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setPaletteOpen(true);
-        return;
-      }
-      if (event.ctrlKey || event.metaKey || event.altKey || isTypingTarget(event.target)) return;
-      if (event.key === "/") {
-        event.preventDefault();
-        setPaletteOpen(true);
-      } else if (event.key === "c" || event.key === "C") {
-        event.preventDefault();
-        focusCapture();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [focusCapture]);
 
   const showToast = (message: string, undo?: () => void) => setToast({ id: Date.now(), message, undo });
 
@@ -246,6 +220,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   };
 
   const createNote = async () => {
+    selectHerramienta("hoy");
     const id = await onCreateNote();
     if (id) {
       setOpenNoteId(id);
@@ -254,6 +229,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   };
 
   const openNote = (id: string) => {
+    selectHerramienta("hoy");
     setOpenNoteId(id);
     setPrefs({ paneles: { nota: true } });
     if (!isDesktop()) document.getElementById("panel-nota")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -264,10 +240,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
     focusCapture();
   };
 
-  const openBackground = () => setPickerOpen(isDesktop() ? "desktop" : "mobile");
+  const openBackground = () => {
+    selectHerramienta("hoy");
+    setPickerOpen(isDesktop() ? "desktop" : "mobile");
+  };
 
   const paletteActions: PaletteAction[] = [
-    { id: "pendiente", label: "Nuevo pendiente", icon: "mas", run: () => setTimeout(focusCapture, 0) },
+    { id: "pendiente", label: "Nuevo pendiente", icon: "mas", run: () => { selectHerramienta("hoy"); setTimeout(focusCapture, 0); } },
     { id: "nota", label: "Nueva nota", icon: "nota", run: () => void createNote() },
     { id: "fondo", label: "Cambiar fondo", icon: "imagen", run: () => setTimeout(openBackground, 0) },
     prefs.distribucion === "enfoque"
@@ -298,34 +277,45 @@ export function EspacioHoy(props: EspacioHoyProps) {
         ? "lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1.15fr)_minmax(0,1fr)]"
         : "lg:grid lg:auto-cols-fr lg:grid-flow-col";
 
-  const mobileNav: { label: string; icon: "sol" | "pin" | "buscar"; run: () => void }[] = [
-    { label: "Hoy", icon: "sol", run: () => document.getElementById("panel-hoy")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
-    { label: "Notas", icon: "pin", run: () => document.getElementById("panel-notas")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
-    { label: "Buscar", icon: "buscar", run: () => setPaletteOpen(true) },
+  const linkedNote = notes.find((note) => note.id === linkedNoteId);
+  const suggestion = toast
+    ? { message: toast.message, ...(toast.undo ? { action: { label: "Deshacer", run: () => { toast.undo?.(); setToast(null); } } } : {}) }
+    : props.overdueSuggestion ?? null;
+  const dock = herramienta === "hoy" ? createTodayDock({
+    todos, date: todayDate, layout, onLayout: (distribucion) => setPrefs({ distribucion }),
+    filter, onFilter: (next) => { setFilter(next); setPrefs({ paneles: { hoy: true } }); },
+    createNote: () => void createNote(), exportData: () => onExport("json"), saveState, suggestion,
+    entry: {
+      label: "Capturar pendiente", hint: "Captura… prueba «llamar a Lumen mañana !alta»", shortcut: "C",
+      submitIcon: <HubiFace className="size-5" />,
+      linked: linkedNote ? { label: linkedNote.title || "sin título", remove: () => setLinkedNoteId(null) } : undefined,
+      chips: (text) => captureChips(analyzeCapture(text), notes),
+      onSubmit: (text) => void submitCapture(text), error: captureError,
+    },
+  }) : null;
+  const shortcuts = [
+    { key: "Ctrl K", label: "Buscar o ejecutar", run: () => setPaletteOpen(true) },
+    { key: "/", label: "Abrir la búsqueda", run: () => setPaletteOpen(true) },
+    ...(dock ? [{ key: dock.entry.shortcut, label: "Escribir un pendiente", run: focusCapture }, ...dock.actions] : []),
   ];
 
-  const captureProps = {
-    notes,
-    linkedNote: notes.find((note) => note.id === linkedNoteId) ?? null,
-    onUnlinkNote: () => setLinkedNoteId(null),
-    analyze: analyzeCapture,
-    onSubmit: (text: string) => void submitCapture(text),
-    error: captureError,
-  };
+  useEffect(() => {
+    const onKeyDown = createShortcutRegistry(shortcuts);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [shortcuts]);
 
   return (
-    <div ref={rootRef} className="relative isolate min-h-dvh text-(--text-primary) lg:h-dvh lg:overflow-hidden">
+    // Marco fijo (#105): en escritorio, una cuadrícula con la barra superior, el carril y el dock fijos; solo el contenido se desliza.
+    <div ref={rootRef} className="relative isolate min-h-dvh text-(--text-primary) lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-[3.5rem_minmax(0,1fr)_auto] lg:gap-3 lg:overflow-hidden lg:p-3">
       <Wallpaper fondo={prefs.fondo === "imagen" && !wallpaperUrl ? "contornos" : prefs.fondo} imagenUrl={wallpaperUrl} />
+      <a href="#contenido" className="sr-only z-50 rounded-lg bg-(--surface-raised) px-3 py-2 text-sm font-semibold focus:not-sr-only focus:fixed focus:top-3 focus:left-3">Saltar al contenido</a>
 
-      <div className="sticky top-0 z-30 p-3 lg:absolute lg:inset-x-3 lg:top-3 lg:p-0">
+      <div className="sticky top-0 z-30 p-3 lg:static lg:col-span-2 lg:p-0">
         <TopBar
           todayDate={todayDate}
           timezone={timezone}
-          overdueCount={overdueCount}
-          todayCount={todayCount}
-          filter={filter}
-          saveState={saveState}
-          onFilter={setFilter}
+          shortcuts={shortcuts}
           onOpenPalette={() => setPaletteOpen(true)}
           onOpenBackground={openBackground}
           onExport={onExport}
@@ -335,29 +325,35 @@ export function EspacioHoy(props: EspacioHoyProps) {
           onSelectWorkspace={props.onSelectWorkspace ?? noop}
           onCreateAgency={() => setTeamMode("crear")}
           onOpenTeam={() => setTeamMode("equipo")}
-        />
-      </div>
-
-      <div className="absolute top-18 left-3 z-20 hidden lg:block">
-        <Rail
-          overdueCount={overdueCount}
+          toolName={herramientaPorId(herramienta).nombre}
           panels={prefs.paneles}
           onTogglePanel={(id) => setPrefs({ distribucion: layout === "enfoque" ? "libre" : layout, paneles: { [id]: !prefs.paneles[id] } })}
-          workspaces={workspaces}
-          activeId={activeWorkspace.id}
-          onSelect={props.onSelectWorkspace ?? noop}
-          onCreateAgency={() => setTeamMode("crear")}
+          focusMode={layout === "enfoque"}
+          onToggleFocus={() => setPrefs({ distribucion: layout === "enfoque" ? "libre" : "enfoque" })}
+          userEmail={props.userEmail}
         />
       </div>
 
+      <div className="z-20 hidden min-h-0 lg:col-start-1 lg:row-span-2 lg:row-start-2 lg:block">
+        <Carril
+          expandido={carrilExpandido}
+          onToggleExpandido={toggleCarril}
+          activa={herramienta}
+          onSelect={selectHerramienta}
+          hoyPendientes={overdueCount + todayCount}
+          semana={resumenSemana(todos, todayDate)}
+        />
+      </div>
+
+      <main id="contenido" tabIndex={-1} className="flex flex-col gap-3 px-3 pb-44 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:overflow-y-auto lg:p-0">
       {actionError && (
-        <div role="alert" className="hubly-pop hubly-glass relative z-30 mx-3 mb-3 flex items-center justify-between gap-3 rounded-xl border-(--status-danger-text) px-4 py-3 text-sm text-(--status-danger-text) lg:absolute lg:top-18 lg:right-3 lg:left-20 lg:mx-0">
+        <div role="alert" className="hubly-pop hubly-glass relative z-30 flex shrink-0 items-center justify-between gap-3 rounded-xl border-(--status-danger-text) px-4 py-3 text-sm text-(--status-danger-text)">
           <span>{actionError.message}</span>
           <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
-
-      <main className={`flex flex-col gap-3 px-3 pb-44 lg:absolute lg:top-18 lg:right-3 lg:bottom-24 lg:left-20 lg:gap-3 lg:p-0 ${gridClass} ${actionError ? "lg:top-32" : ""}`}>
+      {herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : (
+      <div className={`flex flex-col gap-3 lg:min-h-144 lg:grow ${gridClass}`}>
         {panels.hoy && (
           <HoyPanel
             todos={todos}
@@ -397,40 +393,43 @@ export function EspacioHoy(props: EspacioHoyProps) {
             className={sideClass}
           />
         )}
+      </div>
+      )}
       </main>
 
-      <div className="absolute inset-x-0 bottom-4 z-20 hidden justify-center px-24 lg:flex">
-        <Dock ref={desktopCapture} imagen={imagenControls} prefs={prefs} onPrefs={setPrefs} pickerOpen={pickerOpen === "desktop"} onPickerOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} {...captureProps} />
-      </div>
+      {dock && <div className="z-20 hidden min-w-0 lg:col-start-2 lg:row-start-3 lg:block">
+        <Dock ref={desktopCapture} config={dock} extra={<BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs}
+          isOpen={pickerOpen === "desktop"} onOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} triggerClassName="size-11 min-w-11 shrink-0" />} />
+      </div>}
 
-      <div className="hubly-glass fixed inset-x-2 bottom-2 z-30 flex flex-col gap-2 rounded-2xl p-2 lg:hidden">
-        <CaptureField ref={mobileCapture} {...captureProps} />
+      <div {...(dock ? { role: "toolbar", "aria-label": dock.label } : {})} className="hubly-glass fixed inset-x-2 bottom-2 z-30 flex flex-col gap-2 rounded-(--glass-radius-access-card) p-2 lg:hidden">
+        {dock && <><DockStatus suggestion={dock.suggestion ?? null} /><CaptureField ref={mobileCapture} {...dock.entry} /></>}
         <nav aria-label="Navegación del espacio" className="grid grid-cols-4">
-          {mobileNav.map((item) => (
-            <Button key={item.label} variant="ghost" onPress={item.run} className="h-auto min-h-11 flex-col gap-0.5 text-xs text-(--text-secondary)">
-              <Icon name={item.icon} className="size-5" />
-              {item.label}
-            </Button>
-          ))}
-          <BackgroundPicker
-            imagen={imagenControls}
-            prefs={prefs}
-            onChange={setPrefs}
-            isOpen={pickerOpen === "mobile"}
-            onOpenChange={(open) => setPickerOpen(open ? "mobile" : null)}
-            triggerLabel="Fondo"
-            triggerClassName="h-auto min-h-11 w-full flex-col gap-0.5 text-xs text-(--text-secondary)"
-          />
+          <Button variant="ghost" className="min-h-11" {...(herramienta === "hoy" ? { "aria-current": "page" } : {})} onPress={() => {
+            selectHerramienta("hoy");
+            document.getElementById("panel-hoy")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}>Hoy</Button>
+          <Dropdown>
+            <Dropdown.Trigger className="min-h-11 px-1 text-xs">Herramientas</Dropdown.Trigger>
+            <Dropdown.Popover placement="top" className="hubly-pop-surface rounded-xl p-1">
+              <Dropdown.Menu aria-label="Herramientas" onAction={(id) => { if (typeof id === "string" && isHerramientaId(id)) selectHerramienta(id); }}>
+                {HERRAMIENTAS.filter((tool) => tool.id !== "hoy").map((tool) => <Dropdown.Item key={tool.id} id={tool.id} className="min-h-11">{tool.nombre} · Pronto</Dropdown.Item>)}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown>
+          {dock && <>
+            <BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs} isOpen={pickerOpen === "mobile"}
+              onOpenChange={(open) => setPickerOpen(open ? "mobile" : null)} triggerLabel="Fondo" triggerClassName="min-h-11 w-full" />
+            <DockMore config={dock} extra={<Button variant="ghost" className="min-h-11" onPress={() => document.getElementById("panel-notas")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Notas</Button>} />
+          </>}
         </nav>
       </div>
 
-      {toast && (
+      {herramienta !== "hoy" && toast && (
         <div role="status" key={toast.id} className="hubly-pop hubly-pop-surface fixed bottom-36 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-(--text-primary) lg:bottom-28">
           <span className="max-w-64 truncate">{toast.message}</span>
           {toast.undo && (
-            <Button size="sm" variant="ghost" onPress={() => { toast.undo?.(); setToast(null); }} className="text-(--accent-primary)">
-              <Icon name="deshacer" className="size-3.5" /> Deshacer
-            </Button>
+            <Button size="sm" variant="ghost" onPress={() => { toast.undo?.(); setToast(null); }} className="text-(--accent-primary)">Deshacer</Button>
           )}
         </div>
       )}
@@ -460,11 +459,12 @@ export function EspacioHoy(props: EspacioHoyProps) {
         todos={todos}
         onOpenNote={openNote}
         onFocusTodo={(id) => {
+          selectHerramienta("hoy");
           setFilter(null);
           setPrefs({ paneles: { hoy: true } });
           setTimeout(() => document.getElementById(`pendiente-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
         }}
-        onCreateTodo={(title) => void submitCapture(title)}
+        onCreateTodo={(title) => { selectHerramienta("hoy"); void submitCapture(title); }}
       />
     </div>
   );

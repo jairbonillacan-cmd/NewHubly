@@ -109,7 +109,13 @@ export function canManageInvitation(p: { workspaceKind: WorkspaceKind; actorRole
   return { allowed: true };
 }
 
-export const isOverdue = (t: Todo, ref: string) => !t.isDone && Boolean(t.dueDate && t.dueDate < ref);
+export const isOverdue = (t: Pick<Todo, "dueDate" | "isDone">, ref: string) => !t.isDone && Boolean(t.dueDate && t.dueDate < ref);
+/** Una sola sugerencia para los pendientes vencidos que la persona puede mover. */
+export function suggestOverdueTodos(todos: readonly Pick<Todo, "id" | "dueDate" | "isDone">[], today: string) {
+  const todoIds = todos.filter((todo) => isOverdue(todo, today)).map((todo) => todo.id);
+  const count = todoIds.length;
+  return count ? { todoIds, message: `Tienes ${count} ${count === 1 ? "vencido" : "vencidos"}`, actionLabel: count === 1 ? "Pasarlo a hoy" : "Pasarlos a hoy" } : null;
+}
 export const isToday = (t: Todo, ref: string) => !t.isDone && (t.dueDate === ref || isOverdue(t, ref));
 export const isUpcoming = (t: Todo, ref: string) => !t.isDone && Boolean(t.dueDate && t.dueDate > ref);
 export const isNoDate = (t: Todo) => !t.isDone && !t.dueDate;

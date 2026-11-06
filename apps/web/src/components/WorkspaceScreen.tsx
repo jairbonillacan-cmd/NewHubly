@@ -1,17 +1,17 @@
 "use client";
-import { parseQuickCapture } from "@hubly/application";
+import { canEditItem, parseQuickCapture, suggestOverdueTodos } from "@hubly/application";
 import { createTodoSchema, type UserPreferences } from "@hubly/contracts";
-import { BienvenidaDialog, EspacioEstado, EspacioHoy, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
+import { BienvenidaDialog, EspacioEstado, EspacioHoy, type HerramientaId, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
 import React, { useEffect, useRef, useState } from "react";
 import {
   archiveNoteAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction, createAgencyWorkspaceAction,
   createNoteAction, createTodoAction, createTodoFromNoteAction, exportWorkspaceAction, inviteWorkspaceMemberAction, loadWorkspaceDashboardAction,
   pinNoteAction, removeOrLeaveWorkspaceMemberAction, removeWallpaperAction, revokeWorkspaceInvitationAction, saveNoteAction, saveUserPreferencesAction, selectActiveWorkspaceAction, toggleTodoAction,
-  uploadWallpaperAction,
+  updateTodoAction, uploadWallpaperAction,
   type WorkspaceInvitationSummary, type WorkspaceMemberSummary, type WorkspaceNote, type WorkspaceSummary, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
 import { signOutAction } from "../actions/auth";
-import { fromEspacioPreferencias, themeToApply, toEspacioPreferencias } from "./preferences";
+import { fromEspacioPreferencias, toEspacioPreferencias } from "./preferences";
 
 export type ScreenStatus = "loading" | "unauthenticated" | "error" | "ready";
 export type AutosaveState = NoteSaveState;
@@ -27,6 +27,10 @@ export interface WorkspaceScreenProps {
   initialWallpaperImageUrl?: string | null;
   /** Primera entrada después de confirmar la cuenta: se abre la bienvenida (?bienvenida=1). */
   showWelcome?: boolean;
+  /** Correo de la sesión, para la inicial del avatar. */
+  currentUserEmail?: string | null;
+  /** Herramienta abierta al cargar (?herramienta=). */
+  initialHerramienta?: HerramientaId;
   onSavePreferences?: (patch: Partial<UserPreferences>) => Promise<unknown>;
   onRetry?: () => void; onLoginRedirect?: () => void; onTimezoneRefresh?: () => void; onSignOut?: () => Promise<void>;
   onSaveNote?: (note: WorkspaceNote, nextTitle: string, nextContent: string) => Promise<WorkspaceNote>;
@@ -104,10 +108,12 @@ const toEspacioWorkspace = (w: WorkspaceSummary): EspacioWorkspace => ({ id: w.i
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialTodos = [], initialNotes = [], initialActionError = null,
-  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, onSavePreferences,
+  currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, currentUserEmail = null, initialHerramienta, onSavePreferences,
   onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
+  const [movingOverdue, setMovingOverdue] = useState(false);
+  const movingOverdueRef = useRef(false);
   const [notes, setNotes] = useState<WorkspaceNote[]>(initialNotes);
   const [activeWs, setActiveWs] = useState<WorkspaceSummary | undefined>(initialActiveWorkspace);
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>(initialWorkspaces ?? (initialActiveWorkspace ? [initialActiveWorkspace] : []));
@@ -182,6 +188,26 @@ export function WorkspaceScreen({
     const updated = onToggleTodo ? await onToggleTodo(id) : await toggleTodoAction(id, wsId);
     setTodos((prev) => prev.map((t) => (t.id === id ? (updated ?? { ...t, isDone: !t.isDone, doneAt: !t.isDone ? `${todayDate}T12:00:00.000Z` : null }) : t)));
   });
+
+  const overdue = suggestOverdueTodos(todos.filter((todo) => canEditItem(currentUserId, activeWs?.role ?? "owner", todo)), todayDate);
+  const moveOverdueToToday = (ids: readonly string[]) => {
+    const remaining = new Set(ids);
+    return runSafe("No se pudieron pasar los pendientes a hoy.", async () => {
+      if (movingOverdueRef.current) return;
+      movingOverdueRef.current = true;
+      setMovingOverdue(true);
+      try {
+        for (const id of remaining) {
+          const updated = await updateTodoAction({ id, dueDate: todayDate }, wsId);
+          setTodos((prev) => prev.map((todo) => todo.id === id ? { ...todo, dueDate: updated.dueDate } : todo));
+          remaining.delete(id);
+        }
+      } finally {
+        movingOverdueRef.current = false;
+        setMovingOverdue(false);
+      }
+    });
+  };
 
   const handleCreateNote = async (): Promise<string | null> => {
     let createdId: string | null = null;
@@ -297,10 +323,12 @@ export function WorkspaceScreen({
     <BienvenidaDialog isOpen={welcomeOpen} onClose={closeWelcome} {...(activeWs ? { workspaceName: activeWs.name } : {})} />
     <EspacioHoy
       todayDate={todayDate}
-      {...(initialPreferences ? { initialPreferences: toEspacioPreferencias(initialPreferences), initialTheme: themeToApply(initialPreferences.theme) } : {})}
+      {...(initialPreferences ? { initialPreferences: toEspacioPreferencias(initialPreferences), initialThemePreference: initialPreferences.theme } : {})}
       onPreferencesChange={(prefs) => persistPreferences(fromEspacioPreferencias(prefs))}
       onThemeChange={(theme) => persistPreferences({ theme }, 0)}
       wallpaperImageUrl={initialWallpaperImageUrl}
+      userEmail={currentUserEmail}
+      initialHerramienta={initialHerramienta}
       onUploadWallpaper={async (file) => {
         const form = new FormData();
         form.set("imagen", file);
@@ -317,6 +345,7 @@ export function WorkspaceScreen({
       noteSaveStates={noteStatus}
       actionError={actionError ? { message: actionError.message, onRetry: () => { void actionError.retry(); } } : null}
       captureError={captureError}
+      overdueSuggestion={overdue ? { message: overdue.message, action: { label: overdue.actionLabel, run: () => void moveOverdueToToday(overdue.todoIds), pending: movingOverdue } } : null}
       analyzeCapture={(text) => parseQuickCapture(text, todayDate)}
       onCapture={handleCapture}
       onToggleTodo={handleToggleTodo}

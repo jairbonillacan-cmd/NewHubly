@@ -1,10 +1,11 @@
+import { isHerramientaId, type HerramientaId } from "@hubly/ui";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { loadWorkspaceDashboardAction } from "../../../actions";
 import { WorkspaceScreen } from "../../../components/WorkspaceScreen";
 
 export const dynamic = "force-dynamic";
 
-export async function HoyPage({ todayDate, showWelcome = false }: { todayDate?: string; showWelcome?: boolean } = {}) {
+export async function HoyPage({ todayDate, showWelcome = false, herramienta }: { todayDate?: string; showWelcome?: boolean; herramienta?: HerramientaId } = {}) {
   try {
     const data = await loadWorkspaceDashboardAction();
     return (
@@ -12,7 +13,7 @@ export async function HoyPage({ todayDate, showWelcome = false }: { todayDate?: 
         initialStatus="ready" todayDate={todayDate ?? data.todayDate} initialTimezone={data.timezone}
         initialNotes={data.notes} initialTodos={data.todos} currentUserId={data.currentUserId}
         initialActiveWorkspace={data.activeWorkspace} initialWorkspaces={data.workspaces}
-        initialMembers={data.members} initialPendingInvitations={data.pendingInvitations} initialPreferences={data.preferences} initialWallpaperImageUrl={data.wallpaperImageUrl} showWelcome={showWelcome}
+        initialMembers={data.members} initialPendingInvitations={data.pendingInvitations} initialPreferences={data.preferences} initialWallpaperImageUrl={data.wallpaperImageUrl} showWelcome={showWelcome} currentUserEmail={data.currentUserEmail} {...(herramienta ? { initialHerramienta: herramienta } : {})}
       />
     );
   } catch (err) {
@@ -25,5 +26,7 @@ export async function HoyPage({ todayDate, showWelcome = false }: { todayDate?: 
 }
 
 export default async function WorkspaceTodayPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  return HoyPage({ showWelcome: (await searchParams).bienvenida === "1" });
+  const params = await searchParams;
+  const herramienta = typeof params.herramienta === "string" && isHerramientaId(params.herramienta) ? params.herramienta : undefined;
+  return HoyPage({ showWelcome: params.bienvenida === "1", ...(herramienta ? { herramienta } : {}) });
 }

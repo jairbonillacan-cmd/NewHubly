@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { Button } from "@heroui/react";
+import { useSyncExternalStore } from "react";
 
 export interface ThemeToggleProps {
   /** «pastilla» con texto (por defecto) o «icono» para barras compactas como la del landing (#85). */
@@ -9,27 +9,96 @@ export interface ThemeToggleProps {
 }
 
 export type HublyTheme = "light" | "dark";
+/** Preferencia guardada: un tema fijo o el del sistema. */
+export type HublyThemePreference = HublyTheme | "system";
 
-/** Tema activo y forma de cambiarlo; lo comparten este botón y el menú de cuenta del espacio (#75). */
+const THEME_STORAGE_KEY = "hubly-theme";
+
+const systemTheme = (): HublyTheme => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+};
+
+const storedPreference = (): HublyThemePreference => {
+  if (typeof window === "undefined") return "light";
+  try {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return stored === "dark" || stored === "system" ? stored : "light";
+  } catch {
+    return "light";
+  }
+};
+
+let preference: HublyThemePreference = "light";
+let currentTheme: HublyTheme = "light";
+let initialized = false;
+let systemMedia: MediaQueryList | null = null;
+const listeners = new Set<() => void>();
+
+const notify = () => listeners.forEach((listener) => listener());
+
+function apply(next: HublyThemePreference): void {
+  preference = next;
+  currentTheme = next === "system" ? systemTheme() : next;
+  if (typeof document !== "undefined") document.documentElement.setAttribute("data-theme", currentTheme);
+}
+
+function ensureInitialized(): void {
+  if (initialized || typeof window === "undefined") return;
+  initialized = true;
+  apply(storedPreference());
+  systemMedia = window.matchMedia?.("(prefers-color-scheme: dark)") ?? null;
+  systemMedia?.addEventListener?.("change", () => {
+    if (preference !== "system") return;
+    apply("system");
+    notify();
+  });
+}
+
+function subscribe(listener: () => void): () => void {
+  ensureInitialized();
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+
+/** Cambia el tema y lo guarda para esta persona en el navegador; «system» sigue al sistema operativo. */
+export function setThemePreference(next: HublyThemePreference): void {
+  ensureInitialized();
+  if (typeof window !== "undefined") {
+    try { window.localStorage.setItem(THEME_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
+  }
+  apply(next);
+  notify();
+}
+
+/** Aplica la preferencia que llega del servidor sin volver a guardarla en la cuenta. */
+export function hydrateThemePreference(next: HublyThemePreference): void {
+  ensureInitialized();
+  if (typeof window !== "undefined") {
+    try { window.localStorage.setItem(THEME_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
+  }
+  apply(next);
+  notify();
+}
+
+export function getThemePreference(): HublyThemePreference {
+  ensureInitialized();
+  return preference;
+}
+
+/** Tema resuelto y forma de cambiarlo; lo comparten la barra superior, el espacio y el landing (#75, #85). */
 export function useHublyTheme() {
-  const [theme, setThemeState] = useState<HublyTheme>("light");
+  ensureInitialized();
+  const theme = useSyncExternalStore(subscribe, () => currentTheme, () => "light" as HublyTheme);
+  return [theme, setThemePreference] as const;
+}
 
-  useEffect(() => {
-    const stored = localStorage.getItem("hubly-theme");
-    // El modo claro es el predeterminado; solo cambia si la persona eligió el oscuro (#85).
-    if (stored === "dark" || stored === "light") {
-      setThemeState(stored);
-      document.documentElement.setAttribute("data-theme", stored);
-    }
-  }, []);
-
-  const setTheme = useCallback((next: HublyTheme) => {
-    setThemeState(next);
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("hubly-theme", next);
-  }, []);
-
-  return [theme, setTheme] as const;
+/** Preferencia guardada (incluye «system») y tema resuelto; la usa el menú del perfil (issue 105). */
+export function useHublyThemePreference() {
+  ensureInitialized();
+  const currentPreference = useSyncExternalStore(subscribe, () => preference, () => "light" as HublyThemePreference);
+  const theme = useSyncExternalStore(subscribe, () => currentTheme, () => "light" as HublyTheme);
+  return [currentPreference, theme, setThemePreference] as const;
 }
 
 export function ThemeToggle({ variante = "pastilla" }: ThemeToggleProps = {}) {

@@ -23,6 +23,8 @@ export interface WorkspaceDashboardData {
   preferences: UserPreferences;
   /** URL firmada (1 h) de «Tu imagen» si es el fondo elegido; null en otro caso (#84). */
   wallpaperImageUrl: string | null;
+  /** Correo de la sesión, para la inicial del avatar. */
+  currentUserEmail: string | null;
 }
 
 const autosaveNoteSchema = updateNoteSchema.required({ expectedVersion: true });
@@ -38,7 +40,7 @@ export async function loadWorkspaceDashboardAction(workspaceId?: string): Promis
   const todos = [...todayTodos, ...upcomingTodos, ...noDateTodos, ...doneTodos].filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)));
   const activeWorkspace: WorkspaceSummary = { id: ctx.workspaceId, name: ctx.workspaceName, slug: ctx.workspaceSlug ?? ctx.workspaceId, kind: ctx.workspaceKind, role: ctx.role };
   const wallpaperImageUrl = preferences.wallpaper === "imagen" ? await signUserWallpaper(ctx.userId) : null;
-  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences, wallpaperImageUrl };
+  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences, wallpaperImageUrl, currentUserEmail: ctx.userEmail };
 }
 
 export async function createTodoAction(input: CreateTodoInput, workspaceId?: string): Promise<WorkspaceTodo> {

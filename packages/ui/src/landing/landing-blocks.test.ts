@@ -103,10 +103,10 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
     expect(htmlForLanding()).not.toMatch(/hubly-(enter|float|reveal)|\banimate-/);
   });
 
-  it("la firma usa la cara de Hubi en claro y oscuro y no renderiza la H Secuencia", () => {
+  it("la navegación y el pie muestran la firma accesible de Hubly con la cara de Hubi", () => {
     for (const html of [render(LandingNav), render(LandingFooter)]) {
-      expect(html).toContain("/marca/hubi-cara-claro-128.webp");
-      expect(html).toContain("/marca/hubi-cara-oscuro-128.webp");
+      expect(html).toContain('role="img" aria-label="Hubly"');
+      expect(html).toMatch(/<svg\b[^>]*aria-hidden="true"[^>]*class="hubly-hubi-face\b/);
     }
     expect(htmlForLanding()).not.toMatch(/viewBox="0 0 (?:380 220|1210 264)"|M68 0 L150 0/);
   });
