@@ -14,6 +14,7 @@ const TUERCA = (() => {
 })();
 
 const PATHS = {
+  chat: "M7 9h10m-10 4h6",
   sol: "M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
   nota: "M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6",
   pin: "M9 4h6l-1 6 3 3H7l3-3zM12 13v7",
@@ -71,7 +72,15 @@ export function IconoHubly({ name, className, activo = false }: { name: IconoHub
   );
 }
 
-export function Icon({ name, className, strokeWidth = 1.75 }: { name: IconName; className?: string; strokeWidth?: number }) {
+export function Icon({ name, className, strokeWidth = 1.75, active = false }: {
+  name: IconName; className?: string; strokeWidth?: number; active?: boolean;
+}) {
+  if (name === "chat") return <svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" aria-hidden="true"
+    className={`${active ? "hubly-icono-activo " : ""}${className ?? "size-4"}`}>
+    <path d="M7 4.25h10A3.75 3.75 0 0 1 20.75 8v6A3.75 3.75 0 0 1 17 17.75h-6.3l-4.1 2.5v-2.56A3.75 3.75 0 0 1 3.25 14V8A3.75 3.75 0 0 1 7 4.25Z" fill="var(--hi-tono-2)" stroke="var(--hi-borde)" strokeWidth=".75" />
+    <path d="M16.25 4.6h.75A3.4 3.4 0 0 1 20.4 8v3.05h-6.35Z" fill="var(--hi-acento)" />
+    <path d={PATHS.chat} stroke="var(--hi-relieve)" strokeWidth="1.35" />
+  </svg>;
   const hubly = HUBLY[name];
   if (hubly) return <IconoHubly name={hubly} className={className} />;
   return (

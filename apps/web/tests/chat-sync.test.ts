@@ -1,6 +1,6 @@
 import type { ChatMessage } from "@hubly/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mergeChatMessages, startChatPolling } from "../src/components/chat/sync";
+import { incomingChatNotice, isMessageEndVisible, mergeChatMessages, startChatPolling } from "../src/components/chat/sync";
 
 const base = {
   id: "one", conversationId: "canal", authorId: "autor", body: "Primero", number: 1, change: 1,
@@ -15,6 +15,19 @@ describe("Sincronización de chat en el navegador", () => {
     const tombstone = { ...base, body: null, change: 4, deletedAt: base.sentAt };
     expect(mergeChatMessages([second, tombstone], [base, second])).toEqual([tombstone, second]);
     expect(mergeChatMessages([second], [tombstone, { ...base, change: 3 }])).toEqual([tombstone, second]);
+  });
+
+  it("cambia el aviso accesible cuando llegan mensajes en consultas consecutivas", () => {
+    expect(incomingChatNotice(1)).toBe("Llegó un mensaje nuevo.");
+    expect(incomingChatNotice(2)).toContain("2 mensajes nuevos");
+    expect(incomingChatNotice(3)).toContain("3 mensajes nuevos");
+  });
+
+  it("marca la lectura solo cuando el final del mensaje queda dentro del historial y la pantalla", () => {
+    expect(isMessageEndVisible(440, { top: 100, bottom: 440 }, 800)).toBe(true);
+    expect(isMessageEndVisible(451, { top: 100, bottom: 440 }, 800)).toBe(false);
+    expect(isMessageEndVisible(660, { top: 100, bottom: 700 }, 650)).toBe(false);
+    expect(isMessageEndVisible(99, { top: 100, bottom: 440 }, 800)).toBe(false);
   });
 
   it("sincroniza cada tres segundos, pausa al ocultarse y retoma en foco o al reconectar", async () => {

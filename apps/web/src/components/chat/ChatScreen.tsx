@@ -3,7 +3,7 @@
 import type { ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatView, type ChatViewCommand } from "./ChatView";
-import { mergeChatMessages, startChatPolling } from "./sync";
+import { incomingChatNotice, mergeChatMessages, startChatPolling } from "./sync";
 import { ChatRequestError, chatTransport } from "./transport";
 
 interface ChatScreenProps {
@@ -30,6 +30,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [accessLost, setAccessLost] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -72,11 +73,13 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
   }, [select]);
 
   useEffect(() => {
+    if (accessLost) return;
     const controller = new AbortController();
     selection.current = controller;
     const { signal } = controller;
     let cursor = 0;
     let latestNumber = 0;
+    let announced = 0;
     let loaded = !currentId;
     async function update() {
       try {
@@ -113,7 +116,10 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
           setMessages((previous) => mergeChatMessages(previous, update.changes));
           const incoming = update.changes.filter((item) => item.number > latestNumber && item.authorId !== userId && item.body !== null).length;
           latestNumber = Math.max(latestNumber, ...update.changes.map((item) => item.number));
-          if (incoming) setNotice(incoming === 1 ? "Llegó un mensaje nuevo." : `Llegaron ${incoming} mensajes nuevos.`);
+          if (incoming) {
+            announced += incoming;
+            setNotice(incomingChatNotice(announced));
+          }
         }
         setLoading(false);
         setConnectionError(null);
@@ -133,6 +139,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
         setConnectionError(displayError(error));
         if (hasStatus(error, 401) || hasStatus(error, 404)) {
           poll.stop();
+          setAccessLost(true);
           setConversations([]);
           setPeople([]);
           setDrafts({});
@@ -149,7 +156,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
       controller.abort();
       poll.stop();
     };
-  }, [api, currentId, revokeConversation, select, userId]);
+  }, [accessLost, api, currentId, revokeConversation, select, userId]);
 
   async function submit(input: ChatViewCommand): Promise<boolean> {
     const controller = new AbortController();
@@ -223,6 +230,12 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
         if (hasStatus(error, 401) || hasStatus(error, 404)) refresh.current();
       });
   }
+
+  if (accessLost) return <section className="hubly-glass rounded-2xl p-4" aria-labelledby="chat-access">
+    <h1 id="chat-access" className="text-lg font-semibold">Chat</h1>
+    <p role="alert" className="mt-2 text-sm text-(--text-secondary)">{connectionError ?? "Chat o conversación no disponible."}</p>
+    <a href="/hoy" className="mt-2 inline-flex min-h-11 items-center font-semibold text-(--accent-primary)">Volver a Hoy</a>
+  </section>;
 
   return <ChatView workspaceName={workspaceName} userId={userId} canManage={role === "owner" || role === "admin"}
     canSend={role !== "viewer"} unreadOnly={unreadOnly} conversations={conversations} people={people} currentId={currentId}

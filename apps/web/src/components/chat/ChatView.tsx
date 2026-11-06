@@ -1,8 +1,9 @@
 "use client";
 
 import type { ChatCommand, ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
-import { Alert, Button, Icon, IconoHubly, Input, Label, TextArea, TextField, buttonLinkClass } from "@hubly/ui";
+import { Alert, Button, Icon, IconoHubly, Input, Label, ListBox, Select, TextArea, TextField, buttonLinkClass } from "@hubly/ui";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { isMessageEndVisible } from "./sync";
 
 type LocalCommand = ChatCommand extends infer C ? C extends ChatCommand ? Omit<C, "workspaceId"> : never : never;
 export type ChatViewCommand = LocalCommand;
@@ -119,25 +120,37 @@ function DirectForm({ people, userId, onCommand }: Pick<ChatViewProps, "people" 
   const details = useRef<HTMLDetailsElement>(null);
   const [busy, setBusy] = useState(false);
   const eligible = people.filter((person) => person.id !== userId && person.role !== "viewer");
+  const [selected, setSelected] = useState<string | null>(null);
+  const recipientId = eligible.find((person) => person.id === selected)?.id;
   return <details ref={details} className="text-sm">
     <summary className="min-h-11 cursor-pointer rounded-xl px-2 py-3 font-semibold">Nuevo directo</summary>
     {eligible.length ? <form className="space-y-2 p-2" onSubmit={async (event) => {
       event.preventDefault();
-      if (busy) return;
-      const recipientId = String(new FormData(event.currentTarget).get("recipient") ?? "");
+      if (busy || !recipientId) return;
       setBusy(true);
       try {
         if (await onCommand({ kind: "openDirect", recipientId }) && details.current) details.current.open = false;
       } finally { setBusy(false); }
     }}>
-      <label className="block">
-        <span className="mb-1 block text-xs">Persona</span>
-        <select name="recipient" className={`${input} scheme-light-dark`} required>
-          <option value="">Elige una persona</option>
-          {eligible.map((person) => <option key={person.id} value={person.id}>{personName(person.id, person)}</option>)}
-        </select>
-      </label>
-      <Button type="submit" variant="outline" size="sm" className={control} isDisabled={busy}>Abrir conversación</Button>
+      <Select selectedKey={recipientId ?? null} placeholder="Elige una persona"
+        onSelectionChange={(key) => setSelected(typeof key === "string" ? key : null)} className="w-full">
+        <Label className="mb-1 text-xs">Persona</Label>
+        <Select.Trigger className={input}>
+          <Select.Value />
+          <Select.Indicator />
+        </Select.Trigger>
+        <Select.Popover>
+          <ListBox>
+            {eligible.map((person) => {
+              const name = personName(person.id, person);
+              return <ListBox.Item key={person.id} id={person.id} textValue={name}>
+                {name}<ListBox.ItemIndicator />
+              </ListBox.Item>;
+            })}
+          </ListBox>
+        </Select.Popover>
+      </Select>
+      <Button type="submit" variant="outline" size="sm" className={control} isDisabled={busy || !recipientId}>Abrir conversación</Button>
     </form> : <p className="p-2 text-(--text-muted)">No hay compañeros disponibles para un directo.</p>}
   </details>;
 }
@@ -206,7 +219,10 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
   const pinned = useRef(true);
   const notified = useRef(0);
   const earlier = useRef<{ height: number; top: number } | null>(null);
-  useEffect(() => { heading.current?.focus(); }, []);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    heading.current?.focus({ preventScroll: true });
+  }, []);
 
   function visible() {
     const element = scroll.current;
@@ -215,7 +231,8 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
     const latest = props.messages.at(-1);
     const end = element.querySelector("li:last-child")?.getBoundingClientRect();
     // Solo se avisa una vez por mensaje: así un contenedor que actualiza estado en onVisible no entra en bucle.
-    if (pinned.current && latest && latest.number > notified.current && end && end.bottom <= window.innerHeight + 1 && end.bottom > 0 && !document.hidden) {
+    if (pinned.current && latest && latest.number > notified.current && end && !document.hidden &&
+        isMessageEndVisible(end.bottom, element.getBoundingClientRect(), window.innerHeight)) {
       notified.current = latest.number;
       props.onVisible(latest.number);
     }
@@ -243,7 +260,7 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
   });
 
   return <section className="hubly-glass flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl" aria-labelledby="chat-conversation">
-    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-(--border-default) p-3">
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-(--border-default) p-3">
       <div className="min-w-0">
         <Button variant="ghost" size="sm" className={`${control} lg:hidden`} onPress={() => props.onSelect(null)}>
           <span aria-hidden="true">←</span> Conversaciones
@@ -257,7 +274,7 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
         <ChannelForm key={conversation.id} conversation={conversation} onCommand={props.onCommand} />}
     </header>
     <div ref={scroll} onScroll={visible} tabIndex={0} aria-label="Historial de la conversación"
-      className="max-h-(--chat-history-max-mobile) min-h-48 grow overflow-y-auto px-3 lg:max-h-none lg:min-h-0">
+      className="min-h-0 grow overflow-y-auto px-3">
       {props.hasOlder && <Button variant="ghost" size="sm" className={control} isPending={props.loadingOlder} onPress={() => {
         if (scroll.current) earlier.current = { height: scroll.current.scrollHeight, top: scroll.current.scrollTop };
         props.onOlder();
@@ -269,7 +286,7 @@ function ConversationView({ props, conversation, people }: { props: ChatViewProp
             person={people.get(entry.authorId)} canEdit={conversation.writable && entry.authorId === props.userId} onCommand={props.onCommand} />)}
         </ol> : <p className="p-4 text-sm text-(--text-secondary)">Todavía no hay mensajes.</p>}
     </div>
-    {conversation.writable && !props.loading ? <form className="grid gap-2 border-t border-(--border-default) p-3 sm:grid-cols-[1fr_auto] sm:items-end"
+    {conversation.writable && !props.loading ? <form className="grid shrink-0 gap-2 border-t border-(--border-default) p-3 sm:grid-cols-[1fr_auto] sm:items-end"
       onSubmit={(event) => { event.preventDefault(); if (props.sending) return; composer.current?.focus(); props.onSend(); }}>
       <label className="min-w-0">
         <span className="mb-1 block text-sm font-semibold">Mensaje</span>
@@ -291,7 +308,8 @@ export function ChatView(props: ChatViewProps) {
   const unreadCount = props.conversations.filter((entry) => entry.unread).length;
   const listHeading = useRef<HTMLHeadingElement>(null);
   return <div className="flex min-h-0 min-w-0 grow flex-col gap-3">
-    <header className="hubly-glass flex flex-wrap items-center justify-between gap-2 rounded-2xl p-3">
+    {conversation && <h1 className="sr-only lg:hidden">Chat</h1>}
+    <header className={`hubly-glass shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl p-3 ${conversation ? "hidden lg:flex" : "flex"}`}>
       <div>
         <p className={sectionLabel}>{props.workspaceName}</p>
         <h1 className="text-2xl font-semibold">Chat</h1>
@@ -306,7 +324,7 @@ export function ChatView(props: ChatViewProps) {
       <Alert.Content><Alert.Title className="text-(--status-danger-text)">{props.error}</Alert.Title></Alert.Content>
     </Alert>}
     <span role="status" className="sr-only">{props.notice}</span>
-    <div className="grid min-h-0 grow gap-3 lg:grid-cols-[minmax(var(--chat-list-min),var(--chat-list-max))_minmax(0,1fr)]">
+    <div className="grid min-h-0 grow grid-rows-[minmax(0,1fr)] gap-3 lg:grid-cols-[minmax(var(--chat-list-min),var(--chat-list-max))_minmax(0,1fr)]">
       <aside className={`hubly-glass min-h-0 min-w-0 overflow-y-auto rounded-2xl p-3 ${conversation ? "hidden lg:block" : ""}`} aria-labelledby="chat-list-title">
         <h2 ref={listHeading} id="chat-list-title" tabIndex={-1} className="mb-2 text-base font-semibold">Conversaciones</h2>
         <div className="flex flex-wrap gap-1 pb-2">
@@ -338,7 +356,7 @@ export function ChatView(props: ChatViewProps) {
         {!rows.length && <p className="mt-3 text-sm text-(--text-secondary)">{props.unreadOnly ? "Ya estás al día." : "Aún no hay conversaciones."}</p>}
       </aside>
       {conversation ? <ConversationView key={conversation.id} conversation={conversation} people={people} props={{
-        ...props, onSelect: (id) => { props.onSelect(id); if (!id) requestAnimationFrame(() => listHeading.current?.focus()); },
+        ...props, onSelect: (id) => { props.onSelect(id); if (!id) requestAnimationFrame(() => { window.scrollTo(0, 0); listHeading.current?.focus({ preventScroll: true }); }); },
       }} /> : <div className="hubly-glass hidden items-center justify-center rounded-2xl p-6 text-sm text-(--text-secondary) lg:flex">
         Elige una conversación para leer sus mensajes.
       </div>}

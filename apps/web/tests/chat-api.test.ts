@@ -30,6 +30,17 @@ describe("API privada de chat", () => {
     expect(getChatService).not.toHaveBeenCalled();
   });
 
+  it("acepta el origen del navegador cuando Next normaliza el host del mismo sitio", async () => {
+    const send = vi.fn().mockResolvedValue({ conversationId, message: sampleMessage });
+    vi.mocked(getChatService).mockResolvedValue({ command: send } as unknown as Awaited<ReturnType<typeof getChatService>>);
+    const request = new Request("http://localhost:3100/api/chat", {
+      method: "POST", body: JSON.stringify(command),
+      headers: { origin: "http://127.0.0.1:3100", host: "127.0.0.1:3100", "content-type": "application/json" },
+    });
+    expect((await POST(request)).status).toBe(200);
+    expect(send).toHaveBeenCalledWith(command);
+  });
+
   it("distingue sesión caducada y falta de acceso sin exponer el recurso", async () => {
     vi.mocked(getChatService).mockRejectedValueOnce(new SessionExpiredError()).mockRejectedValueOnce(new ChatAccessError());
     expect((await GET(makeGet("op=sync"))).status).toBe(401);

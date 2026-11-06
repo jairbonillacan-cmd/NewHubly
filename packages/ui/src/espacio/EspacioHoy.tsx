@@ -11,6 +11,7 @@ import { BackgroundPicker, CaptureField, Dock, DockMore, DockStatus, type Wallpa
 import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery, type DockSuggestion } from "./dockConfig";
 import { Carril, Proximamente, resumenSemana } from "./Carril";
 import { HERRAMIENTAS, herramientaPorId, isHerramientaId, type HerramientaId } from "./herramientas";
+import { Icon } from "./icons";
 import { HoyPanel } from "./HoyPanel";
 import { Lienzo, LienzoBarra, type LienzoBarraProps, type LienzoItem } from "./Lienzo";
 import { NotaPanel } from "./NotaPanel";
@@ -26,6 +27,7 @@ import {
 import { Wallpaper } from "./Wallpaper";
 
 const TOAST_MS = 5000;
+const CHAT_PALETTE_EXAMPLES = ["Volver a Hoy", "Equipo e invitaciones", "Editar perfil"] as const;
 /** Ancho a partir del cual se usa la distribución de escritorio (coincide con el punto «lg» de Tailwind). */
 const DESKTOP_MIN_WIDTH = 1024;
 
@@ -83,6 +85,7 @@ export interface EspacioHoyProps {
   profile?: EspacioProfile | undefined;
   /** Herramienta abierta al cargar (?herramienta=); por defecto, Hoy. */
   initialHerramienta?: HerramientaId | undefined;
+  chat?: { href: string; todayHref: string; unreadHref: string; unread: number | null; active: boolean; content?: ReactNode };
 }
 
 /** Acomodo inicial de los paneles en el lienzo de escritorio (issue 136), en píxeles del lienzo. */
@@ -116,6 +119,7 @@ interface ToastState { id: number; message: string; undo?: (() => void) | undefi
 /** Espacio de Hoy con paneles de cristal sobre fondo personal (propuesta B, #75). Sin datos propios: todo llega por props. */
 export function EspacioHoy(props: EspacioHoyProps) {
   const { todayDate, timezone, todos, notes, noteSaveStates, actionError, captureError, analyzeCapture, onCapture, onToggleTodo, onCreateNote, onSaveNote, onTogglePin, onToggleArchive, onExport, onSignOut } = props;
+  const chat = props.chat;
   const activeWorkspace = props.activeWorkspace ?? PERSONAL_WORKSPACE;
   const workspaces = props.workspaces ?? [activeWorkspace];
   const [teamMode, setTeamMode] = useState<EquipoDialogMode | null>(null);
@@ -193,9 +197,16 @@ export function EspacioHoy(props: EspacioHoyProps) {
 
   // Cambiar de herramienta no recarga la página: el marco se queda y la URL guarda cuál está abierta.
   const selectHerramienta = (id: HerramientaId) => {
+    if (chat?.active) {
+      window.location.assign(id === "hoy" ? chat.todayHref : `${chat.todayHref}&herramienta=${id}`);
+      return;
+    }
     if (id === herramienta) return;
     setHerramienta(id);
-    window.history.pushState(window.history.state, "", id === "hoy" ? window.location.pathname : `${window.location.pathname}?herramienta=${id}`);
+    const url = new URL(window.location.href);
+    if (id === "hoy") url.searchParams.delete("herramienta");
+    else url.searchParams.set("herramienta", id);
+    window.history.pushState(window.history.state, "", url);
     document.getElementById("contenido")?.focus();
   };
   const desktop = useIsDesktop();
@@ -307,6 +318,9 @@ export function EspacioHoy(props: EspacioHoyProps) {
   };
 
   const paletteActions: PaletteAction[] = [
+    ...(chat?.active ? [{ id: "hoy", label: "Volver a Hoy", hint: "Retoma tus pendientes", icon: "hoy" as const, run: () => selectHerramienta("hoy") }] : []),
+    ...(chat && !chat.active ? [{ id: "chat", label: "Abrir chat", hint: "Canales y mensajes de tu agencia", icon: "chat" as const,
+      run: () => window.location.assign(chat.href) }] : []),
     { id: "pendiente", label: "Nuevo pendiente", hint: "Escríbelo en la captura de Hoy", icon: "mas", run: () => { selectHerramienta("hoy"); setTimeout(focusCapture, 0); } },
     { id: "nota", label: "Nueva nota", hint: "Se abre lista para escribir", icon: "nota", run: () => void createNote() },
     { id: "fondo", label: "Cambiar fondo", hint: "Elige el fondo de tu espacio", icon: "imagen", run: () => setTimeout(openBackground, 0) },
@@ -343,7 +357,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const suggestion = toast
     ? { message: toast.message, ...(toast.undo ? { action: { label: "Deshacer", run: () => { toast.undo?.(); setToast(null); } } } : {}) }
     : props.overdueSuggestion ?? null;
-  const dock = herramienta === "hoy" ? createTodayDock({
+  const dock = !chat?.active && herramienta === "hoy" ? createTodayDock({
     todos, date: todayDate, layout, onLayout: (distribucion) => setPrefs({ distribucion }),
     filter, onFilter: (next) => { setFilter(next); setPrefs({ paneles: { hoy: true } }); },
     createNote: () => void createNote(), exportData: () => onExport("json"), saveState, suggestion,
@@ -406,7 +420,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
       className={className}
     />
   );
-  const enLienzo = desktop && layout === "libre" && herramienta === "hoy";
+  const enLienzo = !chat?.active && desktop && layout === "libre" && herramienta === "hoy";
   // El fondo se elige desde la tuerca; el selector se ancla, invisible, a la barra del lienzo.
   const barraProps: Omit<LienzoBarraProps, "lienzo"> = {
     layout, onLayout: (distribucion) => setPrefs({ distribucion }), onOpenFondo: openBackground,
@@ -421,11 +435,11 @@ export function EspacioHoy(props: EspacioHoyProps) {
 
   return (
     // Marco fijo (#105): en escritorio, una cuadrícula con la barra superior, el carril y el dock fijos; solo el contenido se desliza.
-    <div ref={rootRef} className="relative isolate min-h-dvh text-(--text-primary) lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-[3.5rem_minmax(0,1fr)_auto] lg:gap-3 lg:overflow-hidden lg:p-3">
+    <div ref={rootRef} className={`relative isolate min-h-dvh text-(--text-primary) lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-[3.5rem_minmax(0,1fr)_auto] lg:gap-3 lg:overflow-hidden lg:p-3 ${chat?.active ? "flex h-dvh flex-col overflow-hidden" : ""}`}>
       <Wallpaper fondo={prefs.fondo === "imagen" && !wallpaperUrl ? "contornos" : prefs.fondo} imagenUrl={wallpaperUrl} />
       <a href="#contenido" className="sr-only z-50 rounded-lg bg-(--surface-raised) px-3 py-2 text-sm font-semibold focus:not-sr-only focus:fixed focus:top-3 focus:left-3">Saltar al contenido</a>
 
-      <div className="sticky top-0 z-30 p-3 lg:static lg:col-span-2 lg:p-0">
+      <div className="sticky top-0 z-30 shrink-0 p-3 lg:static lg:col-span-2 lg:p-0">
         <TopBar
           todayDate={todayDate}
           timezone={timezone}
@@ -439,7 +453,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           onSelectWorkspace={props.onSelectWorkspace ?? noop}
           onCreateAgency={() => setTeamMode("crear")}
           onOpenTeam={() => setTeamMode("equipo")}
-          toolName={herramientaPorId(herramienta).nombre}
+          toolName={chat?.active ? "Chat" : herramientaPorId(herramienta).nombre}
           panels={prefs.paneles}
           onTogglePanel={(id) => setPrefs({ distribucion: layout === "enfoque" ? "libre" : layout, paneles: { [id]: !prefs.paneles[id] } })}
           focusMode={layout === "enfoque"}
@@ -458,21 +472,27 @@ export function EspacioHoy(props: EspacioHoyProps) {
         <Carril
           expandido={carrilExpandido}
           onToggleExpandido={toggleCarril}
-          activa={herramienta}
+          activa={chat?.active ? undefined : herramienta}
+          chat={chat}
           onSelect={selectHerramienta}
           hoyPendientes={overdueCount + todayCount}
           semana={resumenSemana(todos, todayDate)}
         />
       </div>
 
-      <main id="contenido" tabIndex={-1} className="flex flex-col gap-3 px-3 pb-44 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:overflow-y-auto lg:p-0">
+      <main id="contenido" tabIndex={-1} className={`flex flex-col gap-3 px-3 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:p-0 ${chat?.active ? "min-h-0 grow overflow-hidden pb-20" : "pb-44 lg:overflow-y-auto"}`}>
       {actionError && (
         <div role="alert" className="hubly-pop hubly-glass relative z-30 flex shrink-0 items-center justify-between gap-3 rounded-xl border-(--status-danger-text) px-4 py-3 text-sm text-(--status-danger-text)">
           <span>{actionError.message}</span>
           <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
-      {herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : enLienzo ? (
+      {chat && !chat.active && herramienta === "hoy" && <a href={chat.unreadHref}
+        className="hubly-glass flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-(--glass-hover)">
+        <Icon name="chat" className="size-5" />
+        <span>{chat.unread === null ? "Abrir chat" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
+      </a>}
+      {chat?.active ? chat.content : herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : enLienzo ? (
         <Lienzo items={lienzoItems} barra={{ slot: barraSlot, ...barraProps }} />
       ) : (
       <div className={`flex flex-col gap-3 lg:min-h-144 lg:grow ${gridClass}`}>
@@ -493,11 +513,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
 
       <div {...(dock ? { role: "toolbar", "aria-label": dock.label } : {})} className="hubly-glass fixed inset-x-2 bottom-2 z-30 flex flex-col gap-2 rounded-(--glass-radius-access-card) p-2 lg:hidden">
         {dock && <><DockStatus suggestion={dock.suggestion ?? null} /><CaptureField ref={mobileCapture} {...dock.entry} /></>}
-        <nav aria-label="Navegación del espacio" className="grid grid-cols-4">
-          <Button variant="ghost" className="min-h-11" {...(herramienta === "hoy" ? { "aria-current": "page" } : {})} onPress={() => {
+        <nav aria-label="Navegación del espacio" className={`grid ${chat ? dock ? "grid-cols-5" : "grid-cols-3" : "grid-cols-4"}`}>
+          <Button variant="ghost" className="min-h-11" {...(!chat?.active && herramienta === "hoy" ? { "aria-current": "page" } : {})} onPress={() => {
             selectHerramienta("hoy");
             document.getElementById("panel-hoy")?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}>Hoy</Button>
+          {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined}
+            className="flex min-h-11 items-center justify-center rounded-xl text-sm font-semibold hover:bg-(--glass-hover)">Chat</a>}
           <Dropdown>
             <Dropdown.Trigger className="min-h-11 px-1 text-xs">Herramientas</Dropdown.Trigger>
             <Dropdown.Popover placement="top" className="hubly-pop-surface rounded-xl p-1">
@@ -556,9 +578,10 @@ export function EspacioHoy(props: EspacioHoyProps) {
       <CommandPalette
         isOpen={paletteOpen}
         onOpenChange={setPaletteOpen}
-        actions={paletteActions}
-        notes={notes}
-        todos={todos}
+        actions={chat?.active ? paletteActions.filter(({ id }) => ["hoy", "tema", "perfil", "equipo", "json", "md"].includes(id)) : paletteActions}
+        notes={chat?.active ? [] : notes}
+        todos={chat?.active ? [] : todos}
+        {...(chat?.active ? { examples: CHAT_PALETTE_EXAMPLES } : {})}
         onOpenNote={openNote}
         onFocusTodo={(id) => {
           selectHerramienta("hoy");
@@ -566,7 +589,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           setPrefs({ paneles: { hoy: true } });
           setTimeout(() => document.getElementById(`pendiente-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
         }}
-        onCreateTodo={(title) => { selectHerramienta("hoy"); void submitCapture(title); }}
+        {...(!chat?.active ? { onCreateTodo: (title: string) => { selectHerramienta("hoy"); void submitCapture(title); } } : {})}
       />
     </div>
   );

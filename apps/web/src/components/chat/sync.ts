@@ -11,6 +11,14 @@ export function mergeChatMessages(current: ChatMessage[], incoming: ChatMessage[
   return [...rows.values()].sort((left, right) => left.number - right.number);
 }
 
+export function incomingChatNotice(total: number): string {
+  return total === 1 ? "Llegó un mensaje nuevo." : `Han llegado ${total} mensajes nuevos desde que abriste la conversación.`;
+}
+
+export function isMessageEndVisible(end: number, history: Pick<DOMRect, "top" | "bottom">, viewportHeight: number): boolean {
+  return end > Math.max(history.top, 0) && end <= Math.min(history.bottom, viewportHeight) + 1;
+}
+
 export function startChatPolling(run: () => Promise<boolean>, windowEvents: Window = window, page: Document = document) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let running = false;

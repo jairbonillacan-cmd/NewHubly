@@ -74,8 +74,19 @@ export async function GET(request: Request): Promise<Response> {
   }
 }
 
+function sameOrigin(request: Request): boolean {
+  const source = request.headers.get("origin");
+  if (!source) return false;
+  const target = new URL(request.url);
+  if (source === target.origin) return true;
+  // Next puede normalizar 127.0.0.1 a localhost y el proxy termina HTTPS antes del servidor.
+  const host = request.headers.get("host");
+  const scheme = request.headers.get("x-forwarded-proto") ?? target.protocol.slice(0, -1);
+  return Boolean(host) && (scheme === "https" || scheme === "http") && source === `${scheme}://${host}`;
+}
+
 export async function POST(request: Request): Promise<Response> {
-  if (request.headers.get("origin") !== new URL(request.url).origin
+  if (!sameOrigin(request)
       || request.headers.get("content-type")?.split(";")[0]?.trim() !== "application/json") {
     return json({ error: "La solicitud de chat no está permitida." }, 403);
   }
