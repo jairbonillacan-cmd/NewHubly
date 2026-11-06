@@ -38,6 +38,10 @@ La limpieza y generación de derivados se ejecuta una sola vez fuera del árbol 
   - Barra horizontal central de la `H`: `var(--accent-primary)`.
   - Cero valores hexadecimales incrustados en el SVG.
 
+## Logo «Hubly Pop Editorial» (#182)
+
+Las letras de `HublyWordmark` y de `HubiWordmark` son ahora el logo «Hubly Pop Editorial»: un solo SVG en línea (`viewBox="0 0 402 132"`) con `fill="currentColor"`. El color sale del token `--logo-color`: azul de marca (`--accent-primary`) en claro y texto claro (`--text-primary`) en oscuro. `HublyWordmark` se ajusta por altura sin deformarse y conserva `role="img"` y `aria-label="Hubly"`. `HublySymbol` y la mascota `HubiFace` no cambian. Los correos de `supabase/templates` usan la imagen de Hubi, no el logo de texto, así que no se tocan.
+
 ## Isologo de Hubi (#101, #111)
 
 La firma activa de Hubly combina `HubiFace` con las letras de «Hubly» en `HubiWordmark`. El trazado SVG toma como referencia la cabeza de Hubi de cuerpo completo en `origen-claro.png` y `origen-oscuro.png`. La silueta tiene una relación de ancho a alto de aproximadamente 1,47:1, incluidas las orejas. Conserva la frente casi horizontal, la barbilla ancha y la posición de los rasgos al escalarse a 24, 28 y 32 px.
