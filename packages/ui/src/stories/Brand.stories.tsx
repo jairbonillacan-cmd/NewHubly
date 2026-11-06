@@ -68,11 +68,15 @@ export const MascotaHubiVariantes: Story = {
 
 export const PosesDeEstado: Story = {
   render: () => (
-    <div className="grid gap-4 sm:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {([
         ["bienvenida", "Saluda · Bienvenida"],
         ["buscar", "Busca · Página no encontrada"],
         ["reparar", "Repara · Error al cargar Hoy"],
+        ["correo", "Lleva un sobre · Revisa tu correo"],
+        ["ideas", "Toma nota · Tu primera idea"],
+        ["celebrar", "Levanta las patas · Todo hecho"],
+        ["privacidad", "Abraza un escudo · Privacidad"],
       ] as const).map(([pose, label]) => (
         <figure key={pose} className="m-0 flex flex-col items-center gap-3 rounded-xl bg-(--surface-raised) p-5 text-center text-(--text-primary)">
           <Hubi pose={pose} tamano={128} decorativo />

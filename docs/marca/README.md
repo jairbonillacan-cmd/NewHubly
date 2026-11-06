@@ -57,3 +57,16 @@ Next.js carga los archivos con `next/font/local` solo en `/`. Los titulares usan
 | `reparar` | Sostiene una llave en el error al cargar Hoy, junto a «Reintentar». |
 
 Las seis imágenes se generaron con la herramienta integrada de ImageGen, usando `volumen-claro.png` y `volumen-oscuro.png` como referencias. Los PNG maestros se guardan como `volumen-{pose}-{tema}.png` en `originales/`. Los WebP de producción se exportaron con Sharp 0.35.5 a `256×256`, Lanczos3, calidad 88 y alfa 100, tras limpiar píxeles sueltos del borde. [Prompts de generación](poses-hubi-prompts.md).
+
+## Colección de poses para otros contextos (#116)
+
+Estas poses están disponibles en `Hubi` y en el catálogo «Poses de estado» de Storybook para usarlas cuando la pantalla lo requiera.
+
+| Pose | Ilustración y uso previsto |
+| --- | --- |
+| `correo` | Sostiene un sobre sellado para pedir que se revise el correo. |
+| `ideas` | Escribe en un cuaderno para invitar a capturar una primera idea. |
+| `celebrar` | Levanta ambas patas para reconocer que se terminó el trabajo. |
+| `privacidad` | Abraza un escudo para acompañar una explicación de privacidad. |
+
+Cada pose tiene dos variantes, generadas con ImageGen a partir de Hubi Volumen de cuerpo completo. Se guardaron como PNG maestros y WebP transparentes de `256×256` con el mismo proceso de exportación que las poses de bienvenida y error. [Prompts de generación](poses-hubi-coleccion-prompts.md).
