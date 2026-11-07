@@ -263,7 +263,7 @@ function Vencidos({ todos, todayDate, onToggleTodo }: { todos: readonly EspacioT
         <li key={todo.id}>
           {/* Toda la fila es el control (al menos 44 px de alto); la casilla es solo el dibujo (issue 240). */}
           <button type="button" onClick={() => onToggleTodo(todo.id)} aria-label={`Marcar como hecho: ${todo.title}, venció el ${todo.dueDate}`}
-            className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-(--hover-acento) focus-visible:ring-2 focus-visible:ring-(--accent-primary) focus-visible:outline-none">
+            className="hubly-fila-tactil flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-(--hover-acento) focus-visible:ring-2 focus-visible:ring-(--accent-primary) focus-visible:outline-none">
             <span aria-hidden="true" className="size-4 shrink-0 rounded border border-(--border-control)" />
             <span className="min-w-0 grow truncate text-sm">{todo.title}</span>
             <span aria-hidden="true" className="shrink-0 text-xs text-(--status-danger-text)">{todo.dueDate}</span>

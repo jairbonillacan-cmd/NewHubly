@@ -6,6 +6,8 @@ import { HubiFace } from "../components/brand/HublyLogo";
 import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyTheme, type HublyThemePreference } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
+import { useFondoMovimiento } from "./fondoMovimiento";
+import { Bandeja, WIDGETS, WIDGET_INICIAL, WidgetPanel, WidgetsCajon, toggleWidget, useWidgets, type WidgetDatos } from "./widgets";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
 import { BackgroundPicker, CaptureField, Dock, DockMore, DockStatus, type WallpaperImageControls } from "./Dock";
 import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery, type DockSuggestion } from "./dockConfig";
@@ -18,7 +20,6 @@ import { NotaPanel } from "./NotaPanel";
 import { NotasPanel } from "./NotasPanel";
 import { FotoRecorte } from "./FotoRecorte";
 import { PerfilDialog, avatarFileError } from "./PerfilDialog";
-import { useFondoMovimiento } from "./fondoMovimiento";
 import { esFondoDeImagen } from "./fondos";
 import { useEspacioPreferencias, type EspacioPreferencias } from "./preferencias";
 import { TopBar } from "./TopBar";
@@ -100,6 +101,13 @@ const LIENZO_INICIAL = {
 } as const;
 
 /** true desde el ancho de escritorio; en el servidor y en pruebas, false (se ve la versión apilada). */
+/** Qué selector de fondo abrir. El del dock (escritorio y móvil) solo está montado en el Hub; el de la barra de arriba, siempre. */
+export function selectorDeFondo(origen: "dock" | "arriba", { escritorio, hayDock }: { escritorio: boolean; hayDock: boolean }): "desktop" | "arriba" | "mobile" {
+  if (!hayDock) return "arriba";
+  if (origen === "arriba") return escritorio ? "arriba" : "mobile";
+  return escritorio ? "desktop" : "mobile";
+}
+
 function useIsDesktop() {
   const [desktop, setDesktop] = useState(false);
   useEffect(() => {
@@ -154,6 +162,8 @@ export function EspacioHoy(props: EspacioHoyProps) {
         },
       }
     : undefined;
+  const [fondoMovimiento] = useFondoMovimiento();
+  const widgets = useWidgets();
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
   const initialPreference = props.initialThemePreference ?? props.initialTheme ?? null;
@@ -179,7 +189,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [openNoteId, setOpenNoteId] = useState<string | null>(() => notes.find((n) => n.isPinned && !n.isArchived)?.id ?? notes.find((n) => !n.isArchived)?.id ?? null);
   const [linkedNoteId, setLinkedNoteId] = useState<string | null>(null);
   const [recentlyDone, setRecentlyDone] = useState<ReadonlySet<string>>(new Set());
-  const [pickerOpen, setPickerOpen] = useState<"desktop" | "mobile" | null>(null);
+  const [pickerOpen, setPickerOpen] = useState<"desktop" | "arriba" | "mobile" | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [herramienta, setHerramienta] = useState<HerramientaId>(props.initialHerramienta ?? "hoy");
@@ -290,10 +300,10 @@ export function EspacioHoy(props: EspacioHoyProps) {
     focusCapture();
   };
 
-  const openBackground = () => {
-    selectHerramienta("hoy");
-    setPickerOpen(isDesktop() ? "desktop" : "mobile");
-  };
+  // Desde el lienzo se abre sobre la barra de abajo; desde la barra superior, debajo de ella, en cualquier sección.
+  // El selector del dock solo existe en el Hub; en Chat y en las demás herramientas se abre el de la barra de arriba (issue 241).
+  const openBackground = () => setPickerOpen(selectorDeFondo("dock", { escritorio: isDesktop(), hayDock: Boolean(dock) }));
+  const openBackgroundArriba = () => setPickerOpen(selectorDeFondo("arriba", { escritorio: isDesktop(), hayDock: Boolean(dock) }));
 
   // Elegir una foto abre el recorte (issue 150); se sube lo que la persona encuadra.
   const pickAvatar = (file: File) => {
@@ -366,7 +376,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const dock = !chat?.active && herramienta === "hoy" ? createTodayDock({
     todos, date: todayDate, layout, onLayout: (distribucion) => setPrefs({ distribucion }),
     filter, onFilter: (next) => { setFilter(next); setPrefs({ paneles: { hoy: true } }); },
-    createNote: () => void createNote(), exportData: () => onExport("json"), saveState, suggestion,
+    createNote: () => void createNote(), saveState, suggestion,
     entry: {
       label: "Capturar pendiente", hint: "Captura… prueba «llamar a Lumen mañana !alta»", shortcut: "C",
       submitIcon: <HubiFace className="size-5" />,
@@ -432,29 +442,34 @@ export function EspacioHoy(props: EspacioHoyProps) {
     layout, onLayout: (distribucion) => setPrefs({ distribucion }), onOpenFondo: openBackground,
     fondo: <BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs} isOpen={pickerOpen === "desktop"}
       onOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} triggerClassName="pointer-events-none invisible absolute right-2 bottom-full size-0 min-w-0 p-0" />,
+    widgets: <WidgetsCajon activos={widgets.puestos} onToggle={toggleWidget} triggerClassName="size-(--dock-control) min-w-(--dock-control) text-(--text-secondary) data-[hovered]:text-(--text-primary)" />,
+  };
+  const widgetDatos: WidgetDatos = {
+    timezone: timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone, todos, todayDate,
+    semana: resumenSemana(todos, todayDate), onToggleTodo: (todoId) => void onToggleTodo(todoId),
   };
   const lienzoItems: LienzoItem[] = [
     ...(panels.hoy ? [{ id: "hoy", rect: LIENZO_INICIAL.hoy, node: hoyPanel("h-full") }] : []),
     ...(panels.nota ? [{ id: "nota", rect: LIENZO_INICIAL.nota, node: notaPanel("h-full") }] : []),
     ...(panels.notas ? [{ id: "notas", rect: LIENZO_INICIAL.notas, node: notasPanel("h-full") }] : []),
+    ...widgets.lienzo.map((id) => ({ id: `widget-${id}`, rect: WIDGET_INICIAL[id], node: <WidgetPanel id={id} {...widgetDatos} /> })),
   ];
 
-  // Estático o animado se guarda en este navegador (fondoMovimiento); el fondo elegido, en la cuenta.
-  const [movimiento] = useFondoMovimiento();
   const fondoVisible = prefs.fondo === "imagen" && !wallpaperUrl ? "contornos" : prefs.fondo;
   return (
     // Marco fijo (#105): en escritorio, una cuadrícula con la barra superior, el carril y el dock fijos; solo el contenido se desliza.
     <div ref={rootRef} className={`relative isolate min-h-dvh text-(--text-primary) lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-[var(--frame-topbar-h)_minmax(0,1fr)_auto] lg:gap-3 lg:overflow-hidden lg:p-3 ${esFondoDeImagen(fondoVisible) ? "hubly-fondo-imagen" : ""} ${chat?.active ? "flex h-dvh flex-col overflow-hidden" : ""}`}>
-      <Wallpaper fondo={fondoVisible} imagenUrl={wallpaperUrl} animado={movimiento === "animado"} />
+      <Wallpaper fondo={fondoVisible} imagenUrl={wallpaperUrl} animado={fondoMovimiento === "animado"} />
       <a href="#contenido" className="sr-only z-50 rounded-lg bg-(--surface-raised) px-3 py-2 text-sm font-semibold focus:not-sr-only focus:fixed focus:top-3 focus:left-3">Saltar al contenido</a>
 
-      <div className="hubly-marco-arriba sticky top-0 z-30 shrink-0 p-3 lg:static lg:col-span-2 lg:p-0">
+      <div className="hubly-marco-arriba relative sticky top-0 z-30 shrink-0 p-3 lg:static lg:col-span-2 lg:p-0">
         <TopBar
           todayDate={todayDate}
           timezone={timezone}
           shortcuts={shortcuts}
           onOpenPalette={() => setPaletteOpen(true)}
-          onOpenBackground={openBackground}
+          onOpenBackground={openBackgroundArriba}
+          seccion={{ esHub: !chat?.active && herramienta === "hoy", nombre: chat?.active ? "Chat" : herramientaPorId(herramienta).nombre }}
           onExport={onExport}
           onSignOut={onSignOut}
           workspaces={workspaces}
@@ -476,9 +491,11 @@ export function EspacioHoy(props: EspacioHoyProps) {
           {...(props.profile?.onChangePresence ? { onChangePresence: (status: EspacioPresence) => void changePresence(status) } : {})}
           {...(props.profile ? { onEditProfile: () => setProfileOpen(true), onPickAvatar: pickAvatar } : {})}
         />
+        <BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs} isOpen={pickerOpen === "arriba"} placement="bottom end"
+          onOpenChange={(open) => setPickerOpen(open ? "arriba" : null)} triggerClassName="pointer-events-none invisible absolute right-24 top-full size-0 min-w-0 p-0" />
       </div>
 
-      <div className="z-20 hidden min-h-0 lg:col-start-1 lg:row-span-2 lg:row-start-2 lg:block">
+      <div className="z-20 hidden min-h-0 lg:col-start-1 lg:row-span-2 lg:row-start-2 lg:flex lg:items-center">
         <Carril
           expandido={carrilExpandido}
           onToggleExpandido={toggleCarril}
@@ -487,25 +504,31 @@ export function EspacioHoy(props: EspacioHoyProps) {
           onSelect={selectHerramienta}
           cargando={switching}
           hoyPendientes={overdueCount + todayCount}
-          semana={resumenSemana(todos, todayDate)}
         />
       </div>
 
       <main id="contenido" tabIndex={-1} className={`relative flex flex-col gap-3 px-3 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:p-0 ${chat?.active ? "min-h-0 grow overflow-hidden pb-20" : "pb-44 lg:overflow-y-auto"}`} aria-busy={switching}>
       <div key={activeWorkspace.id} className={`hubly-espacio-escena flex min-h-0 grow flex-col gap-3 ${switched ? "hubly-espacio-entra" : ""}`} {...hide}>
       {actionError && (
-        <div role="alert" className="hubly-pop hubly-glass relative z-30 flex shrink-0 items-center justify-between gap-3 rounded-xl border-(--status-danger-text) px-4 py-3 text-sm text-(--status-danger-text)">
-          <span>{actionError.message}</span>
-          <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
+        <div role="alert" className="hubly-aviso hubly-pop hubly-pop-surface fixed left-1/2 z-40 flex max-w-lg -translate-x-1/2 items-center gap-2 rounded-2xl py-1 pr-1 pl-3 text-xs text-(--status-danger-text)">
+          <span className="size-1.5 shrink-0 rounded-full bg-(--status-danger-text)" aria-hidden="true" />
+          {/* El mensaje se lee completo aunque falte ancho; el botón conserva su tamaño visual con una zona de 44 px. */}
+          <span className="min-w-0 py-1 break-words">{actionError.message}</span>
+          <Button size="sm" variant="danger-soft" className="hubly-zona-tactil relative h-7 shrink-0 rounded-full px-2.5 text-xs" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
       {chat && !chat.active && herramienta === "hoy" && <a href={chat.unread ? chat.unreadHref : chat.href}
-        className="hubly-glass flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-(--glass-hover)">
+        className="hubly-glass relative z-10 flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-(--hover-acento)">
         <Icon name="chat" className="size-5" />
         <span>{chat.unread === null ? "Abrir chat" : chat.unread === 0 ? "Chat al día" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
       </a>}
+      <div key={chat?.active ? "chat" : herramienta} className={`flex min-h-0 grow flex-col gap-3 ${!chat?.active && herramienta === "hoy" && enLienzo ? "hubly-seccion-fundido" : "hubly-seccion-entra"}`}>
       {chat?.active ? chat.content : herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : enLienzo ? (
-        <Lienzo items={lienzoItems} barra={{ slot: barraSlot, ...barraProps }} />
+        <Lienzo items={lienzoItems} barra={{ slot: barraSlot, ...barraProps }} menu={{
+          onNuevoPendiente: focusCapture, onNuevaNota: () => void createNote(), onPersonalizar: openBackground,
+          widgets: WIDGETS.map((widget) => ({ id: widget.id, nombre: widget.nombre, puesto: widgets.puestos.includes(widget.id) })),
+          onWidget: (id) => { const widget = WIDGETS.find((entry) => entry.id === id); if (widget) toggleWidget(widget.id); },
+        }} />
       ) : (
       <div className={`flex flex-col gap-3 lg:min-h-144 lg:grow ${gridClass}`}>
         {panels.hoy && hoyPanel(`max-h-160 lg:max-h-none ${hoyClass}`)}
@@ -514,13 +537,19 @@ export function EspacioHoy(props: EspacioHoyProps) {
       </div>
       )}
       </div>
+      </div>
       {switching && <div role="status" className="hubly-espacio-carga hubly-glass pointer-events-none absolute inset-x-3 top-0 flex items-center gap-3 rounded-2xl p-4 text-sm font-semibold lg:inset-x-0">Abriendo {targetName}…</div>}
       </main>
 
-      {dock && <div className="hubly-espacio-escena z-20 hidden min-w-0 gap-3 lg:col-start-2 lg:row-start-3 lg:flex lg:items-end" {...hide}>
-        <div className="min-w-0 grow"><Dock ref={desktopCapture} config={dock} sinVista /></div>
+      {/* Bandeja (abajo a la izquierda): avance de la semana y widgets anclados, siempre a mano. */}
+      {dock && <div className="hubly-espacio-escena fixed bottom-3 left-3 z-20 hidden lg:block" {...hide}><Bandeja datos={widgetDatos} anclados={widgets.bandeja} /></div>}
+      {/* Fila de abajo: el dock al centro y la barra del lienzo (zoom y mapa) a la derecha, en cápsulas separadas. */}
+      {dock && <div className="hubly-espacio-escena z-20 hidden min-w-0 gap-3 lg:col-start-2 lg:row-start-3 lg:flex lg:items-end 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" {...hide}>
+        {/* Centrado exacto solo donde cabe (2xl); antes, el dock se centra en el espacio que deja la barra del lienzo. */}
+        <span aria-hidden="true" className="hidden 2xl:block" />
+        <div className="flex min-w-0 grow justify-center"><Dock ref={desktopCapture} config={dock} sinVista /></div>
         {/* Barra propia del lienzo (issue 147): en el lienzo libre la llena el propio lienzo; si no, solo el modo y el fondo. */}
-        <div ref={setBarraSlot} className="contents">
+        <div ref={setBarraSlot} className="flex shrink-0 justify-end">
           {!enLienzo && <LienzoBarra {...barraProps} />}
         </div>
       </div>}
@@ -533,7 +562,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
             document.getElementById("panel-hoy")?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}>Hoy</Button>
           {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined}
-            className="flex min-h-11 items-center justify-center rounded-xl text-sm font-semibold hover:bg-(--glass-hover)">Chat</a>}
+            className="flex min-h-11 items-center justify-center rounded-xl text-sm font-semibold hover:bg-(--hover-acento)">Chat</a>}
           <Dropdown>
             <Dropdown.Trigger className="min-h-11 px-1 text-xs">Herramientas</Dropdown.Trigger>
             <Dropdown.Popover placement="top" className="hubly-pop-surface hubly-popover-scroll rounded-xl p-1">

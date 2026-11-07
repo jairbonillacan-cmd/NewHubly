@@ -37,7 +37,7 @@ function TodoRow({ todo, note, todayDate, fresh, onToggle, onChangeVisibility }:
   const overdue = !todo.isDone && Boolean(todo.dueDate && todo.dueDate < todayDate);
   const meta = note ? `Nota de origen: ${note.title || "Nota sin título"}` : todo.detail || null;
   return (
-    <li id={`pendiente-${todo.id}`} className={`${fresh ? "hubly-pop" : ""} flex scroll-mt-4 items-center rounded-lg pr-1 transition-colors hover:bg-(--glass-hover)`}>
+    <li id={`pendiente-${todo.id}`} className={`${fresh ? "hubly-pop" : ""} flex scroll-mt-4 items-center rounded-lg pr-1 transition-colors hover:bg-(--hover-acento)`}>
       <Checkbox isSelected={todo.isDone} onChange={() => onToggle(todo.id)} className="min-w-0 grow">
         <Checkbox.Content className="flex w-full min-w-0 cursor-pointer flex-row items-center gap-3 px-4 py-2.5 text-left">
           <Checkbox.Control className="size-4.5 shrink-0 rounded-md">
@@ -123,7 +123,7 @@ export function HoyPanel({ todos, notes, todayDate, filter, recentlyDone, freshI
       {!filter && done.length > 0 && (
         <Disclosure className="border-t border-(--glass-line) px-1 pb-2">
           <Disclosure.Heading>
-            <Disclosure.Trigger className="flex w-full cursor-pointer items-center justify-between rounded-lg border-0 bg-transparent px-3 py-3 text-xs font-semibold tracking-(--tracking-wider) text-(--text-muted) uppercase hover:bg-(--glass-hover)">
+            <Disclosure.Trigger className="flex w-full cursor-pointer items-center justify-between rounded-lg border-0 bg-transparent px-3 py-3 text-xs font-semibold tracking-(--tracking-wider) text-(--text-muted) uppercase hover:bg-(--hover-acento)">
               Hechos · {done.length}
               <Disclosure.Indicator />
             </Disclosure.Trigger>

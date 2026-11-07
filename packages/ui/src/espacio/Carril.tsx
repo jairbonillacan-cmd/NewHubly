@@ -13,24 +13,24 @@ export interface CarrilProps {
   onSelect: (id: HerramientaId) => void;
   /** Pendientes de Hoy sin hacer (vencidos y de hoy): la ficha de Hoy. */
   hoyPendientes: number;
-  /** Pendientes de esta semana: hechos y totales, para la tarjeta «Tu semana». */
-  semana: { hechos: number; total: number };
   /** Se está cambiando de espacio: no se muestran las cuentas del anterior (#215). */
   cargando?: boolean;
 }
 
-const ITEM = "relative w-full min-h-11 cursor-pointer rounded-xl border-0 transition-colors";
+/** Compacto: botón cuadrado del alto del token, centrado. Completo: ocupa el ancho del carril. */
+const ITEM = "hubly-carril-item relative min-h-(--rail-item) shrink-0 cursor-pointer rounded-xl border-0";
+const FORMA = (expandido: boolean) => (expandido ? "h-(--rail-item) w-full justify-start gap-3 px-3" : "h-(--rail-item) w-(--rail-item) min-w-(--rail-item) justify-center px-0");
 
 function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta: Herramienta; activa: boolean; expandido: boolean; ficha: string | null; onSelect: () => void }) {
   const tono = activa
     ? "bg-(--accent-primary) text-(--text-on-accent)"
-    : herramienta.disponible ? "bg-transparent text-(--text-primary) data-[hovered]:bg-(--glass-hover)" : "bg-transparent text-(--text-secondary) data-[hovered]:bg-(--glass-hover)";
+    : herramienta.disponible ? "bg-transparent text-(--text-primary) data-[hovered]:bg-(--hover-acento) data-[hovered]:text-(--accent-primary)" : "bg-transparent text-(--text-secondary) data-[hovered]:bg-(--hover-acento) data-[hovered]:text-(--accent-primary)";
   const etiqueta = herramienta.disponible ? herramienta.nombre : `${herramienta.nombre}, próximamente`;
   const boton = (
     <Button variant="ghost" aria-label={etiqueta} {...(activa ? { "aria-current": "page" as const } : {})} onPress={onSelect}
-      className={`${ITEM} ${tono} ${expandido ? "h-11 justify-start gap-3 px-3" : "h-11 justify-center px-0"}`}>
+      className={`${ITEM} ${tono} ${FORMA(expandido)}`}>
       <span className="relative">
-        <HerramientaIcono id={herramienta.id} activo={activa} />
+        <HerramientaIcono id={herramienta.id} activo={activa} className="size-(--hud-icono)" />
         {herramienta.disponible && !expandido && ficha && (
           <span aria-hidden="true" className={`absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs leading-none font-bold ${activa ? "bg-(--text-on-accent) text-(--accent-primary)" : "bg-(--accent-primary) text-(--text-on-accent)"}`}>{ficha}</span>
         )}
@@ -51,47 +51,39 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
 }
 
 /** Carril izquierdo (#105, sección 3): Hoy primero y el grupo «Herramientas»; compacto o completo, con el ancho de `--frame-rail-w` y `--frame-rail-w-open`. */
-export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPendientes, semana, chat, cargando = false }: CarrilProps) {
+export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPendientes, chat, cargando = false }: CarrilProps) {
   const [hoy, ...herramientas] = HERRAMIENTAS;
   const ficha = (herramienta: Herramienta) => herramienta.id === "hoy" ? (hoyPendientes > 0 && !cargando ? String(hoyPendientes) : null) : "Pronto";
   return (
-    <div className="group/carril relative h-full">
+    <div className="group/carril relative flex max-h-full flex-col">
     <nav aria-label="Herramientas" data-delay="1"
-      className={`hubly-glass hubly-enter hubly-carril flex h-full flex-col gap-1 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-(--frame-rail-pad) whitespace-nowrap ${expandido ? "w-(--frame-rail-w-open)" : "w-(--frame-rail-w) items-center"}`}>
+      className={`hubly-glass hubly-enter hubly-carril flex min-h-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-(--frame-rail-pad) whitespace-nowrap ${expandido ? "w-(--frame-rail-w-open)" : "w-(--frame-rail-w) items-center"}`}>
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
       {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined} aria-label="Chat"
-        className={`${ITEM} flex items-center gap-3 ${expandido ? "px-3" : "justify-center"} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--glass-hover)"}`}>
-        <Icon name="chat" active={chat.active} className="size-6" />
+        className={`${ITEM} flex items-center ${FORMA(expandido)} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--hover-acento)"}`}>
+        <Icon name="chat" active={chat.active} className="size-(--hud-icono)" />
         {expandido && <span className="hubly-carril-texto text-sm font-semibold">Chat</span>}
       </a>}
-      <span aria-hidden="true" className="mx-2 my-1.5 h-px bg-(--glass-line-strong)" />
+      <span aria-hidden="true" className="mx-2 my-1 h-px bg-(--glass-line-strong)" />
       {expandido && <p className="hubly-carril-texto m-0 px-3 pb-1 text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">Herramientas</p>}
-      <ul aria-label="Herramientas" className="m-0 flex list-none flex-col gap-1 p-0">
+      <ul aria-label="Herramientas" className="m-0 flex list-none flex-col gap-0.5 p-0">
         {herramientas.map((herramienta) => (
-          <li key={herramienta.id}>
+          <li key={herramienta.id} className="flex justify-center">
             <Item herramienta={herramienta} activa={activa === herramienta.id} expandido={expandido} ficha={ficha(herramienta)} onSelect={() => onSelect(herramienta.id)} />
           </li>
         ))}
       </ul>
       <Button variant="ghost" isDisabled aria-label="Agregar una herramienta, muy pronto"
-        className={`${ITEM} mt-1 border border-dashed border-(--glass-line-strong) bg-transparent text-(--text-secondary) ${expandido ? "h-11 justify-start gap-3 px-3" : "h-11 justify-center px-0"}`}>
+        className={`${ITEM} mt-0.5 border border-dashed border-(--glass-line-strong) bg-transparent text-(--text-secondary) ${FORMA(expandido)}`}>
         <Icon name="mas" className="size-5" />
         {expandido && <span className="hubly-carril-texto min-w-0 grow truncate text-left text-sm">Agregar una herramienta</span>}
         {expandido && <span className="hubly-carril-texto shrink-0 text-xs">Pronto</span>}
       </Button>
       <span className="grow" />
-      {expandido && (
-        <div className="hubly-carril-texto mb-1 flex flex-col gap-2 rounded-xl bg-(--glass-hover) p-3 whitespace-normal">
-          <p className="m-0 text-sm font-semibold">Tu semana</p>
-          <p className="m-0 text-xs text-(--text-secondary)">{cargando ? "Cargando…" : `${semana.hechos} de ${semana.total} pendientes hechos`}</p>
-          <progress value={cargando ? 0 : semana.hechos} max={Math.max(cargando ? 1 : semana.total, 1)} aria-label="Pendientes hechos esta semana"
-            className="h-1.5 w-full appearance-none overflow-hidden rounded-full [&::-moz-progress-bar]:bg-(--accent-primary) [&::-webkit-progress-bar]:bg-(--glass-line-strong) [&::-webkit-progress-value]:bg-(--accent-primary)" />
-        </div>
-      )}
     </nav>
       {/* Botón redondo sobre el borde derecho del carril (issues 142 y 150): mismo cristal y borde; sale solo lo que mide el hueco. */}
       <Button variant="ghost" aria-expanded={expandido} aria-label={expandido ? "Contraer el carril" : "Expandir el carril"} onPress={onToggleExpandido}
-        className="hubly-carril-asa absolute z-10 flex size-6 min-w-6 items-center justify-center rounded-full p-0 text-(--text-secondary) data-[hovered]:text-(--accent-primary)">
+        className="hubly-carril-asa hubly-zona-tactil absolute z-10 flex size-6 min-w-6 items-center justify-center rounded-full p-0 text-(--text-secondary) data-[hovered]:text-(--text-primary)">
         <Icon name="chevron" className={`size-3.5 transition-transform duration-300 ${expandido ? "rotate-180" : ""}`} />
       </Button>
     </div>

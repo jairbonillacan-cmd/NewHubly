@@ -605,6 +605,11 @@ body {
 .hubly-carril-asa { top: calc(50% - 0.75rem); right: -0.75rem; background-color: rgb(var(--glass-rgb) / 0.96); background-image: var(--glass-sheen); border: var(--border-width-thin) solid var(--glass-line-strong); box-shadow: var(--glass-highlight), var(--glass-panel-shadow);
   backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-saturate)); -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-saturate));
   transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
+/* Zona táctil de 44 px alrededor de controles que se ven más pequeños (issue 241): el dibujo no cambia, la zona sí. */
+.hubly-zona-tactil::before { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 2.75rem); height: max(100%, 2.75rem); transform: translate(-50%, -50%); border-radius: 9999px; }
+/* Filas pulsables dentro del lienzo: el lienzo se aleja con --lienzo-zoom, así que el alto compensa el zoom para seguir midiendo
+   44 px en pantalla (hasta un zoom de 0,5; más lejos ya no se trabaja sobre el contenido). Fuera del lienzo vale 44 px. */
+.hubly-fila-tactil { min-height: calc(2.75rem / max(min(var(--lienzo-zoom, 1), 1), 0.5)); }
 /* Respaldo opaco del botón después de su regla base, para que no lo pise el cristal (misma especificidad). */
 @media (prefers-reduced-transparency: reduce) { .hubly-carril-asa { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); background-image: none; } }
 /* Sin transformaciones al pasar el ratón: el botón no se mueve, solo se marca su borde. */
