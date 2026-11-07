@@ -142,10 +142,15 @@ describe("Chat: adjuntos en bucket privado, cuarentena y retiro inmediato (Issue
     await db.execute(sql`update public.workspace_members set role = 'viewer' where workspace_id = ${agency}::uuid and user_id = ${editor}::uuid`);
     expect(await canDelete(editor, res!.final_path)).toBe(false);
     await db.execute(sql`update public.workspace_members set role = 'editor' where workspace_id = ${agency}::uuid and user_id = ${editor}::uuid`);
-    // Con la conversación archivada tampoco.
-    await db.execute(sql`update private.chat_conversations set archived_at = now() where workspace_id = ${agency}::uuid and id = ${general}::uuid`);
-    expect(await canDelete(editor, res!.final_path)).toBe(false);
-    await db.execute(sql`update private.chat_conversations set archived_at = null where workspace_id = ${agency}::uuid and id = ${general}::uuid`);
+    // Con la conversación archivada tampoco (general no se puede archivar: se usa otro canal).
+    const [{ id: side }] = await as<{ id: string }>(owner, sql`select private.chat_manage_channel(${agency}::uuid, null, ${`adjuntos-${runId}`}, false) as id`);
+    const [{ id: sideMsg }] = await as<{ id: string }>(editor, sql`select private.chat_send_message(${agency}::uuid, ${side}::uuid, ${crypto.randomUUID()}::uuid, 'Adjunto en canal que se archiva') as id`);
+    const [sideRes] = await as<{ id: string; quarantine_path: string; final_path: string }>(editor, sql`select id, quarantine_path, final_path from private.chat_reserve_attachment_upload(${agency}::uuid, ${side}::uuid, ${sideMsg}::uuid, 'doc.png', 'image/png', 1024)`);
+    await as(editor, sql`insert into storage.objects (bucket_id, name, owner) values ('chat-attachments', ${sideRes!.final_path}, ${editor}::uuid)`);
+    await as(editor, sql`select private.chat_register_attachment(${agency}::uuid, ${side}::uuid, ${sideMsg}::uuid, ${sideRes!.id}::uuid, 'doc.png', 'image/png', 1024, 10, 10)`);
+    expect(await canDelete(editor, sideRes!.final_path)).toBe(true);
+    await as(owner, sql`select private.chat_manage_channel(${agency}::uuid, ${side}::uuid, null, true)`);
+    expect(await canDelete(editor, sideRes!.final_path)).toBe(false);
 
     // Reservas vencidas: su autor obtiene las rutas para borrarlas por la API y puede borrarlas aunque estén vencidas.
     const [stale] = await as<{ id: string; quarantine_path: string; final_path: string }>(editor, sql`select id, quarantine_path, final_path from private.chat_reserve_attachment_upload(${agency}::uuid, ${general}::uuid, ${msg}::uuid, 'tarde.png', 'image/png', 512)`);
