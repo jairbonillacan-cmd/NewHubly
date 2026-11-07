@@ -25,6 +25,11 @@ export const PANEL_MIN = { w: 320, h: 200 };
 const STORAGE_KEY = "hubly-lienzo";
 const ZOOM_STEP = 1.2;
 const FIT_PADDING = 32;
+/** Margen al encuadrar en pantalla completa: deja libres la barra superior, el carril y el dock. */
+const FIT_PADDING_PANTALLA = 112;
+/** Ancho desde el que el lienzo ocupa toda la pantalla (punto lg de Tailwind). */
+const LG_PX = 1024;
+const fitPadding = () => (typeof window !== "undefined" && window.innerWidth >= LG_PX ? FIT_PADDING_PANTALLA : FIT_PADDING);
 const MAPA = { w: 176, h: 112, margen: 160 };
 /** Lo que dura el asentamiento del panel al soltarlo; coincide con la animación hubly-asentar. */
 const ASENTAR_MS = 520;
@@ -108,7 +113,6 @@ const CONTROL = "size-(--dock-control) min-w-(--dock-control) text-(--text-secon
 const MODOS: { id: LayoutId; label: string; icon: IconName }[] = [
   { id: "libre", label: "Lienzo libre", icon: "libre" },
   { id: "lado", label: "Lado a lado", icon: "lado" },
-  { id: "enfoque", label: "Enfoque", icon: "enfoque" },
 ];
 
 function Control({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
@@ -160,11 +164,8 @@ export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: Li
         </Dropdown.Trigger>
         <Dropdown.Popover placement="top end" className={MENU}>
           <Dropdown.Menu aria-label="Opciones del lienzo" onAction={onMenu}>
-            {/* El mapa y «ver todos» ya tienen botón en la barra; aquí solo lo que no está a la vista. */}
-            <Dropdown.Section aria-label="Aspecto" className="border-b border-(--glass-line) pb-1.5">
-              <Dropdown.Item id="fondo" textValue="Personalizar aspecto" className={ITEM}><Icon name="imagen" /> <span className="grow">Personalizar aspecto</span></Dropdown.Item>
-            </Dropdown.Section>
-            <Dropdown.Section aria-label="Modo de los paneles" className="py-1.5">
+            {/* Solo lo del lienzo: el aspecto está en «Vista y aspecto» y el enfoque en la barra de arriba. */}
+            <Dropdown.Section aria-label="Modo de los paneles" className="pb-1.5">
               {MODOS.map((modo) => (
                 <Dropdown.Item key={modo.id} id={modo.id} textValue={modo.label} className={ITEM}>
                   <Icon name={modo.icon} /> <span className="grow">{modo.label}</span>{check(layout === modo.id)}
@@ -230,7 +231,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
 
   const fit = useCallback(() => {
     const canvas = canvasRef.current;
-    if (canvas) setView(fitView(items.map(rectOf), canvas.clientWidth, canvas.clientHeight));
+    if (canvas) setView(fitView(items.map(rectOf), canvas.clientWidth, canvas.clientHeight, fitPadding()));
   }, [items, rectOf]);
 
   // Al montar: recupera el acomodo guardado o encuadra todos los paneles.
@@ -240,7 +241,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
     if (saved.opciones) setOpciones((current) => ({ ...current, ...saved.opciones }));
     const canvas = canvasRef.current;
     if (saved.view && Number.isFinite(saved.view.zoom)) setView({ ...saved.view, zoom: clampZoom(saved.view.zoom) });
-    else if (canvas) setView(fitView(items.map((item) => saved.rects?.[item.id] ?? item.rect), canvas.clientWidth, canvas.clientHeight));
+    else if (canvas) setView(fitView(items.map((item) => saved.rects?.[item.id] ?? item.rect), canvas.clientWidth, canvas.clientHeight, fitPadding()));
     setReady(true);
     // Solo al montar: después manda lo que la persona mueva.
   }, []);
@@ -386,7 +387,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
   const resetLayout = () => {
     setRects({});
     const canvas = canvasRef.current;
-    if (canvas) setView(fitView(items.map((item) => item.rect), canvas.clientWidth, canvas.clientHeight));
+    if (canvas) setView(fitView(items.map((item) => item.rect), canvas.clientWidth, canvas.clientHeight, fitPadding()));
   };
 
   const zIndex = (id: string) => order.indexOf(id) + 1;
@@ -396,7 +397,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
   };
 
   return (
-    <div className="relative min-h-0 grow">
+    <div className="relative min-h-0 grow lg:fixed lg:inset-0 lg:z-0">
       <div
         ref={canvasRef}
         role="region"
@@ -412,7 +413,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
           cancelarMenu.current = false;
         }}
         onKeyDown={(event) => { if (event.key === "Escape" && seleccion.length) setSeleccion([]); }}
-        className="hubly-lienzo absolute inset-0 overflow-hidden rounded-2xl"
+        className="hubly-lienzo absolute inset-0 overflow-hidden rounded-2xl lg:rounded-none"
       >
         <div ref={layerRef} className={`hubly-lienzo-capa ${ready ? "" : "invisible"}`}>
           {items.map((item) => (
@@ -422,7 +423,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
         <div ref={marcoRef} aria-hidden="true" className={`hubly-lienzo-marco ${marcando ? "" : "hidden"}`} />
       </div>
       {opciones.mapa && size.w > 0 && (
-        <div className="absolute right-0 bottom-0 z-10">
+        <div className="hubly-lienzo-mapa absolute right-0 bottom-0 z-10">
           <MiniMapa panels={panelRects} view={view} size={size} onCenter={(x, y) => setView((current) => ({ ...current, x: size.w / 2 - x * current.zoom, y: size.h / 2 - y * current.zoom }))} />
         </div>
       )}

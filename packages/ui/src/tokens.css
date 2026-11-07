@@ -475,6 +475,8 @@ body {
 }
 /* Lienzo infinito de Hoy (issues 136, 141 y 147): la capa se mueve y escala con variables que pone el componente. */
 .hubly-lienzo { touch-action: none; cursor: default; }
+/* En pantalla completa el mapa se queda encima de la barra del zoom, no en la esquina de la ventana. */
+@media (min-width: 64rem) { .hubly-lienzo-mapa { right: 0.75rem; bottom: calc(var(--frame-dock-h) + 1.5rem); } }
 /* Selección como en un escritorio: rectángulo con el color de acento y paneles marcados. */
 .hubly-lienzo-marco { position: absolute; z-index: 5; pointer-events: none; left: var(--marco-x, 0); top: var(--marco-y, 0);
   width: var(--marco-w, 0); height: var(--marco-h, 0); border: var(--border-width-thin) solid var(--accent-primary); border-radius: 0.375rem;
