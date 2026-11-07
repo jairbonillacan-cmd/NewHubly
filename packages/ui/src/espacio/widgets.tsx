@@ -58,6 +58,8 @@ export function toggleWidget(id: WidgetId): void {
   if (actuales[id]) delete actuales[id];
   else actuales[id] = "lienzo";
   guardar(actuales);
+  // Sin el widget no queda ningún control para pausarlo: quitarlo cancela la sesión (issue 240). Moverlo a la bandeja no.
+  if (id === "enfoque" && !actuales.enfoque) cancelarEnfoque();
 }
 
 /** Lleva un widget al lienzo o lo ancla a la bandeja. */
@@ -83,37 +85,76 @@ export function useWidgets() {
 }
 
 // ---------- Temporizador de Enfoque compartido: no se reinicia al mover el widget entre el lienzo y la bandeja. ----------
-const DURACION = { enfoque: 25 * 60, descanso: 5 * 60 } as const;
-type EstadoEnfoque = { modo: keyof typeof DURACION; restante: number; corriendo: boolean };
-let enfoque: EstadoEnfoque = { modo: "enfoque", restante: DURACION.enfoque, corriendo: false };
-let reloj: ReturnType<typeof setInterval> | undefined;
+// Guarda la hora límite, no un contador: el tiempo es exacto aunque el navegador frene los intervalos en segundo plano (issue 240).
+// Solo hay un intervalo de pantalla mientras corre y alguien lo está mostrando; al quitar el widget, la sesión se cancela.
+export const DURACION_ENFOQUE = { enfoque: 25 * 60, descanso: 5 * 60 } as const;
+type ModoEnfoque = keyof typeof DURACION_ENFOQUE;
+export interface EstadoEnfoque {
+  modo: ModoEnfoque;
+  corriendo: boolean;
+  /** Hora (ms) en que termina, solo mientras corre. */
+  finEn: number | null;
+  /** Lo que queda (ms) mientras está en pausa. */
+  pausaMs: number;
+  /** Última vez que se leyó el reloj: cambia en cada pulso para que la pantalla se actualice. */
+  ahora: number;
+}
+const enReposo = (modo: ModoEnfoque, ahora: number): EstadoEnfoque => ({ modo, corriendo: false, finEn: null, pausaMs: DURACION_ENFOQUE[modo] * 1000, ahora });
+let enfoque: EstadoEnfoque = enReposo("enfoque", 0);
+let pulso: ReturnType<typeof setInterval> | undefined;
 const enfoqueListeners = new Set<() => void>();
 const avisar = () => enfoqueListeners.forEach((listener) => listener());
 
-function tic() {
-  if (enfoque.restante > 1) { enfoque = { ...enfoque, restante: enfoque.restante - 1 }; avisar(); return; }
-  const siguiente = enfoque.modo === "enfoque" ? "descanso" : "enfoque";
-  clearInterval(reloj); reloj = undefined;
-  enfoque = { modo: siguiente, restante: DURACION[siguiente], corriendo: false };
-  avisar();
+/** Segundos que quedan, redondeados hacia arriba como un temporizador de cocina. */
+export const segundosRestantes = (estado: EstadoEnfoque) => Math.ceil((estado.corriendo && estado.finEn !== null ? Math.max(0, estado.finEn - estado.ahora) : estado.pausaMs) / 1000);
+
+/** El intervalo de pantalla existe solo si corre y hay al menos un widget, fila o botón mostrándolo. */
+function sincronizarPulso() {
+  const necesita = enfoque.corriendo && enfoqueListeners.size > 0;
+  if (necesita && pulso === undefined) pulso = setInterval(() => actualizarEnfoque(), 1000);
+  if (!necesita && pulso !== undefined) { clearInterval(pulso); pulso = undefined; }
 }
-export function alternarEnfoque() {
-  if (enfoque.corriendo) { clearInterval(reloj); reloj = undefined; enfoque = { ...enfoque, corriendo: false }; }
-  else { reloj = setInterval(tic, 1000); enfoque = { ...enfoque, corriendo: true }; }
+
+/** Lee el reloj: si ya pasó la hora límite, cambia a descanso (o a enfoque) y se detiene. */
+export function actualizarEnfoque(ahora = Date.now()) {
+  if (enfoque.corriendo && enfoque.finEn !== null && ahora >= enfoque.finEn) enfoque = enReposo(enfoque.modo === "enfoque" ? "descanso" : "enfoque", ahora);
+  else enfoque = { ...enfoque, ahora };
   avisar();
+  sincronizarPulso();
 }
-export function reiniciarEnfoque() {
-  clearInterval(reloj); reloj = undefined;
-  enfoque = { ...enfoque, restante: DURACION[enfoque.modo], corriendo: false };
+export function alternarEnfoque(ahora = Date.now()) {
+  actualizarEnfoque(ahora);
+  enfoque = enfoque.corriendo
+    ? { ...enfoque, corriendo: false, finEn: null, pausaMs: Math.max(0, (enfoque.finEn ?? ahora) - ahora), ahora }
+    : { ...enfoque, corriendo: true, finEn: ahora + enfoque.pausaMs, ahora };
   avisar();
+  sincronizarPulso();
+}
+export function reiniciarEnfoque(ahora = Date.now()) {
+  enfoque = enReposo(enfoque.modo, ahora);
+  avisar();
+  sincronizarPulso();
+}
+/** Cancela la sesión: vuelve a un enfoque completo, detenido. */
+export function cancelarEnfoque(ahora = Date.now()) {
+  enfoque = enReposo("enfoque", ahora);
+  avisar();
+  sincronizarPulso();
+}
+/** Estado actual, para pruebas y para quien necesite leerlo fuera de React. */
+export const estadoEnfoque = () => enfoque;
+
+function suscribirEnfoque(listener: () => void) {
+  enfoqueListeners.add(listener);
+  // Al volver a mostrarse, primero se pone al día con el reloj (pudo vencer mientras nadie miraba).
+  queueMicrotask(() => { if (enfoqueListeners.has(listener)) actualizarEnfoque(); });
+  sincronizarPulso();
+  return () => { enfoqueListeners.delete(listener); sincronizarPulso(); };
 }
 const INICIAL_ENFOQUE = enfoque;
 function useEnfoque() {
-  return useSyncExternalStore(
-    (listener) => { enfoqueListeners.add(listener); return () => { enfoqueListeners.delete(listener); }; },
-    () => enfoque,
-    () => INICIAL_ENFOQUE,
-  );
+  const estado = useSyncExternalStore(suscribirEnfoque, () => enfoque, () => INICIAL_ENFOQUE);
+  return { modo: estado.modo, corriendo: estado.corriendo, restante: segundosRestantes(estado) };
 }
 const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
@@ -179,7 +220,7 @@ function Reloj({ timezone }: { timezone: string }) {
 
 function Enfoque() {
   const { modo, restante, corriendo } = useEnfoque();
-  const avance = 1 - restante / DURACION[modo];
+  const avance = 1 - restante / DURACION_ENFOQUE[modo];
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-4 py-3">
       <span className="text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">{modo === "enfoque" ? "Enfoque" : "Descanso"}</span>
@@ -188,8 +229,8 @@ function Enfoque() {
         <span className="hubly-widget-avance block h-full rounded-full bg-(--accent-primary)" data-avance={Math.round(avance * 20) * 5} />
       </span>
       <div className="flex gap-2">
-        <Button size="sm" variant="primary" onPress={alternarEnfoque}>{corriendo ? "Pausar" : "Empezar"}</Button>
-        <Button size="sm" variant="ghost" onPress={reiniciarEnfoque}>Reiniciar</Button>
+        <Button size="sm" variant="primary" onPress={() => alternarEnfoque()}>{corriendo ? "Pausar" : "Empezar"}</Button>
+        <Button size="sm" variant="ghost" onPress={() => reiniciarEnfoque()}>Reiniciar</Button>
       </div>
     </div>
   );
@@ -219,11 +260,14 @@ function Vencidos({ todos, todayDate, onToggleTodo }: { todos: readonly EspacioT
   return (
     <ul className="m-0 flex list-none flex-col gap-1 p-2">
       {vencidos.map((todo) => (
-        <li key={todo.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-(--hover-acento)">
-          <button type="button" onClick={() => onToggleTodo(todo.id)} aria-label={`Marcar como hecho: ${todo.title}`}
-            className="size-4 shrink-0 cursor-pointer rounded border border-(--border-control) focus-visible:ring-2 focus-visible:ring-(--accent-primary)" />
-          <span className="min-w-0 grow truncate text-sm">{todo.title}</span>
-          <span className="shrink-0 text-xs text-(--status-danger-text)">{todo.dueDate}</span>
+        <li key={todo.id}>
+          {/* Toda la fila es el control (al menos 44 px de alto); la casilla es solo el dibujo (issue 240). */}
+          <button type="button" onClick={() => onToggleTodo(todo.id)} aria-label={`Marcar como hecho: ${todo.title}, venció el ${todo.dueDate}`}
+            className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-(--hover-acento) focus-visible:ring-2 focus-visible:ring-(--accent-primary) focus-visible:outline-none">
+            <span aria-hidden="true" className="size-4 shrink-0 rounded border border-(--border-control)" />
+            <span className="min-w-0 grow truncate text-sm">{todo.title}</span>
+            <span aria-hidden="true" className="shrink-0 text-xs text-(--status-danger-text)">{todo.dueDate}</span>
+          </button>
         </li>
       ))}
     </ul>
@@ -298,7 +342,7 @@ export function Bandeja({ datos, anclados }: { datos: WidgetDatos; anclados: rea
               if (id === "enfoque") return (
                 <FilaBandeja key={id} icon="enfoque" titulo={`${enfoqueActual.modo === "enfoque" ? "Enfoque" : "Descanso"} · ${mmss(enfoqueActual.restante)}`}
                   detalle={enfoqueActual.corriendo ? "En marcha" : "En pausa"} onLienzo={alLienzo}>
-                  <IconButton icon={enfoqueActual.corriendo ? "pausa" : "reproducir"} label={enfoqueActual.corriendo ? "Pausar" : "Empezar"} onPress={alternarEnfoque} />
+                  <IconButton icon={enfoqueActual.corriendo ? "pausa" : "reproducir"} label={enfoqueActual.corriendo ? "Pausar" : "Empezar"} onPress={() => alternarEnfoque()} />
                 </FilaBandeja>
               );
               if (id === "semana") return <FilaBandeja key={id} icon="hoy" titulo={`${pct} % de la semana`} detalle={`${semana.hechos} de ${semana.total} pendientes`} onLienzo={alLienzo} />;

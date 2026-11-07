@@ -244,6 +244,17 @@ export function Lienzo({ items, barra, menu }: LienzoProps) {
   const cancelarMenu = useRef(false);
   const anclaMenu = useRef<HTMLDivElement>(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  // Si el menú se abrió desde el teclado, al cerrarse el foco vuelve al lienzo (issue 240).
+  const menuConTeclado = useRef(false);
+  const abrirMenuEn = (x: number, y: number) => {
+    anclaMenu.current?.style.setProperty("--menu-x", `${x}px`);
+    anclaMenu.current?.style.setProperty("--menu-y", `${y}px`);
+    setMenuAbierto(true);
+  };
+  const cambiarMenu = (abierto: boolean) => {
+    setMenuAbierto(abierto);
+    if (!abierto && menuConTeclado.current) { menuConTeclado.current = false; canvasRef.current?.focus(); }
+  };
   const asentarTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const rectOf = useCallback((item: LienzoItem) => rects[item.id] ?? item.rect, [rects]);
@@ -422,7 +433,8 @@ export function Lienzo({ items, barra, menu }: LienzoProps) {
       <div
         ref={canvasRef}
         role="region"
-        aria-label="Lienzo de Hoy: arrastra con el botón derecho para moverte, con el izquierdo para seleccionar paneles; Ctrl y la rueda para acercar o alejar"
+        tabIndex={0}
+        aria-label="Lienzo de Hoy: arrastra con el botón derecho para moverte, con el izquierdo para seleccionar paneles; Ctrl y la rueda para acercar o alejar. Con el lienzo enfocado, Mayús+F10 o la tecla de menú abren sus acciones y Ctrl+A selecciona todos los paneles"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endGesture}
@@ -437,12 +449,29 @@ export function Lienzo({ items, barra, menu }: LienzoProps) {
           event.preventDefault();
           if (movido || !menu) return;
           const box = event.currentTarget.getBoundingClientRect();
-          anclaMenu.current?.style.setProperty("--menu-x", `${event.clientX - box.left}px`);
-          anclaMenu.current?.style.setProperty("--menu-y", `${event.clientY - box.top}px`);
-          setMenuAbierto(true);
+          // Mayús+F10 y la tecla de menú también llegan como contextmenu en algunos navegadores, con coordenadas 0.
+          if (event.clientX === 0 && event.clientY === 0 && event.target === event.currentTarget) {
+            menuConTeclado.current = true;
+            abrirMenuEn(box.width / 2, box.height / 3);
+            return;
+          }
+          abrirMenuEn(event.clientX - box.left, event.clientY - box.top);
         }}
-        onKeyDown={(event) => { if (event.key === "Escape" && seleccion.length) setSeleccion([]); }}
-        className="hubly-lienzo absolute inset-0 overflow-hidden rounded-2xl lg:rounded-none"
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && seleccion.length) { setSeleccion([]); return; }
+          // Equivalentes de teclado del clic derecho, solo con el foco en el propio lienzo (dentro de un panel mandan sus controles).
+          if (event.target !== event.currentTarget) return;
+          if (menu && (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))) {
+            event.preventDefault();
+            const box = event.currentTarget.getBoundingClientRect();
+            menuConTeclado.current = true;
+            abrirMenuEn(box.width / 2, box.height / 3);
+          } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+            event.preventDefault();
+            setSeleccion(items.map((item) => item.id));
+          }
+        }}
+        className="hubly-lienzo absolute inset-0 overflow-hidden rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-(--accent-primary) focus-visible:ring-inset lg:rounded-none"
       >
         <div ref={layerRef} className={`hubly-lienzo-capa ${ready ? "" : "invisible"}`}>
           {items.map((item) => (
@@ -458,9 +487,9 @@ export function Lienzo({ items, barra, menu }: LienzoProps) {
         </div>
       )}
       {menu && (
-        <AriaPopover triggerRef={anclaMenu} isOpen={menuAbierto} onOpenChange={setMenuAbierto} placement="bottom start" offset={4} className={`${MENU} hubly-menu-lienzo w-64`}>
+        <AriaPopover triggerRef={anclaMenu} isOpen={menuAbierto} onOpenChange={cambiarMenu} placement="bottom start" offset={4} className={`${MENU} hubly-menu-lienzo w-64`}>
           <Menu aria-label="Acciones del lienzo" autoFocus="first" className="hubly-sin-anillo outline-none" onAction={(key) => {
-            setMenuAbierto(false);
+            cambiarMenu(false);
             if (key === "pendiente") menu.onNuevoPendiente();
             else if (key === "nota") menu.onNuevaNota();
             else if (key === "todo") setSeleccion(items.map((item) => item.id));
@@ -475,7 +504,7 @@ export function Lienzo({ items, barra, menu }: LienzoProps) {
               <SubmenuTrigger>
                 <MenuItem id="widgets" textValue="Widgets" className={ITEM}><Icon name="widgets" /> <span className="grow">Widgets</span><Icon name="chevron" className="size-3.5" /></MenuItem>
                 <AriaPopover placement="end top" offset={-4} className={`${MENU} w-56`}>
-                  <Menu aria-label="Widgets" className="hubly-sin-anillo outline-none" onAction={(key) => { setMenuAbierto(false); menu.onWidget(String(key)); }}>
+                  <Menu aria-label="Widgets" className="hubly-sin-anillo outline-none" onAction={(key) => { cambiarMenu(false); menu.onWidget(String(key)); }}>
                     {menu.widgets.map((widget) => (
                       <MenuItem key={widget.id} id={widget.id} textValue={widget.nombre} className={ITEM}>
                         <span className="grow">{widget.nombre}</span>{widget.puesto && <Icon name="check" className="size-4 text-(--accent-primary)" />}
