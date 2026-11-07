@@ -1,5 +1,5 @@
 /** Herramientas del carril con ruta propia (#212). Debe coincidir con HERRAMIENTAS de @hubly/ui; lo comprueba una prueba. */
-export const TOOL_PATHS = ["/hoy", "/calendario", "/contenido", "/clientes", "/anuncios", "/reportes"] as const;
+export const TOOL_PATHS = ["/hub", "/calendario", "/contenido", "/clientes", "/anuncios", "/reportes"] as const;
 const LEGACY_PARAMS = ["modo", "herramienta", "vista", "workspaceId"] as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -18,7 +18,7 @@ export function cleanLegacyUrl(url: URL): { target: URL; workspaceId: string | n
   const target = new URL(url);
   if (url.pathname === "/login" && params.get("modo") === "registro") target.pathname = "/registro";
   const tool = params.get("herramienta");
-  if (url.pathname === "/hoy" && tool && (TOOL_PATHS as readonly string[]).includes(`/${tool}`)) target.pathname = `/${tool}`;
+  if (url.pathname === "/hub" && tool && (TOOL_PATHS as readonly string[]).includes(`/${tool}`)) target.pathname = `/${tool}`;
   if (url.pathname === "/chat" && params.get("vista") === "sin-leer") target.pathname = "/chat/sin-leer";
   for (const key of LEGACY_PARAMS) target.searchParams.delete(key);
   const rawWorkspace = isWorkspacePath(url.pathname) ? params.get("workspaceId") : null;

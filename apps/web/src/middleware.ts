@@ -34,8 +34,8 @@ export async function updateSession(request: NextRequest) {
   const isServerAction = request.method === "POST" && request.headers.has("next-action");
   if (isServerAction) return response;
   if (isWorkspacePath(path) && !signedIn) return redirectTo(new URL("/login", request.url));
-  // Con sesión válida, /login y /registro (p. ej. «Entrar» desde la landing) llevan directo a Hoy (#198).
-  if (isAuthPath(path) && signedIn) return redirectTo(new URL("/hoy", request.url));
+  // Con sesión válida, /login y /registro (p. ej. «Entrar» desde la landing) llevan directo al Hub (#198).
+  if (isAuthPath(path) && signedIn) return redirectTo(new URL("/hub", request.url));
   const clean = cleanLegacyUrl(request.nextUrl);
   if (clean) {
     const redirect = redirectTo(clean.target);

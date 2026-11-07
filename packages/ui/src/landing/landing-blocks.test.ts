@@ -166,7 +166,7 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
   it("el pie enlaza a rutas y secciones que existen y ofrece cambiar el tema", () => {
     const html = render(LandingFooter);
     const hrefs = [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1] ?? "");
-    for (const href of hrefs) expect(href).toMatch(/^\/(?:$|#(?:producto|dia|crece|lo-que-viene|hubi|privacidad|preguntas)$|precios$|login$|registro$|hoy$|privacidad$|terminos$)/);
+    for (const href of hrefs) expect(href).toMatch(/^\/(?:$|#(?:producto|dia|crece|lo-que-viene|hubi|privacidad|preguntas)$|precios$|login$|registro$|hub$|privacidad$|terminos$)/);
     expect(html).toContain("Cambiar a tema");
   });
 });

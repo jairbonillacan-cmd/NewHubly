@@ -362,7 +362,7 @@ export function TopBar(props: TopBarProps) {
   return (
     <div className="flex flex-col gap-2">
       <header className="hubly-glass hubly-enter flex h-(--frame-topbar-h) items-center gap-2 rounded-(--glass-radius-access-bar) pr-1.5 pl-3 lg:gap-3">
-        <a href="/" aria-label="Hubly, inicio" className="flex min-h-11 min-w-11 items-center justify-center">
+        <a href="/hub" aria-label="Ir a tu Hub" className="flex min-h-11 min-w-11 items-center justify-center">
           <HubiFace className="size-7" />
         </a>
         <SpaceMenu {...props} />
