@@ -24,7 +24,7 @@ const ITEM = "relative w-full min-h-(--rail-item) cursor-pointer rounded-xl bord
 function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta: Herramienta; activa: boolean; expandido: boolean; ficha: string | null; onSelect: () => void }) {
   const tono = activa
     ? "bg-(--accent-primary) text-(--text-on-accent)"
-    : herramienta.disponible ? "bg-transparent text-(--text-primary) data-[hovered]:bg-(--glass-hover)" : "bg-transparent text-(--text-secondary) data-[hovered]:bg-(--glass-hover)";
+    : herramienta.disponible ? "bg-transparent text-(--text-primary) data-[hovered]:bg-(--hover-acento)" : "bg-transparent text-(--text-secondary) data-[hovered]:bg-(--hover-acento)";
   const etiqueta = herramienta.disponible ? herramienta.nombre : `${herramienta.nombre}, próximamente`;
   const boton = (
     <Button variant="ghost" aria-label={etiqueta} {...(activa ? { "aria-current": "page" as const } : {})} onPress={onSelect}
@@ -60,7 +60,7 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
       className={`hubly-glass hubly-enter hubly-carril flex min-h-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-(--frame-rail-pad) whitespace-nowrap ${expandido ? "w-(--frame-rail-w-open)" : "w-(--frame-rail-w) items-center"}`}>
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
       {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined} aria-label="Chat"
-        className={`${ITEM} flex items-center gap-3 ${expandido ? "px-3" : "justify-center"} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--glass-hover)"}`}>
+        className={`${ITEM} flex items-center gap-3 ${expandido ? "px-3" : "justify-center"} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--hover-acento)"}`}>
         <Icon name="chat" active={chat.active} className="size-6" />
         {expandido && <span className="hubly-carril-texto text-sm font-semibold">Chat</span>}
       </a>}
@@ -91,7 +91,7 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
     </nav>
       {/* Botón redondo sobre el borde derecho del carril (issues 142 y 150): mismo cristal y borde; sale solo lo que mide el hueco. */}
       <Button variant="ghost" aria-expanded={expandido} aria-label={expandido ? "Contraer el carril" : "Expandir el carril"} onPress={onToggleExpandido}
-        className="hubly-carril-asa absolute z-10 flex size-6 min-w-6 items-center justify-center rounded-full p-0 text-(--text-secondary) data-[hovered]:text-(--accent-primary)">
+        className="hubly-carril-asa absolute z-10 flex size-6 min-w-6 items-center justify-center rounded-full p-0 text-(--text-secondary) data-[hovered]:text-(--text-primary)">
         <Icon name="chevron" className={`size-3.5 transition-transform duration-300 ${expandido ? "rotate-180" : ""}`} />
       </Button>
     </div>

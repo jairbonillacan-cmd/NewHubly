@@ -212,20 +212,17 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
             step={2}
             value={prefs.opacidad}
             onChange={(value) => onChange({ opacidad: Array.isArray(value) ? (value[0] ?? prefs.opacidad) : value })}
-            className="hubly-opacidad flex flex-col gap-2.5 rounded-xl bg-(--glass-hover) px-3 py-2.5"
+            className="flex flex-col gap-2"
           >
-            <span className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-(--text-secondary)">Opacidad de los paneles</span>
-              <Slider.Output className="rounded-md bg-(--accent-primary-subtle) px-1.5 py-0.5 font-semibold text-(--accent-primary) tabular-nums">{() => `${prefs.opacidad} %`}</Slider.Output>
+            <span className="flex items-baseline justify-between">
+              <span className={SECCION}>Opacidad de los paneles</span>
+              <Slider.Output className="text-xs font-semibold text-(--text-primary) tabular-nums">{() => `${prefs.opacidad} %`}</Slider.Output>
             </span>
-            <span className="flex items-center gap-2.5">
-              <span aria-hidden="true" className="hubly-opacidad-muestra hubly-opacidad-muestra-clara size-3.5 shrink-0 rounded" />
-              <Slider.Track className="h-1.5 grow rounded-full bg-(--glass-line-strong)">
-                <Slider.Fill className="rounded-full bg-(--accent-primary)" />
-                <Slider.Thumb className="size-4 rounded-full border-2 border-(--accent-primary) bg-(--surface-raised) shadow-md" />
-              </Slider.Track>
-              <span aria-hidden="true" className="hubly-opacidad-muestra size-3.5 shrink-0 rounded" />
-            </span>
+            <Slider.Track className="hubly-opacidad-pista h-1 w-full rounded-full">
+              <Slider.Fill className="rounded-full bg-(--accent-primary)" />
+              <Slider.Thumb className="hubly-opacidad-pomo size-4 rounded-full border-0" />
+            </Slider.Track>
+            <span aria-hidden="true" className="flex justify-between text-xs text-(--text-muted)"><span>Más cristal</span><span>Más sólido</span></span>
           </Slider>
         </Popover.Dialog>
       </Popover.Content>
@@ -310,7 +307,7 @@ function DockDetails({ config, sinVista = false }: { config: DockConfig; sinVist
 
 function DockActions({ actions }: Pick<DockConfig, "actions">) {
   return actions.map((action) => (
-    <button key={action.key} type="button" onClick={action.run} title={`${action.label} (${action.key})`} className="flex h-(--dock-control) shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-(--text-secondary) hover:bg-(--glass-hover) focus-visible:ring-2 focus-visible:ring-(--accent-primary)">
+    <button key={action.key} type="button" onClick={action.run} title={`${action.label} (${action.key})`} className="flex h-(--dock-control) shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-(--text-secondary) hover:bg-(--hover-acento) focus-visible:ring-2 focus-visible:ring-(--accent-primary)">
       <Icon name={action.icon} className="size-4 rounded-sm bg-(--icon-fill) text-(--accent-primary)" />{action.label}
     </button>
   ));

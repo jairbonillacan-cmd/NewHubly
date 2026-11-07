@@ -46,7 +46,7 @@ export interface TopBarProps {
 }
 
 const MENU = "hubly-pop-surface hubly-popover-scroll min-w-64 rounded-xl p-1.5 text-(--text-primary)";
-const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover) data-[disabled]:cursor-default data-[disabled]:opacity-60";
+const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--hover-acento) data-[disabled]:cursor-default data-[disabled]:opacity-60";
 
 function SpaceMenu({ workspaces, activeWorkspace, switchingTo, onSelectWorkspace, onCreateAgency, onOpenTeam }: Pick<TopBarProps, "workspaces" | "activeWorkspace" | "switchingTo" | "onSelectWorkspace" | "onCreateAgency" | "onOpenTeam">) {
   const shown = switchingTo ?? activeWorkspace;
@@ -62,7 +62,7 @@ function SpaceMenu({ workspaces, activeWorkspace, switchingTo, onSelectWorkspace
   };
   return (
     <Dropdown>
-      <Dropdown.Trigger aria-label={`Cambiar de espacio (actual: ${label})`} aria-busy={switchingTo !== undefined} className="flex h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-sm font-semibold whitespace-nowrap text-(--text-primary) hover:bg-(--glass-hover)">
+      <Dropdown.Trigger aria-label={`Cambiar de espacio (actual: ${label})`} aria-busy={switchingTo !== undefined} className="flex h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-sm font-semibold whitespace-nowrap text-(--text-primary) hover:bg-(--hover-acento)">
         <span aria-hidden="true" className="hidden size-5 items-center justify-center rounded-md bg-(--accent-primary) text-(--text-on-accent) sm:flex"><Icon name={isAgency ? "equipo" : "usuario"} className="size-3.5" /></span>
         <span className="max-w-40 truncate">{label}</span>
         <Icon name="chevrones" className="size-3.5 text-(--text-muted)" />
@@ -274,7 +274,7 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, panels, onTogglePan
           </ul>
         </ControlPopover>
         <Dropdown>
-          <Dropdown.Trigger aria-label="Paneles visibles" className={`flex cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent hover:bg-(--glass-hover) ${CONTROL}`}>
+          <Dropdown.Trigger aria-label="Paneles visibles" className={`flex cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent hover:bg-(--hover-acento) ${CONTROL}`}>
             <Icon name="ajustes" className="size-5" />
           </Dropdown.Trigger>
           <Dropdown.Popover placement="bottom end" className={MENU}>

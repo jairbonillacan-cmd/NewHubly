@@ -129,6 +129,18 @@
   --glass-radius-access-bar: 0.875rem; --glass-radius-access-card: 1.125rem; --container-access: 27.5rem;
 }
 @media (pointer: fine) { :root { --dock-control: 2rem; --frame-dock-h: 2.75rem; --rail-item: 2.25rem; } }
+/* Hover con el color de acento, leve; en oscuro un poco más presente para que se note. */
+:root { --hover-acento: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
+html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primary) 16%, transparent); }
+/* Editores sin borde (título y texto de la nota): el cursor ya marca dónde se escribe, sin marco de foco encima. */
+.hubly-editor:focus-visible { outline: none; }
+/* Control de opacidad: pista fina, relleno con el acento y un pomo claro con sombra suave. */
+.hubly-opacidad-pista { background-color: var(--glass-line-strong); }
+.hubly-opacidad-pomo { background-color: var(--accent-on-claro); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.28);
+  transition: box-shadow var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease); }
+.hubly-opacidad-pomo[data-hovered], .hubly-opacidad-pomo[data-dragging] { box-shadow: 0 0 0 4px var(--hover-acento), 0 1px 3px rgb(0 0 0 / 0.28); }
+.hubly-opacidad-pomo[data-dragging] { transform: scale(1.1); }
+.hubly-carril-asa:focus:not([data-focus-visible]) { outline: none; }
 
 /* Estilos de tema: variantes de claro u oscuro con contraste AA comprobado. Hubly claro y oscuro son los de siempre. */
 :root[data-theme="light"][data-estilo="papel"] { --surface-canvas: #F5F0E6; --surface-raised: #FFFCF6; --surface-subtle: #EFE8DA; --surface-interactive: #E6DDCB;
@@ -553,8 +565,6 @@ body {
 /* Punto «en vivo» de los fondos animados y muestras de lo transparente y lo sólido junto al control de opacidad. */
 @keyframes hubly-fondo-vivo { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.8); } }
 .hubly-fondo-vivo { box-shadow: 0 0 0 2px rgb(var(--glass-rgb) / 0.9); animation: hubly-fondo-vivo 1.6s ease-in-out infinite; }
-.hubly-opacidad-muestra { background-color: rgb(var(--glass-rgb) / 0.98); border: var(--border-width-thin) solid var(--glass-line-strong); }
-.hubly-opacidad-muestra-clara { background-color: rgb(var(--glass-rgb) / 0.35); }
 @media (prefers-reduced-motion: reduce) { .hubly-fondo-vivo { animation: none; } }
 /* Recorte de la foto de perfil (issue 150): el componente pone el tamaño natural y el encuadre en variables. */
 .hubly-recorte-visor { box-shadow: inset 0 0 0 2px var(--accent-primary-subtle); }

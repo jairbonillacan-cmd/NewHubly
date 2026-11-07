@@ -497,7 +497,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         </div>
       )}
       {chat && !chat.active && herramienta === "hoy" && <a href={chat.unread ? chat.unreadHref : chat.href}
-        className="hubly-glass relative z-10 flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-(--glass-hover)">
+        className="hubly-glass relative z-10 flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-(--hover-acento)">
         <Icon name="chat" className="size-5" />
         <span>{chat.unread === null ? "Abrir chat" : chat.unread === 0 ? "Chat al día" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
       </a>}
@@ -533,7 +533,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
             document.getElementById("panel-hoy")?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}>Hoy</Button>
           {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined}
-            className="flex min-h-11 items-center justify-center rounded-xl text-sm font-semibold hover:bg-(--glass-hover)">Chat</a>}
+            className="flex min-h-11 items-center justify-center rounded-xl text-sm font-semibold hover:bg-(--hover-acento)">Chat</a>}
           <Dropdown>
             <Dropdown.Trigger className="min-h-11 px-1 text-xs">Herramientas</Dropdown.Trigger>
             <Dropdown.Popover placement="top" className="hubly-pop-surface hubly-popover-scroll rounded-xl p-1">

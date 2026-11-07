@@ -108,7 +108,7 @@ export function panelesEnSeleccion(panels: readonly { id: string; rect: LienzoRe
 
 const NOT_DRAG = "button, a, input, textarea, select, [contenteditable='true'], [role='button'], [role='menuitem'], [role='switch'], [role='checkbox']";
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
-const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover)";
+const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--hover-acento)";
 const CONTROL = "size-(--dock-control) min-w-(--dock-control) text-(--text-secondary) data-[hovered]:text-(--text-primary)";
 const MODOS: { id: LayoutId; label: string; icon: IconName }[] = [
   { id: "libre", label: "Lienzo libre", icon: "libre" },
@@ -159,7 +159,7 @@ export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: Li
   return (
     <div role="toolbar" aria-label="Lienzo y vista" data-delay="3" className="hubly-glass hubly-enter relative flex h-(--frame-dock-h) shrink-0 items-center gap-0.5 rounded-(--glass-radius-access-card) px-2">
       <Dropdown>
-        <Dropdown.Trigger aria-label="Opciones del lienzo" className={`flex cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent hover:bg-(--glass-hover) ${CONTROL}`}>
+        <Dropdown.Trigger aria-label="Opciones del lienzo" className={`flex cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent hover:bg-(--hover-acento) ${CONTROL}`}>
           <Icon name="tuerca" className="size-5" />
         </Dropdown.Trigger>
         <Dropdown.Popover placement="top end" className={MENU}>
