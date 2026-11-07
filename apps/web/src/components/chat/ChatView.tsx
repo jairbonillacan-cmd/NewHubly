@@ -3,7 +3,7 @@
 import type { ChatConversation, ChatParticipant } from "@hubly/contracts";
 import { Alert, Button } from "@hubly/ui";
 import React, { useEffect, useRef, useState } from "react";
-import { Composer } from "./Composer";
+import { Composer, type ComposerProps } from "./Composer";
 import { ChannelForm, ConversationHeader } from "./ConversationHeader";
 import {
   ChatAvatar, DirectoryErrorBanner, MemberList, MissingNameBanner, conversationName, personName, type ChatViewCommand,
@@ -56,6 +56,17 @@ export interface ChatViewProps {
   onJumpToMessage?: (messageId: string) => void;
   onSendThreadReply?: (rootMessageId: string, body: string) => Promise<boolean | void> | boolean | void;
   onToggleReaction?: (messageId: string, emoji: string) => Promise<boolean | void> | boolean | void;
+  /* Compositor: menciones, adjuntos e indicador de escritura (se pasan tal cual a <Composer>). */
+  typingUserIds?: ComposerProps["typingUserIds"];
+  typingNames?: ComposerProps["typingNames"];
+  mentionedUserIds?: ComposerProps["mentionedUserIds"];
+  attachments?: ComposerProps["attachments"];
+  uploadProgress?: ComposerProps["uploadProgress"];
+  attachmentError?: ComposerProps["attachmentError"];
+  onMentionsChange?: ComposerProps["onMentionsChange"];
+  onAttachmentsChange?: ComposerProps["onAttachmentsChange"];
+  onTyping?: ComposerProps["onTyping"];
+  onSubmitWithExtras?: ComposerProps["onSubmitWithExtras"];
 }
 
 const control = "min-h-11";
@@ -119,7 +130,13 @@ function ConversationView({ props, conversation, people }: {
           </div>
         )}
         <Composer writable={conversation.writable} loading={props.loading} draft={props.draft}
-          sending={props.sending} failedSend={props.failedSend} onDraft={props.onDraft} onSend={props.onSend} />
+          sending={props.sending} failedSend={props.failedSend} onDraft={props.onDraft} onSend={props.onSend}
+          userId={props.userId} members={props.people}
+          typingUserIds={props.typingUserIds} typingNames={props.typingNames}
+          mentionedUserIds={props.mentionedUserIds} onMentionsChange={props.onMentionsChange}
+          attachments={props.attachments} onAttachmentsChange={props.onAttachmentsChange}
+          uploadProgress={props.uploadProgress} attachmentError={props.attachmentError}
+          onTyping={props.onTyping} onSubmitWithExtras={props.onSubmitWithExtras} />
       </section>
       {threadRoot && (
         <ThreadPanel rootMessage={threadRoot} replies={threadReplies} people={people} userId={props.userId}

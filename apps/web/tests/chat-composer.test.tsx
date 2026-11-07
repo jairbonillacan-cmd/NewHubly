@@ -1,4 +1,4 @@
-import type { ChatParticipant } from "@hubly/contracts";
+import type { ChatConversation, ChatParticipant } from "@hubly/contracts";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import React from "react";
@@ -7,9 +7,10 @@ import { describe, expect, it, vi } from "vitest";
 import { ChatAttachmentList, formatAttachmentBytes, type ChatAttachmentItem } from "../src/components/chat/ChatAttachmentView";
 import {
   Composer, MAX_CHAT_ATTACHMENT_BYTES, MAX_CHAT_ATTACHMENTS, TYPING_COOLDOWN_MS,
-  applyMentionSelection, detectMentionQuery, filterMentionCandidates, formatTypingIndicator,
+  applyMentionSelection, detectMentionQuery, filterMentionCandidates, formatTypingIndicator, revokePreviewUrl,
   uploadComposerAttachments, validateAndAddAttachments, type ComposerAttachmentDraft,
 } from "../src/components/chat/Composer";
+import { ChatView, type ChatViewProps } from "../src/components/chat/ChatView";
 import { ThreadPanel, type ThreadMessageView } from "../src/components/chat/ThreadPanel";
 
 const members: ChatParticipant[] = [
@@ -204,5 +205,62 @@ describe("Compositor del chat: @menciones, emojis, adjuntos, indicador escribien
       { url: "/api/chat/attachments", method: "POST", contentType: "application/json", isBinaryBody: false },
     ]);
     expect(progressSteps).toEqual([0, 50, 100]);
+  });
+});
+
+describe("Compositor conectado en ChatView y opciones de mención accesibles (issue 207)", () => {
+  const channel: ChatConversation = {
+    id: "general", kind: "channel", slug: "general", peerId: null, archived: false, writable: true, unread: false, changeCursor: 1,
+  };
+  const viewProps: ChatViewProps = {
+    workspaceName: "Agencia de prueba", userId: "u-self", canManage: false, canSend: true, unreadOnly: false,
+    conversations: [channel], people: members, currentId: channel.id, messages: [], loading: false,
+    hasOlder: false, loadingOlder: false, draft: "Hola @", sending: false, failedSend: false, error: null, notice: null,
+    onFilter: vi.fn(), onSelect: vi.fn(), onOlder: vi.fn(), onVisible: vi.fn(), onCommand: vi.fn(), onDraft: vi.fn(), onSend: vi.fn(),
+  };
+  const listbox = (html: string) => html.match(/<ul id="chat-mention-listbox"[\s\S]*?<\/ul>/)?.[0] ?? "";
+
+  it("ChatView pasa members y userId al compositor: al escribir @ aparecen los compañeros, sin la propia persona", () => {
+    const html = renderToStaticMarkup(<ChatView {...viewProps} />);
+    const box = listbox(html);
+    expect(box).toContain('role="listbox"');
+    expect(box).toContain("Ana López");
+    expect(box).toContain("Beto Ruiz");
+    expect(box).not.toContain("Jair Bonilla");
+    expect(html).toContain('aria-activedescendant="chat-mention-opt-u-ana"');
+  });
+
+  it("ChatView reenvía al compositor el indicador de escritura y el progreso de subida", () => {
+    const html = renderToStaticMarkup(<ChatView {...viewProps} draft="" typingUserIds={["u-ana"]} uploadProgress={40} />);
+    expect(html).toContain("Ana López está escribiendo…");
+    expect(html).toContain('aria-valuenow="40"');
+  });
+
+  it("las opciones del listbox no anidan controles interactivos (sin <button> dentro de role=option)", () => {
+    const html = renderToStaticMarkup(
+      <Composer writable loading={false} draft="@" sending={false} failedSend={false} userId="u-self" members={members} onDraft={vi.fn()} onSend={vi.fn()} />,
+    );
+    const box = listbox(html);
+    expect(box.match(/role="option"/g)).toHaveLength(3);
+    expect(box).not.toContain("<button");
+    expect(box).toMatch(/<li[^>]*role="option"[^>]*class="[^"]*cursor-pointer/);
+  });
+
+  it("revoca solo las vistas previas blob: al quitar adjuntos o limpiar tras enviar", () => {
+    const revoke = vi.fn();
+    const original = URL.revokeObjectURL;
+    URL.revokeObjectURL = revoke;
+    try {
+      revokePreviewUrl("blob:http://localhost:3101/abc");
+      revokePreviewUrl("https://storage.test/foto.png");
+      revokePreviewUrl(null);
+      expect(revoke).toHaveBeenCalledTimes(1);
+      expect(revoke).toHaveBeenCalledWith("blob:http://localhost:3101/abc");
+    } finally {
+      URL.revokeObjectURL = original;
+    }
+    const source = readFileSync(resolve(__dirname, "../src/components/chat/Composer.tsx"), "utf8");
+    expect(source).toMatch(/function removeAttachment[\s\S]*?revokeAttachmentPreview\(removed\)/);
+    expect(source).toMatch(/activeAttachments\.forEach\(revokeAttachmentPreview\);\s*setLocalAttachments\(\[\]\)/);
   });
 });
