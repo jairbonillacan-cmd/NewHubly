@@ -5,6 +5,7 @@ vi.mock("server-only", () => ({}));
 import { withUserContext } from "../src/context";
 import { getDb } from "../src/internal";
 import { DrizzleUserPreferencesRepository } from "../src/repositories";
+import { userPreferences } from "../src/schema";
 
 const sha256Hex = (raw: string): string => createHash("sha256").update(raw, "utf8").digest("hex");
 const prefs: Parameters<DrizzleUserPreferencesRepository["upsert"]>[1] = { wallpaper: "tinta", panelOpacity: 64, layoutMode: "side_by_side", visiblePanels: ["today", "pinned_notes"], theme: "dark" };
@@ -44,6 +45,17 @@ describe("Preferencias por persona con RLS (#83): solo las ve y las cambia su du
     });
     await expect(betoRepo.upsert(ana, prefs)).rejects.toThrow();
     expect(await new DrizzleUserPreferencesRepository(asUser(ana)).get(ana)).toMatchObject({ wallpaper: "tinta", panelOpacity: 90 });
+  });
+
+  it("cada fondo del esquema, ilustrados incluidos, se guarda y se relee igual (issue 238)", async () => {
+    const repo = new DrizzleUserPreferencesRepository(asUser(ana));
+    const wallpapers = userPreferences.wallpaper.enumValues;
+    expect(wallpapers).toContain("bosque-de-niebla");
+    for (const wallpaper of wallpapers) {
+      await repo.upsert(ana, { ...prefs, wallpaper });
+      expect((await repo.get(ana))?.wallpaper, wallpaper).toBe(wallpaper);
+    }
+    await repo.upsert(ana, { ...prefs, panelOpacity: 90, theme: "light" });
   });
 
   it("las restricciones de la tabla rechazan valores fuera del contrato", async () => {
