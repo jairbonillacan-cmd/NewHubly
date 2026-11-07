@@ -21,4 +21,15 @@ describe("Fondo ilustrado quieto o animado (issue 239)", () => {
     expect(hub).toContain("useFondoMovimiento()");
     expect(hub).toMatch(/<Wallpaper [^>]*animado=\{(?:fondoM|m)ovimiento === "animado"\}/);
   });
+
+  it("ofrece una sola rejilla de Ilustraciones con interruptor Con movimiento y viene quieto por defecto (issue 251)", () => {
+    const store = readFileSync(new URL("./fondoMovimiento.ts", import.meta.url), "utf8");
+    expect(store).toContain('stored === "animado" ? "animado" : "quieto"');
+    const dock = readFileSync(new URL("./Dock.tsx", import.meta.url), "utf8");
+    expect(dock).toContain('aria-label="Ilustraciones"');
+    expect(dock).toContain("Con movimiento");
+    expect(dock).not.toContain('aria-label="Estáticos"');
+    expect(dock).not.toContain('aria-label="Animados"');
+    expect(dock).not.toContain("hubly-fondo-vivo");
+  });
 });

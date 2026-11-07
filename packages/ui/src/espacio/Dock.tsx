@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Chip, Kbd, Popover, Slider, ToggleButton } from "@heroui/react";
+import { Button, Chip, Kbd, Popover, Slider, Switch, ToggleButton } from "@heroui/react";
 import { forwardRef, useId, useState, type FormEvent, type ReactNode } from "react";
 import { ColorArea, ColorField, ColorPicker, ColorSlider, ColorSwatch, ColorSwatchPicker, ColorSwatchPickerItem, ColorThumb, FileTrigger, Input, Radio, RadioGroup, SliderTrack, parseColor, type Color } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
@@ -92,7 +92,7 @@ export interface BackgroundPickerProps {
   placement?: "top" | "bottom end";
 }
 
-function WallpaperTile({ wallpaper, label, selected, vivo = false, onSelect }: { wallpaper: (typeof WALLPAPERS)[number]; label: string; selected: boolean; vivo?: boolean; onSelect: () => void }) {
+function WallpaperTile({ wallpaper, label, selected, onSelect }: { wallpaper: (typeof WALLPAPERS)[number]; label: string; selected: boolean; onSelect: () => void }) {
   return (
     <ToggleButton
       aria-label={label}
@@ -101,7 +101,6 @@ function WallpaperTile({ wallpaper, label, selected, vivo = false, onSelect }: {
       className="hubly-fondo-tile relative h-auto w-full min-w-0 rounded-xl border-2 border-transparent bg-transparent p-0.5 data-[hovered]:border-(--glass-line-strong) data-[selected]:border-(--accent-primary)"
     >
       <WallpaperSwatch fondo={wallpaper.id} className="h-12" />
-      {vivo && <span aria-hidden="true" className="hubly-fondo-vivo absolute right-2 bottom-2 size-2 rounded-full bg-(--accent-primary)" />}
     </ToggleButton>
   );
 }
@@ -115,14 +114,40 @@ const SUGERIDOS = ["--sugerido-1", "--sugerido-2", "--sugerido-3", "--sugerido-4
 const leerToken = (nombre: string) => (typeof document === "undefined" ? "" : getComputedStyle(document.documentElement).getPropertyValue(nombre).trim());
 const aColor = (valor: string) => { try { return parseColor(valor); } catch { return null; } };
 
+/** Saturación mínima (HSB, en %) del acento libre: por debajo, «Agregar» o «Crear pendiente» parecen desactivados (#251). */
+export const SATURACION_MINIMA_ACENTO = 35;
+
+/**
+ * Sube la saturación del color elegido hasta el mínimo, conservando su brillo y su tono. Un gris no tiene tono propio:
+ * se usa el que ya tenía el selector, para no teñirlo de rojo (el tono 0).
+ */
+export function conSaturacionMinima(next: Color, anterior: Color | null): Color {
+  const hsb = next.toFormat("hsb");
+  const saturacion = hsb.getChannelValue("saturation");
+  if (saturacion >= SATURACION_MINIMA_ACENTO) return next;
+  const tono = saturacion === 0 && anterior ? anterior.toFormat("hsb").getChannelValue("hue") : hsb.getChannelValue("hue");
+  return hsb.withChannelValue("hue", tono).withChannelValue("saturation", SATURACION_MINIMA_ACENTO);
+}
+
 /** Acento libre: área de saturación y brillo, tono, hexadecimal y sugeridos, con vista previa del texto encima. */
 function SelectorColor({ seleccionado, valor }: { seleccionado: boolean; valor: string }) {
   const inicial = aColor(valor) ?? aColor(leerToken("--accent-personalizado-inicial"));
   const [color, setColor] = useState<Color | null>(inicial);
   // El tono se ajusta para que se lea en el tema (acentoAccesible): se lee el que quedó aplicado para decírselo a la persona.
   const [aplicado, setAplicado] = useState(() => (seleccionado ? leerToken("--accent-custom") : ""));
-  const aplicar = (next: Color | null) => { if (!next) return; setColor(next); setAccentColor(next.toString("hex")); setAplicado(leerToken("--accent-custom")); };
+  const [subido, setSubido] = useState(false);
+  const aplicar = (next: Color | null) => {
+    if (!next) return;
+    const final = conSaturacionMinima(next, color);
+    setSubido(final !== next);
+    setColor(final);
+    setAccentColor(final.toString("hex"));
+    setAplicado(leerToken("--accent-custom"));
+  };
   const ajustado = seleccionado && aplicado.startsWith("#") && color !== null && aplicado.toLowerCase() !== color.toString("hex").toLowerCase();
+  const nota = subido
+    ? "Le dimos un poco más de color para que los botones no parezcan desactivados."
+    : ajustado ? `Ajustado a ${aplicado.toUpperCase()} para que se lea en este tema.` : "Si hace falta, Hubly ajusta el tono para que se lea.";
   const sugeridos = SUGERIDOS.map(leerToken).filter((hex) => hex.startsWith("#"));
   return (
     <Popover>
@@ -154,9 +179,7 @@ function SelectorColor({ seleccionado, valor }: { seleccionado: boolean; valor: 
                     </ColorField>
                     <span className="flex h-8 shrink-0 items-center rounded-lg bg-(--accent-primary) px-2 text-xs font-semibold text-(--text-on-accent)">Aa</span>
                   </div>
-                  <p aria-live="polite" className="m-0 text-xs text-(--text-muted)">
-                    {ajustado ? `Ajustado a ${aplicado.toUpperCase()} para que se lea en este tema.` : "Si hace falta, Hubly ajusta el tono para que se lea."}
-                  </p>
+                  <p aria-live="polite" className="m-0 text-xs text-(--text-muted)">{nota}</p>
                 </div>
                 {sugeridos.length > 0 && (
                   <ColorSwatchPicker aria-label="Colores sugeridos" className="grid grid-cols-4 gap-1.5">
@@ -253,20 +276,20 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
           <TemaYAcento />
           <span className="flex justify-between"><span className={SECCION}>Fondo</span><span className="text-xs text-(--text-muted)">{nombreFondo}</span></span>
           <div className="hubly-scroll -mx-1 flex max-h-80 flex-col gap-3 overflow-x-hidden overflow-y-auto px-1">
-            <span className="text-xs text-(--text-muted)">Estáticos</span>
-            <div role="group" aria-label="Estáticos" className="grid grid-cols-4 gap-1.5">
+            {/* Una sola rejilla de ilustraciones; si se mueven o no lo decide el interruptor, apagado por defecto (#251, movimiento.md). */}
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-xs text-(--text-muted)">Ilustraciones</span>
+              <Switch size="sm" isSelected={movimiento === "animado"} onChange={(on) => setMovimiento(on ? "animado" : "quieto")}>
+                <Switch.Content className="flex min-h-11 flex-row items-center gap-2 text-xs text-(--text-secondary)">
+                  Con movimiento
+                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                </Switch.Content>
+              </Switch>
+            </span>
+            <div role="group" aria-label="Ilustraciones" className="grid grid-cols-4 gap-1.5">
               {WALLPAPERS_ILUSTRADOS.map((wallpaper) => (
                 <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={wallpaper.claro}
-                  selected={prefs.fondo === wallpaper.id && (!ANIMADOS.has(wallpaper.id) || movimiento === "quieto")}
-                  onSelect={() => { setMovimiento("quieto"); onChange({ fondo: wallpaper.id }); }} />
-              ))}
-            </div>
-            <span className="text-xs text-(--text-muted)">Animados</span>
-            <div role="group" aria-label="Animados" className="grid grid-cols-4 gap-1.5">
-              {WALLPAPERS_ILUSTRADOS.filter((wallpaper) => ANIMADOS.has(wallpaper.id)).map((wallpaper) => (
-                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={`${wallpaper.claro}, animado`} vivo
-                  selected={prefs.fondo === wallpaper.id && movimiento === "animado"}
-                  onSelect={() => { setMovimiento("animado"); onChange({ fondo: wallpaper.id }); }} />
+                  selected={prefs.fondo === wallpaper.id} onSelect={() => onChange({ fondo: wallpaper.id })} />
               ))}
             </div>
             <span className="text-xs text-(--text-muted)">Patrones</span>

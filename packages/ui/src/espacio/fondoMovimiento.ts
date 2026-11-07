@@ -10,7 +10,8 @@ function leer(): FondoMovimiento {
   if (actual) return actual;
   let stored: string | null = null;
   try { stored = typeof window === "undefined" ? null : window.localStorage.getItem(KEY); } catch { /* sin almacenamiento */ }
-  actual = stored === "quieto" ? "quieto" : "animado";
+  // Quieto por defecto: el fondo solo se mueve si la persona activa «Con movimiento» (movimiento.md, #251).
+  actual = stored === "animado" ? "animado" : "quieto";
   return actual;
 }
 
@@ -24,7 +25,7 @@ export function useFondoMovimiento() {
   const value = useSyncExternalStore(
     (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     leer,
-    () => "animado" as FondoMovimiento,
+    () => "quieto" as FondoMovimiento,
   );
   return [value, setFondoMovimiento] as const;
 }
