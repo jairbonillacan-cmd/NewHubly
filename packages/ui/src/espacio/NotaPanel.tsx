@@ -94,7 +94,7 @@ export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, o
           readOnly={readOnly}
           onChange={(event) => { setTitle(event.target.value); schedule(event.target.value, content); }}
           placeholder="Título"
-          className="w-full border-0 bg-transparent p-0 text-lg font-semibold text-(--text-primary) outline-none placeholder:text-(--text-muted)"
+          className="hubly-editor w-full border-0 bg-transparent p-0 text-lg font-semibold text-(--text-primary) outline-none placeholder:text-(--text-muted)"
         />
         <label className="sr-only" htmlFor="nota-contenido">Contenido de la nota</label>
         <textarea
@@ -104,7 +104,7 @@ export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, o
           onChange={(event) => { setContent(event.target.value); schedule(title, event.target.value); }}
           placeholder="Escribe aquí…"
           rows={6}
-          className="min-h-32 w-full grow resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-(--text-secondary) outline-none placeholder:text-(--text-muted)"
+          className="hubly-editor min-h-32 w-full grow resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-(--text-secondary) outline-none placeholder:text-(--text-muted)"
         />
         {linkedTodos.length > 0 && (
           <ul aria-label="Pendientes de esta nota" className="m-0 flex list-none flex-col gap-1 border-t border-(--glass-line) p-0 pt-3">

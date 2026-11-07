@@ -171,7 +171,7 @@ export function ChatView(props: ChatViewProps) {
 
   return <div className="flex min-h-0 min-w-0 grow flex-col gap-3">
     {conversation && <h1 className="sr-only lg:hidden">Chat</h1>}
-    <header className={`hubly-glass shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl p-3 ${conversation ? "hidden lg:flex" : "flex"}`}>
+    <header className={`hubly-glass hubly-corto-sr shrink-0 flex-wrap items-center justify-between gap-2 rounded-2xl p-3 ${conversation ? "hidden lg:flex" : "flex"}`}>
       <div className="flex flex-wrap items-center gap-2">
         <div>
           <p className={sectionLabel}>{props.workspaceName}</p>
@@ -199,18 +199,22 @@ export function ChatView(props: ChatViewProps) {
     </Alert>}
     <span role="status" className="sr-only">{props.notice}</span>
     <div className="grid min-h-0 grow grid-rows-[minmax(0,1fr)] gap-3 lg:grid-cols-[minmax(var(--chat-list-min),var(--chat-list-max))_minmax(0,1fr)]">
-      <aside className={`hubly-glass min-h-0 min-w-0 overflow-y-auto rounded-2xl p-3 ${conversation ? "hidden lg:block" : ""}`} aria-labelledby="chat-list-title">
-        <h2 ref={listHeading} id="chat-list-title" tabIndex={-1} className="mb-2 text-base font-semibold">Conversaciones</h2>
-        <div className="flex flex-wrap gap-1 pb-2">
-          <Button size="sm" variant={props.unreadOnly ? "ghost" : "secondary"} className={control} aria-pressed={!props.unreadOnly} onPress={() => props.onFilter(false)}>Todas</Button>
-          <Button size="sm" variant={props.unreadOnly ? "secondary" : "ghost"} className={control} aria-pressed={props.unreadOnly} onPress={() => props.onFilter(true)}>Sin leer {unreadCount}</Button>
+      <aside className={`hubly-glass hubly-corto-compacto min-h-0 min-w-0 overflow-y-auto rounded-2xl p-3 ${conversation ? "hidden lg:block" : ""}`} aria-labelledby="chat-list-title">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
+          <h2 ref={listHeading} id="chat-list-title" tabIndex={-1} className="text-base font-semibold">Conversaciones</h2>
+          <div className="flex flex-wrap gap-1">
+            <Button size="sm" variant={props.unreadOnly ? "ghost" : "secondary"} className={control} aria-pressed={!props.unreadOnly} onPress={() => props.onFilter(false)}>Todas</Button>
+            <Button size="sm" variant={props.unreadOnly ? "secondary" : "ghost"} className={control} aria-pressed={props.unreadOnly} onPress={() => props.onFilter(true)}>Sin leer {unreadCount}</Button>
+          </div>
         </div>
-        {props.canManage && <ChannelForm onCommand={props.onCommand} />}
+        <div className="flex flex-wrap items-start gap-x-2 [&>details[open]]:w-full">
+          {props.canManage && <ChannelForm onCommand={props.onCommand} />}
+        </div>
         <MemberList people={props.people} userId={props.userId} canSend={props.canSend} onCommand={props.onCommand} />
         {(["channel", "direct"] as const).map((kind) => {
           const group = rows.filter((entry) => entry.kind === kind);
           if (!group.length) return null;
-          return <section key={kind} className="mt-3">
+          return <section key={kind} className="mt-2">
             <h3 className={sectionLabel}>{kind === "channel" ? "Canales" : "Mensajes directos"}</h3>
             <ul className="mt-1 space-y-1">{group.map((entry) => {
               const name = conversationName(entry, people);

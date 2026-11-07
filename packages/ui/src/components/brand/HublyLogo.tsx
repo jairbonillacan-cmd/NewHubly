@@ -43,19 +43,23 @@ function SymbolModules() {
   );
 }
 
+/** Letras de «Hubly Pop Editorial» (viewBox 0 0 402 132). El color sale de `currentColor`, que el logo toma de `--logo-color`. */
+const WORDMARK_VIEWBOX = "0 0 402 132";
+const WORDMARK_RATIO = 402 / 132;
+
 function WordmarkLetters() {
   return (
-    <g fill="var(--text-primary, currentColor)" fillRule="evenodd">
+    <g fill="currentColor" fillRule="evenodd">
       {/* H */}
-      <path d="M448 0 H472 Q480 0 480 8 V78 H552 V8 Q552 0 560 0 H584 Q592 0 592 8 V190 Q592 198 584 198 H560 Q552 198 552 190 V114 H480 V190 Q480 198 472 198 H448 Q440 198 440 190 V8 Q440 0 448 0 Z" />
+      <path d="M4 16 Q3 11 12 10 Q21 8 30 3 Q38 0 38 9 V45 Q48 35 61 35 Q85 35 85 58 V79 Q85 86 90 87 Q96 89 94 94 Q94 98 87 98 H61 Q54 98 54 94 Q53 90 58 87 Q62 85 62 79 V61 Q62 53 54 53 Q45 53 38 62 V78 Q38 85 43 87 Q49 90 47 94 Q47 98 40 98 H12 Q4 98 4 93 Q4 90 10 87 Q15 85 15 78 V27 Q15 21 10 21 Q5 21 4 16 Z" />
       {/* u */}
-      <path d="M625 53 H649 Q657 53 657 61 V142 Q657 166 683 166 Q709 166 713 142 V61 Q713 53 721 53 H745 Q753 53 753 61 V190 Q753 198 745 198 H723 Q715 198 715 190 V180 Q699 201 671 201 Q617 201 617 146 V61 Q617 53 625 53 Z" />
+      <path d="M97 39 L120 35 Q126 34 126 40 V72 Q126 81 135 81 Q144 81 149 73 V51 Q149 46 144 46 Q139 46 139 42 Q139 38 145 38 L166 35 Q172 34 172 40 V80 Q172 86 177 87 Q182 88 181 93 Q181 98 174 98 H156 Q150 98 149 92 Q142 100 128 100 Q103 100 103 76 V52 Q103 47 98 46 Q92 46 92 43 Q92 40 97 39 Z" />
       {/* b */}
-      <path d="M784 0 H808 Q816 0 816 8 V68 Q832 50 858 50 Q914 50 914 125 Q914 201 858 201 Q830 201 814 182 V190 Q814 198 806 198 H784 Q776 198 776 190 V8 Q776 0 784 0 Z M846 84 Q816 84 816 125 Q816 167 846 167 Q874 167 874 125 Q874 84 846 84 Z" />
+      <path d="M185 15 Q185 11 192 10 Q201 9 210 4 Q218 1 218 9 V43 Q227 35 241 35 Q266 35 269 61 Q271 91 251 98 Q232 105 216 91 L215 94 Q213 98 208 98 H192 Q185 98 185 93 Q185 90 191 87 Q195 85 195 79 V28 Q195 22 191 21 Q185 21 185 15 Z M228 53 Q218 56 217 69 Q217 82 228 84 Q240 86 243 72 Q246 57 235 53 Q232 52 228 53 Z" />
       {/* l */}
-      <path d="M930 0 H994 Q1002 0 1002 8 V164 H1035 Q1043 164 1043 172 V190 Q1043 198 1035 198 H930 Q922 198 922 190 V172 Q922 164 930 164 H962 V34 H930 Q922 34 922 26 V8 Q922 0 930 0 Z" />
+      <path d="M275 15 Q275 11 282 10 Q292 8 299 4 Q306 1 306 9 V76 Q306 86 312 88 Q318 90 318 94 Q317 98 310 98 H281 Q273 98 273 93 Q274 90 280 87 Q284 85 284 79 V28 Q284 22 280 21 Q275 21 275 15 Z" />
       {/* y */}
-      <path d="M1054 53 H1080 Q1087 53 1090 60 L1123 152 L1156 60 Q1159 53 1166 53 H1190 Q1199 53 1195 62 L1133 224 Q1117 264 1076 264 H1060 Q1052 264 1052 256 V238 Q1052 230 1060 230 H1073 Q1093 230 1101 208 L1105 197 L1047 62 Q1043 53 1054 53 Z" />
+      <path d="M320 42 Q320 37 327 37 H353 Q360 37 360 42 Q360 45 355 48 Q352 51 354 56 L364 76 L373 54 Q375 49 370 47 Q366 45 367 41 Q367 37 373 37 H394 Q400 37 400 42 Q400 46 394 48 Q390 50 388 56 L367 105 Q356 129 337 129 Q323 129 320 120 Q317 111 325 108 Q331 105 337 110 Q343 115 350 106 Q353 102 354 99 L332 56 Q329 50 325 48 Q320 47 320 42 Z" />
     </g>
   );
 }
@@ -85,6 +89,7 @@ export function HublySymbol({
   );
 }
 
+/** Logo «Hubly Pop Editorial»: SVG en línea que se ajusta por altura sin deformarse y toma su color de `--logo-color`. */
 export function HublyWordmark({
   height = 28,
   decorative = false,
@@ -92,22 +97,19 @@ export function HublyWordmark({
   className,
   style,
 }: HublyWordmarkProps) {
-  const width = Math.round((height * 1210) / 264);
+  const width = Math.round(height * WORDMARK_RATIO);
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 1210 264"
+      viewBox={WORDMARK_VIEWBOX}
       width={width}
       height={height}
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : ariaLabel}
       aria-hidden={decorative ? "true" : undefined}
-      className={className}
+      className={`hubly-logo ${className ?? ""}`.trim()}
       style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0, ...style }}
     >
-      <g aria-hidden="true" transform="translate(0, 6)">
-        <SymbolModules />
-      </g>
       <WordmarkLetters />
     </svg>
   );
@@ -164,7 +166,7 @@ export function HubiWordmark({ tamano = "md", className }: HubiWordmarkProps) {
   return (
     <span role="img" aria-label="Hubly" className={`hubly-hubi-wordmark inline-flex items-center gap-2 ${className ?? ""}`}>
       <HubiFace className={size.face} />
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="436 -4 768 272" aria-hidden="true" className={`w-auto shrink-0 ${size.letters}`}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox={WORDMARK_VIEWBOX} aria-hidden="true" className={`hubly-logo w-auto shrink-0 ${size.letters}`}>
         <WordmarkLetters />
       </svg>
     </span>

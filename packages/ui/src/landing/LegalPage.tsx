@@ -46,7 +46,7 @@ export function LegalPage({ eyebrow, title, intro, sections, pose }: LegalPagePr
         ))}
         <nav aria-label="Navegación legal" className="flex flex-wrap gap-2 pt-4">
           <a href="/" className={buttonLinkClass("secondary", "md")}>Volver al inicio</a>
-          <a href="/hoy" className={buttonLinkClass("ghost", "md")}>Ir a Hoy</a>
+          <a href="/hub" className={buttonLinkClass("ghost", "md")}>Ir a tu Hub</a>
         </nav>
       </main>
       <LandingFooter />

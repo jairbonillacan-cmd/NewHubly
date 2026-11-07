@@ -303,7 +303,7 @@ export function Composer({
       setDragging(false);
       if (attachmentsEnabled) handleFiles(Array.from(event.dataTransfer?.files ?? []));
     }}
-    className={`relative shrink-0 border-t border-(--border-default) p-3 ${dragging ? "bg-(--accent-primary-subtle)" : ""}`}>
+    className={`hubly-corto-compacto relative shrink-0 border-t border-(--border-default) p-3 ${dragging ? "bg-(--accent-primary-subtle)" : ""}`}>
     {typingText && <div role="status" aria-live="polite" className="mb-1.5 flex items-center gap-2 text-xs text-(--text-secondary)">
       <span aria-hidden="true" className="inline-flex items-center gap-1">
         <span className="hubly-typing-dot" />
@@ -376,7 +376,7 @@ export function Composer({
         if (mentionedUserIds === undefined) setLocalMentions([]);
       }}>
       <label className="min-w-0">
-        <span className="mb-1 block text-sm font-semibold">Mensaje</span>
+        <span className="hubly-corto-sr mb-1 block text-sm font-semibold">Mensaje</span>
         {/* Mientras se envía el campo queda en solo lectura, no deshabilitado, para que el foco siga en el compositor. */}
         <TextArea ref={composer} fullWidth rows={2} value={draft} readOnly={sending} aria-busy={sending} maxLength={4000}
           aria-autocomplete="list" aria-controls={mentionOpen ? "chat-mention-listbox" : undefined}
@@ -390,7 +390,7 @@ export function Composer({
               handleFiles(pasted);
             }
           }}
-          placeholder="Escribe un mensaje…" />
+          placeholder="Escribe un mensaje…" className="hubly-corto-entrada" />
       </label>
       <div className="flex items-center justify-end gap-2">
         {attachmentsEnabled && <>

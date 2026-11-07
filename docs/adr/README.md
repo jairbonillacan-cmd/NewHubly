@@ -14,6 +14,8 @@ Cada decisión relevante tiene un ADR breve. Un ADR aceptado no se edita: se ree
 | [0008](0008-fondo-propio-storage-privado.md) | «Tu imagen»: fondo propio en Storage privado, sin metadatos y con URL firmada | Propuesto |
 | [0010](0010-chat-interno-de-agencia.md) | Chat interno de agencia | Aceptado (enmendado por [0012](0012-chat-agencia-2.md)) |
 | [0012](0012-chat-agencia-2.md) | Chat de agencia 2.0 | Propuesto |
+| [0013](0013-rama-produccion.md) | Rama `produccion`: integración en `main` y publicación controlada | Propuesto |
+| [0014](0014-ilustraciones-de-fondo-generadas-con-ia.md) | Ilustraciones de fondo generadas con IA | Aceptado |
 
 ## Plantilla
 

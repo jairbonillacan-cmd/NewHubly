@@ -1,3 +1,4 @@
+import { fondoIlustrado } from "./fondos";
 import type { WallpaperId } from "./preferencias";
 
 // Las curvas se calculan una sola vez al cargar el módulo, no en cada render (#85, rendimiento).
@@ -11,7 +12,7 @@ const CONTOUR_PATHS = Array.from({ length: 24 }, (_, k) => {
   return { d, accent: k % 5 === 2 };
 });
 
-const WALLPAPER_BG: Record<WallpaperId, string> = {
+const WALLPAPER_BG: Partial<Record<WallpaperId, string>> = {
   contornos: "bg-(--wallpaper-contornos)",
   patron: "bg-(--wallpaper-patron)",
   tinta: "bg-(--wallpaper-tinta)",
@@ -23,6 +24,9 @@ const WALLPAPER_BG: Record<WallpaperId, string> = {
   arena: "bg-(--wallpaper-arena)",
   imagen: "bg-(--wallpaper-grafito)",
 };
+
+/** Los fondos ilustrados no tienen color propio: mientras carga la imagen se ve grafito. */
+const bgDe = (fondo: WallpaperId) => WALLPAPER_BG[fondo] ?? "bg-(--wallpaper-grafito)";
 
 /** Fondos dibujados con un patrón SVG; el selector reutiliza los mismos patrones en sus miniaturas. */
 const PATTERN_ID: Partial<Record<WallpaperId, string>> = {
@@ -69,7 +73,7 @@ function PatternDefs() {
 }
 
 /** Fondo personal del espacio: contornos, patrones, aurora o color liso. Solo lo ve la persona (#75, sección 3; issue 134). */
-export function Wallpaper({ fondo, imagenUrl, preview }: { fondo: WallpaperId; imagenUrl?: string | null | undefined; preview?: "light" | "dark" }) {
+export function Wallpaper({ fondo, imagenUrl, preview, animado = true }: { fondo: WallpaperId; imagenUrl?: string | null | undefined; preview?: "light" | "dark"; animado?: boolean }) {
   if (preview) {
     const background = fondo === "tinta" ? "bg-(--landing-swatch-mist)" : preview === "dark" ? "bg-(--landing-swatch-dark)" : "bg-(--landing-swatch-light)";
     return (
@@ -86,8 +90,19 @@ export function Wallpaper({ fondo, imagenUrl, preview }: { fondo: WallpaperId; i
   }
 
   const pattern = PATTERN_ID[fondo];
+  const ilustrado = fondoIlustrado(fondo);
   return (
-    <div aria-hidden="true" className={`hubly-wallpaper pointer-events-none fixed inset-0 -z-10 overflow-hidden ${WALLPAPER_BG[fondo]}`}>
+    <div aria-hidden="true" className={`hubly-wallpaper pointer-events-none fixed inset-0 -z-10 overflow-hidden ${bgDe(fondo)}`}>
+      {ilustrado && (
+        <>
+          {/* La versión animada solo se descarga si la persona no pidió reducir el movimiento. */}
+          <picture>
+            {ilustrado.animado && animado && <source media="(prefers-reduced-motion: no-preference)" srcSet={`/fondos/${ilustrado.id}-animado.webp`} type="image/webp" />}
+            <img src={`/fondos/${ilustrado.id}.webp`} alt="" decoding="async" className="absolute inset-0 size-full object-cover" />
+          </picture>
+          <span className="absolute inset-0 bg-(--wallpaper-image-veil)" />
+        </>
+      )}
       {fondo === "imagen" && imagenUrl && (
         <>
           <img src={imagenUrl} alt="" className="absolute inset-0 size-full object-cover" />
@@ -116,10 +131,12 @@ export function Wallpaper({ fondo, imagenUrl, preview }: { fondo: WallpaperId; i
 }
 
 /** Miniatura de cada fondo para el selector. */
-export function WallpaperSwatch({ fondo }: { fondo: WallpaperId }) {
+export function WallpaperSwatch({ fondo, className = "h-14" }: { fondo: WallpaperId; className?: string }) {
   const pattern = PATTERN_ID[fondo];
+  const ilustrado = fondoIlustrado(fondo);
   return (
-    <span aria-hidden="true" className={`relative block h-14 w-full overflow-hidden rounded-lg border border-(--glass-line-strong) ${WALLPAPER_BG[fondo]}`}>
+    <span aria-hidden="true" className={`relative block ${className} w-full overflow-hidden rounded-lg border border-(--glass-line-strong) ${bgDe(fondo)}`}>
+      {ilustrado && <img src={`/fondos/${ilustrado.id}-mini.webp`} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />}
       {fondo === "contornos" && (
         <svg viewBox="0 0 120 56" preserveAspectRatio="none" className="absolute inset-0 size-full">
           <path d="M0,14 C30,4 60,24 120,10 M0,30 C35,20 70,40 120,26 M0,46 C40,36 80,56 120,42" fill="none" stroke="var(--wallpaper-line-accent)" strokeWidth="1" />

@@ -80,7 +80,7 @@ export function MemberList({ people, userId, canSend, onCommand }: {
         onSelectionChange={(key) => setSelected(typeof key === "string" ? key : null)} className="w-full">
         <Label className="mb-1 text-xs">Persona</Label>
         <Select.Trigger className="min-h-11 w-full"><Select.Value /><Select.Indicator /></Select.Trigger>
-        <Select.Popover>
+        <Select.Popover className="hubly-pop-surface hubly-popover-scroll rounded-xl p-1 text-(--text-primary)">
           <ListBox>
             {eligible.map((person) => {
               const name = personName(person.id, person);

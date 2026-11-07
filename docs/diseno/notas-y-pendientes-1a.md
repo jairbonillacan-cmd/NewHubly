@@ -53,7 +53,7 @@ Ningún PR de interfaz se aprueba si no cumple los ocho puntos siguientes:
      - Nada de texto con degradado.
      - Nada de sombras o brillos de color, ni bordes neón. Las sombras son neutras y suaves (`--bento-card-shadow`).
      - Nada de manchas o blobs de color decorativos.
-     - Un solo color de acento, el azul tinta del #52, y solo en acciones, foco, vista activa y datos destacados. Los colores de estado, solo en mensajes y estados.
+     - Un color de acento a la vez y solo en acciones, foco, vista activa y datos destacados. El predeterminado es el azul tinta del #52. Desde #239 la persona puede elegir otro de los acentos de Apariencia o uno propio, que Hubly ajusta para que cumpla el contraste y no parezca desactivado (decisión del dueño, #250). Los colores de estado, solo en mensajes y estados.
    - **Espaciado y tamaño**
      - Todo en la escala de `--space-*` (rejilla de 4 px). Valores fuera de la escala solo para centrar con exactitud dentro de un control pequeño, y justificados.
      - Los elementos del mismo tipo comparten tamaño, padding y radio: tarjetas del bento, píldoras, botones de una misma fila.

@@ -102,7 +102,7 @@ export function ConversationHeader({
     }
   }
 
-  return <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-(--border-default) px-3 py-2.5">
+  return <header className="hubly-corto-compacto flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-(--border-default) px-3 py-2.5">
     <div className="min-w-0">
       <Button variant="ghost" size="sm" className={`${control} lg:hidden`} onPress={() => onSelect(null)}>
         <span aria-hidden="true">←</span> Conversaciones
@@ -116,7 +116,7 @@ export function ConversationHeader({
           <span>{statusLabel[peer.status]}</span>
         </span>}
       </div>
-      <p className="flex flex-wrap items-center gap-2 text-xs text-(--text-secondary)">
+      <p className="hubly-corto-sr flex flex-wrap items-center gap-2 text-xs text-(--text-secondary)">
         <span>{conversation.archived ? "Canal archivado" : conversation.kind === "channel" ? "Canal de la agencia" : "Conversación privada"}</span>
         {conversation.kind === "channel" && totalMembers > 0 && <span>· {totalMembers} {totalMembers === 1 ? "miembro" : "miembros"}</span>}
         {conversation.kind === "channel" && onlineCount > 0 && <span className="inline-flex items-center gap-1">

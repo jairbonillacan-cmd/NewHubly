@@ -58,12 +58,12 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
     syncBrowserTimeZoneCookie();
     const search = window.location?.search ?? "";
     setLinkNotice(linkErrorMessage(search));
-    // «Crear cuenta» de la barra y del landing llega con ?modo=registro (issue 129).
-    if (new URLSearchParams(search).get("modo") === "registro") setMode("signup");
+    // El aviso ya está en pantalla: se quita ?error= para que la URL quede limpia y recargar no lo repita (#212).
+    if (new URLSearchParams(search).has("error")) window.history.replaceState(window.history.state, "", window.location.pathname);
   }, []);
   // Una cuenta nueva sin confirmación por correo entra directo a Hoy, también con la bienvenida.
   const navigate = (wsId: string | null, welcome = false) =>
-    onAuthenticated ? onAuthenticated(wsId) : (typeof window !== "undefined" && window.location.assign(welcome ? "/hoy?bienvenida=1" : "/hoy"));
+    onAuthenticated ? onAuthenticated(wsId) : (typeof window !== "undefined" && window.location.assign(welcome ? "/hub?bienvenida=1" : "/hub"));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +114,7 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
   // la sesión y se entra sola. La otra pestaña ya mostró la bienvenida, así que aquí se va a Hoy sin ella.
   const checkConfirmed = async (manual: boolean) => {
     const confirmed = await hasActiveSessionAction().catch(() => false);
-    if (confirmed) window.location.assign("/hoy");
+    if (confirmed) window.location.assign("/hub");
     else if (manual) setNotConfirmedYet(true);
   };
   React.useEffect(() => {

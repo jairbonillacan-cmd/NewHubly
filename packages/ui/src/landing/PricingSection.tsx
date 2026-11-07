@@ -30,7 +30,7 @@ export const PLANES: readonly Plan[] = [
       { texto: "Tu fondo y el modo oscuro", estado: "disponible" },
       { texto: "Descargas todo cuando quieras", estado: "disponible" },
     ],
-    cta: { href: "/login?modo=registro", label: "Crear cuenta" },
+    cta: { href: "/registro", label: "Crear cuenta" },
   },
   {
     id: "equipo", nombre: "Equipo", para: "Para equipos de redes que trabajan juntos.", destacado: true,
@@ -41,7 +41,7 @@ export const PLANES: readonly Plan[] = [
       { texto: "Quién edita y quién solo ve", estado: "pronto" },
       { texto: "Notas compartidas con la agencia", estado: "pronto" },
     ],
-    cta: { href: "/login?modo=registro", label: "Empieza con Personal" },
+    cta: { href: "/registro", label: "Empieza con Personal" },
   },
   {
     id: "agencia", nombre: "Agencia", para: "Para agencias con varios clientes.",
@@ -53,7 +53,7 @@ export const PLANES: readonly Plan[] = [
       { texto: "El cliente aprueba con un enlace", estado: "proximamente" },
       { texto: "El reporte del mes de cada cliente", estado: "proximamente" },
     ],
-    cta: { href: "/login?modo=registro", label: "Empieza con Personal" },
+    cta: { href: "/registro", label: "Empieza con Personal" },
   },
 ];
 

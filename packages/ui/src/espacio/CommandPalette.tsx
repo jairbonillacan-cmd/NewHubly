@@ -132,10 +132,10 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
   const activeId = options[active] ? `${listId}-${options[active].key}` : undefined;
 
   return (
-    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable className="hubly-palette-overlay fixed inset-0 z-50 flex items-start justify-center bg-(--glass-hover) px-3 pt-20 backdrop-blur-sm">
-      <Modal className="hubly-palette w-full max-w-2xl">
-        <Dialog aria-label="Buscar o ejecutar" className="hubly-pop-surface flex max-h-160 flex-col overflow-hidden rounded-3xl text-(--text-primary) outline-none">
-          <div className="flex items-center gap-4 border-b border-(--glass-line) px-6">
+    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable className="hubly-palette-overlay hubly-modal-overlay fixed inset-0 z-50 bg-(--glass-hover) backdrop-blur-sm">
+      <Modal className="hubly-palette hubly-modal max-w-2xl">
+        <Dialog aria-label="Buscar o ejecutar" className="hubly-pop-surface flex flex-col overflow-hidden rounded-3xl text-(--text-primary) outline-none">
+          <div className="flex shrink-0 items-center gap-4 border-b border-(--glass-line) px-6">
             <Icon name="buscar" className="size-6 shrink-0 text-(--text-muted)" strokeWidth={2.25} />
             <input
               autoFocus
@@ -153,7 +153,7 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
             />
             <Kbd className="hidden sm:inline-flex"><Kbd.Abbr keyValue="ctrl" /><Kbd.Content>K</Kbd.Content></Kbd>
           </div>
-          <ul ref={listRef} id={listId} role="listbox" aria-label="Resultados" className="m-0 min-h-0 grow list-none overflow-y-auto p-0 pb-2">
+          <ul ref={listRef} id={listId} role="listbox" aria-label="Resultados" className="hubly-sin-barra m-0 min-h-0 grow list-none overflow-y-auto p-0 pb-2">
             {groups.map(({ group, items }) =>
               items.length === 0 ? null : (
                 <li key={group} role="presentation">
@@ -190,7 +190,7 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
               </li>
             )}
           </ul>
-          <div aria-hidden="true" className="flex items-center gap-4 border-t border-(--glass-line) bg-(--glass-hover) px-6 py-3 text-xs text-(--text-secondary)">
+          <div aria-hidden="true" className="flex shrink-0 items-center gap-4 border-t border-(--glass-line) bg-(--glass-hover) px-6 py-3 text-xs text-(--text-secondary)">
             <span className="flex items-center gap-1.5"><Kbd><Kbd.Content>↑</Kbd.Content></Kbd><Kbd><Kbd.Content>↓</Kbd.Content></Kbd> Navegar</span>
             <span className="flex items-center gap-1.5"><Kbd><Kbd.Content>↵</Kbd.Content></Kbd> Abrir</span>
             <button type="button" tabIndex={-1} onClick={close} className="ml-auto flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-xs text-(--text-secondary)"><Kbd><Kbd.Content>Esc</Kbd.Content></Kbd> Cerrar</button>

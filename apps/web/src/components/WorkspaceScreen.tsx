@@ -11,6 +11,7 @@ import {
   type WorkspaceInvitationSummary, type WorkspaceMemberSummary, type WorkspaceNote, type WorkspaceSummary, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
 import { signOutAction } from "../actions/auth";
+import { createLatestWins } from "./latest-wins";
 import { ChatScreen, syncDocumentTitleMentions } from "./chat/ChatScreen";
 import { ChatRequestError, agencyExportHref, chatTransport } from "./chat/transport";
 import { fromEspacioPreferencias, toEspacioPreferencias } from "./preferences";
@@ -179,6 +180,9 @@ export function WorkspaceScreen({
   }, [wsId, chatAvailable, chatMode]);
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<ActionErrorState | null>(initialActionError);
+  // Espacio al que se está cambiando (#215): mientras llega, la pantalla no muestra datos del anterior. Gana siempre el último cambio pedido.
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null);
+  const enqueueSwitch = useRef(createLatestWins()).current;
   const [noteStatus, setNoteStatus] = useState<Record<string, NoteSaveState>>({});
   const redirectLogin = () => { if (onLoginRedirect) onLoginRedirect(); else if (typeof window !== "undefined") window.location.assign("/login"); };
   const runSafe = (fallbackMsg: string, fn: () => Promise<void>) => executeProtectedAction(fallbackMsg, fn, redirectLogin, setActionError);
@@ -296,17 +300,23 @@ export function WorkspaceScreen({
     }
   });
 
-  const reload = async (nextWsId?: string) => {
+  const reload = async (nextWsId?: string, onApplied?: () => void) => {
     const fresh = await loadWorkspaceDashboardAction(nextWsId);
-    if (chatMode && (fresh.activeWorkspace.id !== wsId || !fresh.chat)) { window.location.assign("/hoy"); return; }
+    if (chatMode && (fresh.activeWorkspace.id !== wsId || !fresh.chat)) { window.location.assign("/hub"); return; }
     setChat(fresh.chat ?? null);
     setActiveWs(fresh.activeWorkspace); setWorkspaces(fresh.workspaces); setMembers(fresh.members); setInvitations(fresh.pendingInvitations);
     setNotes(fresh.notes); setTodos(fresh.todos); setNoteStatus({});
+    onApplied?.();
   };
-  const handleSelectWorkspace = (id: string) => runSafe("No se pudo cambiar de espacio.", async () => { await selectActiveWorkspaceAction(id); setInviteLink(null); await reload(id); });
+  /** Cambia de espacio en orden: lo anterior se oculta ya, y los datos nuevos y el fin del cambio llegan en una sola actualización. */
+  const switchWorkspace = (targetId: string, fallbackMsg: string, change: (done: () => void) => Promise<void>) => {
+    setSwitchingTo(targetId);
+    return enqueueSwitch((isCurrent) => runSafe(fallbackMsg, () => change(() => { if (isCurrent()) setSwitchingTo(null); })), () => setSwitchingTo(null));
+  };
+  const handleSelectWorkspace = (id: string) => switchWorkspace(id, "No se pudo cambiar de espacio.", async (done) => { await selectActiveWorkspaceAction(id); setInviteLink(null); await reload(id, done); });
   const handleCreateAgency = async (name: string): Promise<boolean> => {
     let ok = false;
-    await runSafe("No se pudo crear la agencia.", async () => { const created = await createAgencyWorkspaceAction({ name }); setInviteLink(null); await reload(created.id); ok = true; });
+    await switchWorkspace("nuevo", "No se pudo crear la agencia.", async (done) => { const created = await createAgencyWorkspaceAction({ name }); setInviteLink(null); await reload(created.id, done); ok = true; });
     return ok;
   };
   const handleInvite = (email: string, role: "admin" | "editor" | "viewer") => runSafe("No se pudo generar la invitación.", async () => {
@@ -368,9 +378,8 @@ export function WorkspaceScreen({
       {...(chat && activeWs ? {
         chatUnreadMentions: chat.unreadMentions ?? undefined,
         chat: {
-          todayHref: `/hoy?workspaceId=${encodeURIComponent(activeWs.id)}`,
-          href: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}`,
-          unreadHref: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}&vista=sin-leer`,
+          // Rutas limpias (#212): el espacio activo viaja en la cookie «hubly_ws», no en la URL.
+          todayHref: "/hub", href: "/chat", unreadHref: "/chat/sin-leer",
           exportHref: (format: "json" | "md") => agencyExportHref(activeWs.id, format),
           unread: chat.unread,
           unreadMentions: chat.unreadMentions ?? undefined,
@@ -443,6 +452,7 @@ export function WorkspaceScreen({
       members={members.map((m) => ({ userId: m.userId, role: m.role as EspacioWorkspace["role"], isCurrentUser: m.userId === currentUserId }))}
       invitations={invitations.map((i) => ({ id: i.id, email: i.email, role: i.role, expiresAt: i.expiresAt }))}
       inviteLink={inviteLink}
+      switchingTo={switchingTo}
       onSelectWorkspace={(id) => void handleSelectWorkspace(id)}
       onCreateAgency={handleCreateAgency}
       onInvite={(email, role) => void handleInvite(email, role)}

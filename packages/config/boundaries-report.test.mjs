@@ -212,23 +212,24 @@ describe("Reglas de CI de higiene de rutas y fronteras de cliente (#69)", () => 
 
   it("Regla 1 (Sin rutas huérfanas): verifica todas las rutas reales de apps/web/src/app y detecta rutas no registradas o sin enlaces", () => {
     expect(routePathFromAppFile("apps/web/src/app/page.tsx")).toBe("/");
-    expect(routePathFromAppFile("apps/web/src/app/(workspace)/hoy/page.tsx")).toBe("/hoy");
+    expect(routePathFromAppFile("apps/web/src/app/(workspace)/hub/page.tsx")).toBe("/hub");
     expect(routePathFromAppFile("apps/web/src/app/(public)/login/page.tsx")).toBe("/login");
     expect(routePathFromAppFile("apps/web/src/app/auth/callback/route.ts")).toBe("/auth/callback");
 
     const routeFiles = listProjectFiles(resolve(repoRoot, "apps/web/src/app"), { names: ["page.tsx", "route.ts"] });
     const webSourceFiles = listProjectFiles(resolve(repoRoot, "apps/web/src"), { extensions: [".ts", ".tsx"] });
     expect(findOrphanRouteViolations(routeFiles, webSourceFiles, { repoRoot })).toEqual([]);
-    expect(KNOWN_APP_ROUTES.has("/hoy")).toBe(true);
+    expect(KNOWN_APP_ROUTES.has("/hub")).toBe(true);
+    expect(KNOWN_APP_ROUTES.has("/hoy")).toBe(false);
 
     const violations = findOrphanRouteViolations(
       [
-        { path: "apps/web/src/app/page.tsx", content: '<a href="/hoy">Hoy</a>' },
-        { path: "apps/web/src/app/(workspace)/hoy/page.tsx", content: "export default function Hoy() {}" },
+        { path: "apps/web/src/app/page.tsx", content: '<a href="/hub">Hub</a>' },
+        { path: "apps/web/src/app/(workspace)/hub/page.tsx", content: "export default function Hub() {}" },
         { path: "apps/web/src/app/vieja-pantalla/page.tsx", content: "export default function Vieja() {}" },
         { path: "apps/web/src/app/(public)/terminos/page.tsx", content: "export default function Terminos() {}" },
       ],
-      [{ path: "apps/web/src/app/page.tsx", content: '<a href="/hoy">Hoy</a>' }],
+      [{ path: "apps/web/src/app/page.tsx", content: '<a href="/hub">Hub</a>' }],
       { repoRoot: "" },
     );
     expect(violations).toHaveLength(3);

@@ -47,7 +47,7 @@ export function InvitacionScreen({ sessionEmail, initialToken = "", onNavigate }
       <EspacioEstado
         title="Falta el enlace de invitación"
         message="Abre el enlace completo que te compartieron. Si ya lo usaste o venció, pide uno nuevo a quien administra la agencia."
-        action={{ label: "Ir a Hoy", onPress: () => navigate("/hoy") }}
+        action={{ label: "Ir a tu Hub", onPress: () => navigate("/hub") }}
       />
     );
   }
@@ -55,7 +55,7 @@ export function InvitacionScreen({ sessionEmail, initialToken = "", onNavigate }
   const aceptar = async () => {
     setEstado({ kind: "enviando" });
     const res = await acceptWorkspaceInvitationAction({ token }).catch(() => null);
-    if (res?.ok) { navigate("/hoy"); return; }
+    if (res?.ok) { navigate("/hub"); return; }
     setEstado({ kind: "error", message: res?.message ?? "No se pudo aceptar la invitación. Inténtalo de nuevo en unos minutos.", retry: !res || res.code === "ERROR" });
   };
 
@@ -64,7 +64,7 @@ export function InvitacionScreen({ sessionEmail, initialToken = "", onNavigate }
       <EspacioEstado
         title="No se pudo aceptar la invitación"
         message={estado.message}
-        action={estado.retry ? { label: "Reintentar", onPress: () => void aceptar() } : { label: "Ir a Hoy", onPress: () => navigate("/hoy") }}
+        action={estado.retry ? { label: "Reintentar", onPress: () => void aceptar() } : { label: "Ir a tu Hub", onPress: () => navigate("/hub") }}
       />
     );
   }

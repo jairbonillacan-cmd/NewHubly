@@ -105,10 +105,9 @@ describe("Notificaciones y resaltado de menciones en el chat (issue 208)", () =>
         activa="hoy"
         expandido
         hoyPendientes={0}
-        semana={{ hechos: 0, total: 0 }}
         onSelect={vi.fn()}
         onToggleExpandido={vi.fn()}
-        chat={{ href: "/chat?workspaceId=ws-1", unreadMentions: 3, active: false }}
+        chat={{ href: "/chat", unreadMentions: 3, active: false }}
       />,
     );
     expect(carrilHtml).toContain('data-carril-mentions="3"');
@@ -120,10 +119,9 @@ describe("Notificaciones y resaltado de menciones en el chat (issue 208)", () =>
         activa="hoy"
         expandido={false}
         hoyPendientes={0}
-        semana={{ hechos: 0, total: 0 }}
         onSelect={vi.fn()}
         onToggleExpandido={vi.fn()}
-        chat={{ href: "/chat?workspaceId=ws-1", unreadMentions: 1, active: false }}
+        chat={{ href: "/chat", unreadMentions: 1, active: false }}
       />,
     );
     expect(carrilCollapsedHtml).toContain('data-carril-mentions="1"');
@@ -146,9 +144,9 @@ describe("Notificaciones y resaltado de menciones en el chat (issue 208)", () =>
         onSignOut={vi.fn()}
         chatUnreadMentions={2}
         chat={{
-          todayHref: "/hoy?workspaceId=ws-1",
-          href: "/chat?workspaceId=ws-1",
-          unreadHref: "/chat?workspaceId=ws-1&vista=sin-leer",
+          todayHref: "/hub",
+          href: "/chat",
+          unreadHref: "/chat/sin-leer",
           unread: 1,
           unreadMentions: 2,
           active: false,

@@ -3,7 +3,7 @@
 import { Button, Dropdown, ToggleButton, Tooltip } from "@heroui/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import type { Key } from "react-aria-components";
+import { Menu, MenuItem, MenuSection, Popover as AriaPopover, Separator, SubmenuTrigger, type Key } from "react-aria-components";
 import { Icon, type IconName } from "./icons";
 import type { LayoutId } from "./preferencias";
 
@@ -25,6 +25,11 @@ export const PANEL_MIN = { w: 320, h: 200 };
 const STORAGE_KEY = "hubly-lienzo";
 const ZOOM_STEP = 1.2;
 const FIT_PADDING = 32;
+/** Margen al encuadrar en pantalla completa: deja libres la barra superior, el carril y el dock. */
+const FIT_PADDING_PANTALLA = 112;
+/** Ancho desde el que el lienzo ocupa toda la pantalla (punto lg de Tailwind). */
+const LG_PX = 1024;
+const fitPadding = () => (typeof window !== "undefined" && window.innerWidth >= LG_PX ? FIT_PADDING_PANTALLA : FIT_PADDING);
 const MAPA = { w: 176, h: 112, margen: 160 };
 /** Lo que dura el asentamiento del panel al soltarlo; coincide con la animación hubly-asentar. */
 const ASENTAR_MS = 520;
@@ -85,17 +90,30 @@ function writeSaved(saved: Saved) {
 
 type Gesture =
   | { kind: "pan"; startX: number; startY: number; view: LienzoView }
-  | { kind: "item"; id: string; startX: number; startY: number; rect: LienzoRect }
+  | { kind: "seleccion"; startX: number; startY: number }
+  | { kind: "item"; id: string; startX: number; startY: number; rect: LienzoRect; grupo: Record<string, LienzoRect> }
   | { kind: "borde"; id: string; borde: LienzoBorde; startX: number; startY: number; rect: LienzoRect };
 
+/** Rectángulo de selección en coordenadas del lienzo, a partir de dos puntos de pantalla relativos al lienzo. */
+export function seleccionEnLienzo(view: LienzoView, ax: number, ay: number, bx: number, by: number): LienzoRect {
+  const x1 = (Math.min(ax, bx) - view.x) / view.zoom, y1 = (Math.min(ay, by) - view.y) / view.zoom;
+  const x2 = (Math.max(ax, bx) - view.x) / view.zoom, y2 = (Math.max(ay, by) - view.y) / view.zoom;
+  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+}
+
+/** Paneles que toca el rectángulo de selección. */
+export function panelesEnSeleccion(panels: readonly { id: string; rect: LienzoRect }[], sel: LienzoRect): string[] {
+  return panels.filter(({ rect }) => rect.x < sel.x + sel.w && rect.x + rect.w > sel.x && rect.y < sel.y + sel.h && rect.y + rect.h > sel.y).map(({ id }) => id);
+}
+
+const TECLA = "rounded border border-(--glass-line-strong) px-1.5 text-xs text-(--text-muted)";
 const NOT_DRAG = "button, a, input, textarea, select, [contenteditable='true'], [role='button'], [role='menuitem'], [role='switch'], [role='checkbox']";
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
-const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover)";
-const CONTROL = "size-11 min-w-11 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
+const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--hover-acento)";
+const CONTROL = "size-(--dock-control) min-w-(--dock-control) text-(--text-secondary) data-[hovered]:text-(--text-primary)";
 const MODOS: { id: LayoutId; label: string; icon: IconName }[] = [
   { id: "libre", label: "Lienzo libre", icon: "libre" },
   { id: "lado", label: "Lado a lado", icon: "lado" },
-  { id: "enfoque", label: "Enfoque", icon: "enfoque" },
 ];
 
 function Control({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
@@ -128,50 +146,48 @@ export interface LienzoBarraProps {
   fondo?: ReactNode;
   /** Solo en el lienzo libre de escritorio; sin ellos, la barra ofrece el modo de paneles y el fondo. */
   lienzo?: LienzoControles | undefined;
+  /** Cajón de widgets del Hub (solo con el lienzo libre). */
+  widgets?: ReactNode;
 }
 
 /** Barra propia del lienzo (issue 147), a la derecha del dock: tuerca con modos, mapa, imán, fondo y acomodo, y zoom. */
-export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: LienzoBarraProps) {
+export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo, widgets }: LienzoBarraProps) {
   const onMenu = (key: Key) => {
     if (key === "libre" || key === "lado" || key === "enfoque") onLayout(key);
     else if (key === "fondo") onOpenFondo();
-    else if (key === "mapa" && lienzo) lienzo.onOpciones({ ...lienzo.opciones, mapa: !lienzo.opciones.mapa });
     else if (key === "iman" && lienzo) lienzo.onOpciones({ ...lienzo.opciones, iman: !lienzo.opciones.iman });
-    else if (key === "encuadrar") lienzo?.onFit();
     else if (key === "restablecer") lienzo?.onReset();
   };
   const check = (on: boolean) => on && <Icon name="check" className="size-4 text-(--accent-primary)" />;
   return (
-    <div role="toolbar" aria-label="Lienzo y vista" data-delay="3" className="hubly-glass hubly-enter relative flex h-16 shrink-0 items-center gap-0.5 rounded-(--glass-radius-access-card) px-2">
+    <div role="toolbar" aria-label="Lienzo y vista" data-delay="3" className="hubly-glass hubly-enter relative flex h-(--frame-dock-h) shrink-0 items-center gap-0.5 rounded-(--glass-radius-access-card) px-2">
       <Dropdown>
-        <Dropdown.Trigger aria-label="Opciones del lienzo" className={`flex cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent hover:bg-(--glass-hover) ${CONTROL}`}>
+        <Dropdown.Trigger aria-label="Opciones del lienzo" className={`flex cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent hover:bg-(--hover-acento) ${CONTROL}`}>
           <Icon name="tuerca" className="size-5" />
         </Dropdown.Trigger>
         <Dropdown.Popover placement="top end" className={MENU}>
           <Dropdown.Menu aria-label="Opciones del lienzo" onAction={onMenu}>
-            <Dropdown.Section aria-label="Modo de los paneles" className="border-b border-(--glass-line) pb-1.5">
+            {/* El aspecto vive aquí; el enfoque, en la barra de arriba; el mapa y «ver todos», con su botón. */}
+            <Dropdown.Section aria-label="Aspecto" className="border-b border-(--glass-line) pb-1.5">
+              <Dropdown.Item id="fondo" textValue="Personalizar aspecto" className={ITEM}><Icon name="imagen" /> <span className="grow">Personalizar aspecto</span></Dropdown.Item>
+            </Dropdown.Section>
+            <Dropdown.Section aria-label="Modo de los paneles" className="py-1.5">
               {MODOS.map((modo) => (
                 <Dropdown.Item key={modo.id} id={modo.id} textValue={modo.label} className={ITEM}>
                   <Icon name={modo.icon} /> <span className="grow">{modo.label}</span>{check(layout === modo.id)}
                 </Dropdown.Item>
               ))}
             </Dropdown.Section>
-            <Dropdown.Section aria-label="Vista" className="py-1.5">
-              <Dropdown.Item id="fondo" textValue="Fondo y opacidad" className={ITEM}><Icon name="imagen" /> <span className="grow">Fondo y opacidad</span></Dropdown.Item>
-              {lienzo ? <>
-                <Dropdown.Item id="mapa" textValue="Mostrar el mapa" className={ITEM}><Icon name="mapa" /> <span className="grow">Mostrar el mapa</span>{check(lienzo.opciones.mapa)}</Dropdown.Item>
-                <Dropdown.Item id="iman" textValue="Alinear a la cuadrícula" className={ITEM}><Icon name="paneles" /> <span className="grow">Alinear a la cuadrícula</span>{check(lienzo.opciones.iman)}</Dropdown.Item>
-              </> : null}
-            </Dropdown.Section>
             {lienzo ? (
               <Dropdown.Section aria-label="Acomodo" className="border-t border-(--glass-line) pt-1.5">
-                <Dropdown.Item id="encuadrar" textValue="Ver todos los paneles" className={ITEM}><Icon name="encuadrar" /> Ver todos los paneles</Dropdown.Item>
+                <Dropdown.Item id="iman" textValue="Alinear a la cuadrícula" className={ITEM}><Icon name="paneles" /> <span className="grow">Alinear a la cuadrícula</span>{check(lienzo.opciones.iman)}</Dropdown.Item>
                 <Dropdown.Item id="restablecer" textValue="Volver al acomodo inicial" className={ITEM}><Icon name="deshacer" /> Volver al acomodo inicial</Dropdown.Item>
               </Dropdown.Section>
             ) : null}
           </Dropdown.Menu>
         </Dropdown.Popover>
       </Dropdown>
+      {lienzo && widgets}
       {lienzo && (
         <>
           <Tooltip delay={400}>
@@ -193,15 +209,25 @@ export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: Li
   );
 }
 
+/** Acciones de Hubly para el menú del clic derecho sobre el lienzo. */
+export interface LienzoMenu {
+  onNuevoPendiente: () => void;
+  onNuevaNota: () => void;
+  onPersonalizar: () => void;
+  widgets: { id: string; nombre: string; puesto: boolean }[];
+  onWidget: (id: string) => void;
+}
+
 export interface LienzoProps {
   items: readonly LienzoItem[];
+  menu?: LienzoMenu | undefined;
   /** Dónde va la barra del lienzo (en la fila del dock) y lo que necesita para su tuerca. */
   barra?: { slot: HTMLElement | null } & Omit<LienzoBarraProps, "lienzo"> | undefined;
 }
 
 /** Lienzo infinito: se arrastra desde el fondo, la rueda lo mueve y Ctrl + rueda (o pellizcar) acerca o aleja.
  *  Cada panel se mueve desde su cabecera y cambia de tamaño desde cualquier borde. */
-export function Lienzo({ items, barra }: LienzoProps) {
+export function Lienzo({ items, barra, menu }: LienzoProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<LienzoView>({ x: 0, y: 0, zoom: 1 });
@@ -211,14 +237,31 @@ export function Lienzo({ items, barra }: LienzoProps) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [activo, setActivo] = useState<{ id: string; modo: "flotando" | "borde" | "asentando" } | null>(null);
   const [ready, setReady] = useState(false);
+  const [seleccion, setSeleccion] = useState<string[]>([]);
+  const [marcando, setMarcando] = useState(false);
+  const marcoRef = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
+  const cancelarMenu = useRef(false);
+  const anclaMenu = useRef<HTMLDivElement>(null);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  // Si el menú se abrió desde el teclado, al cerrarse el foco vuelve al lienzo (issue 240).
+  const menuConTeclado = useRef(false);
+  const abrirMenuEn = (x: number, y: number) => {
+    anclaMenu.current?.style.setProperty("--menu-x", `${x}px`);
+    anclaMenu.current?.style.setProperty("--menu-y", `${y}px`);
+    setMenuAbierto(true);
+  };
+  const cambiarMenu = (abierto: boolean) => {
+    setMenuAbierto(abierto);
+    if (!abierto && menuConTeclado.current) { menuConTeclado.current = false; canvasRef.current?.focus(); }
+  };
   const asentarTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const rectOf = useCallback((item: LienzoItem) => rects[item.id] ?? item.rect, [rects]);
 
   const fit = useCallback(() => {
     const canvas = canvasRef.current;
-    if (canvas) setView(fitView(items.map(rectOf), canvas.clientWidth, canvas.clientHeight));
+    if (canvas) setView(fitView(items.map(rectOf), canvas.clientWidth, canvas.clientHeight, fitPadding()));
   }, [items, rectOf]);
 
   // Al montar: recupera el acomodo guardado o encuadra todos los paneles.
@@ -228,7 +271,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
     if (saved.opciones) setOpciones((current) => ({ ...current, ...saved.opciones }));
     const canvas = canvasRef.current;
     if (saved.view && Number.isFinite(saved.view.zoom)) setView({ ...saved.view, zoom: clampZoom(saved.view.zoom) });
-    else if (canvas) setView(fitView(items.map((item) => saved.rects?.[item.id] ?? item.rect), canvas.clientWidth, canvas.clientHeight));
+    else if (canvas) setView(fitView(items.map((item) => saved.rects?.[item.id] ?? item.rect), canvas.clientWidth, canvas.clientHeight, fitPadding()));
     setReady(true);
     // Solo al montar: después manda lo que la persona mueva.
   }, []);
@@ -275,8 +318,24 @@ export function Lienzo({ items, barra }: LienzoProps) {
     return () => canvas.removeEventListener("wheel", onWheel);
   }, []);
 
+  const punto = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    return { x: event.clientX - box.left, y: event.clientY - box.top };
+  };
+
+  // Como un escritorio: el botón derecho (o el central) mueve el lienzo; el izquierdo selecciona y mueve paneles.
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || !(event.target instanceof Element)) return;
+    if (!(event.target instanceof Element)) return;
+    if (event.button === 1 || event.button === 2) {
+      if (event.target.closest("input, textarea, select, [contenteditable='true']")) return;
+      gesture.current = { kind: "pan", startX: event.clientX, startY: event.clientY, view };
+      cancelarMenu.current = false;
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      event.currentTarget.dataset.arrastrando = "pan";
+      return;
+    }
+    if (event.button !== 0) return;
     const itemEl = event.target.closest<HTMLElement>("[data-lienzo-item]");
     if (itemEl) {
       const id = itemEl.dataset.lienzoItem!;
@@ -288,24 +347,55 @@ export function Lienzo({ items, barra }: LienzoProps) {
         gesture.current = { kind: "borde", id, borde, startX: event.clientX, startY: event.clientY, rect: rectOf(item) };
         setActivo({ id, modo: "borde" });
       } else if (event.target.closest("[data-lienzo-asa]") && !event.target.closest(NOT_DRAG)) {
-        gesture.current = { kind: "item", id, startX: event.clientX, startY: event.clientY, rect: rectOf(item) };
+        // Si el panel está en la selección se mueve todo el grupo; si no, la selección pasa a ser ese panel.
+        const ids = seleccion.includes(id) ? seleccion : [id];
+        if (!seleccion.includes(id)) setSeleccion([id]);
+        const grupo = Object.fromEntries(items.filter((candidate) => ids.includes(candidate.id)).map((candidate) => [candidate.id, rectOf(candidate)]));
+        gesture.current = { kind: "item", id, startX: event.clientX, startY: event.clientY, rect: rectOf(item), grupo };
         clearTimeout(asentarTimer.current);
         setActivo({ id, modo: "flotando" });
       } else return;
+    } else if (event.pointerType === "mouse") {
+      const p = punto(event);
+      gesture.current = { kind: "seleccion", startX: p.x, startY: p.y };
+      setSeleccion([]);
+      // Como en un escritorio: hacer clic en el fondo suelta el campo que estuviera activo.
+      if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) document.activeElement.blur();
+      setMarcando(true);
+      marcoRef.current?.style.setProperty("--marco-w", "0");
+      marcoRef.current?.style.setProperty("--marco-h", "0");
     } else {
+      // En pantallas táctiles no hay botón derecho: arrastrar el fondo sigue moviendo el lienzo.
       gesture.current = { kind: "pan", startX: event.clientX, startY: event.clientY, view };
     }
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    event.currentTarget.dataset.arrastrando = "true";
+    event.currentTarget.dataset.arrastrando = gesture.current?.kind ?? "pan";
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const current = gesture.current;
     if (!current) return;
+    if (current.kind === "seleccion") {
+      const p = punto(event);
+      const marco = marcoRef.current?.style;
+      marco?.setProperty("--marco-x", `${Math.min(current.startX, p.x)}px`);
+      marco?.setProperty("--marco-y", `${Math.min(current.startY, p.y)}px`);
+      marco?.setProperty("--marco-w", `${Math.abs(p.x - current.startX)}px`);
+      marco?.setProperty("--marco-h", `${Math.abs(p.y - current.startY)}px`);
+      const nueva = panelesEnSeleccion(items.map((item) => ({ id: item.id, rect: rectOf(item) })), seleccionEnLienzo(view, current.startX, current.startY, p.x, p.y));
+      setSeleccion((previa) => previa.join() === nueva.join() ? previa : nueva);
+      return;
+    }
     const dx = event.clientX - current.startX, dy = event.clientY - current.startY;
-    if (current.kind === "pan") setView({ ...current.view, x: current.view.x + dx, y: current.view.y + dy });
-    else if (current.kind === "item") setRects((all) => ({ ...all, [current.id]: { ...current.rect, x: alinear(current.rect.x + dx / view.zoom, opciones.iman), y: alinear(current.rect.y + dy / view.zoom, opciones.iman) } }));
+    if (current.kind === "pan") {
+      if (Math.abs(dx) + Math.abs(dy) > 3) cancelarMenu.current = true;
+      setView({ ...current.view, x: current.view.x + dx, y: current.view.y + dy });
+    } else if (current.kind === "item") setRects((all) => {
+      const next = { ...all };
+      for (const [id, rect] of Object.entries(current.grupo)) next[id] = { ...rect, x: alinear(rect.x + dx / view.zoom, opciones.iman), y: alinear(rect.y + dy / view.zoom, opciones.iman) };
+      return next;
+    });
     else setRects((all) => ({ ...all, [current.id]: redimensionar(current.rect, current.borde, dx / view.zoom, dy / view.zoom, opciones.iman) }));
   };
 
@@ -313,6 +403,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
     const current = gesture.current;
     gesture.current = null;
     delete event.currentTarget.dataset.arrastrando;
+    setMarcando(false);
     if (current?.kind === "item") {
       // Al soltarlo, el panel baja y se asienta con un pequeño rebote antes de quedar quieto.
       setActivo({ id: current.id, modo: "asentando" });
@@ -328,7 +419,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
   const resetLayout = () => {
     setRects({});
     const canvas = canvasRef.current;
-    if (canvas) setView(fitView(items.map((item) => item.rect), canvas.clientWidth, canvas.clientHeight));
+    if (canvas) setView(fitView(items.map((item) => item.rect), canvas.clientWidth, canvas.clientHeight, fitPadding()));
   };
 
   const zIndex = (id: string) => order.indexOf(id) + 1;
@@ -338,27 +429,104 @@ export function Lienzo({ items, barra }: LienzoProps) {
   };
 
   return (
-    <div className="relative min-h-0 grow">
+    <div className="relative min-h-0 grow lg:fixed lg:inset-0 lg:z-0">
       <div
         ref={canvasRef}
         role="region"
-        aria-label="Lienzo de Hoy: arrastra el fondo para moverte; Ctrl y la rueda para acercar o alejar"
+        tabIndex={0}
+        aria-label="Lienzo de Hoy: arrastra con el botón derecho para moverte, con el izquierdo para seleccionar paneles; Ctrl y la rueda para acercar o alejar. Con el lienzo enfocado, Mayús+F10 o la tecla de menú abren sus acciones y Ctrl+A selecciona todos los paneles"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endGesture}
         onPointerCancel={endGesture}
-        className="hubly-lienzo absolute inset-0 overflow-hidden rounded-2xl"
+        onContextMenu={(event) => {
+          // Arrastrar con el botón derecho mueve el lienzo sin menú. Un clic derecho quieto sobre el fondo abre el menú de
+          // Hubly donde está el puntero; dentro de un panel queda el menú normal del navegador (copiar, pegar…).
+          const enPanel = event.target instanceof Element && event.target.closest("[data-lienzo-item]");
+          const movido = cancelarMenu.current;
+          cancelarMenu.current = false;
+          if (enPanel && !movido) return;
+          event.preventDefault();
+          if (movido || !menu) return;
+          const box = event.currentTarget.getBoundingClientRect();
+          // Mayús+F10 y la tecla de menú también llegan como contextmenu en algunos navegadores, con coordenadas 0.
+          if (event.clientX === 0 && event.clientY === 0 && event.target === event.currentTarget) {
+            menuConTeclado.current = true;
+            abrirMenuEn(box.width / 2, box.height / 3);
+            return;
+          }
+          abrirMenuEn(event.clientX - box.left, event.clientY - box.top);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && seleccion.length) { setSeleccion([]); return; }
+          // Equivalentes de teclado del clic derecho, solo con el foco en el propio lienzo (dentro de un panel mandan sus controles).
+          if (event.target !== event.currentTarget) return;
+          if (menu && (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))) {
+            event.preventDefault();
+            const box = event.currentTarget.getBoundingClientRect();
+            menuConTeclado.current = true;
+            abrirMenuEn(box.width / 2, box.height / 3);
+          } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+            event.preventDefault();
+            setSeleccion(items.map((item) => item.id));
+          }
+        }}
+        className="hubly-lienzo absolute inset-0 overflow-hidden rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-(--accent-primary) focus-visible:ring-inset lg:rounded-none"
       >
         <div ref={layerRef} className={`hubly-lienzo-capa ${ready ? "" : "invisible"}`}>
           {items.map((item) => (
-            <LienzoPanel key={item.id} id={item.id} rect={rectOf(item)} z={zIndex(item.id)} estado={activo?.id === item.id ? activo.modo : undefined}>{item.node}</LienzoPanel>
+            <LienzoPanel key={item.id} id={item.id} rect={rectOf(item)} z={zIndex(item.id)} seleccionado={seleccion.includes(item.id)} estado={activo?.id === item.id ? activo.modo : undefined}>{item.node}</LienzoPanel>
           ))}
         </div>
+        <div ref={marcoRef} aria-hidden="true" className={`hubly-lienzo-marco ${marcando ? "" : "hidden"}`} />
+        <div ref={anclaMenu} aria-hidden="true" className="hubly-lienzo-ancla" />
       </div>
       {opciones.mapa && size.w > 0 && (
-        <div className="absolute right-3 bottom-3 z-10">
+        <div className="hubly-lienzo-mapa absolute right-0 bottom-0 z-10">
           <MiniMapa panels={panelRects} view={view} size={size} onCenter={(x, y) => setView((current) => ({ ...current, x: size.w / 2 - x * current.zoom, y: size.h / 2 - y * current.zoom }))} />
         </div>
+      )}
+      {menu && (
+        <AriaPopover triggerRef={anclaMenu} isOpen={menuAbierto} onOpenChange={cambiarMenu} placement="bottom start" offset={4} className={`${MENU} hubly-menu-lienzo w-64`}>
+          <Menu aria-label="Acciones del lienzo" autoFocus="first" className="hubly-sin-anillo outline-none" onAction={(key) => {
+            cambiarMenu(false);
+            if (key === "pendiente") menu.onNuevoPendiente();
+            else if (key === "nota") menu.onNuevaNota();
+            else if (key === "todo") setSeleccion(items.map((item) => item.id));
+            else if (key === "ordenar") resetLayout();
+            else if (key === "ajustar") fit();
+            else if (key === "mapa") setOpciones((current) => ({ ...current, mapa: !current.mapa }));
+            else if (key === "aspecto") menu.onPersonalizar();
+          }}>
+            <MenuSection className="pb-1.5">
+              <MenuItem id="pendiente" textValue="Nuevo pendiente" className={ITEM}><Icon name="mas" /> <span className="grow">Nuevo pendiente</span><kbd className={TECLA}>C</kbd></MenuItem>
+              <MenuItem id="nota" textValue="Nueva nota" className={ITEM}><Icon name="nota" /> <span className="grow">Nueva nota</span><kbd className={TECLA}>N</kbd></MenuItem>
+              <SubmenuTrigger>
+                <MenuItem id="widgets" textValue="Widgets" className={ITEM}><Icon name="widgets" /> <span className="grow">Widgets</span><Icon name="chevron" className="size-3.5" /></MenuItem>
+                <AriaPopover placement="end top" offset={-4} className={`${MENU} w-56`}>
+                  <Menu aria-label="Widgets" className="hubly-sin-anillo outline-none" onAction={(key) => { cambiarMenu(false); menu.onWidget(String(key)); }}>
+                    {menu.widgets.map((widget) => (
+                      <MenuItem key={widget.id} id={widget.id} textValue={widget.nombre} className={ITEM}>
+                        <span className="grow">{widget.nombre}</span>{widget.puesto && <Icon name="check" className="size-4 text-(--accent-primary)" />}
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                </AriaPopover>
+              </SubmenuTrigger>
+            </MenuSection>
+            <Separator className="my-1 h-px bg-(--glass-line)" />
+            <MenuSection className="py-1.5">
+              <MenuItem id="todo" textValue="Seleccionar todo" className={ITEM}><Icon name="encuadrar" /> <span className="grow">Seleccionar todo</span></MenuItem>
+              <MenuItem id="ordenar" textValue="Volver al acomodo inicial" className={ITEM}><Icon name="deshacer" /> <span className="grow">Volver al acomodo inicial</span></MenuItem>
+              <MenuItem id="ajustar" textValue="Ver todos los paneles" className={ITEM}><Icon name="encuadrar" /> <span className="grow">Ver todos los paneles</span></MenuItem>
+              <MenuItem id="mapa" textValue="Mapa del lienzo" className={ITEM}><Icon name="mapa" /> <span className="grow">Mapa del lienzo</span>{opciones.mapa && <Icon name="check" className="size-4 text-(--accent-primary)" />}</MenuItem>
+            </MenuSection>
+            <Separator className="my-1 h-px bg-(--glass-line)" />
+            <MenuSection className="pt-1.5">
+              <MenuItem id="aspecto" textValue="Personalizar aspecto" className={ITEM}><Icon name="imagen" /> <span className="grow">Personalizar aspecto</span></MenuItem>
+            </MenuSection>
+          </Menu>
+        </AriaPopover>
       )}
       {barra?.slot && createPortal(<LienzoBarra {...barra} lienzo={controles} />, barra.slot)}
     </div>
@@ -394,7 +562,7 @@ function MiniMapa({ panels, view, size, onCenter }: { panels: { id: string; rect
   );
 }
 
-function LienzoPanel({ id, rect, z, estado, children }: { id: string; rect: LienzoRect; z: number; estado: "flotando" | "borde" | "asentando" | undefined; children: ReactNode }) {
+function LienzoPanel({ id, rect, z, estado, seleccionado, children }: { id: string; rect: LienzoRect; z: number; estado: "flotando" | "borde" | "asentando" | undefined; seleccionado: boolean; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -408,7 +576,7 @@ function LienzoPanel({ id, rect, z, estado, children }: { id: string; rect: Lien
   }, [rect, z]);
 
   return (
-    <div ref={ref} data-lienzo-item={id} data-estado={estado} className="hubly-lienzo-item">
+    <div ref={ref} data-lienzo-item={id} data-estado={estado} data-seleccionado={seleccionado || undefined} className="hubly-lienzo-item">
       <div className="hubly-lienzo-cuerpo">{children}</div>
       {/* Bordes invisibles para cambiar el tamaño desde cualquier lado o esquina. */}
       {BORDES.map((borde) => <span key={borde} aria-hidden="true" data-lienzo-borde={borde} className="hubly-lienzo-borde" />)}
