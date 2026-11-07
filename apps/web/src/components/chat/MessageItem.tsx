@@ -347,7 +347,8 @@ export function MessageItem({
         </>}
       </div>}
       {pickerOpen && entry.body !== null && mode === null && <div className="mt-1">
-        <EmojiPicker onSelect={(emoji) => { setPickerOpen(false); void triggerReaction(emoji); }} onClose={() => setPickerOpen(false)} />
+        <EmojiPicker onSelect={(emoji) => { setPickerOpen(false); actionsButton.current?.focus(); void triggerReaction(emoji); }}
+          onClose={() => { setPickerOpen(false); actionsButton.current?.focus(); }} />
       </div>}
       {canEdit && entry.body !== null && mode === "remove" && <div className="flex flex-wrap gap-2">
         <Button ref={confirmRemove} variant="danger-soft" size="sm" className={control} isPending={busy}

@@ -378,6 +378,24 @@ describe("Hilo como capa modal en pantallas estrechas", () => {
     expect(fromFirst.focused).toEqual(["c2"]);
   });
 
+  it("con el foco en el título o el panel (fuera de la lista pero dentro del hilo), Mayús+Tab va al último y Tab al primero", () => {
+    const focused: string[] = [];
+    const items = [0, 1, 2].map((i) => ({ hasAttribute: () => false, focus: () => focused.push(`c${i}`) }));
+    const title = { id: "titulo" };
+    const container = {
+      querySelectorAll: () => items,
+      ownerDocument: { activeElement: title },
+      contains: () => true,
+    } as unknown as HTMLElement;
+    const back = { shiftKey: true, preventDefault: vi.fn() };
+    trapTab(back, container);
+    expect(back.preventDefault).toHaveBeenCalled();
+    const forward = { shiftKey: false, preventDefault: vi.fn() };
+    trapTab(forward, container);
+    expect(forward.preventDefault).toHaveBeenCalled();
+    expect(focused).toEqual(["c2", "c0"]);
+  });
+
   it("si el foco está fuera del hilo, Tab lo devuelve dentro; en medio no interviene", () => {
     const outside = fakeContainer(2, null);
     trapTab({ shiftKey: false, preventDefault: vi.fn() }, outside.container);

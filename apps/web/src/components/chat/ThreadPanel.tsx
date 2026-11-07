@@ -40,13 +40,15 @@ const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), in
 
 /** Mantiene el foco dentro de `container`: del último control vuelve al primero y al revés. */
 export function trapTab(event: Pick<KeyboardEvent, "shiftKey" | "preventDefault">, container: HTMLElement): void {
-  const items = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.hasAttribute("inert"));
+  const items = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE))
+    .filter((el) => !el.hasAttribute("inert") && (typeof el.getClientRects !== "function" || el.getClientRects().length > 0));
   const first = items[0];
   const last = items[items.length - 1];
   if (!first || !last) { event.preventDefault(); return; }
-  const active = container.ownerDocument.activeElement;
-  if (event.shiftKey && (active === first || !container.contains(active))) { event.preventDefault(); last.focus(); }
-  else if (!event.shiftKey && (active === last || !container.contains(active))) { event.preventDefault(); first.focus(); }
+  // El foco puede estar en el título o en el propio panel (tabIndex -1), que no están en la lista: índice -1.
+  const index = items.indexOf(container.ownerDocument.activeElement as HTMLElement);
+  if (event.shiftKey && index <= 0) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && (index === -1 || index === items.length - 1)) { event.preventDefault(); first.focus(); }
 }
 
 export function ThreadPanel({
