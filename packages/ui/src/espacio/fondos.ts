@@ -21,3 +21,7 @@ export function fondoIlustrado(id: string) {
   return FONDOS_ILUSTRADOS.find((fondo) => fondo.id === id);
 }
 
+/** Fondos con una imagen detrás (propia o ilustrada): su brillo es arbitrario y los paneles necesitan una opacidad mínima (issue 224). */
+export function esFondoDeImagen(id: string) {
+  return id === "imagen" || fondoIlustrado(id) !== undefined;
+}
