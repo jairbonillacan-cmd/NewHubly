@@ -207,10 +207,10 @@ export function ChatView(props: ChatViewProps) {
             <Button size="sm" variant={props.unreadOnly ? "secondary" : "ghost"} className={control} aria-pressed={props.unreadOnly} onPress={() => props.onFilter(true)}>Sin leer {unreadCount}</Button>
           </div>
         </div>
-        <div className="flex flex-wrap items-start gap-x-2 [&>details[open]]:w-full">
+        <div data-chat-list-actions="" className="flex flex-wrap items-start gap-x-2 [&>details[open]]:w-full">
           {props.canManage && <ChannelForm onCommand={props.onCommand} />}
+          <MemberList people={props.people} userId={props.userId} canSend={props.canSend} onCommand={props.onCommand} />
         </div>
-        <MemberList people={props.people} userId={props.userId} canSend={props.canSend} onCommand={props.onCommand} />
         {(["channel", "direct"] as const).map((kind) => {
           const group = rows.filter((entry) => entry.kind === kind);
           if (!group.length) return null;

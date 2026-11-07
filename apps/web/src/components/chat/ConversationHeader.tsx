@@ -103,20 +103,19 @@ export function ConversationHeader({
   }
 
   return <header className="hubly-corto-compacto flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-(--border-default) px-3 py-2.5">
-    <div className="min-w-0">
+    {/* Fila envolvente (#186): volver, título y presencia comparten fila; la descripción ocupa la siguiente. */}
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
       <Button variant="ghost" size="sm" className={`${control} lg:hidden`} onPress={() => onSelect(null)}>
         <span aria-hidden="true">←</span> Conversaciones
       </Button>
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 ref={headingRef} id="chat-conversation" tabIndex={-1} className="text-base font-semibold wrap-anywhere">
-          {conversationName(conversation, people)}
-        </h2>
-        {conversation.kind === "direct" && peer?.status && <span className="inline-flex items-center gap-1.5 text-xs text-(--text-secondary)">
-          <PresenceDot status={peer.status} className="size-2.5 border-0" />
-          <span>{statusLabel[peer.status]}</span>
-        </span>}
-      </div>
-      <p className="hubly-corto-sr flex flex-wrap items-center gap-2 text-xs text-(--text-secondary)">
+      <h2 ref={headingRef} id="chat-conversation" tabIndex={-1} className="text-base font-semibold wrap-anywhere">
+        {conversationName(conversation, people)}
+      </h2>
+      {conversation.kind === "direct" && peer?.status && <span className="inline-flex items-center gap-1.5 text-xs text-(--text-secondary)">
+        <PresenceDot status={peer.status} className="size-2.5 border-0" />
+        <span>{statusLabel[peer.status]}</span>
+      </span>}
+      <p className="hubly-corto-sr flex w-full flex-wrap items-center gap-2 text-xs text-(--text-secondary)">
         <span>{conversation.archived ? "Canal archivado" : conversation.kind === "channel" ? "Canal de la agencia" : "Conversación privada"}</span>
         {conversation.kind === "channel" && totalMembers > 0 && <span>· {totalMembers} {totalMembers === 1 ? "miembro" : "miembros"}</span>}
         {conversation.kind === "channel" && onlineCount > 0 && <span className="inline-flex items-center gap-1">

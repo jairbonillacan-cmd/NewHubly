@@ -302,3 +302,50 @@ describe("Interfaz del chat", () => {
     expect(panelHtml).not.toContain("Responder en el hilo");
   });
 });
+
+describe("Revisión de Prisma del PR 261", () => {
+  const directory = new Map<string, ChatParticipant>([
+    ["peer-1", { id: "peer-1", name: "Ana López", role: "editor", status: "online" }],
+    ["peer-2", { id: "peer-2", name: "Carlos Ruiz", role: "admin", status: "away" }],
+  ]);
+  it("la barra de acciones no se pinta visible por defecto: una sola entrada «Acciones» y la barra oculta", () => {
+    const html = renderToStaticMarkup(
+      <ul>
+        <MessageItem entry={{ ...entry, body: "Propuesta lista" }} name="Tú" people={directory}
+          viewerId="actor" isOwn writable canEdit onCommand={vi.fn()} />
+      </ul>,
+    );
+    expect(html).toContain('aria-label="Acciones del mensaje de Tú" aria-expanded="false"');
+    const toolbar = html.match(/<div role="toolbar"[^>]*>/)?.[0] ?? "";
+    expect(toolbar).toMatch(/class="[^"]*\bhidden\b[^"]*lg:group-hover:flex[^"]*lg:absolute/);
+    expect(toolbar).not.toContain("data-actions-open");
+  });
+
+  it("horas y separadores de día en la zona del navegador, no en UTC", () => {
+    const previous = process.env.TZ;
+    process.env.TZ = "America/Mexico_City";
+    try {
+      // 03:00 UTC del 7 son las 21:00 del 6 en Ciudad de México.
+      expect(daySeparatorLabel("2026-11-07T03:00:00.000Z", new Date("2026-11-07T05:00:00.000Z"))).toBe("Hoy");
+      expect(daySeparatorLabel("2026-11-06T03:00:00.000Z", new Date("2026-11-07T05:00:00.000Z"))).toBe("Ayer");
+      const html = renderToStaticMarkup(
+        <ul><MessageItem entry={{ ...entry, body: "Hola", sentAt: "2026-11-07T16:00:00.000Z" }} name="Ana" people={directory}
+          viewerId="actor" canEdit={false} onCommand={vi.fn()} /></ul>,
+      );
+      expect(html).toContain(">10:00<");
+    } finally {
+      process.env.TZ = previous;
+    }
+  });
+
+  it("«Nuevo directo» comparte la fila compacta con «Nuevo canal»", () => {
+    const html = renderToStaticMarkup(<ChatView {...props} people={[...directory.values()]} />);
+    // «Nuevo directo» va justo después de «Nuevo canal», dentro de la misma fila (sin cerrar el <div> entre ambos).
+    expect(html).toContain('<div data-chat-list-actions="" class="flex flex-wrap items-start gap-x-2');
+    expect(html).toMatch(/<\/details><details class="text-sm"><summary[^>]*>Nuevo directo<\/summary>/);
+    expect(html).not.toMatch(/<\/details><\/div><details class="text-sm"><summary[^>]*>Nuevo directo/);
+    // Sin permisos de gestión, la fila tampoco queda vacía: contiene el directo.
+    const member = renderToStaticMarkup(<ChatView {...props} canManage={false} people={[...directory.values()]} />);
+    expect(member).toMatch(/<div data-chat-list-actions="" class="[^"]*"><details class="text-sm"><summary[^>]*>Nuevo directo/);
+  });
+});

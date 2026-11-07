@@ -2,7 +2,7 @@
 
 import type { ChatParticipant } from "@hubly/contracts";
 import { Button, TextArea } from "@hubly/ui";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ChatAvatar, personName } from "./MemberList";
 import { ChatAttachmentList, type ChatAttachmentItem } from "./ChatAttachmentView";
 import { formatMessageTime, type ChatMessageView } from "./MessageItem";
@@ -18,14 +18,42 @@ export interface ThreadPanelProps {
   onSendReply?: ((rootMessageId: string, body: string) => Promise<boolean | void> | boolean | void) | undefined;
 }
 
+/** Debajo de `lg` (1024 px, el mismo corte que EspacioHoy) el hilo se muestra a pantalla completa. */
+const LG_MIN_WIDTH = 1024;
+function useNarrowViewport(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia(`(max-width: ${LG_MIN_WIDTH - 1}px)`);
+    const update = () => setNarrow(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return narrow;
+}
+
 export function ThreadPanel({
   rootMessage, replies, people, userId, writable, now, initialDraft = "", sending = false, onClose, onSendReply,
 }: ThreadPanelProps) {
   const [draft, setDraft] = useState(initialDraft);
   const [busy, setBusy] = useState(false);
 
+  const title = useRef<HTMLHeadingElement>(null);
+  const narrow = useNarrowViewport();
+
+  // Al abrir, el foco entra al hilo; al cerrar, vuelve al control que lo abrió («Abrir hilo» o «Ver hilo»).
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    const opener = typeof document === "undefined" ? null : document.activeElement;
+    title.current?.focus();
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+    };
+  }, []);
+
+  useEffect(() => {
+    // Escape cierra el hilo salvo que otro control ya lo haya usado (p. ej. la lista de @menciones).
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape" && !event.defaultPrevented) onClose(); };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
@@ -42,12 +70,13 @@ export function ThreadPanel({
     finally { setBusy(false); }
   }
 
-  return <aside role="region" aria-labelledby="chat-thread-title" tabIndex={-1}
-    onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); onClose(); } }}
-    className="hubly-glass hubly-pop fixed inset-0 z-40 flex min-h-0 w-full flex-col overflow-hidden rounded-2xl lg:static lg:z-auto lg:w-96 lg:shrink-0">
+  // En pantallas estrechas el hilo cubre la vista: es una capa modal que respeta zonas seguras y el teclado (#186).
+  return <aside role={narrow ? "dialog" : "region"} aria-modal={narrow ? true : undefined} aria-labelledby="chat-thread-title" tabIndex={-1}
+    onKeyDown={(event) => { if (event.key === "Escape" && !event.defaultPrevented) { event.stopPropagation(); onClose(); } }}
+    className="hubly-glass hubly-pop hubly-hilo fixed inset-x-0 top-0 z-40 flex min-h-0 w-full flex-col overflow-hidden rounded-2xl lg:static lg:z-auto lg:w-96 lg:shrink-0">
     <div className="flex shrink-0 items-center justify-between gap-2 border-b border-(--border-subtle) px-3 py-2.5">
       <div>
-        <h3 id="chat-thread-title" className="text-base font-semibold">Hilo</h3>
+        <h3 ref={title} id="chat-thread-title" tabIndex={-1} className="text-base font-semibold outline-none">Hilo</h3>
         <p className="text-xs text-(--text-secondary)">{`${replies.length} ${replies.length === 1 ? "respuesta" : "respuestas"}`}</p>
       </div>
       <Button size="sm" variant="ghost" className={control} onPress={onClose}>Cerrar hilo</Button>

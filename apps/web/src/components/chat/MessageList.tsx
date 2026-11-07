@@ -11,7 +11,11 @@ import { isMessageEndVisible } from "./sync";
 
 const control = "min-h-11";
 export const CHAT_GROUP_WINDOW_MS = 5 * 60 * 1000;
-export const dayKey = (iso: string): string => new Date(iso).toISOString().slice(0, 10);
+/** Día (AAAA-MM-DD) en la zona del navegador: los separadores «Hoy» y «Ayer» siguen el reloj de quien lee. */
+export const dayKey = (iso: string): string => {
+  const date = new Date(iso);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
 const dayNumber = (key: string) => Math.round(Date.parse(`${key}T00:00:00Z`) / 86_400_000);
 
 export function collectVisibleUnreadMentions(params: {

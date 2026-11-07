@@ -6,7 +6,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { ChatAvatar, personName, type ChatViewCommand } from "./MemberList";
 
 const control = "min-h-11";
-const hhmm = (iso: string) => new Intl.DateTimeFormat("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" }).format(new Date(iso));
+// Hora en la zona del navegador, como el resto de la app.
+const hhmm = (iso: string) => new Intl.DateTimeFormat("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
 const normalizeMentionKey = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
 export const QUICK_REACTIONS = ["👍", "❤️", "😂", "🎉", "👀", "🚀"] as const;
@@ -258,11 +259,11 @@ export function MessageItem({
     onPointerDown={() => longPress.current.start()} onPointerUp={() => longPress.current.cancel()}
     onPointerCancel={() => longPress.current.cancel()} onPointerLeave={() => longPress.current.cancel()}
     onKeyDown={(event) => { if (event.key === "Escape" && (pickerOpen || actionsOpen)) { event.stopPropagation(); setPickerOpen(false); setActionsOpen(false); } }}
-    className={`group flex gap-3 rounded-xl px-2 outline-none transition-colors duration-(--motion-fast) ease-(--motion-ease) focus-visible:ring-2 focus-visible:ring-(--focus-ring-color) motion-reduce:transition-none ${grouped ? "py-1" : "py-2.5"} ${highlighted ? "bg-(--accent-primary-subtle) ring-1 ring-(--accent-primary)" : mentionsMe ? "border-l-2 border-(--accent-primary) bg-(--accent-primary-subtle)" : ""} ${isNew ? "hubly-chat-msg-enter" : ""}`}>
+    className={`group relative flex gap-3 rounded-xl px-2 outline-none transition-colors duration-(--motion-fast) ease-(--motion-ease) focus-visible:ring-2 focus-visible:ring-(--focus-ring-color) motion-reduce:transition-none ${grouped ? "py-1" : "py-2.5"} ${highlighted ? "bg-(--accent-primary-subtle) ring-1 ring-(--accent-primary)" : mentionsMe ? "bg-(--accent-primary-subtle) shadow-[inset_2px_0_0_var(--accent-primary)]" : ""} ${isNew ? "hubly-chat-msg-enter" : ""}`}>
     {grouped ? <span className="flex w-8 shrink-0 items-baseline justify-center pt-0.5">
       <time dateTime={entry.sentAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>{hhmm(entry.sentAt)}</time>
     </span> : <ChatAvatar person={person} fallbackName={isOwn ? "Tú" : undefined} />}
-    <div className="min-w-0 grow">
+    <div className="min-w-0 grow pr-9">
       {!grouped && <div className="flex flex-wrap items-baseline gap-x-2">
         <span className="text-sm font-semibold">{name}</span>
         <time dateTime={entry.sentAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>{formatMessageTime(entry.sentAt, now)}</time>
@@ -312,9 +313,17 @@ export function MessageItem({
         </Button>
         {entry.threadLastReplyAt && <time dateTime={entry.threadLastReplyAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>Última a las {hhmm(entry.threadLastReplyAt)}</time>}
       </div>}
+      {/* Una sola entrada por mensaje: abre la barra con teclado o toque. En escritorio aparece al pasar el ratón
+          o con el foco dentro del mensaje; flota sobre él y no ocupa espacio. */}
+      {entry.body !== null && mode === null && <Button isIconOnly size="sm" variant="ghost"
+        aria-label={`Acciones del mensaje de ${name}`} aria-expanded={actionsOpen || pickerOpen}
+        onPress={() => { setPickerOpen(false); setActionsOpen((open) => !open); }}
+        className={`absolute top-1 right-1 ${actionsOpen || pickerOpen ? "" : "lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"}`}>
+        <Icon name="chevron" />
+      </Button>}
       {entry.body !== null && mode === null && <div role="toolbar" aria-label={`Acciones del mensaje de ${name}`}
         data-actions-open={actionsOpen || pickerOpen ? "true" : undefined}
-        className={`mt-1 flex flex-wrap items-center gap-1 transition-opacity duration-(--motion-fast) ease-(--motion-ease) motion-reduce:transition-none ${actionsOpen || pickerOpen ? "opacity-100" : "opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"}`}>
+        className={`items-center gap-1 ${actionsOpen || pickerOpen ? "mt-1 flex flex-wrap" : "hidden lg:group-hover:flex lg:absolute lg:-top-4 lg:right-11 lg:z-10 lg:rounded-xl lg:border lg:border-(--border-subtle) lg:bg-(--surface-raised) lg:p-1 lg:shadow-sm"}`}>
         {writable && QUICK_REACTIONS.map((emoji) => {
           const reacted = localReactions.some((r) => r.emoji === emoji && r.userIds.includes(effectiveViewerId));
           return <button key={emoji} type="button" aria-label={`Reaccionar con ${emoji}`} aria-pressed={reacted} onClick={() => void triggerReaction(emoji)}

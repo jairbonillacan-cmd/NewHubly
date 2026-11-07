@@ -114,8 +114,11 @@ describe("Compositor del chat: @menciones, emojis, adjuntos, indicador escribien
     expect(html.match(/hubly-typing-dot/g)).toHaveLength(3);
 
     const tokensCss = readFileSync(resolve(__dirname, "../../../packages/ui/src/tokens.css"), "utf8");
-    expect(tokensCss).toContain("@keyframes hubly-typing-dot");
-    expect(tokensCss).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.hubly-typing-dot[\s\S]*animation:\s*none/);
+    // movimiento.md: los indicadores no se mueven en bucle; los puntos quedan quietos.
+    const dotRule = tokensCss.match(/\.hubly-typing-dot \{[^}]*\}/)?.[0] ?? "";
+    expect(dotRule).not.toBe("");
+    expect(dotRule).not.toContain("animation");
+    expect(tokensCss).not.toContain("@keyframes hubly-typing-dot");
   });
 
   it("reserva dimensiones (width y height) en imágenes del hilo para evitar saltos de diseño y enlaza descarga de PDF", () => {
