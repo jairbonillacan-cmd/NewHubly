@@ -11,7 +11,7 @@ import {
   type WorkspaceInvitationSummary, type WorkspaceMemberSummary, type WorkspaceNote, type WorkspaceSummary, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
 import { signOutAction } from "../actions/auth";
-import { ChatScreen } from "./chat/ChatScreen";
+import { ChatScreen, syncDocumentTitleMentions } from "./chat/ChatScreen";
 import { ChatRequestError, agencyExportHref, chatTransport } from "./chat/transport";
 import { fromEspacioPreferencias, toEspacioPreferencias } from "./preferences";
 
@@ -37,7 +37,7 @@ export interface WorkspaceScreenProps {
   initialPresence?: PresenceStatus;
   /** Herramienta abierta al cargar (?herramienta=). */
   initialHerramienta?: HerramientaId;
-  initialChat?: { unread: number | null } | null;
+  initialChat?: { unread: number | null; unreadMentions?: number | null | undefined } | null;
   chatMode?: boolean;
   initiallyUnread?: boolean;
   onSavePreferences?: (patch: Partial<UserPreferences>) => Promise<unknown>;
@@ -148,6 +148,11 @@ export function WorkspaceScreen({
   }, []);
   const wsId = activeWs?.id;
   const chatAvailable = chat !== null;
+  const unreadMentions = Math.max(0, chat?.unreadMentions ?? 0);
+  useEffect(() => {
+    if (chatMode || typeof document === "undefined") return;
+    return syncDocumentTitleMentions(document, unreadMentions);
+  }, [chatMode, unreadMentions]);
   useEffect(() => {
     if (!wsId || !chatAvailable || chatMode) return;
     let controller: AbortController | undefined;
@@ -158,7 +163,12 @@ export function WorkspaceScreen({
       const current = new AbortController();
       controller = current;
       void api.sync(null, 0, current.signal).then((result) => {
-        if (!current.signal.aborted) setChat({ unread: result.conversations.filter((item) => item.unread).length });
+        if (!current.signal.aborted) {
+          setChat((prev) => ({
+            unread: result.conversations.filter((item) => item.unread).length,
+            ...(prev?.unreadMentions !== undefined ? { unreadMentions: prev.unreadMentions } : {}),
+          }));
+        }
       }, (error: unknown) => {
         if (!current.signal.aborted && error instanceof ChatRequestError && (error.status === 401 || error.status === 404)) setChat(null);
       });
@@ -355,15 +365,34 @@ export function WorkspaceScreen({
     <>
     <BienvenidaDialog isOpen={welcomeOpen} onClose={closeWelcome} {...(activeWs ? { workspaceName: activeWs.name } : {})} />
     <EspacioHoy
-      {...(chat && activeWs ? { chat: {
-        todayHref: `/hoy?workspaceId=${encodeURIComponent(activeWs.id)}`,
-        href: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}`,
-        unreadHref: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}&vista=sin-leer`,
-        exportHref: (format: "json" | "md") => agencyExportHref(activeWs.id, format),
-        unread: chat.unread, active: chatMode,
-        ...(chatMode ? { content: <ChatScreen key={activeWs.id} workspaceId={activeWs.id} workspaceName={activeWs.name}
-          userId={currentUserId} role={activeWs.role} initiallyUnread={initiallyUnread} /> } : {}),
-      } } : {})}
+      {...(chat && activeWs ? {
+        chatUnreadMentions: chat.unreadMentions ?? undefined,
+        chat: {
+          todayHref: `/hoy?workspaceId=${encodeURIComponent(activeWs.id)}`,
+          href: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}`,
+          unreadHref: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}&vista=sin-leer`,
+          exportHref: (format: "json" | "md") => agencyExportHref(activeWs.id, format),
+          unread: chat.unread,
+          unreadMentions: chat.unreadMentions ?? undefined,
+          active: chatMode,
+          ...(chatMode ? {
+            content: (
+              <ChatScreen
+                key={activeWs.id}
+                workspaceId={activeWs.id}
+                workspaceName={activeWs.name}
+                userId={currentUserId}
+                role={activeWs.role}
+                initiallyUnread={initiallyUnread}
+                initialUnreadMentions={chat.unreadMentions ?? 0}
+                onUnreadMentionsChange={(count) =>
+                  setChat((prev) => (prev ? { ...prev, unreadMentions: count } : prev))
+                }
+              />
+            ),
+          } : {}),
+        },
+      } : {})}
       todayDate={todayDate}
       {...(initialPreferences ? { initialPreferences: toEspacioPreferencias(initialPreferences), initialThemePreference: initialPreferences.theme } : {})}
       onPreferencesChange={(prefs) => persistPreferences(fromEspacioPreferencias(prefs))}

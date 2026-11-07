@@ -184,13 +184,15 @@ export interface ComposerProps {
     mentionedUserIds: string[];
     attachments: ComposerAttachmentDraft[];
   }) => void) | undefined;
+  /** Sin la vista de adjuntos en los mensajes no se ofrece adjuntar (Constitución: nada se simula). */
+  attachmentsEnabled?: boolean | undefined;
 }
 
 export function Composer({
   writable, loading, draft, sending, failedSend, onDraft, onSend,
   userId, members = [], mentionedUserIds, onMentionsChange,
   attachments, onAttachmentsChange, uploadProgress, attachmentError,
-  typingUserIds = [], typingNames, onTyping, onSubmitWithExtras,
+  typingUserIds = [], typingNames, onTyping, onSubmitWithExtras, attachmentsEnabled = true,
 }: ComposerProps) {
   const composer = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -381,7 +383,7 @@ export function Composer({
           onChange={(event) => handleDraftChange(event.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={(event) => {
-            const pasted = Array.from(event.clipboardData?.files ?? []);
+            const pasted = attachmentsEnabled ? Array.from(event.clipboardData?.files ?? []) : [];
             if (pasted.length > 0) {
               event.preventDefault();
               handleFiles(pasted);
@@ -390,14 +392,16 @@ export function Composer({
           placeholder="Escribe un mensaje…" />
       </label>
       <div className="flex items-center justify-end gap-2">
-        <input ref={fileInput} type="file" multiple accept={ALLOWED_CHAT_ATTACHMENT_MIMES.join(",")}
-          aria-label="Seleccionar archivos adjuntos" className="sr-only"
-          onChange={(event) => {
-            handleFiles(Array.from(event.target.files ?? []));
-            event.target.value = "";
-          }} />
-        <Button type="button" variant="ghost" size="sm" aria-label="Adjuntar archivo"
-          className={control} onPress={() => fileInput.current?.click()}>📎</Button>
+        {attachmentsEnabled && <>
+          <input ref={fileInput} type="file" multiple accept={ALLOWED_CHAT_ATTACHMENT_MIMES.join(",")}
+            aria-label="Seleccionar archivos adjuntos" className="sr-only"
+            onChange={(event) => {
+              handleFiles(Array.from(event.target.files ?? []));
+              event.target.value = "";
+            }} />
+          <Button type="button" variant="ghost" size="sm" aria-label="Adjuntar archivo"
+            className={control} onPress={() => fileInput.current?.click()}>📎</Button>
+        </>}
         <Button type="button" variant="ghost" size="sm" aria-label="Insertar emoji" aria-expanded={emojiOpen}
           className={control} onPress={() => setEmojiOpen((open) => !open)}>😊</Button>
         <Button type="submit" variant="primary" className={control} isPending={sending}

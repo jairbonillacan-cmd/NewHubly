@@ -5,7 +5,7 @@ import { Button } from "@hubly/ui";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { personName, type ChatViewCommand } from "./MemberList";
 import {
-  MessageItem, jumpToQuotedMessage, type ChatMessageView, type ChatReactionSummary,
+  MessageItem, jumpToQuotedMessage, messageMentionsViewer, type ChatMessageView, type ChatReactionSummary,
 } from "./MessageItem";
 import { isMessageEndVisible } from "./sync";
 
@@ -13,6 +13,40 @@ const control = "min-h-11";
 export const CHAT_GROUP_WINDOW_MS = 5 * 60 * 1000;
 export const dayKey = (iso: string): string => new Date(iso).toISOString().slice(0, 10);
 const dayNumber = (key: string) => Math.round(Date.parse(`${key}T00:00:00Z`) / 86_400_000);
+
+export function collectVisibleUnreadMentions(params: {
+  conversationId: string;
+  visibleThroughNumber: number;
+  visibilityState?: DocumentVisibilityState | undefined;
+  messages: readonly ChatMessageView[];
+  unreadMentionIds?: ReadonlySet<string> | undefined;
+  alreadyReportedIds?: ReadonlySet<string> | undefined;
+  viewerId: string;
+  people: Map<string, ChatParticipant>;
+}): { messageIds: string[]; maxMessageNumber: number | null } {
+  if (params.visibilityState === "hidden") {
+    return { messageIds: [], maxMessageNumber: null };
+  }
+  const messageIds: string[] = [];
+  let maxMessageNumber: number | null = null;
+  for (const entry of params.messages) {
+    if (entry.conversationId !== params.conversationId || entry.number > params.visibleThroughNumber) continue;
+    if (params.alreadyReportedIds?.has(entry.id)) continue;
+    const isUnreadMention = (params.unreadMentionIds?.has(entry.id) ?? false)
+      || entry.unreadMention === true
+      || (
+        params.unreadMentionIds === undefined
+        && entry.unreadMention !== false
+        && Boolean(params.viewerId && entry.body && messageMentionsViewer(entry, params.people, params.viewerId))
+      );
+    if (!isUnreadMention) continue;
+    messageIds.push(entry.id);
+    if (maxMessageNumber === null || entry.number > maxMessageNumber) {
+      maxMessageNumber = entry.number;
+    }
+  }
+  return { messageIds, maxMessageNumber };
+}
 
 export function daySeparatorLabel(iso: string, now: Date = new Date()): string {
   const targetKey = dayKey(iso);
@@ -23,7 +57,9 @@ export function daySeparatorLabel(iso: string, now: Date = new Date()): string {
     .format(new Date(`${targetKey}T00:00:00Z`));
 }
 
-export function shouldGroupMessages(previous: ChatMessage | undefined, current: ChatMessage): boolean {
+type GroupedFields = Pick<ChatMessage, "authorId" | "sentAt">;
+
+export function shouldGroupMessages(previous: GroupedFields | undefined, current: GroupedFields): boolean {
   if (!previous || previous.authorId !== current.authorId || dayKey(previous.sentAt) !== dayKey(current.sentAt)) return false;
   const delta = Date.parse(current.sentAt) - Date.parse(previous.sentAt);
   return delta >= 0 && delta <= CHAT_GROUP_WINDOW_MS;
@@ -31,15 +67,17 @@ export function shouldGroupMessages(previous: ChatMessage | undefined, current: 
 
 export function MessageList({
   conversation, messages, people, userId, loading, hasOlder, loadingOlder, freshMessageIds,
-  highlightedMessageId, reactionsByMessage, reactionErrorsByMessage, now,
-  onOlder, onVisible, onCommand, onReply, onOpenThread, onJumpToMessage, onToggleReaction,
+  highlightedMessageId, reactionsByMessage, reactionErrorsByMessage, unreadMentionMessageIds, now,
+  onOlder, onVisible, onMarkMentionsRead, onCommand, onReply, onOpenThread, onJumpToMessage, onToggleReaction,
 }: {
   conversation: ChatConversation; messages: readonly ChatMessageView[]; people: Map<string, ChatParticipant>; userId: string;
   loading: boolean; hasOlder: boolean; loadingOlder: boolean; freshMessageIds?: ReadonlySet<string> | undefined;
   highlightedMessageId?: string | null | undefined;
   reactionsByMessage?: Readonly<Record<string, readonly ChatReactionSummary[]>> | undefined;
   reactionErrorsByMessage?: Readonly<Record<string, string | null | undefined>> | undefined;
+  unreadMentionMessageIds?: ReadonlySet<string> | undefined;
   now?: Date | undefined; onOlder: () => void; onVisible: (conversationId: string, number: number) => void;
+  onMarkMentionsRead?: ((conversationId: string, upToMessageNumber: number, messageIds: string[]) => void) | undefined;
   onCommand: (input: ChatViewCommand) => Promise<boolean>;
   onReply?: ((message: ChatMessageView) => void) | undefined;
   onOpenThread?: ((message: ChatMessageView) => void) | undefined;
@@ -51,6 +89,7 @@ export function MessageList({
   const earlier = useRef<{ height: number; top: number } | null>(null);
   const baselineMax = useRef<number | null>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reportedMentionIds = useRef<Set<string>>(new Set());
   const [localHighlightId, setLocalHighlightId] = useState<string | null>(null);
 
   if (!loading && baselineMax.current === null) {
@@ -67,9 +106,30 @@ export function MessageList({
     pinned.current = element.scrollHeight - element.clientHeight - element.scrollTop < 32;
     const latest = messages.at(-1);
     const end = element.querySelector("li:last-child")?.getBoundingClientRect();
-    if (pinned.current && latest && end && !document.hidden &&
-        isMessageEndVisible(end.bottom, element.getBoundingClientRect(), window.innerHeight)) {
-      onVisible(conversation.id, latest.number);
+    const rect = element.getBoundingClientRect();
+    const endVisible = Boolean(end && isMessageEndVisible(end.bottom, rect, window.innerHeight));
+    if (pinned.current && latest && !document.hidden) {
+      if (endVisible) {
+        onVisible(conversation.id, latest.number);
+      }
+      if (onMarkMentionsRead && (endVisible || (rect.bottom === 0 && (end?.bottom ?? 0) === 0))) {
+        const unread = collectVisibleUnreadMentions({
+          conversationId: conversation.id,
+          visibleThroughNumber: latest.number,
+          visibilityState: document.visibilityState,
+          messages,
+          unreadMentionIds: unreadMentionMessageIds,
+          alreadyReportedIds: reportedMentionIds.current,
+          viewerId: userId,
+          people,
+        });
+        if (unread.messageIds.length > 0 && unread.maxMessageNumber !== null) {
+          for (const id of unread.messageIds) {
+            reportedMentionIds.current.add(id);
+          }
+          onMarkMentionsRead(conversation.id, unread.maxMessageNumber, unread.messageIds);
+        }
+      }
     }
   }
 

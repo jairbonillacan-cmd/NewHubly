@@ -1,6 +1,7 @@
 import type { ChatMessage } from "@hubly/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { incomingChatNotice, isMessageEndVisible, mergeChatMessages, startChatPolling } from "../src/components/chat/sync";
+import { incomingChatNotice, incomingMainMessages, isMessageEndVisible, mergeChatMessages, startChatPolling } from "../src/components/chat/sync";
+import { chatTransport, resolveChatPollIntervalMs } from "../src/components/chat/transport";
 
 const base = {
   id: "one", conversationId: "canal", authorId: "autor", body: "Primero", number: 1, change: 1,
@@ -78,5 +79,63 @@ describe("Sincronización de chat en el navegador", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(sync).toHaveBeenCalledTimes(2);
     poll.stop();
+  });
+
+  it("sondea cada 2 s con la conversación abierta y la pestaña visible, y cada 3 s en el resto", async () => {
+    expect(resolveChatPollIntervalMs({ hasOpenConversation: true, visibilityState: "visible" })).toBe(2000);
+    expect(resolveChatPollIntervalMs({ hasOpenConversation: true, visibilityState: "hidden" })).toBe(3000);
+    expect(resolveChatPollIntervalMs({ hasOpenConversation: false, visibilityState: "visible" })).toBe(3000);
+    expect(resolveChatPollIntervalMs({ hasOpenConversation: false, visibilityState: undefined })).toBe(3000);
+
+    vi.useFakeTimers();
+    const page = Object.assign(new EventTarget(), { hidden: false });
+    const win = Object.assign(new EventTarget(), { navigator: { onLine: true } });
+    const sync = vi.fn().mockResolvedValue(false);
+    const poll = startChatPolling(sync, win as unknown as Window, page as unknown as Document,
+      () => resolveChatPollIntervalMs({ hasOpenConversation: true, visibilityState: "visible" }));
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(sync).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(sync).toHaveBeenCalledTimes(2);
+    poll.stop();
+  });
+});
+
+describe("Transporte social del chat", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("pide el historial de un hilo y envía reacciones, escribiendo y menciones leídas", async () => {
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+      async () => new Response(JSON.stringify({ conversationId: "c" }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const workspaceId = "11111111-1111-4111-8111-111111111111";
+    const api = chatTransport(workspaceId);
+    await api.history("c", null, new AbortController().signal, "raiz");
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("threadRootId=raiz");
+    await api.history("c", null, new AbortController().signal);
+    expect(String(fetchMock.mock.calls[1]?.[0])).not.toContain("threadRootId");
+    for (const input of [
+      { kind: "toggleReaction", workspaceId, conversationId: "c", messageId: "m", emoji: "👍" },
+      { kind: "typing", workspaceId, conversationId: "c" },
+      { kind: "markMentionsRead", workspaceId, conversationId: "c", upToNumber: 4 },
+    ] as const) {
+      await api.command(input);
+      expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body))).toEqual(input);
+    }
+  });
+});
+
+describe("Avisos de mensajes nuevos con hilos (issue 204)", () => {
+  it("solo avisan los mensajes principales nuevos de otras personas, no las respuestas de hilo", () => {
+    const me = "00000000-0000-4000-8000-000000000001", other = "00000000-0000-4000-8000-000000000002";
+    const changes = [
+      { id: "a", number: 4, authorId: other, body: "viejo", threadRootId: null },
+      { id: "b", number: 6, authorId: other, body: "principal", threadRootId: null },
+      { id: "c", number: 7, authorId: other, body: "en hilo", threadRootId: "b" },
+      { id: "d", number: 8, authorId: me, body: "mío", threadRootId: null },
+      { id: "e", number: 9, authorId: other, body: null, threadRootId: null },
+    ];
+    expect(incomingMainMessages(changes, 5, me).map((item) => item.id)).toEqual(["b"]);
   });
 });

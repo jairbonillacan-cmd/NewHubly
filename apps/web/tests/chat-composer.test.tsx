@@ -264,3 +264,20 @@ describe("Compositor conectado en ChatView y opciones de mención accesibles (is
     expect(source).toMatch(/activeAttachments\.forEach\(revokeAttachmentPreview\);\s*setLocalAttachments\(\[\]\)/);
   });
 });
+
+describe("Adjuntos ocultos mientras los mensajes no los muestran (Constitución: nada se simula)", () => {
+  it("con attachmentsEnabled={false} no hay botón ni selector de archivos", () => {
+    const html = renderToStaticMarkup(
+      <Composer writable loading={false} draft="" sending={false} failedSend={false} attachmentsEnabled={false} onDraft={vi.fn()} onSend={vi.fn()} />,
+    );
+    expect(html).not.toContain("Adjuntar archivo");
+    expect(html).not.toContain('type="file"');
+  });
+
+  it("ChatScreen desactiva los adjuntos y pasa menciones y escritura al compositor", () => {
+    const source = readFileSync(resolve(__dirname, "../src/components/chat/ChatScreen.tsx"), "utf8");
+    expect(source).toContain("attachmentsEnabled={false}");
+    expect(source).toMatch(/typingUserIds=\{typingUserIds\} onTyping=\{sendTyping\}/);
+    expect(source).toMatch(/mentionedUserIds: mentioned/);
+  });
+});

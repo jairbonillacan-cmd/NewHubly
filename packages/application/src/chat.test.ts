@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ChatAccessError, ChatRequestError, createChatService, type ChatContext, type ChatRepository } from "./chat";
+import { ChatAccessError, ChatRequestError, createChatService, type ChatCommand, type ChatContext, type ChatRepository } from "./chat";
 
 const workspaceId = "11111111-1111-4111-8111-111111111111";
 const conversationId = "22222222-2222-4222-8222-222222222222";
@@ -65,5 +65,50 @@ describe("Servicio de chat", () => {
         .rejects.toBeInstanceOf(ChatAccessError);
       expect(memberRepo.agencyExportMessages).not.toHaveBeenCalled();
     }
+  });
+
+  it("exige rol de escritura para reacciones, escribiendo y envíos con cita, hilo y menciones", async () => {
+    const messageId = "44444444-4444-4444-8444-444444444444";
+    const social: ChatCommand[] = [
+      { kind: "toggleReaction", workspaceId, conversationId, messageId, emoji: "👍" },
+      { kind: "typing", workspaceId, conversationId },
+      { kind: "send", workspaceId, conversationId, retryKey: messageId, body: "Hola @Ana", replyToId: messageId,
+        threadRootId: messageId, mentionedUserIds: [ctx.userId] },
+    ];
+    for (const command of social) {
+      const storage = repo();
+      await createChatService({ ...ctx, role: "editor" }, storage).command(command);
+      expect(storage.command).toHaveBeenCalledWith(command);
+      const viewerRepo = repo();
+      await expect(createChatService({ ...ctx, role: "viewer" }, viewerRepo).command(command)).rejects.toBeInstanceOf(ChatAccessError);
+      expect(viewerRepo.command).not.toHaveBeenCalled();
+      const readOnly = repo({ conversation: vi.fn().mockResolvedValue({
+        id: conversationId, kind: "channel", slug: "general", peerId: null, archived: true, writable: false, unread: false, changeCursor: 0,
+      }) });
+      await expect(createChatService(ctx, readOnly).command(command)).rejects.toBeInstanceOf(ChatAccessError);
+    }
+    await expect(createChatService(ctx, repo()).command({ kind: "toggleReaction", workspaceId, conversationId, messageId, emoji: "" }))
+      .rejects.toBeInstanceOf(ChatRequestError);
+  });
+
+  it("deja marcar menciones leídas a cualquier lector y traduce la cuota a límite", async () => {
+    const command = { kind: "markMentionsRead", workspaceId, conversationId, upToNumber: 3 } as const;
+    const storage = repo({ conversation: vi.fn().mockResolvedValue({
+      id: conversationId, kind: "channel", slug: "general", peerId: null, archived: false, writable: false, unread: false, changeCursor: 0,
+    }) });
+    await createChatService({ ...ctx, role: "viewer" }, storage).command(command);
+    expect(storage.command).toHaveBeenCalledWith(command);
+    const limited = repo({ command: vi.fn().mockRejectedValue({ cause: { code: "P0429" } }) });
+    await expect(createChatService(ctx, limited).command(command)).rejects.toMatchObject({ reason: "rate-limit" });
+    const hidden = repo({ conversation: vi.fn().mockResolvedValue(null) });
+    await expect(createChatService(ctx, hidden).command(command)).rejects.toBeInstanceOf(ChatAccessError);
+  });
+
+  it("pasa el hilo al historial y valida su identificador", async () => {
+    const storage = repo({ history: vi.fn().mockResolvedValue({ conversation: {}, messages: [], before: null }) });
+    const chat = createChatService(ctx, storage);
+    await chat.history(workspaceId, conversationId, undefined, conversationId);
+    expect(storage.history).toHaveBeenCalledWith(conversationId, undefined, conversationId);
+    await expect(chat.history(workspaceId, conversationId, undefined, "no-es-uuid")).rejects.toBeInstanceOf(ChatRequestError);
   });
 });

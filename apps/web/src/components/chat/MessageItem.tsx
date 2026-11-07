@@ -7,17 +7,109 @@ import { ChatAvatar, personName, type ChatViewCommand } from "./MemberList";
 
 const control = "min-h-11";
 const hhmm = (iso: string) => new Intl.DateTimeFormat("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" }).format(new Date(iso));
+const normalizeMentionKey = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
 export const QUICK_REACTIONS = ["👍", "❤️", "😂", "🎉", "👀", "🚀"] as const;
 export const LONG_PRESS_MS = 400;
 
-export interface ChatReactionSummary { emoji: string; userIds: readonly string[] }
-export interface ChatMessageView extends ChatMessage {
+export interface ChatReactionSummary {
+  emoji: string;
+  count?: number | undefined;
+  userIds: readonly string[];
+}
+export interface ChatMessageView extends Omit<ChatMessage, "reactions"> {
   replyToId?: string | null | undefined;
   threadRootId?: string | null | undefined;
   threadReplyCount?: number | undefined;
   threadLastReplyAt?: string | null | undefined;
   reactions?: readonly ChatReactionSummary[] | undefined;
+  mentionedUserIds?: readonly string[] | undefined;
+  mentionsViewer?: boolean | undefined;
+  unreadMention?: boolean | undefined;
+}
+
+export interface MessageBodySegment {
+  text: string;
+  isMention: boolean;
+  mentionsViewer: boolean;
+  userId?: string | undefined;
+}
+
+export function parseMessageMentions(
+  body: string,
+  people: Map<string, ChatParticipant>,
+  viewerId: string,
+): MessageBodySegment[] {
+  if (!body.includes("@")) return [{ text: body, isMention: false, mentionsViewer: false }];
+  const namedEntries = [...people.values()]
+    .map((p) => ({ id: p.id, name: p.name?.trim() ?? "" }))
+    .filter((p) => p.name.length > 0)
+    .sort((a, b) => b.name.length - a.name.length);
+  const segments: MessageBodySegment[] = [];
+  let cursor = 0;
+  while (cursor < body.length) {
+    const atIndex = body.indexOf("@", cursor);
+    if (atIndex === -1) {
+      segments.push({ text: body.slice(cursor), isMention: false, mentionsViewer: false });
+      break;
+    }
+    const prevChar = atIndex > 0 ? body[atIndex - 1]! : " ";
+    if (/[\p{L}\p{N}_]/u.test(prevChar)) {
+      segments.push({ text: body.slice(cursor, atIndex + 1), isMention: false, mentionsViewer: false });
+      cursor = atIndex + 1;
+      continue;
+    }
+    if (atIndex > cursor) segments.push({ text: body.slice(cursor, atIndex), isMention: false, mentionsViewer: false });
+    const rest = body.slice(atIndex + 1);
+    let matchedUser: { id: string; length: number } | null = null;
+    for (const candidate of namedEntries) {
+      const slice = rest.slice(0, candidate.name.length);
+      const boundary = rest[candidate.name.length] ?? "";
+      if (slice.length === candidate.name.length
+          && normalizeMentionKey(slice) === normalizeMentionKey(candidate.name)
+          && (!boundary || !/[\p{L}\p{N}_]/u.test(boundary))) {
+        matchedUser = { id: candidate.id, length: candidate.name.length };
+        break;
+      }
+    }
+    if (matchedUser) {
+      const text = body.slice(atIndex, atIndex + 1 + matchedUser.length);
+      segments.push({ text, isMention: true, mentionsViewer: matchedUser.id === viewerId, userId: matchedUser.id });
+      cursor = atIndex + 1 + matchedUser.length;
+      continue;
+    }
+    const tokenMatch = /^([\p{L}\p{N}._-]+)/u.exec(rest);
+    if (tokenMatch?.[1]) {
+      const token = tokenMatch[1];
+      const byFirstName = namedEntries.find((c) => normalizeMentionKey(c.name.split(/\s+/)[0] ?? "") === normalizeMentionKey(token));
+      const uid = byFirstName?.id;
+      segments.push({
+        text: `@${token}`,
+        isMention: true,
+        mentionsViewer: uid === viewerId || normalizeMentionKey(token) === "tu",
+        userId: uid,
+      });
+      cursor = atIndex + 1 + token.length;
+    } else {
+      segments.push({ text: "@", isMention: false, mentionsViewer: false });
+      cursor = atIndex + 1;
+    }
+  }
+  return segments;
+}
+
+export function messageMentionsViewer(
+  entry: ChatMessageView | string,
+  people: Map<string, ChatParticipant>,
+  viewerId: string,
+): boolean {
+  if (!viewerId) return false;
+  if (typeof entry === "string") {
+    return parseMessageMentions(entry, people, viewerId).some((seg) => seg.isMention && seg.mentionsViewer);
+  }
+  if (entry.body === null) return false;
+  if (entry.mentionsViewer || entry.unreadMention || entry.mentionedUserIds?.includes(viewerId)) return true;
+  return parseMessageMentions(entry.body, people, viewerId).some((seg) => seg.isMention && seg.mentionsViewer);
 }
 
 export function formatMessageTime(sentAt: string, now?: Date): string {
@@ -157,13 +249,16 @@ export function MessageItem({
     ?? (quotedMessage ? (quotedMessage.authorId === effectiveViewerId ? "Tú" : personName(quotedMessage.authorId, peopleMap.get(quotedMessage.authorId))) : "Mensaje original");
   const quotedBody = quotedMessage === undefined ? "Mensaje original" : quotedMessage === null || quotedMessage.body === null ? "Mensaje eliminado" : quotedMessage.body;
   const displayedError = localError?.message ?? reactionError ?? null;
+  const mentionsMe = messageMentionsViewer(entry, peopleMap, effectiveViewerId);
+  const bodySegments = entry.body !== null ? parseMessageMentions(entry.body, peopleMap, effectiveViewerId) : [];
 
   return <li ref={item} id={`chat-msg-${entry.id}`} data-message-id={entry.id} tabIndex={-1}
     data-grouped={grouped ? "true" : undefined} data-highlighted={highlighted ? "true" : undefined}
+    data-mentions-viewer={mentionsMe ? "true" : undefined}
     onPointerDown={() => longPress.current.start()} onPointerUp={() => longPress.current.cancel()}
     onPointerCancel={() => longPress.current.cancel()} onPointerLeave={() => longPress.current.cancel()}
     onKeyDown={(event) => { if (event.key === "Escape" && (pickerOpen || actionsOpen)) { event.stopPropagation(); setPickerOpen(false); setActionsOpen(false); } }}
-    className={`group flex gap-3 rounded-xl px-2 outline-none transition-colors duration-(--motion-fast) ease-(--motion-ease) focus-visible:ring-2 focus-visible:ring-(--focus-ring-color) motion-reduce:transition-none ${grouped ? "py-1" : "py-2.5"} ${highlighted ? "bg-(--accent-primary-subtle) ring-1 ring-(--accent-primary)" : ""} ${isNew ? "hubly-chat-msg-enter" : ""}`}>
+    className={`group flex gap-3 rounded-xl px-2 outline-none transition-colors duration-(--motion-fast) ease-(--motion-ease) focus-visible:ring-2 focus-visible:ring-(--focus-ring-color) motion-reduce:transition-none ${grouped ? "py-1" : "py-2.5"} ${highlighted ? "bg-(--accent-primary-subtle) ring-1 ring-(--accent-primary)" : mentionsMe ? "border-l-2 border-(--accent-primary) bg-(--accent-primary-subtle)" : ""} ${isNew ? "hubly-chat-msg-enter" : ""}`}>
     {grouped ? <span className="flex w-8 shrink-0 items-baseline justify-center pt-0.5">
       <time dateTime={entry.sentAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>{hhmm(entry.sentAt)}</time>
     </span> : <ChatAvatar person={person} fallbackName={isOwn ? "Tú" : undefined} />}
@@ -189,7 +284,12 @@ export function MessageItem({
         <Button type="submit" variant="primary" size="sm" className={control} isPending={busy}>Guardar</Button>
         <Button variant="ghost" size="sm" className={control} onPress={() => setMode(null)}>Cancelar</Button>
       </form> : <p className={`text-sm wrap-anywhere whitespace-pre-wrap ${entry.body === null ? "text-(--text-muted) italic" : ""}`}>
-        {entry.body ?? "Mensaje eliminado"}
+        {entry.body === null ? "Mensaje eliminado" : bodySegments.map((seg, idx) => seg.isMention ? (
+          <mark key={idx} data-mention={seg.mentionsViewer ? "viewer" : "member"}
+            className={`rounded px-1 font-semibold ${seg.mentionsViewer ? "border border-(--accent-primary) bg-(--accent-primary-subtle) text-(--accent-primary)" : "bg-(--accent-primary-subtle) text-(--accent-primary)"}`}>
+            {seg.text}
+          </mark>
+        ) : seg.text)}
       </p>}
       {localReactions.length > 0 && entry.body !== null && <div role="group" aria-label={`Reacciones del mensaje de ${name}`} className="mt-1.5 flex flex-wrap items-center gap-1.5">
         {localReactions.map(({ emoji, userIds }) => {
