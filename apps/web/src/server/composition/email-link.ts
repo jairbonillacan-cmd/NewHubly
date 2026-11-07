@@ -15,7 +15,7 @@ export const EMAIL_CONFIRM_PATH = "/auth/confirm";
 
 /** Solo «registro» cambia el destino: nunca se acepta una ruta libre en la URL, para no abrir una redirección. */
 export const SIGNUP_FLOW = "registro";
-export const destinationAfterEmailLink = (flow: string | null): string => flow === SIGNUP_FLOW ? "/hoy?bienvenida=1" : "/hoy";
+export const destinationAfterEmailLink = (flow: string | null): string => flow === SIGNUP_FLOW ? "/inicio?bienvenida=1" : "/inicio";
 
 /** Errores que /login sabe explicar; cualquier otro valor se ignora. */
 export const EMAIL_LINK_ERRORS = { invalid: "enlace-invalido", expired: "enlace-caducado" } as const;

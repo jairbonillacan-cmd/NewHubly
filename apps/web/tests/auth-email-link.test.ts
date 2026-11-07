@@ -52,18 +52,18 @@ describe("Enlaces de los correos: /auth/confirm, registro con bienvenida y nombr
     const auth = fakeAuth();
     const res = await confirm(new Request(`${SITE}/auth/confirm?token_hash=abc&type=email&flujo=registro`));
     expect(auth.verifyOtp).toHaveBeenCalledWith({ type: "email", token_hash: "abc" });
-    expect(location(res)).toBe(`${SITE}/hoy?bienvenida=1`);
+    expect(location(res)).toBe(`${SITE}/inicio?bienvenida=1`);
 
     fakeWorkspaceDb();
     fakeAuth();
-    expect(location(await confirm(new Request(`${SITE}/auth/confirm?token_hash=abc&type=email`)))).toBe(`${SITE}/hoy`);
+    expect(location(await confirm(new Request(`${SITE}/auth/confirm?token_hash=abc&type=email`)))).toBe(`${SITE}/inicio`);
   });
 
   it("/auth/confirm nunca redirige a una ruta tomada de la URL", async () => {
     fakeWorkspaceDb();
     fakeAuth();
     const res = await confirm(new Request(`${SITE}/auth/confirm?token_hash=abc&type=email&flujo=${encodeURIComponent("https://malo.example")}&next=//malo.example`));
-    expect(location(res)).toBe(`${SITE}/hoy`);
+    expect(location(res)).toBe(`${SITE}/inicio`);
   });
 
   it("/auth/confirm rechaza enlaces sin token, con tipos desconocidos o de recuperación, y explica los caducados", async () => {
@@ -85,7 +85,7 @@ describe("Enlaces de los correos: /auth/confirm, registro con bienvenida y nombr
   it("/auth/callback (PKCE) sigue funcionando como respaldo y respeta el flujo de registro", async () => {
     fakeWorkspaceDb();
     const auth = fakeAuth();
-    expect(location(await callback(new Request(`${SITE}/auth/callback?code=xyz&flujo=registro`)))).toBe(`${SITE}/hoy?bienvenida=1`);
+    expect(location(await callback(new Request(`${SITE}/auth/callback?code=xyz&flujo=registro`)))).toBe(`${SITE}/inicio?bienvenida=1`);
     expect(auth.exchangeCodeForSession).toHaveBeenCalledWith("xyz");
     expect(location(await callback(new Request(`${SITE}/auth/callback`)))).toBe(`${SITE}/login?error=enlace-invalido`);
     fakeAuth({ exchangeCodeForSession: vi.fn().mockResolvedValue({ data: {}, error: new Error("invalid flow state") }) });
@@ -111,8 +111,8 @@ describe("Enlaces de los correos: /auth/confirm, registro con bienvenida y nombr
     expect(workspaceNameFromMetadata({ workspace_name: "   " })).toBeUndefined();
     expect(workspaceNameFromMetadata({ workspace_name: 42 })).toBeUndefined();
     expect(workspaceNameFromMetadata(null)).toBeUndefined();
-    expect(destinationAfterEmailLink("registro")).toBe("/hoy?bienvenida=1");
-    expect(destinationAfterEmailLink("/admin")).toBe("/hoy");
+    expect(destinationAfterEmailLink("registro")).toBe("/inicio?bienvenida=1");
+    expect(destinationAfterEmailLink("/admin")).toBe("/inicio");
     expect(isEmailLinkType("recovery")).toBe(false);
     expect(isEmailLinkType("magiclink")).toBe(true);
   });

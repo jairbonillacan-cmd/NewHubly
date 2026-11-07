@@ -23,8 +23,15 @@ describe("URL limpias, sin datos internos", () => {
   });
 
   it("deja igual una URL ya limpia", () => {
-    expect(cleanLegacyUrl(new URL("http://localhost:3100/hoy"))).toBeNull();
-    expect(cleanLegacyUrl(new URL("http://localhost:3100/hoy?bienvenida=1"))).toBeNull();
+    expect(cleanLegacyUrl(new URL("http://localhost:3100/inicio"))).toBeNull();
+    expect(cleanLegacyUrl(new URL("http://localhost:3100/inicio?bienvenida=1"))).toBeNull();
+  });
+
+  it("la ruta anterior /hoy lleva a /inicio sin perder la bienvenida ni la herramienta", () => {
+    const go = (path: string) => cleanLegacyUrl(new URL(`http://localhost:3100${path}`))?.target;
+    expect(go("/hoy")?.pathname).toBe("/inicio");
+    expect(go("/hoy?bienvenida=1")?.href).toBe("http://localhost:3100/inicio?bienvenida=1");
+    expect(go("/hoy?herramienta=calendario")?.pathname).toBe("/calendario");
   });
 
   it("lleva los enlaces viejos a su ruta limpia y guarda el espacio en la cookie", async () => {
@@ -33,7 +40,7 @@ describe("URL limpias, sin datos internos", () => {
       [`/chat?workspaceId=${workspace}&vista=sin-leer`, "/chat/sin-leer"],
       [`/chat?workspaceId=${workspace}`, "/chat"],
       [`/hoy?workspaceId=${workspace}&herramienta=calendario`, "/calendario"],
-      ["/hoy?herramienta=desconocida", "/hoy"],
+      ["/hoy?herramienta=desconocida", "/inicio"],
     ];
     for (const [from, to] of cases) {
       const res = await middleware(new NextRequest(`http://localhost:3100${from}`));
@@ -47,8 +54,8 @@ describe("URL limpias, sin datos internos", () => {
 
   it("no guarda en la cookie un espacio que no sea un UUID", async () => {
     signedIn();
-    const res = await middleware(new NextRequest("http://localhost:3100/hoy?workspaceId=no-es-uuid"));
-    expect(res.headers.get("location")).toBe("http://localhost:3100/hoy");
+    const res = await middleware(new NextRequest("http://localhost:3100/inicio?workspaceId=no-es-uuid"));
+    expect(res.headers.get("location")).toBe("http://localhost:3100/inicio");
     expect(res.cookies.get("hubly_ws")).toBeUndefined();
   });
 
@@ -61,6 +68,6 @@ describe("URL limpias, sin datos internos", () => {
     const tool = await middleware(new NextRequest("http://localhost:3100/calendario"));
     expect(tool.headers.get("location")).toBe("http://localhost:3100/login");
     signedIn();
-    expect((await middleware(new NextRequest("http://localhost:3100/registro"))).headers.get("location")).toBe("http://localhost:3100/hoy");
+    expect((await middleware(new NextRequest("http://localhost:3100/registro"))).headers.get("location")).toBe("http://localhost:3100/inicio");
   });
 });

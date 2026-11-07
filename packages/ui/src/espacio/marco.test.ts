@@ -52,9 +52,9 @@ describe("Carril de herramientas", () => {
     semana: { hechos: 1, total: 3 }, ...props,
   }));
 
-  it("en compacto marca Hoy como página activa y permite expandir el carril", () => {
+  it("en compacto marca Inicio como página activa y permite expandir el carril", () => {
     const html = renderRail();
-    expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Hoy")(?=[^>]*aria-current="page")/);
+    expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Inicio")(?=[^>]*aria-current="page")/);
     expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Expandir el carril")(?=[^>]*aria-expanded="false")/);
     expect(html).not.toContain("Tu semana");
   });
@@ -119,6 +119,6 @@ describe("Marco compacto: medidas por tokens y objetivos táctiles de 44 px", ()
     expect(rail(true)).toContain("w-(--frame-rail-w-open)");
     // Cada herramienta usa --rail-item: 44 px en táctil (valor base); con ratón el token baja a 36 px.
     expect(px("--rail-item")).toBeGreaterThanOrEqual(44);
-    expect(/<button[^>]*aria-label="Hoy"[^>]*>/.exec(rail(false))![0]).toContain(" h-(--rail-item) ");
+    expect(/<button[^>]*aria-label="Inicio"[^>]*>/.exec(rail(false))![0]).toContain(" h-(--rail-item) ");
   });
 });

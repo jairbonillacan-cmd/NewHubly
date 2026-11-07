@@ -45,7 +45,7 @@ export const LANDING_FEATURES: readonly Feature[] = [
           </div>
         ))}
       </dl>
-      <a href="/hoy" className="inline-flex min-h-11 items-center justify-center rounded-full bg-(--accent-primary) px-5 text-sm font-semibold text-(--text-on-accent) hover:underline lg:self-start">Probarlo ahora</a>
+      <a href="/inicio" className="inline-flex min-h-11 items-center justify-center rounded-full bg-(--accent-primary) px-5 text-sm font-semibold text-(--text-on-accent) hover:underline lg:self-start">Probarlo ahora</a>
     </>,
   },
   {

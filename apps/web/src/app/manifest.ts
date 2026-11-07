@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Hubly",
     short_name: "Hubly",
     description: "¿Qué sigue y quién lo tiene? Espacio de trabajo y flujo editorial para agencias.",
-    start_url: "/hoy",
+    start_url: "/inicio",
     display: "standalone",
     background_color: tokens.color.surfaceBrand,
     theme_color: tokens.color.accentPrimary,

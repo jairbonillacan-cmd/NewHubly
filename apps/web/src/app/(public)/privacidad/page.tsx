@@ -14,7 +14,7 @@ const PRIVACY_SECTIONS = [
   {
     id: "portabilidad",
     title: "3. Portabilidad y exportación abierta desde el primer día",
-    body: "Tus datos nunca quedan cautivos. En cualquier momento puedes descargar todas tus notas y pendientes en formatos abiertos estándar (.json y .md) directamente desde la vista Hoy (/hoy), sin bloqueos ni trámites.",
+    body: "Tus datos nunca quedan cautivos. En cualquier momento puedes descargar todas tus notas y pendientes en formatos abiertos estándar (.json y .md) directamente desde Inicio (/inicio), sin bloqueos ni trámites.",
   },
   {
     id: "retencion",

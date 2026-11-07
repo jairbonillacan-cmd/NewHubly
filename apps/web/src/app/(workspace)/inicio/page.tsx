@@ -12,7 +12,7 @@ export async function HoyPage({ todayDate, showWelcome = false, herramienta, cha
   try {
     const data = await loadWorkspaceDashboardAction();
     // El espacio sale de la cookie: al volver atrás o recargar /chat tras cambiar a un espacio sin chat, se va a Hoy en vez de dar 404.
-    if (chatMode && !data.chat) redirect("/hoy");
+    if (chatMode && !data.chat) redirect("/inicio");
     return (
       <WorkspaceScreen
         initialChat={data.chat ?? null} chatMode={chatMode} initiallyUnread={initiallyUnread}

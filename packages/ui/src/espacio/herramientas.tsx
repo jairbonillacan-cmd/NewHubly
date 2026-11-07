@@ -14,7 +14,7 @@ export interface Herramienta {
 }
 
 export const HERRAMIENTAS: readonly Herramienta[] = [
-  { id: "hoy", nombre: "Hoy", descripcion: "Tus pendientes y notas del día.", disponible: true },
+  { id: "hoy", nombre: "Inicio", descripcion: "Tus pendientes y notas del día.", disponible: true },
   { id: "calendario", nombre: "Calendario", descripcion: "Las piezas de cada cliente por día, semana o mes, para mover lo que cambie sin rehacer la hoja de cálculo.", disponible: false },
   { id: "contenido", nombre: "Contenido", descripcion: "Cada pieza con su copy, sus medios, su estado y quién la tiene, de la idea a la aprobación.", disponible: false },
   { id: "clientes", nombre: "Clientes", descripcion: "Cada marca con su estrategia, su voz y sus audiencias, en un solo lugar.", disponible: false },
@@ -27,10 +27,10 @@ export const isHerramientaId = (value: string | null | undefined): value is Herr
 
 export const herramientaPorId = (id: HerramientaId): Herramienta => HERRAMIENTAS.find((herramienta) => herramienta.id === id) ?? HERRAMIENTAS[0]!;
 
-/** Cada herramienta tiene una URL limpia propia (#212): /hoy, /calendario, /contenido… */
-export const herramientaHref = (id: HerramientaId): string => `/${id}`;
+/** Cada herramienta tiene una URL limpia propia (#212): /inicio, /calendario, /contenido… Inicio guarda el id «hoy». */
+export const herramientaHref = (id: HerramientaId): string => (id === "hoy" ? "/inicio" : `/${id}`);
 
-/** La herramienta de una ruta («/calendario» → calendario); cualquier otra ruta es Hoy. */
+/** La herramienta de una ruta («/calendario» → calendario); cualquier otra ruta es Inicio. */
 export const herramientaDeRuta = (pathname: string): HerramientaId => {
   const id = pathname.split("/").filter(Boolean)[0];
   return isHerramientaId(id) ? id : "hoy";

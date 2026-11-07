@@ -6,7 +6,7 @@ import * as ui from "@hubly/ui";
 vi.mock("server-only", () => ({}));
 import { createTodoAction, exportWorkspaceAction, loadWorkspaceDashboardAction, saveNoteAction } from "../src/actions";
 import { signOutAction } from "../src/actions/auth";
-import { HoyPage } from "../src/app/(workspace)/hoy/page";
+import { HoyPage } from "../src/app/(workspace)/inicio/page";
 import {
   TZ_REFRESH_STORAGE_KEY, type ActionErrorState, WorkspaceScreen, classifyTodoItemForView,
   executeProtectedAction, itemPermissions, shouldTriggerQuickCaptureShortcut, syncTimeZoneAndMaybeRefresh,
@@ -129,7 +129,7 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     expect(onExpired).toHaveBeenCalledTimes(2);
     expect(currentError).toBeNull();
     // Cualquier NEXT_REDIRECT se trata igual, también si la ruta no es /login.
-    const redirectElsewhere = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;push;/hoy;307;" });
+    const redirectElsewhere = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;push;/inicio;307;" });
     await executeProtectedAction("No se pudo guardar la nota.", async () => { throw redirectElsewhere; }, onExpired, (st) => { currentError = st; });
     expect(onExpired).toHaveBeenCalledTimes(3);
     expect(currentError).toBeNull();

@@ -119,7 +119,7 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
     expect(todosB[0]?.isDone).toBe(false);
   });
 
-  it("middleware omite getUser en rutas públicas estáticas, refresca sesión con cookies httpOnly y redirige /hoy -> /login si no hay sesión", async () => {
+  it("middleware omite getUser en rutas públicas estáticas, refresca sesión con cookies httpOnly y redirige /inicio -> /login si no hay sesión", async () => {
     const getUserSpy = vi.fn();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSupabaseServerClientFactoryForTests(() => ({ auth: { getUser: getUserSpy } }) as any);
@@ -136,11 +136,11 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any);
-    const unauthRes = await middleware(new NextRequest("http://localhost:3100/hoy"));
+    const unauthRes = await middleware(new NextRequest("http://localhost:3100/inicio"));
     expect(unauthRes.status).toBe(307);
     expect(unauthRes.headers.get("location")).toBe("http://localhost:3100/login");
     // Una Server Action sin sesión no se redirige en el middleware: la acción misma redirige con NEXT_REDIRECT (#92).
-    const actionRes = await middleware(new NextRequest("http://localhost:3100/hoy", { method: "POST", headers: { "next-action": "abc123" } }));
+    const actionRes = await middleware(new NextRequest("http://localhost:3100/inicio", { method: "POST", headers: { "next-action": "abc123" } }));
     expect(actionRes.status).toBe(200);
     expect(actionRes.headers.get("location")).toBeNull();
 
@@ -153,12 +153,12 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any);
-    const authRes = await middleware(new NextRequest("http://localhost:3100/hoy"));
+    const authRes = await middleware(new NextRequest("http://localhost:3100/inicio"));
     expect(authRes.status).toBe(200);
     expect(authRes.cookies.get("sb-access-token")?.httpOnly).toBe(true);
   });
 
-  it("middleware lleva /login a /hoy con sesión válida y conserva las cookies renovadas", async () => {
+  it("middleware lleva /login a /inicio con sesión válida y conserva las cookies renovadas", async () => {
     setSupabaseServerClientFactoryForTests((cookieMethods) => ({
       auth: {
         getUser: vi.fn().mockImplementation(async () => {
@@ -171,7 +171,7 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
     for (const url of ["http://localhost:3100/login", "http://localhost:3100/login?modo=registro"]) {
       const res = await middleware(new NextRequest(url));
       expect(res.status).toBe(307);
-      expect(res.headers.get("location")).toBe("http://localhost:3100/hoy");
+      expect(res.headers.get("location")).toBe("http://localhost:3100/inicio");
       expect(res.cookies.get("sb-access-token")?.value).toBe("nuevo-jwt");
       expect(res.cookies.get("sb-access-token")?.httpOnly).toBe(true);
     }

@@ -1,10 +1,13 @@
 /** Herramientas del carril con ruta propia (#212). Debe coincidir con HERRAMIENTAS de @hubly/ui; lo comprueba una prueba. */
-export const TOOL_PATHS = ["/hoy", "/calendario", "/contenido", "/clientes", "/anuncios", "/reportes"] as const;
+export const TOOL_PATHS = ["/inicio", "/calendario", "/contenido", "/clientes", "/anuncios", "/reportes"] as const;
 const LEGACY_PARAMS = ["modo", "herramienta", "vista", "workspaceId"] as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Ruta anterior de Inicio: se sigue protegiendo y redirige a /inicio para no romper marcadores ni correos. */
+const OLD_HOME = "/hoy";
+
 export const isWorkspacePath = (path: string): boolean =>
-  (TOOL_PATHS as readonly string[]).includes(path) || path === "/chat" || path === "/chat/sin-leer";
+  (TOOL_PATHS as readonly string[]).includes(path) || path === OLD_HOME || path === "/chat" || path === "/chat/sin-leer";
 export const isAuthPath = (path: string): boolean => path === "/login" || path === "/registro";
 
 /**
@@ -14,11 +17,12 @@ export const isAuthPath = (path: string): boolean => path === "/login" || path =
  */
 export function cleanLegacyUrl(url: URL): { target: URL; workspaceId: string | null } | null {
   const params = url.searchParams;
-  if (!LEGACY_PARAMS.some((key) => params.has(key))) return null;
+  if (url.pathname !== OLD_HOME && !LEGACY_PARAMS.some((key) => params.has(key))) return null;
   const target = new URL(url);
+  if (url.pathname === OLD_HOME) target.pathname = "/inicio";
   if (url.pathname === "/login" && params.get("modo") === "registro") target.pathname = "/registro";
   const tool = params.get("herramienta");
-  if (url.pathname === "/hoy" && tool && (TOOL_PATHS as readonly string[]).includes(`/${tool}`)) target.pathname = `/${tool}`;
+  if (url.pathname === OLD_HOME && tool && (TOOL_PATHS as readonly string[]).includes(`/${tool}`)) target.pathname = `/${tool}`;
   if (url.pathname === "/chat" && params.get("vista") === "sin-leer") target.pathname = "/chat/sin-leer";
   for (const key of LEGACY_PARAMS) target.searchParams.delete(key);
   const rawWorkspace = isWorkspacePath(url.pathname) ? params.get("workspaceId") : null;
