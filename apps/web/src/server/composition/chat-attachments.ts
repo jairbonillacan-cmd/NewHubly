@@ -269,7 +269,7 @@ export class ChatAttachmentPurgeError extends Error {
 
 /**
  * Borra por la API de Storage (bucket.remove) los archivos de un mensaje antes de retirarlo. La lista de rutas y el
- * permiso (autor, u owner/admin que puede leer la conversación) los decide `private.chat_message_attachment_paths`;
+ * permiso (el mismo que retirar el mensaje: su autor con derecho a escribir) los decide `private.chat_message_attachment_paths`;
  * la política de borrado del bucket aplica la misma regla. Si algún adjunto registrado no se borra, lanza
  * `ChatAttachmentPurgeError` y el mensaje no debe retirarse.
  */
