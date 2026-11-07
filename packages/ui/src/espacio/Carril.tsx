@@ -13,8 +13,6 @@ export interface CarrilProps {
   onSelect: (id: HerramientaId) => void;
   /** Pendientes de Hoy sin hacer (vencidos y de hoy): la ficha de Hoy. */
   hoyPendientes: number;
-  /** Pendientes de esta semana: hechos y totales, para la tarjeta «Tu semana». */
-  semana: { hechos: number; total: number };
   /** Se está cambiando de espacio: no se muestran las cuentas del anterior (#215). */
   cargando?: boolean;
 }
@@ -51,7 +49,7 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
 }
 
 /** Carril izquierdo (#105, sección 3): Hoy primero y el grupo «Herramientas»; compacto o completo, con el ancho de `--frame-rail-w` y `--frame-rail-w-open`. */
-export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPendientes, semana, chat, cargando = false }: CarrilProps) {
+export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPendientes, chat, cargando = false }: CarrilProps) {
   const [hoy, ...herramientas] = HERRAMIENTAS;
   const ficha = (herramienta: Herramienta) => herramienta.id === "hoy" ? (hoyPendientes > 0 && !cargando ? String(hoyPendientes) : null) : "Pronto";
   return (
@@ -80,14 +78,6 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
         {expandido && <span className="hubly-carril-texto shrink-0 text-xs">Pronto</span>}
       </Button>
       <span className="grow" />
-      {expandido && (
-        <div className="hubly-carril-texto mb-1 flex flex-col gap-2 rounded-xl bg-(--glass-hover) p-3 whitespace-normal">
-          <p className="m-0 text-sm font-semibold">Tu semana</p>
-          <p className="m-0 text-xs text-(--text-secondary)">{cargando ? "Cargando…" : `${semana.hechos} de ${semana.total} pendientes hechos`}</p>
-          <progress value={cargando ? 0 : semana.hechos} max={Math.max(cargando ? 1 : semana.total, 1)} aria-label="Pendientes hechos esta semana"
-            className="h-1.5 w-full appearance-none overflow-hidden rounded-full [&::-moz-progress-bar]:bg-(--accent-primary) [&::-webkit-progress-bar]:bg-(--glass-line-strong) [&::-webkit-progress-value]:bg-(--accent-primary)" />
-        </div>
-      )}
     </nav>
       {/* Botón redondo sobre el borde derecho del carril (issues 142 y 150): mismo cristal y borde; sale solo lo que mide el hueco. */}
       <Button variant="ghost" aria-expanded={expandido} aria-label={expandido ? "Contraer el carril" : "Expandir el carril"} onPress={onToggleExpandido}

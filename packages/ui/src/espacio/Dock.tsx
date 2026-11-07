@@ -2,7 +2,7 @@
 
 import { Button, Chip, Kbd, Popover, Slider, ToggleButton } from "@heroui/react";
 import { forwardRef, useId, useState, type FormEvent, type ReactNode } from "react";
-import { FileTrigger } from "react-aria-components";
+import { ColorArea, ColorField, ColorPicker, ColorSlider, ColorSwatch, ColorSwatchPicker, ColorSwatchPickerItem, ColorThumb, FileTrigger, Input, SliderTrack, parseColor, type Color } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { HUBLY_ACCENTS, HUBLY_ESTILOS, setAccentColor, useHublyAccent, useHublyAccentColor, useHublyEstilo, useHublyTheme } from "../landing/ThemeToggle";
 import { Icon } from "./icons";
@@ -108,6 +108,63 @@ function WallpaperTile({ wallpaper, label, selected, vivo = false, onSelect }: {
 const SECCION = "text-xs font-semibold text-(--text-secondary)";
 const ANIMADOS: ReadonlySet<string> = new Set(FONDOS_ILUSTRADOS.filter((fondo) => fondo.animado).map((fondo) => fondo.id));
 
+/** Colores sugeridos del selector libre; se leen del token para no fijar colores en el código. */
+const SUGERIDOS = ["--sugerido-1", "--sugerido-2", "--sugerido-3", "--sugerido-4", "--sugerido-5", "--sugerido-6", "--sugerido-7", "--sugerido-8"];
+const leerToken = (nombre: string) => (typeof document === "undefined" ? "" : getComputedStyle(document.documentElement).getPropertyValue(nombre).trim());
+const aColor = (valor: string) => { try { return parseColor(valor); } catch { return null; } };
+
+/** Acento libre: área de saturación y brillo, tono, hexadecimal y sugeridos, con vista previa del texto encima. */
+function SelectorColor({ seleccionado, valor }: { seleccionado: boolean; valor: string }) {
+  const inicial = aColor(valor) ?? aColor(leerToken("--accent-personalizado-inicial"));
+  const [color, setColor] = useState<Color | null>(inicial);
+  const aplicar = (next: Color | null) => { if (!next) return; setColor(next); setAccentColor(next.toString("hex")); };
+  const sugeridos = SUGERIDOS.map(leerToken).filter((hex) => hex.startsWith("#"));
+  return (
+    <Popover>
+      <Button isIconOnly variant="ghost" aria-label="Elegir otro color de acento" aria-pressed={seleccionado}
+        className={`size-9 min-w-9 rounded-full border-2 p-0 ${seleccionado ? "border-(--text-primary)" : "border-transparent"}`}>
+        <span className="hubly-acento-arcoiris flex size-6 items-center justify-center rounded-full">
+          {seleccionado && <span className="hubly-acento-elegido size-4 rounded-full" />}
+        </span>
+      </Button>
+      <Popover.Content placement="left" className="hubly-pop-surface w-64 rounded-2xl p-3 text-(--text-primary)">
+        <Popover.Dialog aria-label="Color de acento personalizado" className="hubly-sin-anillo outline-none">
+          {color && (
+            <ColorPicker value={color} onChange={aplicar}>
+              <div className="flex flex-col gap-3">
+                <ColorArea colorSpace="hsb" xChannel="saturation" yChannel="brightness" className="hubly-color-area h-36 w-full rounded-xl">
+                  <ColorThumb className="hubly-color-pomo size-5 rounded-full" />
+                </ColorArea>
+                <ColorSlider colorSpace="hsb" channel="hue" aria-label="Tono">
+                  <SliderTrack className="h-3 w-full rounded-full">
+                    <ColorThumb className="hubly-color-pomo top-1/2 size-5 rounded-full" />
+                  </SliderTrack>
+                </ColorSlider>
+                <div className="flex items-center gap-2">
+                  <ColorSwatch className="size-8 shrink-0 rounded-lg" />
+                  <ColorField aria-label="Color en hexadecimal" className="min-w-0 grow">
+                    <Input className="h-8 w-full rounded-lg border border-(--glass-line-strong) bg-(--glass-field) px-2 font-mono text-sm text-(--text-primary) uppercase outline-none focus:border-(--accent-primary)" />
+                  </ColorField>
+                  <span className="flex h-8 shrink-0 items-center rounded-lg bg-(--accent-primary) px-2 text-xs font-semibold text-(--text-on-accent)">Aa</span>
+                </div>
+                {sugeridos.length > 0 && (
+                  <ColorSwatchPicker aria-label="Colores sugeridos" className="grid grid-cols-8 gap-1.5">
+                    {sugeridos.map((hex) => (
+                      <ColorSwatchPickerItem key={hex} color={hex} className="hubly-color-sugerido cursor-pointer rounded-full p-0.5 outline-none">
+                        <ColorSwatch className="size-5 rounded-full" />
+                      </ColorSwatchPickerItem>
+                    ))}
+                  </ColorSwatchPicker>
+                )}
+              </div>
+            </ColorPicker>
+          )}
+        </Popover.Dialog>
+      </Popover.Content>
+    </Popover>
+  );
+}
+
 /** Tema y acento de la apariencia: se guardan para esta persona (tema en su cuenta, acento en este navegador). */
 function TemaYAcento() {
   const [estilo, setEstiloValue] = useHublyEstilo();
@@ -140,14 +197,7 @@ function TemaYAcento() {
               <span data-acento={entry.id} className="hubly-acento-muestra size-6 rounded-full" />
             </button>
           ))}
-          {/* Color libre: el arcoíris abre el selector del sistema; elegido, muestra el color dentro de un anillo de arcoíris. */}
-          <label title="Elegir otro color" className={`relative flex size-9 cursor-pointer items-center justify-center rounded-full border-2 focus-within:ring-2 focus-within:ring-(--accent-primary) ${accent === "personalizado" ? "border-(--text-primary)" : "border-transparent"}`}>
-            <span className="hubly-acento-arcoiris flex size-6 items-center justify-center rounded-full">
-              {accent === "personalizado" && <span className="hubly-acento-elegido size-4 rounded-full" />}
-            </span>
-            <input type="color" role="radio" aria-checked={accent === "personalizado"} aria-label="Color de acento personalizado" value={accentColor}
-              onChange={(event) => setAccentColor(event.target.value)} className="absolute inset-0 size-full cursor-pointer opacity-0" />
-          </label>
+          <SelectorColor seleccionado={accent === "personalizado"} valor={accentColor} />
         </div>
       </div>
     </>

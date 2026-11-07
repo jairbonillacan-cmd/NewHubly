@@ -194,6 +194,12 @@ html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primar
 .hubly-estilo-muestra[data-estilo-muestra="sistema"] { --muestra-fondo: linear-gradient(135deg, #F7F7F8 50%, #111317 50%); --muestra-barra: #8A8D96; }
 .hubly-estilo-muestra { background: var(--muestra-fondo); }
 .hubly-estilo-muestra-barra { background: var(--muestra-barra); }
+/* Selector de color libre: pomos claros con sombra y sugeridos; el sugerido elegido lleva un anillo. */
+:root { --sugerido-1: #E11D48; --sugerido-2: #EA580C; --sugerido-3: #CA8A04; --sugerido-4: #16A34A; --sugerido-5: #0891B2; --sugerido-6: #2563EB; --sugerido-7: #7C3AED; --sugerido-8: #C026D3; }
+.hubly-color-pomo { border: 2px solid var(--accent-on-claro); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25), 0 1px 4px rgb(0 0 0 / 0.35); }
+.hubly-color-pomo[data-focus-visible] { box-shadow: 0 0 0 2px var(--accent-primary), 0 1px 4px rgb(0 0 0 / 0.35); }
+.hubly-color-sugerido[data-selected] { box-shadow: 0 0 0 2px var(--text-primary); }
+.hubly-color-sugerido[data-focus-visible] { box-shadow: 0 0 0 2px var(--accent-primary); }
 /* Acento personalizado: textos posibles sobre el acento y color con el que empieza el selector. */
 :root { --accent-on-claro: #FFFFFF; --accent-on-oscuro: #0C0D0F; --accent-personalizado-inicial: #7C3AED; }
 /* Acento personalizado: el color lo elige la persona; hover y fondo sutil se derivan, y el texto encima se elige por contraste. */
@@ -528,6 +534,8 @@ body {
   width: var(--marco-w, 0); height: var(--marco-h, 0); border: var(--border-width-thin) solid var(--accent-primary); border-radius: 0.375rem;
   background-color: color-mix(in srgb, var(--accent-primary) 12%, transparent); }
 .hubly-lienzo-item[data-seleccionado] { outline-color: var(--accent-primary); }
+/* Punto donde se ancla el menú del clic derecho. */
+.hubly-lienzo-ancla { position: absolute; left: var(--menu-x, 0); top: var(--menu-y, 0); width: 1px; height: 1px; pointer-events: none; }
 .hubly-lienzo[data-arrastrando] { user-select: none; }
 /* Mano cerrada solo al mover el lienzo o un panel; al seleccionar se queda la flecha normal. */
 .hubly-lienzo[data-arrastrando="pan"], .hubly-lienzo[data-arrastrando="pan"] *,

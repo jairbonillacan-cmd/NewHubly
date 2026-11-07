@@ -3,7 +3,7 @@
 import { Button, Dropdown, ToggleButton, Tooltip } from "@heroui/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import type { Key } from "react-aria-components";
+import { Menu, MenuItem, MenuSection, Popover as AriaPopover, Separator, SubmenuTrigger, type Key } from "react-aria-components";
 import { Icon, type IconName } from "./icons";
 import type { LayoutId } from "./preferencias";
 
@@ -106,6 +106,7 @@ export function panelesEnSeleccion(panels: readonly { id: string; rect: LienzoRe
   return panels.filter(({ rect }) => rect.x < sel.x + sel.w && rect.x + rect.w > sel.x && rect.y < sel.y + sel.h && rect.y + rect.h > sel.y).map(({ id }) => id);
 }
 
+const TECLA = "rounded border border-(--glass-line-strong) px-1.5 text-xs text-(--text-muted)";
 const NOT_DRAG = "button, a, input, textarea, select, [contenteditable='true'], [role='button'], [role='menuitem'], [role='switch'], [role='checkbox']";
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
 const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--hover-acento)";
@@ -208,15 +209,25 @@ export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo, widg
   );
 }
 
+/** Acciones de Hubly para el menú del clic derecho sobre el lienzo. */
+export interface LienzoMenu {
+  onNuevoPendiente: () => void;
+  onNuevaNota: () => void;
+  onPersonalizar: () => void;
+  widgets: { id: string; nombre: string; puesto: boolean }[];
+  onWidget: (id: string) => void;
+}
+
 export interface LienzoProps {
   items: readonly LienzoItem[];
+  menu?: LienzoMenu | undefined;
   /** Dónde va la barra del lienzo (en la fila del dock) y lo que necesita para su tuerca. */
   barra?: { slot: HTMLElement | null } & Omit<LienzoBarraProps, "lienzo"> | undefined;
 }
 
 /** Lienzo infinito: se arrastra desde el fondo, la rueda lo mueve y Ctrl + rueda (o pellizcar) acerca o aleja.
  *  Cada panel se mueve desde su cabecera y cambia de tamaño desde cualquier borde. */
-export function Lienzo({ items, barra }: LienzoProps) {
+export function Lienzo({ items, barra, menu }: LienzoProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<LienzoView>({ x: 0, y: 0, zoom: 1 });
@@ -231,6 +242,8 @@ export function Lienzo({ items, barra }: LienzoProps) {
   const marcoRef = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const cancelarMenu = useRef(false);
+  const anclaMenu = useRef<HTMLDivElement>(null);
+  const [menuAbierto, setMenuAbierto] = useState(false);
   const asentarTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const rectOf = useCallback((item: LienzoItem) => rects[item.id] ?? item.rect, [rects]);
@@ -415,10 +428,18 @@ export function Lienzo({ items, barra }: LienzoProps) {
         onPointerUp={endGesture}
         onPointerCancel={endGesture}
         onContextMenu={(event) => {
-          // Sin menú al soltar un arrastre con el botón derecho ni sobre el fondo; dentro de un panel, el menú normal.
+          // Arrastrar con el botón derecho mueve el lienzo sin menú. Un clic derecho quieto sobre el fondo abre el menú de
+          // Hubly donde está el puntero; dentro de un panel queda el menú normal del navegador (copiar, pegar…).
           const enPanel = event.target instanceof Element && event.target.closest("[data-lienzo-item]");
-          if (cancelarMenu.current || !enPanel) event.preventDefault();
+          const movido = cancelarMenu.current;
           cancelarMenu.current = false;
+          if (enPanel && !movido) return;
+          event.preventDefault();
+          if (movido || !menu) return;
+          const box = event.currentTarget.getBoundingClientRect();
+          anclaMenu.current?.style.setProperty("--menu-x", `${event.clientX - box.left}px`);
+          anclaMenu.current?.style.setProperty("--menu-y", `${event.clientY - box.top}px`);
+          setMenuAbierto(true);
         }}
         onKeyDown={(event) => { if (event.key === "Escape" && seleccion.length) setSeleccion([]); }}
         className="hubly-lienzo absolute inset-0 overflow-hidden rounded-2xl lg:rounded-none"
@@ -429,11 +450,54 @@ export function Lienzo({ items, barra }: LienzoProps) {
           ))}
         </div>
         <div ref={marcoRef} aria-hidden="true" className={`hubly-lienzo-marco ${marcando ? "" : "hidden"}`} />
+        <div ref={anclaMenu} aria-hidden="true" className="hubly-lienzo-ancla" />
       </div>
       {opciones.mapa && size.w > 0 && (
         <div className="hubly-lienzo-mapa absolute right-0 bottom-0 z-10">
           <MiniMapa panels={panelRects} view={view} size={size} onCenter={(x, y) => setView((current) => ({ ...current, x: size.w / 2 - x * current.zoom, y: size.h / 2 - y * current.zoom }))} />
         </div>
+      )}
+      {menu && (
+        <AriaPopover triggerRef={anclaMenu} isOpen={menuAbierto} onOpenChange={setMenuAbierto} placement="bottom start" offset={4} className={`${MENU} hubly-menu-lienzo w-64`}>
+          <Menu aria-label="Acciones del lienzo" autoFocus="first" className="hubly-sin-anillo outline-none" onAction={(key) => {
+            setMenuAbierto(false);
+            if (key === "pendiente") menu.onNuevoPendiente();
+            else if (key === "nota") menu.onNuevaNota();
+            else if (key === "todo") setSeleccion(items.map((item) => item.id));
+            else if (key === "ordenar") resetLayout();
+            else if (key === "ajustar") fit();
+            else if (key === "mapa") setOpciones((current) => ({ ...current, mapa: !current.mapa }));
+            else if (key === "aspecto") menu.onPersonalizar();
+          }}>
+            <MenuSection className="pb-1.5">
+              <MenuItem id="pendiente" textValue="Nuevo pendiente" className={ITEM}><Icon name="mas" /> <span className="grow">Nuevo pendiente</span><kbd className={TECLA}>C</kbd></MenuItem>
+              <MenuItem id="nota" textValue="Nueva nota" className={ITEM}><Icon name="nota" /> <span className="grow">Nueva nota</span><kbd className={TECLA}>N</kbd></MenuItem>
+              <SubmenuTrigger>
+                <MenuItem id="widgets" textValue="Widgets" className={ITEM}><Icon name="widgets" /> <span className="grow">Widgets</span><Icon name="chevron" className="size-3.5" /></MenuItem>
+                <AriaPopover placement="end top" offset={-4} className={`${MENU} w-56`}>
+                  <Menu aria-label="Widgets" className="hubly-sin-anillo outline-none" onAction={(key) => { setMenuAbierto(false); menu.onWidget(String(key)); }}>
+                    {menu.widgets.map((widget) => (
+                      <MenuItem key={widget.id} id={widget.id} textValue={widget.nombre} className={ITEM}>
+                        <span className="grow">{widget.nombre}</span>{widget.puesto && <Icon name="check" className="size-4 text-(--accent-primary)" />}
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                </AriaPopover>
+              </SubmenuTrigger>
+            </MenuSection>
+            <Separator className="my-1 h-px bg-(--glass-line)" />
+            <MenuSection className="py-1.5">
+              <MenuItem id="todo" textValue="Seleccionar todo" className={ITEM}><Icon name="encuadrar" /> <span className="grow">Seleccionar todo</span></MenuItem>
+              <MenuItem id="ordenar" textValue="Volver al acomodo inicial" className={ITEM}><Icon name="deshacer" /> <span className="grow">Volver al acomodo inicial</span></MenuItem>
+              <MenuItem id="ajustar" textValue="Ver todos los paneles" className={ITEM}><Icon name="encuadrar" /> <span className="grow">Ver todos los paneles</span></MenuItem>
+              <MenuItem id="mapa" textValue="Mapa del lienzo" className={ITEM}><Icon name="mapa" /> <span className="grow">Mapa del lienzo</span>{opciones.mapa && <Icon name="check" className="size-4 text-(--accent-primary)" />}</MenuItem>
+            </MenuSection>
+            <Separator className="my-1 h-px bg-(--glass-line)" />
+            <MenuSection className="pt-1.5">
+              <MenuItem id="aspecto" textValue="Personalizar aspecto" className={ITEM}><Icon name="imagen" /> <span className="grow">Personalizar aspecto</span></MenuItem>
+            </MenuSection>
+          </Menu>
+        </AriaPopover>
       )}
       {barra?.slot && createPortal(<LienzoBarra {...barra} lienzo={controles} />, barra.slot)}
     </div>

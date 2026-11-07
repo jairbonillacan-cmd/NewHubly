@@ -7,7 +7,7 @@ import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyTheme, type HublyThemePreference } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { useFondoMovimiento } from "./fondoMovimiento";
-import { WIDGET_INICIAL, WidgetPanel, WidgetsCajon, toggleWidget, useWidgets } from "./widgets";
+import { Bandeja, WIDGETS, WIDGET_INICIAL, WidgetPanel, WidgetsCajon, toggleWidget, useWidgets, type WidgetDatos } from "./widgets";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
 import { BackgroundPicker, CaptureField, Dock, DockMore, DockStatus, type WallpaperImageControls } from "./Dock";
 import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery, type DockSuggestion } from "./dockConfig";
@@ -155,7 +155,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
       }
     : undefined;
   const [fondoMovimiento] = useFondoMovimiento();
-  const widgetsPuestos = useWidgets();
+  const widgets = useWidgets();
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
   const initialPreference = props.initialThemePreference ?? props.initialTheme ?? null;
@@ -434,17 +434,17 @@ export function EspacioHoy(props: EspacioHoyProps) {
     layout, onLayout: (distribucion) => setPrefs({ distribucion }), onOpenFondo: openBackground,
     fondo: <BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs} isOpen={pickerOpen === "desktop"}
       onOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} triggerClassName="pointer-events-none invisible absolute right-2 bottom-full size-0 min-w-0 p-0" />,
-    widgets: <WidgetsCajon activos={widgetsPuestos} onToggle={toggleWidget} triggerClassName="size-(--dock-control) min-w-(--dock-control) text-(--text-secondary) data-[hovered]:text-(--text-primary)" />,
+    widgets: <WidgetsCajon activos={widgets.puestos} onToggle={toggleWidget} triggerClassName="size-(--dock-control) min-w-(--dock-control) text-(--text-secondary) data-[hovered]:text-(--text-primary)" />,
+  };
+  const widgetDatos: WidgetDatos = {
+    timezone: timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone, todos, todayDate,
+    semana: resumenSemana(todos, todayDate), onToggleTodo: (todoId) => void onToggleTodo(todoId),
   };
   const lienzoItems: LienzoItem[] = [
     ...(panels.hoy ? [{ id: "hoy", rect: LIENZO_INICIAL.hoy, node: hoyPanel("h-full") }] : []),
     ...(panels.nota ? [{ id: "nota", rect: LIENZO_INICIAL.nota, node: notaPanel("h-full") }] : []),
     ...(panels.notas ? [{ id: "notas", rect: LIENZO_INICIAL.notas, node: notasPanel("h-full") }] : []),
-    ...widgetsPuestos.map((id) => ({
-      id: `widget-${id}`, rect: WIDGET_INICIAL[id],
-      node: <WidgetPanel id={id} timezone={timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone} todos={todos} todayDate={todayDate}
-        semana={resumenSemana(todos, todayDate)} onToggleTodo={(todoId) => void onToggleTodo(todoId)} onRemove={() => toggleWidget(id)} />,
-    })),
+    ...widgets.lienzo.map((id) => ({ id: `widget-${id}`, rect: WIDGET_INICIAL[id], node: <WidgetPanel id={id} {...widgetDatos} /> })),
   ];
 
   return (
@@ -492,7 +492,6 @@ export function EspacioHoy(props: EspacioHoyProps) {
           onSelect={selectHerramienta}
           cargando={switching}
           hoyPendientes={overdueCount + todayCount}
-          semana={resumenSemana(todos, todayDate)}
         />
       </div>
 
@@ -511,7 +510,11 @@ export function EspacioHoy(props: EspacioHoyProps) {
         <span>{chat.unread === null ? "Abrir chat" : chat.unread === 0 ? "Chat al día" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
       </a>}
       {chat?.active ? chat.content : herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : enLienzo ? (
-        <Lienzo items={lienzoItems} barra={{ slot: barraSlot, ...barraProps }} />
+        <Lienzo items={lienzoItems} barra={{ slot: barraSlot, ...barraProps }} menu={{
+          onNuevoPendiente: focusCapture, onNuevaNota: () => void createNote(), onPersonalizar: openBackground,
+          widgets: WIDGETS.map((widget) => ({ id: widget.id, nombre: widget.nombre, puesto: widgets.puestos.includes(widget.id) })),
+          onWidget: (id) => { const widget = WIDGETS.find((entry) => entry.id === id); if (widget) toggleWidget(widget.id); },
+        }} />
       ) : (
       <div className={`flex flex-col gap-3 lg:min-h-144 lg:grow ${gridClass}`}>
         {panels.hoy && hoyPanel(`max-h-160 lg:max-h-none ${hoyClass}`)}
@@ -523,6 +526,8 @@ export function EspacioHoy(props: EspacioHoyProps) {
       {switching && <div role="status" className="hubly-espacio-carga hubly-glass pointer-events-none absolute inset-x-3 top-0 flex items-center gap-3 rounded-2xl p-4 text-sm font-semibold lg:inset-x-0">Abriendo {targetName}…</div>}
       </main>
 
+      {/* Bandeja (abajo a la izquierda): avance de la semana y widgets anclados, siempre a mano. */}
+      {dock && <div className="hubly-espacio-escena fixed bottom-3 left-3 z-20 hidden lg:block" {...hide}><Bandeja datos={widgetDatos} anclados={widgets.bandeja} /></div>}
       {/* Fila de abajo: el dock al centro y la barra del lienzo (zoom y mapa) a la derecha, en cápsulas separadas. */}
       {dock && <div className="hubly-espacio-escena z-20 hidden min-w-0 gap-3 lg:col-start-2 lg:row-start-3 lg:flex lg:items-end 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" {...hide}>
         {/* Centrado exacto solo donde cabe (2xl); antes, el dock se centra en el espacio que deja la barra del lienzo. */}

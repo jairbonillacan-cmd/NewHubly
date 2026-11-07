@@ -49,7 +49,7 @@ describe("Marco fijo de Tu espacio (issue 105): barra superior, carril y dock fi
 describe("Carril de herramientas", () => {
   const renderRail = (props: Partial<CarrilProps> = {}) => renderToStaticMarkup(createElement(Carril, {
     expandido: false, activa: "hoy", onToggleExpandido: noop, onSelect: noop, hoyPendientes: 3,
-    semana: { hechos: 1, total: 3 }, ...props,
+    ...props,
   }));
 
   it("en compacto marca Hub como página activa y permite expandir el carril", () => {
@@ -59,15 +59,15 @@ describe("Carril de herramientas", () => {
     expect(html).not.toContain("Tu semana");
   });
 
-  it("en completo muestra las fichas, el progreso y la acción de agregar desactivada", () => {
+  it("en completo muestra las fichas y la acción de agregar desactivada", () => {
     const html = renderRail({ expandido: true, activa: "calendario" });
     expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Calendario, próximamente")(?=[^>]*aria-current="page")/);
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Contraer el carril")(?=[^>]*aria-expanded="true")/);
     expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Agregar una herramienta, muy pronto")(?=[^>]* disabled="")/);
     expect(html).toContain(">Pronto<");
-    expect(html).toContain(">Tu semana<");
-    expect(html).toMatch(/<progress[^>]*value="1"[^>]*max="3"/);
+    expect(html).not.toContain(">Tu semana<"); // ahora vive en la bandeja, abajo a la izquierda
+    expect(html).not.toContain("<progress");
   });
 
   it("presenta una herramienta futura con su icono, nombre y descripción", () => {
@@ -114,7 +114,7 @@ describe("Marco compacto: medidas por tokens y objetivos táctiles de 44 px", ()
 
   it("el carril retraído deja 44 px útiles por botón (ancho menos el relleno) y el desplegado usa su token", () => {
     expect(px("--frame-rail-w") - 2 * px("--frame-rail-pad")).toBeGreaterThanOrEqual(44);
-    const rail = (expandido: boolean) => renderToStaticMarkup(createElement(Carril, { expandido, activa: "hoy", onToggleExpandido: noop, onSelect: noop, hoyPendientes: 0, semana: { hechos: 0, total: 0 } }));
+    const rail = (expandido: boolean) => renderToStaticMarkup(createElement(Carril, { expandido, activa: "hoy", onToggleExpandido: noop, onSelect: noop, hoyPendientes: 0 }));
     expect(rail(false)).toContain("w-(--frame-rail-w) ");
     expect(rail(true)).toContain("w-(--frame-rail-w-open)");
     // Cada herramienta usa --rail-item: 44 px en táctil (valor base); con ratón el token baja a 36 px.
