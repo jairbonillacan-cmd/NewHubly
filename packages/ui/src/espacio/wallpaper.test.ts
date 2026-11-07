@@ -6,7 +6,16 @@ import { FONDOS_ILUSTRADOS } from "./fondos";
 import { Wallpaper, WallpaperSwatch } from "./Wallpaper";
 
 const source = (file: string) => readFileSync(new URL(file, import.meta.url), "utf8");
-const isClientModule = (code: string) => /^\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/\s*)*["']use client["']/.test(code);
+/** ¿Empieza el módulo, tras comentarios y espacios, con la directiva "use client"? Sin expresiones regulares para no arriesgar retroceso exponencial. */
+function isClientModule(code: string): boolean {
+  let rest = code.trimStart();
+  for (;;) {
+    if (rest.startsWith("//")) rest = rest.slice(rest.indexOf("\n") === -1 ? rest.length : rest.indexOf("\n") + 1).trimStart();
+    else if (rest.startsWith("/*")) rest = rest.slice(rest.indexOf("*/") === -1 ? rest.length : rest.indexOf("*/") + 2).trimStart();
+    else break;
+  }
+  return rest.startsWith('"use client"') || rest.startsWith("'use client'");
+}
 
 describe("Fondos ilustrados (issue 238)", () => {
   it("el fondo ilustrado sirve la versión animada solo sin reducción de movimiento y la estática siempre", () => {
