@@ -134,3 +134,47 @@ export function ThemeToggle({ variante = "pastilla" }: ThemeToggleProps = {}) {
     </Button>
   );
 }
+
+/** Color de acento (apariencia): se guarda en este navegador y se aplica con data-accent en <html>. */
+export const HUBLY_ACCENTS = [
+  { id: "azul", nombre: "Azul tinta" },
+  { id: "violeta", nombre: "Violeta" },
+  { id: "turquesa", nombre: "Turquesa" },
+  { id: "verde", nombre: "Verde" },
+  { id: "ambar", nombre: "Ámbar" },
+  { id: "rosa", nombre: "Rosa" },
+] as const;
+export type HublyAccent = (typeof HUBLY_ACCENTS)[number]["id"];
+const ACCENT_STORAGE_KEY = "hubly-accent";
+const isAccent = (value: unknown): value is HublyAccent => HUBLY_ACCENTS.some((accent) => accent.id === value);
+let accent: HublyAccent | null = null;
+const accentListeners = new Set<() => void>();
+
+function readAccent(): HublyAccent {
+  if (accent) return accent;
+  let stored: string | null = null;
+  try { stored = typeof window === "undefined" ? null : window.localStorage.getItem(ACCENT_STORAGE_KEY); } catch { /* sin almacenamiento */ }
+  accent = isAccent(stored) ? stored : "azul";
+  return accent;
+}
+
+export function setAccent(next: HublyAccent): void {
+  accent = next;
+  if (typeof window !== "undefined") {
+    try { window.localStorage.setItem(ACCENT_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
+  }
+  if (typeof document !== "undefined") {
+    if (next === "azul") document.documentElement.removeAttribute("data-accent");
+    else document.documentElement.setAttribute("data-accent", next);
+  }
+  accentListeners.forEach((listener) => listener());
+}
+
+export function useHublyAccent() {
+  const current = useSyncExternalStore(
+    (listener) => { accentListeners.add(listener); return () => { accentListeners.delete(listener); }; },
+    readAccent,
+    () => "azul" as HublyAccent,
+  );
+  return [current, setAccent] as const;
+}

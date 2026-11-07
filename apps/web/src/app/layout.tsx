@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { viewportFit: "cover", interactiveWidget: "resizes-content" };
 
 // Antes de pintar: activa las animaciones de entrada (solo con JavaScript) y aplica el tema guardado; sin preferencia queda el claro (#85).
-const THEME_BOOTSTRAP = `document.documentElement.classList.add("hubly-motion");try{var t=localStorage.getItem("hubly-theme");var s=t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.setAttribute("data-theme",t==="dark"||s?"dark":"light")}catch(e){document.documentElement.setAttribute("data-theme","light")}`;
+const THEME_BOOTSTRAP = `document.documentElement.classList.add("hubly-motion");try{var t=localStorage.getItem("hubly-theme");var s=t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.setAttribute("data-theme",t==="dark"||s?"dark":"light");var a=localStorage.getItem("hubly-accent");if(a&&a!=="azul"&&/^[a-z]+$/.test(a))document.documentElement.setAttribute("data-accent",a)}catch(e){document.documentElement.setAttribute("data-theme","light")}`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

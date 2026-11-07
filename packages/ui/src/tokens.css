@@ -129,6 +129,31 @@
   --glass-radius-access-bar: 0.875rem; --glass-radius-access-card: 1.125rem; --container-access: 27.5rem;
 }
 @media (pointer: fine) { :root { --dock-control: 2rem; --frame-dock-h: 2.75rem; } }
+/* Muestras del selector de acento: cada una pinta su propio color en el tema actual. */
+.hubly-acento-muestra[data-acento="azul"] { background-color: #1D4ED8; }
+.hubly-acento-muestra[data-acento="violeta"] { background-color: #6D28D9; }
+.hubly-acento-muestra[data-acento="turquesa"] { background-color: #0F766E; }
+.hubly-acento-muestra[data-acento="verde"] { background-color: #15803D; }
+.hubly-acento-muestra[data-acento="ambar"] { background-color: #B45309; }
+.hubly-acento-muestra[data-acento="rosa"] { background-color: #BE185D; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="azul"] { background-color: #6F98FF; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="violeta"] { background-color: #B49CFF; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="turquesa"] { background-color: #4FD1C5; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="verde"] { background-color: #6BD992; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="ambar"] { background-color: #F5B54A; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="rosa"] { background-color: #F58AB8; }
+
+/* Acentos de apariencia: cambian solo el color de acento; el azul tinta es el de siempre. Contraste AA comprobado. */
+:root[data-accent="violeta"] { --accent-primary: #6D28D9; --accent-primary-hover: #5B21B6; --accent-primary-subtle: #F1ECFC; }
+:root[data-accent="turquesa"] { --accent-primary: #0F766E; --accent-primary-hover: #0B5F59; --accent-primary-subtle: #E6F4F2; }
+:root[data-accent="verde"] { --accent-primary: #15803D; --accent-primary-hover: #116A32; --accent-primary-subtle: #EEF7F1; }
+:root[data-accent="ambar"] { --accent-primary: #B45309; --accent-primary-hover: #964407; --accent-primary-subtle: #FDF5EA; }
+:root[data-accent="rosa"] { --accent-primary: #BE185D; --accent-primary-hover: #9D144D; --accent-primary-subtle: #FCE8F0; }
+:root[data-theme="dark"][data-accent="violeta"] { --accent-primary: #B49CFF; --accent-primary-hover: #C9B8FF; --accent-primary-subtle: #2A2147; }
+:root[data-theme="dark"][data-accent="turquesa"] { --accent-primary: #4FD1C5; --accent-primary-hover: #7EE0D6; --accent-primary-subtle: #133533; }
+:root[data-theme="dark"][data-accent="verde"] { --accent-primary: #6BD992; --accent-primary-hover: #8FE4AC; --accent-primary-subtle: #16301F; }
+:root[data-theme="dark"][data-accent="ambar"] { --accent-primary: #F5B54A; --accent-primary-hover: #F8C875; --accent-primary-subtle: #3A2A12; }
+:root[data-theme="dark"][data-accent="rosa"] { --accent-primary: #F58AB8; --accent-primary-hover: #F8A9CB; --accent-primary-subtle: #3E1B2C; }
 
 :root[data-theme="dark"] {
   color-scheme: dark;

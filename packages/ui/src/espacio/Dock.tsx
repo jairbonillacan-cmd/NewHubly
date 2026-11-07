@@ -4,7 +4,7 @@ import { Button, Chip, Kbd, Popover, Slider, ToggleButton } from "@heroui/react"
 import { forwardRef, useId, useState, type FormEvent, type ReactNode } from "react";
 import { FileTrigger } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
-import { useHublyTheme } from "../landing/ThemeToggle";
+import { HUBLY_ACCENTS, useHublyAccent, useHublyTheme, useHublyThemePreference, type HublyThemePreference } from "../landing/ThemeToggle";
 import { Icon } from "./icons";
 import { WALLPAPERS, WALLPAPERS_ILUSTRADOS, type EspacioPreferencias, type PreferenciasPatch } from "./preferencias";
 import type { CaptureFieldProps, DockConfig, DockSuggestion } from "./dockConfig";
@@ -103,20 +103,62 @@ function WallpaperTile({ wallpaper, label, prefs, onChange }: { wallpaper: (type
 }
 
 /** Selector de fondo y opacidad de los paneles (#75, sección 3). «Tu imagen» llega con Storage (#84). */
+const TEMAS: { id: HublyThemePreference; nombre: string; icon: "sol" | "luna" | "paneles" }[] = [
+  { id: "light", nombre: "Claro", icon: "sol" },
+  { id: "dark", nombre: "Oscuro", icon: "luna" },
+  { id: "system", nombre: "Sistema", icon: "paneles" },
+];
+const SECCION = "text-xs font-semibold text-(--text-secondary)";
+
+/** Tema y acento de la apariencia: se guardan para esta persona (tema en su cuenta, acento en este navegador). */
+function TemaYAcento() {
+  const [preference, , setPreference] = useHublyThemePreference();
+  const [accent, setAccentValue] = useHublyAccent();
+  const accentName = HUBLY_ACCENTS.find((entry) => entry.id === accent)?.nombre ?? "";
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <span className={SECCION}>Tema</span>
+        <div role="radiogroup" aria-label="Tema" className="grid grid-cols-3 gap-1 rounded-xl bg-(--glass-hover) p-1">
+          {TEMAS.map((tema) => (
+            <button key={tema.id} type="button" role="radio" aria-checked={preference === tema.id} onClick={() => setPreference(tema.id)}
+              className={`flex min-h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg text-xs font-semibold focus-visible:ring-2 focus-visible:ring-(--accent-primary) ${preference === tema.id ? "bg-(--surface-raised) text-(--text-primary) shadow-sm" : "text-(--text-secondary) hover:text-(--text-primary)"}`}>
+              <Icon name={tema.icon} className="size-4" />{tema.nombre}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <span className="flex justify-between"><span className={SECCION}>Acento</span><span className="text-xs text-(--text-muted)">{accentName}</span></span>
+        <div role="radiogroup" aria-label="Color de acento" className="flex gap-2">
+          {HUBLY_ACCENTS.map((entry) => (
+            <button key={entry.id} type="button" role="radio" aria-checked={accent === entry.id} aria-label={entry.nombre} title={entry.nombre} onClick={() => setAccentValue(entry.id)}
+              className={`flex size-9 cursor-pointer items-center justify-center rounded-full border-2 focus-visible:ring-2 focus-visible:ring-(--accent-primary) ${accent === entry.id ? "border-(--text-primary)" : "border-transparent"}`}>
+              <span data-acento={entry.id} className="hubly-acento-muestra size-6 rounded-full" />
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange, triggerClassName, triggerLabel }: BackgroundPickerProps) {
   const [theme] = useHublyTheme();
   return (
     <Popover isOpen={isOpen} onOpenChange={onOpenChange}>
-      <Button variant="ghost" isIconOnly={!triggerLabel} aria-label="Fondo" className={triggerClassName ?? DOCK_BUTTON}>
+      <Button variant="ghost" isIconOnly={!triggerLabel} aria-label="Apariencia" className={triggerClassName ?? DOCK_BUTTON}>
         <Icon name="imagen" className="size-5" />
         {triggerLabel && <span className="text-xs">{triggerLabel}</span>}
       </Button>
       <Popover.Content placement="top" className="hubly-pop-surface hubly-popover-scroll w-80 rounded-2xl p-4 text-(--text-primary)">
-        <Popover.Dialog aria-label="Elegir fondo" className="hubly-sin-anillo flex flex-col gap-4 outline-none">
+        <Popover.Dialog aria-label="Apariencia" className="hubly-sin-anillo flex flex-col gap-4 outline-none">
           <div className="flex items-baseline justify-between">
-            <Popover.Heading className="m-0 text-sm font-semibold">Fondo de tu espacio</Popover.Heading>
+            <Popover.Heading className="m-0 text-sm font-semibold">Apariencia</Popover.Heading>
             <span className="text-xs text-(--text-muted)">Solo lo ves tú</span>
           </div>
+          <TemaYAcento />
+          <span className={SECCION}>Fondo</span>
           <div className="-mx-1 flex max-h-96 flex-col gap-3 overflow-x-hidden overflow-y-auto px-1">
             <div className="grid grid-cols-3 gap-2">
               {WALLPAPERS.map((wallpaper) => (

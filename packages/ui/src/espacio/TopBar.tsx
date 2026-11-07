@@ -361,8 +361,9 @@ export function TopBar(props: TopBarProps) {
   const { todayDate } = props;
   return (
     <div className="flex flex-col gap-2">
-      <header className="hubly-glass hubly-enter flex h-(--frame-topbar-h) items-center gap-2 rounded-(--glass-radius-access-bar) pr-1.5 pl-3 lg:gap-3">
-        <a href="/" aria-label="Hubly, inicio" className="flex min-h-11 min-w-11 items-center justify-center">
+      <header className="hubly-glass hubly-enter flex h-(--frame-topbar-h) items-center gap-2 rounded-(--glass-radius-access-bar) pr-1.5 pl-3 lg:gap-3 lg:pl-0">
+        {/* En escritorio el logo ocupa el ancho del carril: la cara de Hubi queda en la misma columna que sus iconos. */}
+        <a href="/" aria-label="Hubly, inicio" className="flex min-h-11 min-w-11 items-center justify-center lg:-ml-px lg:w-(--frame-rail-w) lg:shrink-0">
           <HubiFace className="size-7" />
         </a>
         <SpaceMenu {...props} />
