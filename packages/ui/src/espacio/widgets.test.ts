@@ -58,4 +58,18 @@ describe("Widget de vencidos (issue 240)", () => {
     expect(boton?.[0]).toContain("w-full");
     expect(boton?.[1]).toContain("Enviar minuta");
   });
+
+  it("la fecha se lee como en Hoy («Ayer», «5 nov»), no en formato ISO (revisión de Prisma del PR 246)", () => {
+    const html = renderToStaticMarkup(createElement(WidgetPanel, {
+      id: "vencidos", timezone: "America/Mexico_City", todayDate: "2026-11-07", semana: { hechos: 0, total: 2 }, onToggleTodo: () => {},
+      todos: [
+        { id: "t1", title: "Enviar minuta", dueDate: "2026-11-05", isDone: false, priority: "high", noteId: null },
+        { id: "t2", title: "Llamar a Lumen", dueDate: "2026-11-06", isDone: false, priority: "low", noteId: null },
+      ],
+    }));
+    expect(html).not.toContain("2026-11-0");
+    expect(html).toContain(">5 nov<");
+    expect(html).toContain(">Ayer<");
+    expect(html).toContain("venció: Ayer");
+  });
 });
