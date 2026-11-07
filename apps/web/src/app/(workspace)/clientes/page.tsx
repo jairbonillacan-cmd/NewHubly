@@ -1,4 +1,4 @@
-import { HoyPage } from "../hoy/page";
+import { HoyPage } from "../hub/page";
 
 export const dynamic = "force-dynamic";
 

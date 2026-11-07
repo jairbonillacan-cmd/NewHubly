@@ -292,7 +292,7 @@ export function WorkspaceScreen({
 
   const reload = async (nextWsId?: string, onApplied?: () => void) => {
     const fresh = await loadWorkspaceDashboardAction(nextWsId);
-    if (chatMode && (fresh.activeWorkspace.id !== wsId || !fresh.chat)) { window.location.assign("/hoy"); return; }
+    if (chatMode && (fresh.activeWorkspace.id !== wsId || !fresh.chat)) { window.location.assign("/hub"); return; }
     setChat(fresh.chat ?? null);
     setActiveWs(fresh.activeWorkspace); setWorkspaces(fresh.workspaces); setMembers(fresh.members); setInvitations(fresh.pendingInvitations);
     setNotes(fresh.notes); setTodos(fresh.todos); setNoteStatus({});
@@ -367,7 +367,7 @@ export function WorkspaceScreen({
     <EspacioHoy
       {...(chat && activeWs ? { chat: {
         // Rutas limpias (#212): el espacio activo viaja en la cookie «hubly_ws», no en la URL.
-        todayHref: "/hoy", href: "/chat", unreadHref: "/chat/sin-leer",
+        todayHref: "/hub", href: "/chat", unreadHref: "/chat/sin-leer",
         unread: chat.unread, active: chatMode,
         ...(chatMode ? { content: <ChatScreen key={activeWs.id} workspaceId={activeWs.id} workspaceName={activeWs.name}
           userId={currentUserId} role={activeWs.role} initiallyUnread={initiallyUnread} /> } : {}),

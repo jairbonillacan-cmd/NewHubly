@@ -12,7 +12,7 @@ export async function HoyPage({ todayDate, showWelcome = false, herramienta, cha
   try {
     const data = await loadWorkspaceDashboardAction();
     // El espacio sale de la cookie: al volver atrás o recargar /chat tras cambiar a un espacio sin chat, se va a Hoy en vez de dar 404.
-    if (chatMode && !data.chat) redirect("/hoy");
+    if (chatMode && !data.chat) redirect("/hub");
     return (
       <WorkspaceScreen
         initialChat={data.chat ?? null} chatMode={chatMode} initiallyUnread={initiallyUnread}
@@ -25,6 +25,8 @@ export async function HoyPage({ todayDate, showWelcome = false, herramienta, cha
   } catch (err) {
     // La redirección a /login por sesión caducada (#92) no es un fallo: se deja pasar.
     unstable_rethrow(err);
+    // Solo un mensaje fijo: el error puede contener valores controlados por la persona (CodeQL, log injection).
+    console.error("[hoy] No se pudo cargar el espacio");
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("Sesión caducada")) redirect("/login");
     return <WorkspaceScreen initialStatus="error" {...(todayDate ? { todayDate } : {})} errorMessage="No se pudo cargar tu espacio de trabajo." />;

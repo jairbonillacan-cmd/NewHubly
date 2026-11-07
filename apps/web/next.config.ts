@@ -8,6 +8,10 @@ const config: NextConfig = {
   async headers() {
     return [{ source: "/invitacion", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] }];
   },
+  // «Hoy» pasó a ser el Hub: los marcadores y correos con /hoy siguen funcionando (conserva ?bienvenida y ?herramienta).
+  async redirects() {
+    return [{ source: "/hoy", destination: "/hub", permanent: true }];
+  },
 };
 
 export default config;

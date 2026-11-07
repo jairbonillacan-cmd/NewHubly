@@ -27,7 +27,8 @@ import {
 import { Wallpaper } from "./Wallpaper";
 
 const TOAST_MS = 5000;
-const CHAT_PALETTE_EXAMPLES = ["Volver a Hoy", "Equipo e invitaciones", "Editar perfil"] as const;
+const BACK_TO_HUB_LABEL = "Volver al Hub";
+const CHAT_PALETTE_EXAMPLES = [BACK_TO_HUB_LABEL, "Equipo e invitaciones", "Editar perfil"] as const;
 /** Ancho a partir del cual se usa la distribución de escritorio (coincide con el punto «lg» de Tailwind). */
 const DESKTOP_MIN_WIDTH = 1024;
 
@@ -322,7 +323,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   };
 
   const paletteActions: PaletteAction[] = [
-    ...(chat?.active ? [{ id: "hoy", label: "Volver a Hoy", hint: "Retoma tus pendientes", icon: "hoy" as const, run: () => selectHerramienta("hoy") }] : []),
+    ...(chat?.active ? [{ id: "hoy", label: BACK_TO_HUB_LABEL, hint: "Retoma tus pendientes", icon: "hoy" as const, run: () => selectHerramienta("hoy") }] : []),
     ...(chat && !chat.active ? [{ id: "chat", label: "Abrir chat", hint: "Canales y mensajes de tu agencia", icon: "chat" as const,
       run: () => window.location.assign(chat.href) }] : []),
     { id: "pendiente", label: "Nuevo pendiente", hint: "Escríbelo en la captura de Hoy", icon: "mas", run: () => { selectHerramienta("hoy"); setTimeout(focusCapture, 0); } },
@@ -526,7 +527,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           <Button variant="ghost" className="min-h-11" {...(!chat?.active && herramienta === "hoy" ? { "aria-current": "page" } : {})} onPress={() => {
             selectHerramienta("hoy");
             document.getElementById("panel-hoy")?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}>Hoy</Button>
+          }}>{herramientaPorId("hoy").nombre}</Button>
           {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined}
             className="flex min-h-11 items-center justify-center rounded-xl text-sm font-semibold hover:bg-(--glass-hover)">Chat</a>}
           <Dropdown>

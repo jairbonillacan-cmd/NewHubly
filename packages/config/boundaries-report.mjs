@@ -27,7 +27,7 @@ export const KNOWN_APP_ROUTES = new Map([
   ["/", "Página principal pública (landing)"],
   ["/chat", "Chat interno de agencias habilitadas"],
   ["/chat/sin-leer", "Chat abierto en la vista «Sin leer» (#212)"],
-  ["/hoy", "Espacio de trabajo operativo (vista Hoy)"],
+  ["/hub", "Hub: el centro del espacio de trabajo (antes /hoy)"],
   ["/calendario", "Herramienta Calendario del carril (#212)"],
   ["/contenido", "Herramienta Contenido del carril (#212)"],
   ["/clientes", "Herramienta Clientes del carril (#212)"],
