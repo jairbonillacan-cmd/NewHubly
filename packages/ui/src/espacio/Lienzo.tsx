@@ -148,9 +148,7 @@ export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: Li
   const onMenu = (key: Key) => {
     if (key === "libre" || key === "lado" || key === "enfoque") onLayout(key);
     else if (key === "fondo") onOpenFondo();
-    else if (key === "mapa" && lienzo) lienzo.onOpciones({ ...lienzo.opciones, mapa: !lienzo.opciones.mapa });
     else if (key === "iman" && lienzo) lienzo.onOpciones({ ...lienzo.opciones, iman: !lienzo.opciones.iman });
-    else if (key === "encuadrar") lienzo?.onFit();
     else if (key === "restablecer") lienzo?.onReset();
   };
   const check = (on: boolean) => on && <Icon name="check" className="size-4 text-(--accent-primary)" />;
@@ -162,23 +160,20 @@ export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: Li
         </Dropdown.Trigger>
         <Dropdown.Popover placement="top end" className={MENU}>
           <Dropdown.Menu aria-label="Opciones del lienzo" onAction={onMenu}>
-            <Dropdown.Section aria-label="Modo de los paneles" className="border-b border-(--glass-line) pb-1.5">
+            {/* El mapa y «ver todos» ya tienen botón en la barra; aquí solo lo que no está a la vista. */}
+            <Dropdown.Section aria-label="Aspecto" className="border-b border-(--glass-line) pb-1.5">
+              <Dropdown.Item id="fondo" textValue="Personalizar aspecto" className={ITEM}><Icon name="imagen" /> <span className="grow">Personalizar aspecto</span></Dropdown.Item>
+            </Dropdown.Section>
+            <Dropdown.Section aria-label="Modo de los paneles" className="py-1.5">
               {MODOS.map((modo) => (
                 <Dropdown.Item key={modo.id} id={modo.id} textValue={modo.label} className={ITEM}>
                   <Icon name={modo.icon} /> <span className="grow">{modo.label}</span>{check(layout === modo.id)}
                 </Dropdown.Item>
               ))}
             </Dropdown.Section>
-            <Dropdown.Section aria-label="Vista" className="py-1.5">
-              <Dropdown.Item id="fondo" textValue="Fondo y opacidad" className={ITEM}><Icon name="imagen" /> <span className="grow">Fondo y opacidad</span></Dropdown.Item>
-              {lienzo ? <>
-                <Dropdown.Item id="mapa" textValue="Mostrar el mapa" className={ITEM}><Icon name="mapa" /> <span className="grow">Mostrar el mapa</span>{check(lienzo.opciones.mapa)}</Dropdown.Item>
-                <Dropdown.Item id="iman" textValue="Alinear a la cuadrícula" className={ITEM}><Icon name="paneles" /> <span className="grow">Alinear a la cuadrícula</span>{check(lienzo.opciones.iman)}</Dropdown.Item>
-              </> : null}
-            </Dropdown.Section>
             {lienzo ? (
               <Dropdown.Section aria-label="Acomodo" className="border-t border-(--glass-line) pt-1.5">
-                <Dropdown.Item id="encuadrar" textValue="Ver todos los paneles" className={ITEM}><Icon name="encuadrar" /> Ver todos los paneles</Dropdown.Item>
+                <Dropdown.Item id="iman" textValue="Alinear a la cuadrícula" className={ITEM}><Icon name="paneles" /> <span className="grow">Alinear a la cuadrícula</span>{check(lienzo.opciones.iman)}</Dropdown.Item>
                 <Dropdown.Item id="restablecer" textValue="Volver al acomodo inicial" className={ITEM}><Icon name="deshacer" /> Volver al acomodo inicial</Dropdown.Item>
               </Dropdown.Section>
             ) : null}
@@ -306,7 +301,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
       cancelarMenu.current = false;
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
-      event.currentTarget.dataset.arrastrando = "true";
+      event.currentTarget.dataset.arrastrando = "pan";
       return;
     }
     if (event.button !== 0) return;
@@ -342,7 +337,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
     }
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    event.currentTarget.dataset.arrastrando = "true";
+    event.currentTarget.dataset.arrastrando = gesture.current?.kind ?? "pan";
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
