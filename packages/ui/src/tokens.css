@@ -129,6 +129,29 @@
   --glass-radius-access-bar: 0.875rem; --glass-radius-access-card: 1.125rem; --container-access: 27.5rem;
 }
 @media (pointer: fine) { :root { --dock-control: 2rem; --frame-dock-h: 2.75rem; --rail-item: 2.25rem; } }
+/* Avance del widget de Enfoque, en pasos de 5 %, para no usar estilos en línea. */
+.hubly-widget-avance { transition: width 1s linear; }
+.hubly-widget-avance[data-avance="0"] { width: 0%; }
+.hubly-widget-avance[data-avance="5"] { width: 5%; }
+.hubly-widget-avance[data-avance="10"] { width: 10%; }
+.hubly-widget-avance[data-avance="15"] { width: 15%; }
+.hubly-widget-avance[data-avance="20"] { width: 20%; }
+.hubly-widget-avance[data-avance="25"] { width: 25%; }
+.hubly-widget-avance[data-avance="30"] { width: 30%; }
+.hubly-widget-avance[data-avance="35"] { width: 35%; }
+.hubly-widget-avance[data-avance="40"] { width: 40%; }
+.hubly-widget-avance[data-avance="45"] { width: 45%; }
+.hubly-widget-avance[data-avance="50"] { width: 50%; }
+.hubly-widget-avance[data-avance="55"] { width: 55%; }
+.hubly-widget-avance[data-avance="60"] { width: 60%; }
+.hubly-widget-avance[data-avance="65"] { width: 65%; }
+.hubly-widget-avance[data-avance="70"] { width: 70%; }
+.hubly-widget-avance[data-avance="75"] { width: 75%; }
+.hubly-widget-avance[data-avance="80"] { width: 80%; }
+.hubly-widget-avance[data-avance="85"] { width: 85%; }
+.hubly-widget-avance[data-avance="90"] { width: 90%; }
+.hubly-widget-avance[data-avance="95"] { width: 95%; }
+.hubly-widget-avance[data-avance="100"] { width: 100%; }
 /* Hover con el color de acento, leve; en oscuro un poco más presente para que se note. */
 :root { --hover-acento: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
 html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primary) 16%, transparent); }

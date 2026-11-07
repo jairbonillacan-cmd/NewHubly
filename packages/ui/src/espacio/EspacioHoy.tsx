@@ -7,6 +7,7 @@ import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyTheme, type HublyThemePreference } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { useFondoMovimiento } from "./fondoMovimiento";
+import { WIDGET_INICIAL, WidgetPanel, WidgetsCajon, toggleWidget, useWidgets } from "./widgets";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
 import { BackgroundPicker, CaptureField, Dock, DockMore, DockStatus, type WallpaperImageControls } from "./Dock";
 import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery, type DockSuggestion } from "./dockConfig";
@@ -154,6 +155,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
       }
     : undefined;
   const [fondoMovimiento] = useFondoMovimiento();
+  const widgetsPuestos = useWidgets();
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
   const initialPreference = props.initialThemePreference ?? props.initialTheme ?? null;
@@ -432,11 +434,17 @@ export function EspacioHoy(props: EspacioHoyProps) {
     layout, onLayout: (distribucion) => setPrefs({ distribucion }), onOpenFondo: openBackground,
     fondo: <BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs} isOpen={pickerOpen === "desktop"}
       onOpenChange={(open) => setPickerOpen(open ? "desktop" : null)} triggerClassName="pointer-events-none invisible absolute right-2 bottom-full size-0 min-w-0 p-0" />,
+    widgets: <WidgetsCajon activos={widgetsPuestos} onToggle={toggleWidget} triggerClassName="size-(--dock-control) min-w-(--dock-control) text-(--text-secondary) data-[hovered]:text-(--text-primary)" />,
   };
   const lienzoItems: LienzoItem[] = [
     ...(panels.hoy ? [{ id: "hoy", rect: LIENZO_INICIAL.hoy, node: hoyPanel("h-full") }] : []),
     ...(panels.nota ? [{ id: "nota", rect: LIENZO_INICIAL.nota, node: notaPanel("h-full") }] : []),
     ...(panels.notas ? [{ id: "notas", rect: LIENZO_INICIAL.notas, node: notasPanel("h-full") }] : []),
+    ...widgetsPuestos.map((id) => ({
+      id: `widget-${id}`, rect: WIDGET_INICIAL[id],
+      node: <WidgetPanel id={id} timezone={timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone} todos={todos} todayDate={todayDate}
+        semana={resumenSemana(todos, todayDate)} onToggleTodo={(todoId) => void onToggleTodo(todoId)} onRemove={() => toggleWidget(id)} />,
+    })),
   ];
 
   return (

@@ -145,10 +145,12 @@ export interface LienzoBarraProps {
   fondo?: ReactNode;
   /** Solo en el lienzo libre de escritorio; sin ellos, la barra ofrece el modo de paneles y el fondo. */
   lienzo?: LienzoControles | undefined;
+  /** Cajón de widgets del Hub (solo con el lienzo libre). */
+  widgets?: ReactNode;
 }
 
 /** Barra propia del lienzo (issue 147), a la derecha del dock: tuerca con modos, mapa, imán, fondo y acomodo, y zoom. */
-export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: LienzoBarraProps) {
+export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo, widgets }: LienzoBarraProps) {
   const onMenu = (key: Key) => {
     if (key === "libre" || key === "lado" || key === "enfoque") onLayout(key);
     else if (key === "fondo") onOpenFondo();
@@ -184,6 +186,7 @@ export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: Li
           </Dropdown.Menu>
         </Dropdown.Popover>
       </Dropdown>
+      {lienzo && widgets}
       {lienzo && (
         <>
           <Tooltip delay={400}>
@@ -332,6 +335,8 @@ export function Lienzo({ items, barra }: LienzoProps) {
       const p = punto(event);
       gesture.current = { kind: "seleccion", startX: p.x, startY: p.y };
       setSeleccion([]);
+      // Como en un escritorio: hacer clic en el fondo suelta el campo que estuviera activo.
+      if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) document.activeElement.blur();
       setMarcando(true);
       marcoRef.current?.style.setProperty("--marco-w", "0");
       marcoRef.current?.style.setProperty("--marco-h", "0");
