@@ -25,7 +25,7 @@ export function BienvenidaDialog({ isOpen, onClose, workspaceName }: BienvenidaD
         <Dialog className="hubly-pop-surface flex flex-col overflow-hidden rounded-2xl text-(--text-primary) outline-none">
           <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-5 pt-5 pb-3 sm:px-6">
           <div className="flex flex-col items-center gap-2 text-center">
-            <div className="[@media(max-height:30rem)]:hidden"><Hubi pose="bienvenida" tamano={72} decorativo /></div>
+            <div className="hubly-corto-oculto"><Hubi pose="bienvenida" tamano={72} decorativo /></div>
             <Heading slot="title" className="m-0 text-xl leading-tight font-bold tracking-(--tracking-tight)">¡Te damos la bienvenida a Hubly!</Heading>
             <p className="m-0 text-sm text-(--text-secondary)">
               Tu cuenta está confirmada y {workspaceName ? <>tu espacio <strong className="text-(--text-primary)">{workspaceName}</strong></> : "tu espacio"} ya está listo.
