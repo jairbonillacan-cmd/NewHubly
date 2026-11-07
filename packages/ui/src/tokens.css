@@ -111,7 +111,7 @@
   --wallpaper-contornos: #E9ECF2; --wallpaper-patron: #F1F2F4; --wallpaper-tinta: #DCE5F8; --wallpaper-grafito: #F4F4F5;
   --wallpaper-line: rgba(17, 19, 22, 0.09); --wallpaper-line-accent: rgba(29, 78, 216, 0.28);
   --wallpaper-pattern: rgba(17, 19, 22, 0.05); --wallpaper-pattern-accent: rgba(29, 78, 216, 0.14);
-  --wallpaper-image-veil: rgba(247, 247, 248, 0.30);
+  --wallpaper-image-veil: rgba(247, 247, 248, 0.60);
   /* Iconos de la identidad (issue 148): grafito y azul tinta. */
   --hi-borde: #262C36; --hi-tono-1: #515968; --hi-tono-2: #303743; --hi-relieve: color-mix(in srgb, var(--accent-primary) 8%, #F1F3F7); --hi-brillo: color-mix(in srgb, var(--accent-primary) 16%, #FFFFFF); --hi-acento: var(--accent-primary);
   --hi-medio: #606A7B; --hi-fondo: #FFFFFF; --hi-peligro: #8C1D18; --hi-aviso: #6E4506; --hi-exito: #165632; --hi-papel: #F7F7F8;
@@ -119,7 +119,7 @@
   --presence-online: #16A34A; --presence-away: #F59E0B; --presence-dnd: #DC2626;
   --wallpaper-puntos: #EEF0F4; --wallpaper-cuadricula: #F5F6F8; --wallpaper-aurora: #EEF1F8; --wallpaper-hubis: #E8EEFB; --wallpaper-arena: #F3EEE6;
   --wallpaper-dot: rgba(17, 19, 22, 0.16); --wallpaper-aurora-1: rgba(29, 78, 216, 0.30); --wallpaper-aurora-2: rgba(124, 92, 255, 0.24); --wallpaper-aurora-3: rgba(14, 165, 233, 0.24);
-  --glass-rgb: 255 255 255; --panel-alpha: 0.78; --glass-line: rgba(17, 19, 22, 0.08); --glass-line-strong: rgba(17, 19, 22, 0.14);
+  --glass-rgb: 255 255 255; --panel-alpha: 0.78; --panel-alpha-min-image: 0.90; --glass-line: rgba(17, 19, 22, 0.08); --glass-line-strong: rgba(17, 19, 22, 0.14);
   --glass-panel-shadow: 0 0.5rem 1.5rem rgba(17, 19, 22, 0.10); --pop-bg: rgba(255, 255, 255, 0.96); --pop-shadow: 0 1rem 2.5rem rgba(17, 19, 22, 0.16);
   --glass-hover: rgba(17, 19, 22, 0.05); --glass-field: rgba(17, 19, 22, 0.04); --glass-blur-panel: 24px;
   /* Liquid glass (#224): brillo superior, filo de luz interior y saturación del fondo que asoma. */
@@ -290,15 +290,15 @@ html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primar
   --wallpaper-contornos: #10141C; --wallpaper-patron: #14161B; --wallpaper-tinta: #132350; --wallpaper-grafito: #1A1C21;
   --wallpaper-line: rgba(232, 232, 235, 0.12); --wallpaper-line-accent: rgba(111, 152, 255, 0.34);
   --wallpaper-pattern: rgba(232, 232, 235, 0.08); --wallpaper-pattern-accent: rgba(111, 152, 255, 0.16);
-  --wallpaper-image-veil: rgba(12, 13, 15, 0.32);
+  --wallpaper-image-veil: rgba(12, 13, 15, 0.60);
   --hi-borde: #818B9E; --hi-tono-1: #E8E8EB; --hi-tono-2: #B9BCC4; --hi-relieve: #24272D; --hi-brillo: #FFFFFF; --hi-acento: var(--accent-primary);
   --hi-medio: #A6ADBC; --hi-fondo: #0C0D0F; --hi-peligro: #F99B96; --hi-aviso: #F3C677; --hi-exito: #8CE0AD; --hi-papel: #16181C;
   --wallpaper-puntos: #12151C; --wallpaper-cuadricula: #15181F; --wallpaper-aurora: #0F1220; --wallpaper-hubis: #121C3A; --wallpaper-arena: #12182C;
   --wallpaper-dot: rgba(232, 232, 235, 0.16); --wallpaper-aurora-1: rgba(59, 108, 255, 0.50); --wallpaper-aurora-2: rgba(139, 92, 246, 0.40); --wallpaper-aurora-3: rgba(14, 165, 233, 0.34);
-  --glass-rgb: 32 35 43; --panel-alpha: 0.80; --glass-line: rgba(255, 255, 255, 0.14); --glass-line-strong: rgba(255, 255, 255, 0.22);
+  --glass-rgb: 32 35 43; --panel-alpha: 0.80; --panel-alpha-min-image: 0.80; --glass-line: rgba(255, 255, 255, 0.14); --glass-line-strong: rgba(255, 255, 255, 0.22);
   --glass-panel-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.45); --pop-bg: rgba(34, 37, 45, 0.94); --pop-shadow: 0 1.125rem 2.75rem rgba(0, 0, 0, 0.5);
   --glass-hover: rgba(255, 255, 255, 0.09); --glass-field: rgba(255, 255, 255, 0.08);
-  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 30%);
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 30%);
   --glass-highlight: inset 0 0.0625rem 0 rgba(255, 255, 255, 0.10), inset 0 0 0 0.0625rem rgba(255, 255, 255, 0.04);
 }
 
@@ -393,8 +393,9 @@ body {
   border-radius: var(--radius-xl);
 }
 @supports not (backdrop-filter: blur(1px)) { .glass-panel { background-color: var(--glass-fallback-bg); } }
+@media (max-width: 640px) { .glass-panel { backdrop-filter: blur(var(--glass-blur-mobile)) saturate(var(--glass-saturate)); -webkit-backdrop-filter: blur(var(--glass-blur-mobile)) saturate(var(--glass-saturate)); } }
+/* Va después de la regla móvil: con la misma especificidad gana la última, y reducir transparencia debe ganar siempre. */
 @media (prefers-reduced-transparency: reduce) { .glass-panel { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--glass-fallback-bg); background-image: none; } }
-@media (max-width: 640px) { .glass-panel { backdrop-filter: blur(var(--glass-blur-mobile)); -webkit-backdrop-filter: blur(var(--glass-blur-mobile)); } }
 
 .hubly-hubi { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; }
 .hubly-hubi-img { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -520,9 +521,12 @@ body {
   .hubly-draw { animation: none; stroke-dashoffset: 0; }
 }
 
-/* Paneles de cristal del espacio (#75): la opacidad la elige cada persona (60–98 %) y se aplica en --panel-alpha del contenedor. */
+/* Paneles de cristal del espacio (#75): la opacidad la elige cada persona (60–98 %) y se aplica en --panel-alpha del contenedor.
+   Sobre una imagen (propia o ilustrada) el brillo de detrás es arbitrario: el contenedor lleva .hubly-fondo-imagen y la opacidad
+   no baja de --panel-alpha-min-image, el mínimo que mantiene 4,5:1 en texto tenue y 3:1 en bordes de controles (issue 224). */
+.hubly-fondo-imagen { --panel-alpha-min: var(--panel-alpha-min-image); }
 .hubly-glass {
-  background-color: rgb(var(--glass-rgb) / var(--panel-alpha));
+  background-color: rgb(var(--glass-rgb) / max(var(--panel-alpha), var(--panel-alpha-min, 0)));
   background-image: var(--glass-sheen);
   border: var(--border-width-thin) solid var(--glass-line);
   box-shadow: var(--glass-highlight), var(--glass-panel-shadow);
@@ -539,7 +543,7 @@ body {
 }
 @supports not (backdrop-filter: blur(1px)) { .hubly-glass, .hubly-pop-surface { background-color: var(--surface-raised); } }
 @media (prefers-reduced-transparency: reduce) {
-  .hubly-glass, .hubly-pop-surface, .hubly-carril-asa { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); background-image: none; }
+  .hubly-glass, .hubly-pop-surface { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); background-image: none; }
 }
 /* Lienzo infinito de Hoy (issues 136, 141 y 147): la capa se mueve y escala con variables que pone el componente. */
 .hubly-lienzo { touch-action: none; cursor: default; }
@@ -599,6 +603,8 @@ body {
 .hubly-carril-asa { top: calc(50% - 0.75rem); right: -0.75rem; background-color: rgb(var(--glass-rgb) / 0.96); background-image: var(--glass-sheen); border: var(--border-width-thin) solid var(--glass-line-strong); box-shadow: var(--glass-highlight), var(--glass-panel-shadow);
   backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-saturate)); -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-saturate));
   transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
+/* Respaldo opaco del botón después de su regla base, para que no lo pise el cristal (misma especificidad). */
+@media (prefers-reduced-transparency: reduce) { .hubly-carril-asa { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); background-image: none; } }
 /* Sin transformaciones al pasar el ratón: el botón no se mueve, solo se marca su borde. */
 /* Al pasar el ratón solo cambia el color de la flecha, sin anillo; la zona activa es el propio botón de 24 px. */
 .hubly-carril { transition: width 0.42s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.3s var(--motion-ease); scrollbar-width: none; will-change: width; }
