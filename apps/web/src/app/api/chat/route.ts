@@ -6,6 +6,7 @@ import {
 import { SessionExpiredError } from "../../../server/composition/auth";
 import { getChatService } from "../../../server/composition/chat";
 import { ChatAttachmentError, ChatAttachmentPurgeError, purgeMessageAttachmentsFromStorage } from "../../../server/composition/chat-attachments";
+import { signCoworkerAvatars } from "../../../server/composition/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -65,12 +66,23 @@ export async function GET(request: Request): Promise<Response> {
       }
       case "history": {
         const before = params.get("before");
-        const input = chatHistorySchema.safeParse({ workspaceId, conversationId, before: before === null ? undefined : Number(before) });
+        const threadRootId = params.get("threadRootId") ?? undefined;
+        const input = chatHistorySchema.safeParse({
+          workspaceId, conversationId, before: before === null ? undefined : Number(before), threadRootId,
+        });
         if (!input.success) return json({ error: "La página solicitada no es válida." }, 400);
-        return json(chatHistoryResultSchema.parse(await chat.history(workspaceId, input.data.conversationId, input.data.before)));
+        return json(chatHistoryResultSchema.parse(
+          await chat.history(workspaceId, input.data.conversationId, input.data.before, input.data.threadRootId),
+        ));
       }
-      case "directory":
-        return json(chatParticipantSchema.array().parse(await chat.directory(workspaceId)));
+      case "directory": {
+        const people = await chat.directory(workspaceId);
+        // Firma con la sesión de la persona (RLS decide): solo se intentan los compañeros con foto.
+        const avatars = await signCoworkerAvatars(people.map(({ id, hasAvatar }) => ({ id, hasAvatar: hasAvatar ?? false })));
+        return json(chatParticipantSchema.array().parse(
+          people.map((person) => ({ ...person, avatarUrl: avatars.get(person.id) ?? null })),
+        ));
+      }
       case "export": {
         const input = chatExportSchema.safeParse({ workspaceId, format: params.get("format") });
         if (!input.success) return json({ error: "El formato de descarga no es válido." }, 400);
