@@ -21,7 +21,9 @@ concurrency:
 
 jobs:
   validar:
-    if: github.ref == 'refs/heads/produccion'
+    # Temporal (#257): `main` se acepta mientras no exista la rama `produccion` del ADR 0013.
+    # Se retira cuando el dueño complete esa configuración.
+    if: github.ref == 'refs/heads/produccion' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
