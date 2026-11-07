@@ -62,7 +62,7 @@ export const todos = pgTable("todos", {
 // Preferencias visuales por persona (#83). La referencia a auth.users vive en la migración (esquema auth, fuera de Drizzle).
 export const userPreferences = pgTable("user_preferences", {
   userId: uuid("user_id").primaryKey(),
-  wallpaper: text("wallpaper", { enum: ["contornos", "patron", "tinta", "grafito", "imagen"] }).notNull().default("contornos"),
+  wallpaper: text("wallpaper", { enum: ["contornos", "patron", "tinta", "grafito", "puntos", "cuadricula", "aurora", "hubis", "arena", "aurora-polar", "bosque-de-niebla", "dunas-de-cobre", "herbario-de-tinta", "jardin-japones", "jardin-submarino", "lluvia-en-casa", "luz-de-cantera", "marea-lenta", "papel-plegado", "refugio-alpino", "tokio-nocturno", "imagen"] }).notNull().default("contornos"),
   panelOpacity: integer("panel_opacity").notNull().default(80),
   layoutMode: text("layout_mode", { enum: ["free", "side_by_side", "focus"] }).notNull().default("free"),
   visiblePanels: jsonb("visible_panels").$type<Array<"today" | "open_note" | "pinned_notes">>().notNull(),

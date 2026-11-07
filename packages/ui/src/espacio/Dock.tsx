@@ -6,7 +6,7 @@ import { FileTrigger } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { useHublyTheme } from "../landing/ThemeToggle";
 import { Icon } from "./icons";
-import { WALLPAPERS, type EspacioPreferencias, type PreferenciasPatch } from "./preferencias";
+import { WALLPAPERS, WALLPAPERS_ILUSTRADOS, type EspacioPreferencias, type PreferenciasPatch } from "./preferencias";
 import type { CaptureFieldProps, DockConfig, DockSuggestion } from "./dockConfig";
 import { WallpaperSwatch } from "./Wallpaper";
 
@@ -88,6 +88,19 @@ export interface BackgroundPickerProps {
   triggerLabel?: string;
 }
 
+function WallpaperTile({ wallpaper, label, prefs, onChange }: { wallpaper: (typeof WALLPAPERS)[number]; label: string; prefs: EspacioPreferencias; onChange: (patch: PreferenciasPatch) => void }) {
+  return (
+    <ToggleButton
+      isSelected={prefs.fondo === wallpaper.id}
+      onChange={() => onChange({ fondo: wallpaper.id })}
+      className="h-auto w-full min-w-0 flex-col items-stretch justify-start text-center gap-1.5 rounded-xl border-2 border-transparent bg-transparent p-1 text-xs font-normal text-(--text-secondary) transition-transform data-[hovered]:-translate-y-0.5 data-[selected]:border-(--accent-primary) data-[selected]:bg-transparent data-[selected]:text-(--text-primary)"
+    >
+      <WallpaperSwatch fondo={wallpaper.id} />
+      <span className="leading-tight whitespace-normal">{label}</span>
+    </ToggleButton>
+  );
+}
+
 /** Selector de fondo y opacidad de los paneles (#75, sección 3). «Tu imagen» llega con Storage (#84). */
 export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange, triggerClassName, triggerLabel }: BackgroundPickerProps) {
   const [theme] = useHublyTheme();
@@ -103,31 +116,28 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
             <Popover.Heading className="m-0 text-sm font-semibold">Fondo de tu espacio</Popover.Heading>
             <span className="text-xs text-(--text-muted)">Solo lo ves tú</span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            {WALLPAPERS.map((wallpaper) => {
-              const label = theme === "dark" ? wallpaper.oscuro : wallpaper.claro;
-              return (
-                <ToggleButton
-                  key={wallpaper.id}
-                  isSelected={prefs.fondo === wallpaper.id}
-                  onChange={() => onChange({ fondo: wallpaper.id })}
-                  className="h-auto w-full min-w-0 flex-col items-stretch justify-start text-center gap-1.5 rounded-xl border-2 border-transparent bg-transparent p-1 text-xs font-normal text-(--text-secondary) transition-transform data-[hovered]:-translate-y-0.5 data-[selected]:border-(--accent-primary) data-[selected]:bg-transparent data-[selected]:text-(--text-primary)"
-                >
-                  <WallpaperSwatch fondo={wallpaper.id} />
-                  {label}
-                </ToggleButton>
-              );
-            })}
-            {imagen ? (
-              <TuImagenTile controls={imagen} selected={prefs.fondo === "imagen"} onSelect={() => onChange({ fondo: "imagen" })} />
-            ) : (
-              <span className="flex flex-col gap-1.5 p-1 text-xs text-(--text-muted)">
-                <span className="flex h-14 items-center justify-center rounded-lg border border-dashed border-(--glass-line-strong)">
-                  <Icon name="imagen" />
+          <div className="-mx-1 flex max-h-96 flex-col gap-3 overflow-x-hidden overflow-y-auto px-1">
+            <div className="grid grid-cols-3 gap-2">
+              {WALLPAPERS.map((wallpaper) => (
+                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={theme === "dark" ? wallpaper.oscuro : wallpaper.claro} prefs={prefs} onChange={onChange} />
+              ))}
+              {imagen ? (
+                <TuImagenTile controls={imagen} selected={prefs.fondo === "imagen"} onSelect={() => onChange({ fondo: "imagen" })} />
+              ) : (
+                <span className="flex flex-col gap-1.5 p-1 text-xs text-(--text-muted)">
+                  <span className="flex h-14 items-center justify-center rounded-lg border border-dashed border-(--glass-line-strong)">
+                    <Icon name="imagen" />
+                  </span>
+                  Tu imagen · pronto
                 </span>
-                Tu imagen · pronto
-              </span>
-            )}
+              )}
+            </div>
+            <span className="text-xs font-medium text-(--text-muted)">Ilustraciones</span>
+            <div className="grid grid-cols-3 gap-2">
+              {WALLPAPERS_ILUSTRADOS.map((wallpaper) => (
+                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={wallpaper.claro} prefs={prefs} onChange={onChange} />
+              ))}
+            </div>
           </div>
           <Slider
             aria-label="Opacidad de los paneles"
