@@ -41,6 +41,7 @@ function apply(next: HublyThemePreference): void {
   preference = next;
   currentTheme = next === "system" ? systemTheme() : next;
   if (typeof document !== "undefined") document.documentElement.setAttribute("data-theme", currentTheme);
+  reajustarAcento();
 }
 
 function ensureInitialized(): void {
@@ -134,3 +135,262 @@ export function ThemeToggle({ variante = "pastilla" }: ThemeToggleProps = {}) {
     </Button>
   );
 }
+
+/** Color de acento (apariencia): se guarda en este navegador y se aplica con data-accent en <html>. */
+export const HUBLY_ACCENTS = [
+  { id: "azul", nombre: "Azul tinta" },
+  { id: "violeta", nombre: "Violeta" },
+  { id: "turquesa", nombre: "Turquesa" },
+  { id: "verde", nombre: "Verde" },
+  { id: "ambar", nombre: "Ámbar" },
+  { id: "rosa", nombre: "Rosa" },
+  { id: "personalizado", nombre: "Personalizado" },
+] as const;
+export type HublyAccent = (typeof HUBLY_ACCENTS)[number]["id"];
+const ACCENT_STORAGE_KEY = "hubly-accent";
+const ACCENT_COLOR_STORAGE_KEY = "hubly-accent-color";
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/** Luminancia relativa WCAG de un color hexadecimal de seis cifras. */
+export function luminancia(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+}
+
+/** Contraste WCAG entre dos colores hexadecimales de seis cifras. */
+export function contraste(a: string, b: string): number {
+  const [x, y] = [luminancia(a), luminancia(b)].sort((p, q) => q - p);
+  return (x! + 0.05) / (y! + 0.05);
+}
+
+/** Contraste del color con el blanco (luminancia 1). */
+export const contrasteConBlanco = (hex: string) => 1.05 / (luminancia(hex) + 0.05);
+
+const canales = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const aHex = (rgb: number[]) => `#${rgb.map((n) => Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, "0")).join("")}`.toUpperCase();
+/** Mezcla `peso` de `hacia` sobre `desde`, como color-mix en sRGB. */
+const mezclar = (desde: string, hacia: string, peso: number) => { const a = canales(desde), b = canales(hacia); return aHex(a.map((n, i) => n * (1 - peso) + b[i]! * peso)); };
+
+/** Colores del tema actual que el acento libre tiene que respetar; todos salen de tokens. */
+export interface ReferenciasAcento {
+  oscuro: boolean;
+  /** Superficies sobre las que el acento se usa como texto, borde o anillo de foco. */
+  superficies: string[];
+  /** Texto que va encima del acento en tema claro y en oscuro. */
+  textoClaro: string;
+  textoOscuro: string;
+}
+
+export interface AcentoAccesible { acento: string; hover: string; suave: string; texto: "var(--accent-on-claro)" | "var(--accent-on-oscuro)" }
+
+/**
+ * Ajusta un color libre para que funcione en todos sus usos (issue 239):
+ * - como texto, borde o foco sobre cada superficie del tema, a 4,5:1 (cubre también el 3:1 de los indicadores);
+ * - con su texto encima, a 4,5:1, en reposo y al pasar el ratón;
+ * - como texto sobre su propio fondo suave, a 4,5:1.
+ * En claro se oscurece y lleva texto claro; en oscuro se aclara y lleva texto oscuro. El hover se aleja más en la misma
+ * dirección, así que su contraste solo puede subir.
+ */
+export function acentoAccesible(hex: string, ref: ReferenciasAcento): AcentoAccesible {
+  const hacia = ref.oscuro ? ref.textoClaro : ref.textoOscuro;
+  const texto = ref.oscuro ? ref.textoOscuro : ref.textoClaro;
+  const base = ref.superficies[0] ?? texto;
+  const suaveDe = (color: string) => (ref.oscuro ? mezclar(base, color, 0.22) : mezclar(ref.textoClaro, color, 0.12));
+  const cumple = (color: string) => [...ref.superficies, texto, suaveDe(color)].every((fondo) => contraste(color, fondo) >= 4.5);
+  let acento = aHex(canales(hex));
+  for (let paso = 0; paso < 80 && !cumple(acento); paso++) acento = mezclar(acento, hacia, 0.05);
+  return { acento, hover: mezclar(acento, hacia, 0.15), suave: suaveDe(acento), texto: ref.oscuro ? "var(--accent-on-oscuro)" : "var(--accent-on-claro)" };
+}
+
+const HEX_TOKEN = /^#[0-9a-f]{6}$/i;
+function referenciasDelTema(): ReferenciasAcento | null {
+  if (typeof document === "undefined") return null;
+  const estilos = getComputedStyle(document.documentElement);
+  const token = (nombre: string) => estilos.getPropertyValue(nombre).trim();
+  const superficies = ["--surface-canvas", "--surface-raised", "--surface-subtle", "--surface-interactive"].map(token).filter((valor) => HEX_TOKEN.test(valor));
+  const textoClaro = token("--accent-on-claro"), textoOscuro = token("--accent-on-oscuro");
+  if (superficies.length === 0 || !HEX_TOKEN.test(textoClaro) || !HEX_TOKEN.test(textoOscuro)) return null;
+  return { oscuro: document.documentElement.getAttribute("data-theme") === "dark", superficies, textoClaro, textoOscuro };
+}
+
+let accentColor: string | null = null;
+function colorInicial(): string {
+  if (typeof document === "undefined") return "";
+  const token = getComputedStyle(document.documentElement).getPropertyValue("--accent-personalizado-inicial").trim();
+  return HEX.test(token) ? token : "";
+}
+function readAccentColor(): string {
+  if (accentColor) return accentColor;
+  let stored: string | null = null;
+  try { stored = typeof window === "undefined" ? null : window.localStorage.getItem(ACCENT_COLOR_STORAGE_KEY); } catch { /* sin almacenamiento */ }
+  accentColor = stored && HEX.test(stored) ? stored : colorInicial();
+  return accentColor;
+}
+
+/** Aplica el acento libre ajustado al tema y estilo actuales; se vuelve a llamar cuando cambian. */
+function aplicarColorPersonalizado(hex: string) {
+  if (typeof document === "undefined" || !HEX.test(hex)) return;
+  const ref = referenciasDelTema();
+  if (!ref) return;
+  const ajustado = acentoAccesible(hex, ref);
+  const estilo = document.documentElement.style;
+  estilo.setProperty("--accent-custom", ajustado.acento);
+  estilo.setProperty("--accent-custom-hover", ajustado.hover);
+  estilo.setProperty("--accent-custom-subtle", ajustado.suave);
+  estilo.setProperty("--accent-custom-on", ajustado.texto);
+}
+
+/** Tras cambiar tema o estilo, las superficies cambian: se recalcula el acento libre si es el elegido. */
+function reajustarAcento() {
+  if (typeof document === "undefined" || document.documentElement.getAttribute("data-accent") !== "personalizado") return;
+  aplicarColorPersonalizado(readAccentColor());
+}
+
+/** Elige un color libre como acento; se guarda en este navegador. */
+export function setAccentColor(hex: string): void {
+  if (!HEX.test(hex)) return;
+  accentColor = hex;
+  try { window.localStorage.setItem(ACCENT_COLOR_STORAGE_KEY, hex); } catch { /* sin almacenamiento: solo esta visita */ }
+  aplicarColorPersonalizado(hex);
+  setAccent("personalizado");
+}
+const isAccent = (value: unknown): value is HublyAccent => HUBLY_ACCENTS.some((accent) => accent.id === value);
+let accent: HublyAccent | null = null;
+const accentListeners = new Set<() => void>();
+
+function readAccent(): HublyAccent {
+  if (accent) return accent;
+  let stored: string | null = null;
+  try { stored = typeof window === "undefined" ? null : window.localStorage.getItem(ACCENT_STORAGE_KEY); } catch { /* sin almacenamiento */ }
+  accent = isAccent(stored) ? stored : "azul";
+  return accent;
+}
+
+export function setAccent(next: HublyAccent): void {
+  accent = next;
+  if (typeof window !== "undefined") {
+    try { window.localStorage.setItem(ACCENT_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
+  }
+  if (typeof document !== "undefined") {
+    if (next === "azul") document.documentElement.removeAttribute("data-accent");
+    else document.documentElement.setAttribute("data-accent", next);
+    if (next === "personalizado") aplicarColorPersonalizado(readAccentColor());
+  }
+  accentListeners.forEach((listener) => listener());
+}
+
+export function useHublyAccentColor() {
+  return useSyncExternalStore(
+    (listener) => { accentListeners.add(listener); return () => { accentListeners.delete(listener); }; },
+    readAccentColor,
+    () => "",
+  );
+}
+
+export function useHublyAccent() {
+  const current = useSyncExternalStore(
+    (listener) => { accentListeners.add(listener); return () => { accentListeners.delete(listener); }; },
+    readAccent,
+    () => "azul" as HublyAccent,
+  );
+  return [current, setAccent] as const;
+}
+
+/** Estilos de tema: variantes de claro u oscuro. Los originales (Hubly claro y oscuro) no cambian nada. */
+export const HUBLY_ESTILOS = [
+  { id: "sistema", nombre: "Sistema", base: "system" },
+  { id: "hubly-claro", nombre: "Hubly claro", base: "light" },
+  { id: "papel", nombre: "Papel", base: "light" },
+  { id: "niebla", nombre: "Niebla", base: "light" },
+  { id: "hubly-oscuro", nombre: "Hubly oscuro", base: "dark" },
+  { id: "calido", nombre: "Oscuro cálido", base: "dark" },
+  { id: "medianoche", nombre: "Medianoche", base: "dark" },
+  { id: "carbon", nombre: "Carbón", base: "dark" },
+] as const;
+export type HublyEstilo = (typeof HUBLY_ESTILOS)[number]["id"];
+const ESTILO_STORAGE_KEY = "hubly-estilo";
+const ORIGINALES: readonly string[] = ["sistema", "hubly-claro", "hubly-oscuro"];
+const isEstilo = (value: unknown): value is HublyEstilo => HUBLY_ESTILOS.some((estilo) => estilo.id === value);
+let estiloActual: HublyEstilo | null = null;
+const estiloListeners = new Set<() => void>();
+
+function readEstilo(): HublyEstilo | null {
+  if (estiloActual) return estiloActual;
+  let stored: string | null = null;
+  try { stored = typeof window === "undefined" ? null : window.localStorage.getItem(ESTILO_STORAGE_KEY); } catch { /* sin almacenamiento */ }
+  estiloActual = isEstilo(stored) ? stored : null;
+  return estiloActual;
+}
+
+/** Elige un estilo: fija la base (claro, oscuro o sistema) y la variante de colores. */
+export function setEstilo(next: HublyEstilo): void {
+  const estilo = HUBLY_ESTILOS.find((entry) => entry.id === next)!;
+  estiloActual = next;
+  if (typeof window !== "undefined") {
+    try { window.localStorage.setItem(ESTILO_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
+  }
+  if (typeof document !== "undefined") {
+    if (ORIGINALES.includes(next)) document.documentElement.removeAttribute("data-estilo");
+    else document.documentElement.setAttribute("data-estilo", next);
+  }
+  setThemePreference(estilo.base);
+  reajustarAcento();
+  estiloListeners.forEach((listener) => listener());
+}
+
+/** Estilo elegido; si no hay uno guardado, el original que corresponde a la preferencia de tema. */
+export function useHublyEstilo() {
+  const [preference] = useHublyThemePreference();
+  const guardado = useSyncExternalStore(
+    (listener) => { estiloListeners.add(listener); return () => { estiloListeners.delete(listener); }; },
+    readEstilo,
+    () => null,
+  );
+  const base = HUBLY_ESTILOS.find((entry) => entry.id === guardado)?.base;
+  const actual: HublyEstilo = guardado && base === preference ? guardado : preference === "system" ? "sistema" : preference === "dark" ? "hubly-oscuro" : "hubly-claro";
+  return [actual, setEstilo] as const;
+}
+
+/** Tamaño del HUD (barra superior, dock y carril): se guarda en este navegador y se aplica con data-hud en <html>. */
+export const HUBLY_HUD = [
+  { id: "normal", nombre: "Normal" },
+  { id: "grande", nombre: "Grande" },
+  { id: "muy-grande", nombre: "Muy grande" },
+] as const;
+export type HublyHud = (typeof HUBLY_HUD)[number]["id"];
+const HUD_KEY = "hubly-hud";
+let hudActual: HublyHud | null = null;
+const hudListeners = new Set<() => void>();
+
+function readHud(): HublyHud {
+  if (hudActual) return hudActual;
+  let stored: string | null = null;
+  try { stored = typeof window === "undefined" ? null : window.localStorage.getItem(HUD_KEY); } catch { /* sin almacenamiento */ }
+  hudActual = stored === "grande" || stored === "muy-grande" ? stored : "normal";
+  return hudActual;
+}
+
+export function setHud(next: HublyHud): void {
+  hudActual = next;
+  try { window.localStorage.setItem(HUD_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
+  if (typeof document !== "undefined") {
+    if (next === "normal") document.documentElement.removeAttribute("data-hud");
+    else document.documentElement.setAttribute("data-hud", next);
+  }
+  hudListeners.forEach((listener) => listener());
+}
+
+export function useHublyHud() {
+  const current = useSyncExternalStore(
+    (listener) => { hudListeners.add(listener); return () => { hudListeners.delete(listener); }; },
+    readHud,
+    () => "normal" as HublyHud,
+  );
+  return [current, setHud] as const;
+}
+
+// Al cargar en el navegador, el acento libre que pintó el arranque se ajusta al tema y estilo reales (issue 239).
+if (typeof window !== "undefined") queueMicrotask(reajustarAcento);

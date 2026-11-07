@@ -67,7 +67,9 @@
   --measure-viewport-height: 100dvh;
   --chat-list-min: 15rem; --chat-list-max: 19rem;
   /* Marco de Tu espacio (#184): carril, barra superior y dock. Los objetivos táctiles de dentro siguen en 44 px. */
-  --frame-topbar-h: 3rem; --frame-dock-h: 3.5rem; --frame-rail-w: 3.5rem; --frame-rail-w-open: 13rem; --frame-rail-pad: 0.375rem;
+  /* Dock delgado: con ratón, controles de 32 px en barra de 44 px; en pantallas táctiles se mantienen los 44 px. */
+  --dock-control: 2.75rem; --rail-item: 2.75rem; --hud-icono: 1.5rem;
+  --frame-topbar-h: 3rem; --frame-dock-h: 3rem; --frame-rail-w: 3.5rem; --frame-rail-w-open: 13rem; --frame-rail-pad: 0.375rem;
   /* Modales (#186): separación al borde, distancia desde arriba en pantallas holgadas y altura máxima. */
   --modal-gap: 0.75rem; --modal-top: 5rem; --modal-max-h: 40rem;
   /* Tokens de dirección visual: Grafito y azul tinta, bento y liquid glass (Issues #8, #47 y #52) */
@@ -104,14 +106,14 @@
   --landing-hero-size: clamp(2.625rem, 5.3vw, 4.75rem);
   --tint-blue: #EEF2FB; --tint-sand: #F7F1E7; --tint-green: #EAF4EE; --tint-lilac: #F2EEF8; --text-faint: #8A8D96;
   /* Iconos a dos tonos de las herramientas (#105): relleno «Niebla» y relleno sobre el acento cuando la herramienta está activa. */
-  --icon-fill: #DCE5F8; --icon-fill-active: rgba(255, 255, 255, 0.28);
+  --icon-fill: color-mix(in srgb, var(--accent-primary) 16%, #FFFFFF); --icon-fill-active: rgba(255, 255, 255, 0.28);
   /* Espacio con paneles de cristal sobre fondo personal (#75, #76): fondos, cristal, menús flotantes y dock */
   --wallpaper-contornos: #E9ECF2; --wallpaper-patron: #F1F2F4; --wallpaper-tinta: #DCE5F8; --wallpaper-grafito: #F4F4F5;
   --wallpaper-line: rgba(17, 19, 22, 0.09); --wallpaper-line-accent: rgba(29, 78, 216, 0.28);
   --wallpaper-pattern: rgba(17, 19, 22, 0.05); --wallpaper-pattern-accent: rgba(29, 78, 216, 0.14);
   --wallpaper-image-veil: rgba(247, 247, 248, 0.60);
   /* Iconos de la identidad (issue 148): grafito y azul tinta. */
-  --hi-borde: #262C36; --hi-tono-1: #515968; --hi-tono-2: #303743; --hi-relieve: #E5EAF3; --hi-brillo: #DCE5F8; --hi-acento: #1D4ED8;
+  --hi-borde: #262C36; --hi-tono-1: #515968; --hi-tono-2: #303743; --hi-relieve: color-mix(in srgb, var(--accent-primary) 8%, #F1F3F7); --hi-brillo: color-mix(in srgb, var(--accent-primary) 16%, #FFFFFF); --hi-acento: var(--accent-primary);
   --hi-medio: #606A7B; --hi-fondo: #FFFFFF; --hi-peligro: #8C1D18; --hi-aviso: #6E4506; --hi-exito: #165632; --hi-papel: #F7F7F8;
   --avatar-veil: rgba(12, 13, 15, 0.45);
   --presence-online: #16A34A; --presence-away: #F59E0B; --presence-dnd: #DC2626;
@@ -121,11 +123,125 @@
   --glass-panel-shadow: 0 0.5rem 1.5rem rgba(17, 19, 22, 0.10); --pop-bg: rgba(255, 255, 255, 0.96); --pop-shadow: 0 1rem 2.5rem rgba(17, 19, 22, 0.16);
   --glass-hover: rgba(17, 19, 22, 0.05); --glass-field: rgba(17, 19, 22, 0.04); --glass-blur-panel: 24px;
   /* Liquid glass (#224): brillo superior, filo de luz interior y saturación del fondo que asoma. */
-  --glass-saturate: 180%; --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 38%, rgba(255, 255, 255, 0) 100%);
-  --glass-highlight: inset 0 0.0625rem 0 rgba(255, 255, 255, 0.85), inset 0 0 0 0.0625rem rgba(255, 255, 255, 0.35), inset 0 -0.0625rem 0 rgba(17, 19, 22, 0.04);
+  --glass-saturate: 140%; --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 30%, rgba(255, 255, 255, 0) 100%);
+  --glass-highlight: inset 0 0.0625rem 0 rgba(255, 255, 255, 0.6), inset 0 0 0 0.0625rem rgba(255, 255, 255, 0.18);
   /* Acceso (#100) */
   --glass-radius-access-bar: 0.875rem; --glass-radius-access-card: 1.125rem; --container-access: 27.5rem;
 }
+/* Tamaño del HUD (Apariencia): normal (90 %, el predeterminado), grande (100 %) o muy grande (115 %).
+   Con ratón escala todo el marco; en táctil solo crece, nunca baja de 44 px. */
+:root { --hud-escala: 0.9; }
+:root[data-hud="grande"] { --hud-escala: 1; }
+:root[data-hud="muy-grande"] { --hud-escala: 1.15; }
+@media (pointer: fine) { :root { --dock-control: calc(2rem * var(--hud-escala)); --frame-dock-h: calc(2.75rem * var(--hud-escala)); --rail-item: calc(2.25rem * var(--hud-escala));
+  --frame-topbar-h: calc(3rem * var(--hud-escala)); --frame-rail-w: calc(3.5rem * var(--hud-escala)); --hud-icono: calc(1.5rem * var(--hud-escala)); } }
+@media (pointer: coarse) { :root[data-hud="muy-grande"] { --dock-control: 3rem; --rail-item: 3rem; --frame-dock-h: 3.25rem; --frame-topbar-h: 3.25rem; --frame-rail-w: 3.75rem; --hud-icono: 1.65rem; } }
+/* Avance del widget de Enfoque, en pasos de 5 %, para no usar estilos en línea. */
+.hubly-widget-avance { transition: width 1s linear; }
+.hubly-widget-avance[data-avance="0"] { width: 0%; }
+.hubly-widget-avance[data-avance="5"] { width: 5%; }
+.hubly-widget-avance[data-avance="10"] { width: 10%; }
+.hubly-widget-avance[data-avance="15"] { width: 15%; }
+.hubly-widget-avance[data-avance="20"] { width: 20%; }
+.hubly-widget-avance[data-avance="25"] { width: 25%; }
+.hubly-widget-avance[data-avance="30"] { width: 30%; }
+.hubly-widget-avance[data-avance="35"] { width: 35%; }
+.hubly-widget-avance[data-avance="40"] { width: 40%; }
+.hubly-widget-avance[data-avance="45"] { width: 45%; }
+.hubly-widget-avance[data-avance="50"] { width: 50%; }
+.hubly-widget-avance[data-avance="55"] { width: 55%; }
+.hubly-widget-avance[data-avance="60"] { width: 60%; }
+.hubly-widget-avance[data-avance="65"] { width: 65%; }
+.hubly-widget-avance[data-avance="70"] { width: 70%; }
+.hubly-widget-avance[data-avance="75"] { width: 75%; }
+.hubly-widget-avance[data-avance="80"] { width: 80%; }
+.hubly-widget-avance[data-avance="85"] { width: 85%; }
+.hubly-widget-avance[data-avance="90"] { width: 90%; }
+.hubly-widget-avance[data-avance="95"] { width: 95%; }
+.hubly-widget-avance[data-avance="100"] { width: 100%; }
+/* Avisos de error compactos, abajo al centro y por encima del dock; no empujan el contenido. */
+.hubly-aviso { bottom: calc(var(--frame-dock-h) + 2.25rem); }
+/* Hover con el color de acento, leve; en oscuro un poco más presente para que se note. */
+:root { --hover-acento: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
+html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primary) 16%, transparent); }
+/* Editores sin borde (título y texto de la nota): el cursor ya marca dónde se escribe, sin marco de foco encima. */
+.hubly-editor:focus-visible { outline: none; }
+/* Control de opacidad: pista fina, relleno con el acento y un pomo claro con sombra suave. */
+.hubly-opacidad-pista { background-color: var(--glass-line-strong); }
+.hubly-opacidad-pomo { background-color: var(--accent-on-claro); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.28);
+  transition: box-shadow var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease); }
+.hubly-opacidad-pomo[data-hovered], .hubly-opacidad-pomo[data-dragging] { box-shadow: 0 0 0 4px var(--hover-acento), 0 1px 3px rgb(0 0 0 / 0.28); }
+.hubly-opacidad-pomo[data-dragging] { transform: scale(1.1); }
+.hubly-carril-asa:focus:not([data-focus-visible]) { outline: none; }
+
+/* Estilos de tema: variantes de claro u oscuro con contraste AA comprobado. Hubly claro y oscuro son los de siempre. */
+:root[data-theme="light"][data-estilo="papel"] { --surface-canvas: #F5F0E6; --surface-raised: #FFFCF6; --surface-subtle: #EFE8DA; --surface-interactive: #E6DDCB;
+  --text-primary: #231F1A; --text-secondary: #4A4239; --text-muted: #5F574C; --border-subtle: #EBE3D4; --border-default: #E2D8C6;
+  --glass-rgb: 255 251 243; --pop-bg: rgba(255, 251, 243, 0.96); --wallpaper-contornos: #EDE5D6; }
+:root[data-theme="light"][data-estilo="niebla"] { --surface-canvas: #EEF2F6; --surface-raised: #FBFCFE; --surface-subtle: #E6EBF1; --surface-interactive: #DCE3EB;
+  --text-primary: #10161F; --text-secondary: #374151; --text-muted: #4B5563; --border-subtle: #E2E8EF; --border-default: #D7DFE8;
+  --glass-rgb: 250 252 255; --pop-bg: rgba(250, 252, 255, 0.96); --wallpaper-contornos: #E3E9F1; }
+:root[data-theme="dark"][data-estilo="calido"] { --surface-canvas: #15120F; --surface-raised: #211C18; --surface-subtle: #2A241F; --surface-interactive: #352E28;
+  --text-primary: #F3EEE8; --text-secondary: #D2C9BF; --text-muted: #B3A99D; --border-subtle: #2E2823; --border-default: #3A332C;
+  --glass-rgb: 36 31 27; --pop-bg: rgba(38, 33, 28, 0.95); --wallpaper-contornos: #1A1612; }
+:root[data-theme="dark"][data-estilo="medianoche"] { --surface-canvas: #0B1020; --surface-raised: #141B30; --surface-subtle: #1B2440; --surface-interactive: #243052;
+  --text-primary: #EEF2FB; --text-secondary: #C6CEE3; --text-muted: #A3AEC9; --border-subtle: #1F2944; --border-default: #2A3658;
+  --glass-rgb: 20 27 48; --pop-bg: rgba(22, 30, 52, 0.95); --wallpaper-contornos: #0A0F1E; }
+:root[data-theme="dark"][data-estilo="carbon"] { --surface-canvas: #050506; --surface-raised: #121214; --surface-subtle: #19191C; --surface-interactive: #232327;
+  --text-primary: #F4F4F5; --text-secondary: #CFCFD4; --text-muted: #ABABB3; --border-subtle: #1D1D21; --border-default: #2A2A2F;
+  --glass-rgb: 18 18 20; --pop-bg: rgba(20, 20, 23, 0.96); --wallpaper-contornos: #08080A; }
+/* Muestras del selector de estilo: cada una se pinta con sus propios colores. */
+.hubly-estilo-muestra[data-estilo-muestra="hubly-claro"] { --muestra-fondo: #F7F7F8; --muestra-barra: #FFFFFF; }
+.hubly-estilo-muestra[data-estilo-muestra="papel"] { --muestra-fondo: #F5F0E6; --muestra-barra: #FFFCF6; }
+.hubly-estilo-muestra[data-estilo-muestra="niebla"] { --muestra-fondo: #EEF2F6; --muestra-barra: #FBFCFE; }
+.hubly-estilo-muestra[data-estilo-muestra="hubly-oscuro"] { --muestra-fondo: #111317; --muestra-barra: #1B1E24; }
+.hubly-estilo-muestra[data-estilo-muestra="calido"] { --muestra-fondo: #15120F; --muestra-barra: #2A241F; }
+.hubly-estilo-muestra[data-estilo-muestra="medianoche"] { --muestra-fondo: #0B1020; --muestra-barra: #1B2440; }
+.hubly-estilo-muestra[data-estilo-muestra="carbon"] { --muestra-fondo: #050506; --muestra-barra: #19191C; }
+.hubly-estilo-muestra[data-estilo-muestra="sistema"] { --muestra-fondo: linear-gradient(135deg, #F7F7F8 50%, #111317 50%); --muestra-barra: #8A8D96; }
+.hubly-estilo-muestra { background: var(--muestra-fondo); }
+.hubly-estilo-muestra-barra { background: var(--muestra-barra); }
+/* Selector de color libre: pomos claros con sombra y sugeridos; el sugerido elegido lleva un anillo. */
+:root { --sugerido-1: #E11D48; --sugerido-2: #EA580C; --sugerido-3: #CA8A04; --sugerido-4: #16A34A; --sugerido-5: #0891B2; --sugerido-6: #2563EB; --sugerido-7: #7C3AED; --sugerido-8: #C026D3; }
+.hubly-color-pomo { border: 2px solid var(--accent-on-claro); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25), 0 1px 4px rgb(0 0 0 / 0.35); }
+.hubly-color-pomo[data-focus-visible] { box-shadow: 0 0 0 2px var(--accent-primary), 0 1px 4px rgb(0 0 0 / 0.35); }
+.hubly-color-sugerido[data-selected] { box-shadow: 0 0 0 2px var(--text-primary); }
+.hubly-color-sugerido[data-focus-visible] { box-shadow: 0 0 0 2px var(--accent-primary); }
+/* Acento personalizado: textos posibles sobre el acento y color con el que empieza el selector. */
+:root { --accent-on-claro: #FFFFFF; --accent-on-oscuro: #0C0D0F; --accent-personalizado-inicial: #7C3AED; }
+/* Acento personalizado: el color lo elige la persona; hover y fondo sutil se derivan, y el texto encima se elige por contraste. */
+/* Acento libre (issue 239): ThemeToggle calcula acento, hover, fondo suave y texto para el tema y estilo actuales (acentoAccesible). */
+:root[data-accent="personalizado"] { --accent-primary: var(--accent-custom, #1D4ED8); --accent-primary-hover: var(--accent-custom-hover, #1A44BE);
+  --accent-primary-subtle: var(--accent-custom-subtle, #E8EDFB); --text-on-accent: var(--accent-custom-on, #FFFFFF); }
+:root[data-theme="dark"][data-accent="personalizado"] { --accent-primary: var(--accent-custom, #6F98FF); --accent-primary-hover: var(--accent-custom-hover, #8FB0FF);
+  --accent-primary-subtle: var(--accent-custom-subtle, #1F2A47); --text-on-accent: var(--accent-custom-on, #0C0D0F); }
+.hubly-acento-arcoiris { background: conic-gradient(#EF4444, #F59E0B, #EAB308, #22C55E, #06B6D4, #3B82F6, #8B5CF6, #EC4899, #EF4444); }
+.hubly-acento-elegido { background-color: var(--accent-custom, #7C3AED); }
+/* Muestras del selector de acento: cada una pinta su propio color en el tema actual. */
+.hubly-acento-muestra[data-acento="azul"] { background-color: #1D4ED8; }
+.hubly-acento-muestra[data-acento="violeta"] { background-color: #6D28D9; }
+.hubly-acento-muestra[data-acento="turquesa"] { background-color: #0F766E; }
+.hubly-acento-muestra[data-acento="verde"] { background-color: #15803D; }
+.hubly-acento-muestra[data-acento="ambar"] { background-color: #B45309; }
+.hubly-acento-muestra[data-acento="rosa"] { background-color: #BE185D; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="azul"] { background-color: #6F98FF; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="violeta"] { background-color: #B49CFF; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="turquesa"] { background-color: #4FD1C5; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="verde"] { background-color: #6BD992; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="ambar"] { background-color: #F5B54A; }
+:root[data-theme="dark"] .hubly-acento-muestra[data-acento="rosa"] { background-color: #F58AB8; }
+
+/* Acentos de apariencia: cambian solo el color de acento; el azul tinta es el de siempre. Contraste AA comprobado. */
+:root[data-accent="violeta"] { --accent-primary: #6D28D9; --accent-primary-hover: #5B21B6; --accent-primary-subtle: #F1ECFC; }
+:root[data-accent="turquesa"] { --accent-primary: #0F766E; --accent-primary-hover: #0B5F59; --accent-primary-subtle: #E6F4F2; }
+:root[data-accent="verde"] { --accent-primary: #15803D; --accent-primary-hover: #116A32; --accent-primary-subtle: #EEF7F1; }
+:root[data-accent="ambar"] { --accent-primary: #B45309; --accent-primary-hover: #964407; --accent-primary-subtle: #FDF5EA; }
+:root[data-accent="rosa"] { --accent-primary: #BE185D; --accent-primary-hover: #9D144D; --accent-primary-subtle: #FCE8F0; }
+:root[data-theme="dark"][data-accent="violeta"] { --accent-primary: #B49CFF; --accent-primary-hover: #C9B8FF; --accent-primary-subtle: #2A2147; }
+:root[data-theme="dark"][data-accent="turquesa"] { --accent-primary: #4FD1C5; --accent-primary-hover: #7EE0D6; --accent-primary-subtle: #133533; }
+:root[data-theme="dark"][data-accent="verde"] { --accent-primary: #6BD992; --accent-primary-hover: #8FE4AC; --accent-primary-subtle: #16301F; }
+:root[data-theme="dark"][data-accent="ambar"] { --accent-primary: #F5B54A; --accent-primary-hover: #F8C875; --accent-primary-subtle: #3A2A12; }
+:root[data-theme="dark"][data-accent="rosa"] { --accent-primary: #F58AB8; --accent-primary-hover: #F8A9CB; --accent-primary-subtle: #3E1B2C; }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
@@ -171,20 +287,20 @@
   --landing-end: #13214A; --landing-end-border: #24356A;
   --landing-shadow: 0 1.5rem 3rem -0.5rem rgb(0 0 0 / 0.55);
   --tint-blue: #1A2238; --tint-sand: #2A2419; --tint-green: #17261E; --tint-lilac: #221D2E; --text-faint: #7A7E88;
-  --icon-fill: #23304F; --icon-fill-active: rgba(12, 13, 15, 0.22);
+  --icon-fill: color-mix(in srgb, var(--accent-primary) 28%, #16181C); --icon-fill-active: rgba(12, 13, 15, 0.22);
   --wallpaper-contornos: #10141C; --wallpaper-patron: #14161B; --wallpaper-tinta: #132350; --wallpaper-grafito: #1A1C21;
   --wallpaper-line: rgba(232, 232, 235, 0.12); --wallpaper-line-accent: rgba(111, 152, 255, 0.34);
   --wallpaper-pattern: rgba(232, 232, 235, 0.08); --wallpaper-pattern-accent: rgba(111, 152, 255, 0.16);
   --wallpaper-image-veil: rgba(12, 13, 15, 0.60);
-  --hi-borde: #818B9E; --hi-tono-1: #E8E8EB; --hi-tono-2: #B9BCC4; --hi-relieve: #24272D; --hi-brillo: #FFFFFF; --hi-acento: #6F98FF;
+  --hi-borde: #818B9E; --hi-tono-1: #E8E8EB; --hi-tono-2: #B9BCC4; --hi-relieve: #24272D; --hi-brillo: #FFFFFF; --hi-acento: var(--accent-primary);
   --hi-medio: #A6ADBC; --hi-fondo: #0C0D0F; --hi-peligro: #F99B96; --hi-aviso: #F3C677; --hi-exito: #8CE0AD; --hi-papel: #16181C;
   --wallpaper-puntos: #12151C; --wallpaper-cuadricula: #15181F; --wallpaper-aurora: #0F1220; --wallpaper-hubis: #121C3A; --wallpaper-arena: #12182C;
   --wallpaper-dot: rgba(232, 232, 235, 0.16); --wallpaper-aurora-1: rgba(59, 108, 255, 0.50); --wallpaper-aurora-2: rgba(139, 92, 246, 0.40); --wallpaper-aurora-3: rgba(14, 165, 233, 0.34);
   --glass-rgb: 32 35 43; --panel-alpha: 0.80; --panel-alpha-min-image: 0.80; --glass-line: rgba(255, 255, 255, 0.14); --glass-line-strong: rgba(255, 255, 255, 0.22);
   --glass-panel-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.45); --pop-bg: rgba(34, 37, 45, 0.94); --pop-shadow: 0 1.125rem 2.75rem rgba(0, 0, 0, 0.5);
   --glass-hover: rgba(255, 255, 255, 0.09); --glass-field: rgba(255, 255, 255, 0.08);
-  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 38%, rgba(255, 255, 255, 0) 100%);
-  --glass-highlight: inset 0 0.0625rem 0 rgba(255, 255, 255, 0.16), inset 0 0 0 0.0625rem rgba(255, 255, 255, 0.05), inset 0 -0.0625rem 0 rgba(0, 0, 0, 0.25);
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 30%);
+  --glass-highlight: inset 0 0.0625rem 0 rgba(255, 255, 255, 0.10), inset 0 0 0 0.0625rem rgba(255, 255, 255, 0.04);
 }
 
 
@@ -347,18 +463,34 @@ body {
   .hubly-corto-entrada { min-height: var(--control-min-tap); height: var(--control-min-tap); padding-block: 0.375rem; }
 }
 .hubly-popover-scroll { overflow-y: auto; overscroll-behavior: contain; }
+/* Barra de desplazamiento delgada con el color de acento (Firefox y Chromium). */
+.hubly-scroll, .hubly-popover-scroll { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent-primary) 70%, transparent) transparent; }
+.hubly-scroll::-webkit-scrollbar, .hubly-popover-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.hubly-scroll::-webkit-scrollbar-track, .hubly-popover-scroll::-webkit-scrollbar-track { background: transparent; }
+.hubly-scroll::-webkit-scrollbar-thumb, .hubly-popover-scroll::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--accent-primary) 70%, transparent); border-radius: 999px; }
+.hubly-scroll::-webkit-scrollbar-thumb:hover, .hubly-popover-scroll::-webkit-scrollbar-thumb:hover { background-color: var(--accent-primary); }
 /* Buscador (issue 133): baja con un rebote suave, las filas entran en cascada y el campo no lleva recuadro (el cursor ya indica el foco). */
-@keyframes hubly-palette-in { 0% { transform: translateY(-14px) scale(0.97); opacity: 0; filter: blur(6px); } 100% { transform: none; opacity: 1; filter: none; } }
-@keyframes hubly-palette-row { 0% { transform: translateY(6px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+/* Buscador: aparece desde un poco más arriba y más pequeño, se enfoca mientras crece y se asienta sin rebote brusco;
+   al cerrarse se desvanece rápido hacia arriba. Las filas entran en cascada, cada una un poco después. */
+/* Solo transform y opacity, con tokens y sin pasar de 300 ms (docs/diseno/movimiento.md). */
+@keyframes hubly-palette-in { 0% { transform: translateY(-0.75rem) scale(0.96); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes hubly-palette-out { 0% { transform: none; opacity: 1; } 100% { transform: translateY(-0.5rem) scale(0.97); opacity: 0; } }
+@keyframes hubly-palette-row { 0% { transform: translateY(-0.25rem); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes hubly-fade-out { 0% { opacity: 1; } 100% { opacity: 0; } }
+/* Listas que se desplazan sin enseñar la barra (la rueda, el teclado y el tacto siguen funcionando). */
+.hubly-sin-barra { scrollbar-width: none; }
+.hubly-sin-barra::-webkit-scrollbar { display: none; }
 @keyframes hubly-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
-.hubly-palette-overlay { animation: hubly-fade-in var(--motion-fast) var(--motion-ease) both; }
-.hubly-palette { animation: hubly-palette-in calc(var(--motion-fast) * 2) cubic-bezier(0.2, 0.9, 0.3, 1.15) both; }
-.hubly-palette-row { animation: hubly-palette-row calc(var(--motion-fast) * 2) var(--motion-ease) both; transition: background-color var(--motion-fast) var(--motion-ease); }
+.hubly-palette-overlay { animation: hubly-fade-in 0.22s var(--motion-ease) both; }
+.hubly-palette-overlay[data-exiting] { animation: hubly-fade-out 0.16s var(--motion-ease) both; }
+.hubly-palette { animation: hubly-palette-in var(--motion-space) var(--motion-ease) both; }
+.hubly-palette[data-exiting] { animation: hubly-palette-out calc(var(--motion-space) * 2 / 3) var(--motion-ease) both; }
+.hubly-palette-row { animation: hubly-palette-row var(--motion-fast) var(--motion-ease) both; transition: background-color var(--motion-fast) var(--motion-ease); }
 .hubly-palette-row:nth-child(2) { animation-delay: 30ms; }
-.hubly-palette-row:nth-child(3) { animation-delay: 60ms; }
-.hubly-palette-row:nth-child(4) { animation-delay: 90ms; }
-.hubly-palette-row:nth-child(5) { animation-delay: 120ms; }
-.hubly-palette-row:nth-child(n+6) { animation-delay: 150ms; }
+.hubly-palette-row:nth-child(3) { animation-delay: 50ms; }
+.hubly-palette-row:nth-child(4) { animation-delay: 70ms; }
+.hubly-palette-row:nth-child(5) { animation-delay: 90ms; }
+.hubly-palette-row:nth-child(n+6) { animation-delay: 110ms; }
 .hubly-palette-input:focus-visible { outline: none; }
 /* Contenedores de ventanitas que reciben el foco al abrirse: el anillo enmarcaría todo el contenido. */
 .hubly-sin-anillo:focus-visible { outline: none; }
@@ -416,8 +548,21 @@ body {
   .hubly-glass, .hubly-pop-surface { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); background-image: none; }
 }
 /* Lienzo infinito de Hoy (issues 136, 141 y 147): la capa se mueve y escala con variables que pone el componente. */
-.hubly-lienzo { touch-action: none; cursor: grab; }
-.hubly-lienzo[data-arrastrando] { cursor: grabbing; user-select: none; }
+.hubly-lienzo { touch-action: none; cursor: default; }
+/* En pantalla completa el mapa se queda encima de la barra del zoom, no en la esquina de la ventana. */
+@media (min-width: 64rem) { .hubly-lienzo-mapa { right: 0.75rem; bottom: calc(var(--frame-dock-h) + 1.5rem); } }
+/* Selección como en un escritorio: rectángulo con el color de acento y paneles marcados. */
+.hubly-lienzo-marco { position: absolute; z-index: 5; pointer-events: none; left: var(--marco-x, 0); top: var(--marco-y, 0);
+  width: var(--marco-w, 0); height: var(--marco-h, 0); border: var(--border-width-thin) solid var(--accent-primary); border-radius: 0.375rem;
+  background-color: color-mix(in srgb, var(--accent-primary) 12%, transparent); }
+.hubly-lienzo-item[data-seleccionado] { outline-color: var(--accent-primary); }
+/* Punto donde se ancla el menú del clic derecho. */
+.hubly-lienzo-ancla { position: absolute; left: var(--menu-x, 0); top: var(--menu-y, 0); width: 1px; height: 1px; pointer-events: none; }
+.hubly-lienzo[data-arrastrando] { user-select: none; }
+/* Mano cerrada solo al mover el lienzo o un panel; al seleccionar se queda la flecha normal. */
+.hubly-lienzo[data-arrastrando="pan"], .hubly-lienzo[data-arrastrando="pan"] *,
+.hubly-lienzo[data-arrastrando="item"], .hubly-lienzo[data-arrastrando="item"] * { cursor: grabbing; }
+.hubly-lienzo[data-arrastrando="seleccion"], .hubly-lienzo[data-arrastrando="seleccion"] * { cursor: default; }
 .hubly-lienzo-capa { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: translate(var(--lienzo-x, 0), var(--lienzo-y, 0)) scale(var(--lienzo-zoom, 1)); }
 .hubly-lienzo-item { position: absolute; left: var(--item-x); top: var(--item-y); width: var(--item-w); height: var(--item-h); z-index: var(--item-z); border-radius: 1rem; cursor: auto;
   outline: 2px solid transparent; outline-offset: 4px;
@@ -427,6 +572,9 @@ body {
 /* Guía azul: al pasar el ratón, el borde avisa que el panel se mueve y cambia de tamaño; la cabecera se tiñe. */
 .hubly-lienzo-item:hover, .hubly-lienzo-item[data-estado="borde"] { outline-color: color-mix(in srgb, var(--accent-primary) 65%, transparent); }
 .hubly-lienzo-item [data-lienzo-asa] { cursor: grab; transition: background-color var(--motion-fast) var(--motion-ease); }
+@keyframes hubly-agarre { 0% { transform: scale(1); } 40% { transform: scale(0.985); } 100% { transform: scale(1); } }
+.hubly-lienzo-item[data-estado="flotando"] [data-lienzo-asa] { cursor: grabbing; background-color: var(--accent-primary-subtle); animation: hubly-agarre 0.22s var(--motion-ease); }
+@media (prefers-reduced-motion: reduce) { .hubly-lienzo-item[data-estado="flotando"] [data-lienzo-asa] { animation: none; } }
 .hubly-lienzo-item [data-lienzo-asa]:hover { background-color: var(--accent-primary-subtle); }
 /* Bordes invisibles de 10 px para cambiar el tamaño desde cualquier lado; las esquinas encima de los lados. */
 .hubly-lienzo-borde { position: absolute; z-index: 2; }
@@ -461,10 +609,32 @@ body {
 @media (prefers-reduced-transparency: reduce) { .hubly-carril-asa { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); background-image: none; } }
 /* Sin transformaciones al pasar el ratón: el botón no se mueve, solo se marca su borde. */
 /* Al pasar el ratón solo cambia el color de la flecha, sin anillo; la zona activa es el propio botón de 24 px. */
-.hubly-carril { transition: width 0.34s cubic-bezier(0.22, 1, 0.36, 1); scrollbar-width: none; }
+.hubly-carril { transition: width 0.42s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.3s var(--motion-ease); scrollbar-width: none; will-change: width; }
 .hubly-carril::-webkit-scrollbar { display: none; }
-@keyframes hubly-carril-texto { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
-.hubly-carril-texto { animation: hubly-carril-texto 0.32s var(--motion-ease) 0.12s both; }
+/* Herramientas del carril: el icono crece un poco al pasar el ratón y la activa flota con un halo del acento. */
+.hubly-carril-item { transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease), box-shadow 0.25s var(--motion-ease); }
+.hubly-carril-item svg { transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1); }
+.hubly-carril-item[data-hovered] svg, .hubly-carril-item:hover svg { transform: scale(1.1); }
+.hubly-carril-item[aria-current="page"] { box-shadow: 0 0.375rem 1rem -0.375rem color-mix(in srgb, var(--accent-primary) 70%, transparent); }
+/* Cambio de sección: el contenido entra con un fundido y un leve ascenso; el lienzo (fijo) solo con fundido. */
+@keyframes hubly-seccion-entra { 0% { opacity: 0; transform: translateY(0.75rem) scale(0.985); } 100% { opacity: 1; transform: none; } }
+@keyframes hubly-seccion-fundido { 0% { opacity: 0; } 100% { opacity: 1; } }
+.hubly-seccion-entra { animation: hubly-seccion-entra 0.38s cubic-bezier(0.32, 0.72, 0, 1) backwards; }
+.hubly-seccion-fundido { animation: hubly-seccion-fundido 0.3s var(--motion-ease) backwards; }
+@media (prefers-reduced-motion: reduce) { .hubly-carril-item svg { transition: none; } .hubly-carril-item[data-hovered] svg, .hubly-carril-item:hover svg { transform: none; } .hubly-seccion-entra, .hubly-seccion-fundido { animation: none; } }
+/* Al desplegar, los textos entran en cascada después de que el carril empieza a abrirse; al plegar, desaparecen sin esperar. */
+/* Texto del carril: elemento pequeño (180 ms) y escalonado que termina antes de 300 ms. */
+@keyframes hubly-carril-texto { 0% { opacity: 0; transform: translateX(-0.5rem); } 100% { opacity: 1; transform: none; } }
+.hubly-carril-texto { animation: hubly-carril-texto var(--motion-fast) var(--motion-ease) 40ms both; }
+.hubly-carril li:nth-child(1) .hubly-carril-texto { animation-delay: 40ms; }
+.hubly-carril li:nth-child(2) .hubly-carril-texto { animation-delay: 60ms; }
+.hubly-carril li:nth-child(3) .hubly-carril-texto { animation-delay: 80ms; }
+.hubly-carril li:nth-child(4) .hubly-carril-texto { animation-delay: 100ms; }
+.hubly-carril li:nth-child(5) .hubly-carril-texto { animation-delay: 120ms; }
+/* Punto «en vivo» de los fondos animados y muestras de lo transparente y lo sólido junto al control de opacidad. */
+@keyframes hubly-fondo-vivo { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.8); } }
+.hubly-fondo-vivo { box-shadow: 0 0 0 2px rgb(var(--glass-rgb) / 0.9); animation: hubly-fondo-vivo 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .hubly-fondo-vivo { animation: none; } }
 /* Recorte de la foto de perfil (issue 150): el componente pone el tamaño natural y el encuadre en variables. */
 .hubly-recorte-visor { box-shadow: inset 0 0 0 2px var(--accent-primary-subtle); }
 .hubly-recorte-foto { position: absolute; left: 50%; top: 50%; width: var(--foto-w); height: var(--foto-h); max-width: none; user-select: none; pointer-events: none;

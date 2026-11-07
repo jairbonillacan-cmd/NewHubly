@@ -73,7 +73,7 @@ function PatternDefs() {
 }
 
 /** Fondo personal del espacio: contornos, patrones, aurora o color liso. Solo lo ve la persona (#75, sección 3; issue 134). */
-export function Wallpaper({ fondo, imagenUrl, preview }: { fondo: WallpaperId; imagenUrl?: string | null | undefined; preview?: "light" | "dark" }) {
+export function Wallpaper({ fondo, imagenUrl, preview, animado = true }: { fondo: WallpaperId; imagenUrl?: string | null | undefined; preview?: "light" | "dark"; animado?: boolean }) {
   if (preview) {
     const background = fondo === "tinta" ? "bg-(--landing-swatch-mist)" : preview === "dark" ? "bg-(--landing-swatch-dark)" : "bg-(--landing-swatch-light)";
     return (
@@ -97,7 +97,7 @@ export function Wallpaper({ fondo, imagenUrl, preview }: { fondo: WallpaperId; i
         <>
           {/* La versión animada solo se descarga si la persona no pidió reducir el movimiento. */}
           <picture>
-            {ilustrado.animado && <source media="(prefers-reduced-motion: no-preference)" srcSet={`/fondos/${ilustrado.id}-animado.webp`} type="image/webp" />}
+            {ilustrado.animado && animado && <source media="(prefers-reduced-motion: no-preference)" srcSet={`/fondos/${ilustrado.id}-animado.webp`} type="image/webp" />}
             <img src={`/fondos/${ilustrado.id}.webp`} alt="" decoding="async" className="absolute inset-0 size-full object-cover" />
           </picture>
           <span className="absolute inset-0 bg-(--wallpaper-image-veil)" />
@@ -131,11 +131,11 @@ export function Wallpaper({ fondo, imagenUrl, preview }: { fondo: WallpaperId; i
 }
 
 /** Miniatura de cada fondo para el selector. */
-export function WallpaperSwatch({ fondo }: { fondo: WallpaperId }) {
+export function WallpaperSwatch({ fondo, className = "h-14" }: { fondo: WallpaperId; className?: string }) {
   const pattern = PATTERN_ID[fondo];
   const ilustrado = fondoIlustrado(fondo);
   return (
-    <span aria-hidden="true" className={`relative block h-14 w-full overflow-hidden rounded-lg border border-(--glass-line-strong) ${bgDe(fondo)}`}>
+    <span aria-hidden="true" className={`relative block ${className} w-full overflow-hidden rounded-lg border border-(--glass-line-strong) ${bgDe(fondo)}`}>
       {ilustrado && <img src={`/fondos/${ilustrado.id}-mini.webp`} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />}
       {fondo === "contornos" && (
         <svg viewBox="0 0 120 56" preserveAspectRatio="none" className="absolute inset-0 size-full">
