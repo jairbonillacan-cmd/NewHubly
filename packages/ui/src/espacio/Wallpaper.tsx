@@ -1,4 +1,5 @@
-import { fondoIlustrado, type WallpaperId } from "./preferencias";
+import { fondoIlustrado } from "./fondos";
+import type { WallpaperId } from "./preferencias";
 
 // Las curvas se calculan una sola vez al cargar el módulo, no en cada render (#85, rendimiento).
 const CONTOUR_PATHS = Array.from({ length: 24 }, (_, k) => {
