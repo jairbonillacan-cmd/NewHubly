@@ -85,8 +85,21 @@ function writeSaved(saved: Saved) {
 
 type Gesture =
   | { kind: "pan"; startX: number; startY: number; view: LienzoView }
-  | { kind: "item"; id: string; startX: number; startY: number; rect: LienzoRect }
+  | { kind: "seleccion"; startX: number; startY: number }
+  | { kind: "item"; id: string; startX: number; startY: number; rect: LienzoRect; grupo: Record<string, LienzoRect> }
   | { kind: "borde"; id: string; borde: LienzoBorde; startX: number; startY: number; rect: LienzoRect };
+
+/** Rectángulo de selección en coordenadas del lienzo, a partir de dos puntos de pantalla relativos al lienzo. */
+export function seleccionEnLienzo(view: LienzoView, ax: number, ay: number, bx: number, by: number): LienzoRect {
+  const x1 = (Math.min(ax, bx) - view.x) / view.zoom, y1 = (Math.min(ay, by) - view.y) / view.zoom;
+  const x2 = (Math.max(ax, bx) - view.x) / view.zoom, y2 = (Math.max(ay, by) - view.y) / view.zoom;
+  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+}
+
+/** Paneles que toca el rectángulo de selección. */
+export function panelesEnSeleccion(panels: readonly { id: string; rect: LienzoRect }[], sel: LienzoRect): string[] {
+  return panels.filter(({ rect }) => rect.x < sel.x + sel.w && rect.x + rect.w > sel.x && rect.y < sel.y + sel.h && rect.y + rect.h > sel.y).map(({ id }) => id);
+}
 
 const NOT_DRAG = "button, a, input, textarea, select, [contenteditable='true'], [role='button'], [role='menuitem'], [role='switch'], [role='checkbox']";
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
@@ -211,7 +224,11 @@ export function Lienzo({ items, barra }: LienzoProps) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [activo, setActivo] = useState<{ id: string; modo: "flotando" | "borde" | "asentando" } | null>(null);
   const [ready, setReady] = useState(false);
+  const [seleccion, setSeleccion] = useState<string[]>([]);
+  const [marcando, setMarcando] = useState(false);
+  const marcoRef = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
+  const cancelarMenu = useRef(false);
   const asentarTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const rectOf = useCallback((item: LienzoItem) => rects[item.id] ?? item.rect, [rects]);
@@ -275,8 +292,24 @@ export function Lienzo({ items, barra }: LienzoProps) {
     return () => canvas.removeEventListener("wheel", onWheel);
   }, []);
 
+  const punto = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    return { x: event.clientX - box.left, y: event.clientY - box.top };
+  };
+
+  // Como un escritorio: el botón derecho (o el central) mueve el lienzo; el izquierdo selecciona y mueve paneles.
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || !(event.target instanceof Element)) return;
+    if (!(event.target instanceof Element)) return;
+    if (event.button === 1 || event.button === 2) {
+      if (event.target.closest("input, textarea, select, [contenteditable='true']")) return;
+      gesture.current = { kind: "pan", startX: event.clientX, startY: event.clientY, view };
+      cancelarMenu.current = false;
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      event.currentTarget.dataset.arrastrando = "true";
+      return;
+    }
+    if (event.button !== 0) return;
     const itemEl = event.target.closest<HTMLElement>("[data-lienzo-item]");
     if (itemEl) {
       const id = itemEl.dataset.lienzoItem!;
@@ -288,11 +321,23 @@ export function Lienzo({ items, barra }: LienzoProps) {
         gesture.current = { kind: "borde", id, borde, startX: event.clientX, startY: event.clientY, rect: rectOf(item) };
         setActivo({ id, modo: "borde" });
       } else if (event.target.closest("[data-lienzo-asa]") && !event.target.closest(NOT_DRAG)) {
-        gesture.current = { kind: "item", id, startX: event.clientX, startY: event.clientY, rect: rectOf(item) };
+        // Si el panel está en la selección se mueve todo el grupo; si no, la selección pasa a ser ese panel.
+        const ids = seleccion.includes(id) ? seleccion : [id];
+        if (!seleccion.includes(id)) setSeleccion([id]);
+        const grupo = Object.fromEntries(items.filter((candidate) => ids.includes(candidate.id)).map((candidate) => [candidate.id, rectOf(candidate)]));
+        gesture.current = { kind: "item", id, startX: event.clientX, startY: event.clientY, rect: rectOf(item), grupo };
         clearTimeout(asentarTimer.current);
         setActivo({ id, modo: "flotando" });
       } else return;
+    } else if (event.pointerType === "mouse") {
+      const p = punto(event);
+      gesture.current = { kind: "seleccion", startX: p.x, startY: p.y };
+      setSeleccion([]);
+      setMarcando(true);
+      marcoRef.current?.style.setProperty("--marco-w", "0");
+      marcoRef.current?.style.setProperty("--marco-h", "0");
     } else {
+      // En pantallas táctiles no hay botón derecho: arrastrar el fondo sigue moviendo el lienzo.
       gesture.current = { kind: "pan", startX: event.clientX, startY: event.clientY, view };
     }
     event.preventDefault();
@@ -303,9 +348,26 @@ export function Lienzo({ items, barra }: LienzoProps) {
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const current = gesture.current;
     if (!current) return;
+    if (current.kind === "seleccion") {
+      const p = punto(event);
+      const marco = marcoRef.current?.style;
+      marco?.setProperty("--marco-x", `${Math.min(current.startX, p.x)}px`);
+      marco?.setProperty("--marco-y", `${Math.min(current.startY, p.y)}px`);
+      marco?.setProperty("--marco-w", `${Math.abs(p.x - current.startX)}px`);
+      marco?.setProperty("--marco-h", `${Math.abs(p.y - current.startY)}px`);
+      const nueva = panelesEnSeleccion(items.map((item) => ({ id: item.id, rect: rectOf(item) })), seleccionEnLienzo(view, current.startX, current.startY, p.x, p.y));
+      setSeleccion((previa) => previa.join() === nueva.join() ? previa : nueva);
+      return;
+    }
     const dx = event.clientX - current.startX, dy = event.clientY - current.startY;
-    if (current.kind === "pan") setView({ ...current.view, x: current.view.x + dx, y: current.view.y + dy });
-    else if (current.kind === "item") setRects((all) => ({ ...all, [current.id]: { ...current.rect, x: alinear(current.rect.x + dx / view.zoom, opciones.iman), y: alinear(current.rect.y + dy / view.zoom, opciones.iman) } }));
+    if (current.kind === "pan") {
+      if (Math.abs(dx) + Math.abs(dy) > 3) cancelarMenu.current = true;
+      setView({ ...current.view, x: current.view.x + dx, y: current.view.y + dy });
+    } else if (current.kind === "item") setRects((all) => {
+      const next = { ...all };
+      for (const [id, rect] of Object.entries(current.grupo)) next[id] = { ...rect, x: alinear(rect.x + dx / view.zoom, opciones.iman), y: alinear(rect.y + dy / view.zoom, opciones.iman) };
+      return next;
+    });
     else setRects((all) => ({ ...all, [current.id]: redimensionar(current.rect, current.borde, dx / view.zoom, dy / view.zoom, opciones.iman) }));
   };
 
@@ -313,6 +375,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
     const current = gesture.current;
     gesture.current = null;
     delete event.currentTarget.dataset.arrastrando;
+    setMarcando(false);
     if (current?.kind === "item") {
       // Al soltarlo, el panel baja y se asienta con un pequeño rebote antes de quedar quieto.
       setActivo({ id: current.id, modo: "asentando" });
@@ -342,18 +405,26 @@ export function Lienzo({ items, barra }: LienzoProps) {
       <div
         ref={canvasRef}
         role="region"
-        aria-label="Lienzo de Hoy: arrastra el fondo para moverte; Ctrl y la rueda para acercar o alejar"
+        aria-label="Lienzo de Hoy: arrastra con el botón derecho para moverte, con el izquierdo para seleccionar paneles; Ctrl y la rueda para acercar o alejar"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endGesture}
         onPointerCancel={endGesture}
+        onContextMenu={(event) => {
+          // Sin menú al soltar un arrastre con el botón derecho ni sobre el fondo; dentro de un panel, el menú normal.
+          const enPanel = event.target instanceof Element && event.target.closest("[data-lienzo-item]");
+          if (cancelarMenu.current || !enPanel) event.preventDefault();
+          cancelarMenu.current = false;
+        }}
+        onKeyDown={(event) => { if (event.key === "Escape" && seleccion.length) setSeleccion([]); }}
         className="hubly-lienzo absolute inset-0 overflow-hidden rounded-2xl"
       >
         <div ref={layerRef} className={`hubly-lienzo-capa ${ready ? "" : "invisible"}`}>
           {items.map((item) => (
-            <LienzoPanel key={item.id} id={item.id} rect={rectOf(item)} z={zIndex(item.id)} estado={activo?.id === item.id ? activo.modo : undefined}>{item.node}</LienzoPanel>
+            <LienzoPanel key={item.id} id={item.id} rect={rectOf(item)} z={zIndex(item.id)} seleccionado={seleccion.includes(item.id)} estado={activo?.id === item.id ? activo.modo : undefined}>{item.node}</LienzoPanel>
           ))}
         </div>
+        <div ref={marcoRef} aria-hidden="true" className={`hubly-lienzo-marco ${marcando ? "" : "hidden"}`} />
       </div>
       {opciones.mapa && size.w > 0 && (
         <div className="absolute right-0 bottom-0 z-10">
@@ -394,7 +465,7 @@ function MiniMapa({ panels, view, size, onCenter }: { panels: { id: string; rect
   );
 }
 
-function LienzoPanel({ id, rect, z, estado, children }: { id: string; rect: LienzoRect; z: number; estado: "flotando" | "borde" | "asentando" | undefined; children: ReactNode }) {
+function LienzoPanel({ id, rect, z, estado, seleccionado, children }: { id: string; rect: LienzoRect; z: number; estado: "flotando" | "borde" | "asentando" | undefined; seleccionado: boolean; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -408,7 +479,7 @@ function LienzoPanel({ id, rect, z, estado, children }: { id: string; rect: Lien
   }, [rect, z]);
 
   return (
-    <div ref={ref} data-lienzo-item={id} data-estado={estado} className="hubly-lienzo-item">
+    <div ref={ref} data-lienzo-item={id} data-estado={estado} data-seleccionado={seleccionado || undefined} className="hubly-lienzo-item">
       <div className="hubly-lienzo-cuerpo">{children}</div>
       {/* Bordes invisibles para cambiar el tamaño desde cualquier lado o esquina. */}
       {BORDES.map((borde) => <span key={borde} aria-hidden="true" data-lienzo-borde={borde} className="hubly-lienzo-borde" />)}
