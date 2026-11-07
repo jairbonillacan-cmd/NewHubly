@@ -79,7 +79,7 @@ export const hydrateThemePreference = setThemePreference;
 
 /**
  * Decide si un cambio de preferencia hay que guardarlo en la cuenta. El primer valor que se observa (el del navegador
- * antes de hidratar) y la preferencia que llegó del servidor nunca se reenvían; solo los cambios posteriores (#105).
+ * antes de hidratar) y la preferencia que llegó del servidor nunca se reenvían; solo los cambios posteriores (issue 105).
  */
 export function createThemePersistenceTracker(initial: HublyThemePreference | null) {
   let last = initial;

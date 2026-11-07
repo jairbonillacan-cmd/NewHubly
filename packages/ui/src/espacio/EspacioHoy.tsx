@@ -153,7 +153,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
   const initialPreference = props.initialThemePreference ?? null;
-  const shouldPersistTheme = useRef(createThemePersistenceTracker(initialPreference));
+  const [shouldPersistTheme] = useState(() => createThemePersistenceTracker(initialPreference));
 
   // El tema guardado en el servidor manda al entrar; después, cada cambio de preferencia se guarda una sola vez.
   useEffect(() => {
@@ -161,7 +161,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
     // Solo al montar: initialPreference es el valor con el que se cargó la página.
   }, []);
   useEffect(() => {
-    if (shouldPersistTheme.current(themePreference)) onThemeChangeRef.current?.(themePreference);
+    if (shouldPersistTheme(themePreference)) onThemeChangeRef.current?.(themePreference);
   }, [themePreference]);
   const [filter, setFilter] = useState<HoyFilter>(null);
   const [openNoteId, setOpenNoteId] = useState<string | null>(() => notes.find((n) => n.isPinned && !n.isArchived)?.id ?? notes.find((n) => !n.isArchived)?.id ?? null);
