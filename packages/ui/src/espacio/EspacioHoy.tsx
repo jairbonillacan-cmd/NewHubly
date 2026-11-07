@@ -101,6 +101,13 @@ const LIENZO_INICIAL = {
 } as const;
 
 /** true desde el ancho de escritorio; en el servidor y en pruebas, false (se ve la versión apilada). */
+/** Qué selector de fondo abrir. El del dock (escritorio y móvil) solo está montado en el Hub; el de la barra de arriba, siempre. */
+export function selectorDeFondo(origen: "dock" | "arriba", { escritorio, hayDock }: { escritorio: boolean; hayDock: boolean }): "desktop" | "arriba" | "mobile" {
+  if (!hayDock) return "arriba";
+  if (origen === "arriba") return escritorio ? "arriba" : "mobile";
+  return escritorio ? "desktop" : "mobile";
+}
+
 function useIsDesktop() {
   const [desktop, setDesktop] = useState(false);
   useEffect(() => {
@@ -294,8 +301,9 @@ export function EspacioHoy(props: EspacioHoyProps) {
   };
 
   // Desde el lienzo se abre sobre la barra de abajo; desde la barra superior, debajo de ella, en cualquier sección.
-  const openBackground = () => setPickerOpen(isDesktop() ? "desktop" : "mobile");
-  const openBackgroundArriba = () => setPickerOpen(isDesktop() ? "arriba" : "mobile");
+  // El selector del dock solo existe en el Hub; en Chat y en las demás herramientas se abre el de la barra de arriba (issue 241).
+  const openBackground = () => setPickerOpen(selectorDeFondo("dock", { escritorio: isDesktop(), hayDock: Boolean(dock) }));
+  const openBackgroundArriba = () => setPickerOpen(selectorDeFondo("arriba", { escritorio: isDesktop(), hayDock: Boolean(dock) }));
 
   // Elegir una foto abre el recorte (issue 150); se sube lo que la persona encuadra.
   const pickAvatar = (file: File) => {
@@ -502,10 +510,11 @@ export function EspacioHoy(props: EspacioHoyProps) {
       <main id="contenido" tabIndex={-1} className={`relative flex flex-col gap-3 px-3 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:p-0 ${chat?.active ? "min-h-0 grow overflow-hidden pb-20" : "pb-44 lg:overflow-y-auto"}`} aria-busy={switching}>
       <div key={activeWorkspace.id} className={`hubly-espacio-escena flex min-h-0 grow flex-col gap-3 ${switched ? "hubly-espacio-entra" : ""}`} {...hide}>
       {actionError && (
-        <div role="alert" className="hubly-aviso hubly-pop hubly-pop-surface fixed left-1/2 z-40 flex max-w-lg -translate-x-1/2 items-center gap-2 rounded-full py-1 pr-1 pl-3 text-xs text-(--status-danger-text)">
+        <div role="alert" className="hubly-aviso hubly-pop hubly-pop-surface fixed left-1/2 z-40 flex max-w-lg -translate-x-1/2 items-center gap-2 rounded-2xl py-1 pr-1 pl-3 text-xs text-(--status-danger-text)">
           <span className="size-1.5 shrink-0 rounded-full bg-(--status-danger-text)" aria-hidden="true" />
-          <span className="min-w-0 truncate">{actionError.message}</span>
-          <Button size="sm" variant="danger-soft" className="h-7 shrink-0 rounded-full px-2.5 text-xs" onPress={actionError.onRetry}>Reintentar</Button>
+          {/* El mensaje se lee completo aunque falte ancho; el botón conserva su tamaño visual con una zona de 44 px. */}
+          <span className="min-w-0 py-1 break-words">{actionError.message}</span>
+          <Button size="sm" variant="danger-soft" className="hubly-zona-tactil relative h-7 shrink-0 rounded-full px-2.5 text-xs" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
       {chat && !chat.active && herramienta === "hoy" && <a href={chat.unread ? chat.unreadHref : chat.href}
