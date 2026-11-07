@@ -36,8 +36,8 @@ export function LandingNav({ links = LANDING_NAV_LINKS }: { links?: readonly Nav
         <div className="flex items-center justify-self-end gap-2">
           <span className="inline-flex [&>button]:size-11"><ThemeToggle variante="icono" /></span>
           <a href="/login" className="inline-flex min-h-11 items-center rounded-full bg-(--landing-ice) px-4 text-sm font-semibold text-(--text-primary) hover:underline">Entrar</a>
-          <a href="/login?modo=registro" className="hidden min-h-11 items-center rounded-full bg-(--landing-ink) px-5 text-sm font-semibold text-(--landing-on-ink) hover:underline lg:inline-flex">Crear cuenta</a>
-          <MobileNav links={[...links, { href: "/login?modo=registro", label: "Crear cuenta" }]} />
+          <a href="/registro" className="hidden min-h-11 items-center rounded-full bg-(--landing-ink) px-5 text-sm font-semibold text-(--landing-on-ink) hover:underline lg:inline-flex">Crear cuenta</a>
+          <MobileNav links={[...links, { href: "/registro", label: "Crear cuenta" }]} />
         </div>
       </nav>
     </header>

@@ -10,7 +10,7 @@ import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
 import { BackgroundPicker, CaptureField, Dock, DockMore, DockStatus, type WallpaperImageControls } from "./Dock";
 import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery, type DockSuggestion } from "./dockConfig";
 import { Carril, Proximamente, resumenSemana } from "./Carril";
-import { HERRAMIENTAS, herramientaPorId, isHerramientaId, type HerramientaId } from "./herramientas";
+import { HERRAMIENTAS, herramientaDeRuta, herramientaHref, herramientaPorId, isHerramientaId, type HerramientaId } from "./herramientas";
 import { Icon } from "./icons";
 import { HoyPanel } from "./HoyPanel";
 import { Lienzo, LienzoBarra, type LienzoBarraProps, type LienzoItem } from "./Lienzo";
@@ -85,7 +85,7 @@ export interface EspacioHoyProps {
   userEmail?: string | null | undefined;
   /** Nombre, foto y cómo cambiarlos (issue 135). Sin él, editar el perfil sale como «Muy pronto». */
   profile?: EspacioProfile | undefined;
-  /** Herramienta abierta al cargar (?herramienta=); por defecto, Hoy. */
+  /** Herramienta abierta al cargar (su ruta, p. ej. /calendario); por defecto, Hoy. */
   initialHerramienta?: HerramientaId | undefined;
   chat?: { href: string; todayHref: string; unreadHref: string; unread: number | null; active: boolean; content?: ReactNode };
 }
@@ -191,10 +191,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
 
   useEffect(() => {
     try { setCarrilExpandido(localStorage.getItem(CARRIL_STORAGE_KEY) === "completo"); } catch { /* sin almacenamiento: compacto */ }
-    const onPopState = () => {
-      const id = new URLSearchParams(window.location.search).get("herramienta");
-      setHerramienta(isHerramientaId(id) ? id : "hoy");
-    };
+    const onPopState = () => setHerramienta(herramientaDeRuta(window.location.pathname));
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -208,15 +205,12 @@ export function EspacioHoy(props: EspacioHoyProps) {
   // Cambiar de herramienta no recarga la página: el marco se queda y la URL guarda cuál está abierta.
   const selectHerramienta = (id: HerramientaId) => {
     if (chat?.active) {
-      window.location.assign(id === "hoy" ? chat.todayHref : `${chat.todayHref}&herramienta=${id}`);
+      window.location.assign(herramientaHref(id));
       return;
     }
     if (id === herramienta) return;
     setHerramienta(id);
-    const url = new URL(window.location.href);
-    if (id === "hoy") url.searchParams.delete("herramienta");
-    else url.searchParams.set("herramienta", id);
-    window.history.pushState(window.history.state, "", url);
+    window.history.pushState(window.history.state, "", herramientaHref(id));
     document.getElementById("contenido")?.focus();
   };
   const desktop = useIsDesktop();

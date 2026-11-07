@@ -27,6 +27,15 @@ export const isHerramientaId = (value: string | null | undefined): value is Herr
 
 export const herramientaPorId = (id: HerramientaId): Herramienta => HERRAMIENTAS.find((herramienta) => herramienta.id === id) ?? HERRAMIENTAS[0]!;
 
+/** Cada herramienta tiene una URL limpia propia (#212): /hoy, /calendario, /contenido… */
+export const herramientaHref = (id: HerramientaId): string => `/${id}`;
+
+/** La herramienta de una ruta («/calendario» → calendario); cualquier otra ruta es Hoy. */
+export const herramientaDeRuta = (pathname: string): HerramientaId => {
+  const id = pathname.split("/").filter(Boolean)[0];
+  return isHerramientaId(id) ? id : "hoy";
+};
+
 /** Icono de cada herramienta en la identidad nueva (issue 148); activo, usa su versión sobre el acento. */
 export function HerramientaIcono({ id, activo = false, className = "size-6" }: { id: HerramientaId; activo?: boolean; className?: string }) {
   return <IconoHubly name={id} activo={activo} className={className} />;

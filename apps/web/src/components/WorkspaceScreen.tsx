@@ -366,9 +366,8 @@ export function WorkspaceScreen({
     <BienvenidaDialog isOpen={welcomeOpen} onClose={closeWelcome} {...(activeWs ? { workspaceName: activeWs.name } : {})} />
     <EspacioHoy
       {...(chat && activeWs ? { chat: {
-        todayHref: `/hoy?workspaceId=${encodeURIComponent(activeWs.id)}`,
-        href: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}`,
-        unreadHref: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}&vista=sin-leer`,
+        // Rutas limpias (#212): el espacio activo viaja en la cookie «hubly_ws», no en la URL.
+        todayHref: "/hoy", href: "/chat", unreadHref: "/chat/sin-leer",
         unread: chat.unread, active: chatMode,
         ...(chatMode ? { content: <ChatScreen key={activeWs.id} workspaceId={activeWs.id} workspaceName={activeWs.name}
           userId={currentUserId} role={activeWs.role} initiallyUnread={initiallyUnread} /> } : {}),

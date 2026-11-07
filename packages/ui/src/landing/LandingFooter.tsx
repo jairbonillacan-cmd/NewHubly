@@ -24,7 +24,7 @@ const COLUMNS: readonly { title: string; links: readonly FooterLink[] }[] = [
     { href: "/#preguntas", label: "Preguntas" },
   ] },
   { title: "Tu cuenta", links: [
-    { href: "/login?modo=registro", label: "Crear cuenta" },
+    { href: "/registro", label: "Crear cuenta" },
     { href: "/login", label: "Entrar" },
     { href: "/hoy", label: "Ir a Hoy" },
   ] },

@@ -58,8 +58,8 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
     syncBrowserTimeZoneCookie();
     const search = window.location?.search ?? "";
     setLinkNotice(linkErrorMessage(search));
-    // «Crear cuenta» de la barra y del landing llega con ?modo=registro (issue 129).
-    if (new URLSearchParams(search).get("modo") === "registro") setMode("signup");
+    // El aviso ya está en pantalla: se quita ?error= para que la URL quede limpia y recargar no lo repita (#212).
+    if (new URLSearchParams(search).has("error")) window.history.replaceState(window.history.state, "", window.location.pathname);
   }, []);
   // Una cuenta nueva sin confirmación por correo entra directo a Hoy, también con la bienvenida.
   const navigate = (wsId: string | null, welcome = false) =>
