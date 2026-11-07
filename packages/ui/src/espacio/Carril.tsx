@@ -17,16 +17,18 @@ export interface CarrilProps {
   cargando?: boolean;
 }
 
-const ITEM = "relative w-full min-h-(--rail-item) cursor-pointer rounded-xl border-0 transition-colors";
+/** Compacto: botón cuadrado del alto del token, centrado. Completo: ocupa el ancho del carril. */
+const ITEM = "hubly-carril-item relative min-h-(--rail-item) shrink-0 cursor-pointer rounded-xl border-0";
+const FORMA = (expandido: boolean) => (expandido ? "h-(--rail-item) w-full justify-start gap-3 px-3" : "h-(--rail-item) w-(--rail-item) min-w-(--rail-item) justify-center px-0");
 
 function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta: Herramienta; activa: boolean; expandido: boolean; ficha: string | null; onSelect: () => void }) {
   const tono = activa
     ? "bg-(--accent-primary) text-(--text-on-accent)"
-    : herramienta.disponible ? "bg-transparent text-(--text-primary) data-[hovered]:bg-(--hover-acento)" : "bg-transparent text-(--text-secondary) data-[hovered]:bg-(--hover-acento)";
+    : herramienta.disponible ? "bg-transparent text-(--text-primary) data-[hovered]:bg-(--hover-acento) data-[hovered]:text-(--accent-primary)" : "bg-transparent text-(--text-secondary) data-[hovered]:bg-(--hover-acento) data-[hovered]:text-(--accent-primary)";
   const etiqueta = herramienta.disponible ? herramienta.nombre : `${herramienta.nombre}, próximamente`;
   const boton = (
     <Button variant="ghost" aria-label={etiqueta} {...(activa ? { "aria-current": "page" as const } : {})} onPress={onSelect}
-      className={`${ITEM} ${tono} ${expandido ? "h-(--rail-item) justify-start gap-3 px-3" : "h-(--rail-item) justify-center px-0"}`}>
+      className={`${ITEM} ${tono} ${FORMA(expandido)}`}>
       <span className="relative">
         <HerramientaIcono id={herramienta.id} activo={activa} className="size-(--hud-icono)" />
         {herramienta.disponible && !expandido && ficha && (
@@ -58,7 +60,7 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
       className={`hubly-glass hubly-enter hubly-carril flex min-h-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-(--frame-rail-pad) whitespace-nowrap ${expandido ? "w-(--frame-rail-w-open)" : "w-(--frame-rail-w) items-center"}`}>
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
       {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined} aria-label="Chat"
-        className={`${ITEM} flex items-center gap-3 ${expandido ? "px-3" : "justify-center"} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--hover-acento)"}`}>
+        className={`${ITEM} flex items-center ${FORMA(expandido)} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--hover-acento)"}`}>
         <Icon name="chat" active={chat.active} className="size-(--hud-icono)" />
         {expandido && <span className="hubly-carril-texto text-sm font-semibold">Chat</span>}
       </a>}
@@ -66,13 +68,13 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
       {expandido && <p className="hubly-carril-texto m-0 px-3 pb-1 text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">Herramientas</p>}
       <ul aria-label="Herramientas" className="m-0 flex list-none flex-col gap-0.5 p-0">
         {herramientas.map((herramienta) => (
-          <li key={herramienta.id}>
+          <li key={herramienta.id} className="flex justify-center">
             <Item herramienta={herramienta} activa={activa === herramienta.id} expandido={expandido} ficha={ficha(herramienta)} onSelect={() => onSelect(herramienta.id)} />
           </li>
         ))}
       </ul>
       <Button variant="ghost" isDisabled aria-label="Agregar una herramienta, muy pronto"
-        className={`${ITEM} mt-0.5 border border-dashed border-(--glass-line-strong) bg-transparent text-(--text-secondary) ${expandido ? "h-(--rail-item) justify-start gap-3 px-3" : "h-(--rail-item) justify-center px-0"}`}>
+        className={`${ITEM} mt-0.5 border border-dashed border-(--glass-line-strong) bg-transparent text-(--text-secondary) ${FORMA(expandido)}`}>
         <Icon name="mas" className="size-5" />
         {expandido && <span className="hubly-carril-texto min-w-0 grow truncate text-left text-sm">Agregar una herramienta</span>}
         {expandido && <span className="hubly-carril-texto shrink-0 text-xs">Pronto</span>}

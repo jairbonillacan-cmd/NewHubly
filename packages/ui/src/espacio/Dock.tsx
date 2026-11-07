@@ -88,6 +88,8 @@ export interface BackgroundPickerProps {
   onOpenChange: (open: boolean) => void;
   triggerClassName?: string;
   triggerLabel?: string;
+  /** Hacia dónde se abre: arriba desde el dock, abajo desde la barra superior. */
+  placement?: "top" | "bottom end";
 }
 
 function WallpaperTile({ wallpaper, label, selected, vivo = false, onSelect }: { wallpaper: (typeof WALLPAPERS)[number]; label: string; selected: boolean; vivo?: boolean; onSelect: () => void }) {
@@ -216,7 +218,7 @@ function TemaYAcento() {
   );
 }
 
-export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange, triggerClassName, triggerLabel }: BackgroundPickerProps) {
+export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange, triggerClassName, triggerLabel, placement = "top" }: BackgroundPickerProps) {
   const [theme] = useHublyTheme();
   const elegido = [...WALLPAPERS, ...WALLPAPERS_ILUSTRADOS].find((wallpaper) => wallpaper.id === prefs.fondo);
   const [movimiento, setMovimiento] = useFondoMovimiento();
@@ -227,7 +229,7 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
         <Icon name="imagen" className="size-5" />
         {triggerLabel && <span className="text-xs">{triggerLabel}</span>}
       </Button>
-      <Popover.Content placement="top" className="hubly-pop-surface hubly-popover-scroll w-84 rounded-2xl p-4 text-(--text-primary)">
+      <Popover.Content placement={placement} className="hubly-pop-surface hubly-popover-scroll w-84 rounded-2xl p-4 text-(--text-primary)">
         <Popover.Dialog aria-label="Apariencia" className="hubly-sin-anillo flex flex-col gap-4 outline-none">
           <div className="flex items-baseline justify-between">
             <Popover.Heading className="m-0 text-sm font-semibold">Apariencia</Popover.Heading>

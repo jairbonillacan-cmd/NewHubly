@@ -244,7 +244,7 @@ const PANELES: { id: PanelId; label: string; icon: IconName }[] = [
 ];
 
 /** Grupo de controles de la barra superior (#105, sección 2), en el orden de la maqueta. */
-function Controls({ focusMode, onToggleFocus, onOpenPalette, panels, onTogglePanel, shortcuts }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "panels" | "onTogglePanel" | "shortcuts">) {
+function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, panels, onTogglePanel, shortcuts }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "onOpenBackground" | "panels" | "onTogglePanel" | "shortcuts">) {
   return (
     <div role="toolbar" aria-label="Controles del espacio" className="flex items-center gap-0.5">
       <ToggleButton isSelected={focusMode} onChange={onToggleFocus}
@@ -274,17 +274,22 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, panels, onTogglePan
           </ul>
         </ControlPopover>
         <Dropdown>
-          <Dropdown.Trigger aria-label="Paneles visibles" className={`flex cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent hover:bg-(--hover-acento) ${CONTROL}`}>
+          <Dropdown.Trigger aria-label="Vista y aspecto" className={`flex cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent hover:bg-(--hover-acento) ${CONTROL}`}>
             <Icon name="ajustes" className="size-5" />
           </Dropdown.Trigger>
           <Dropdown.Popover placement="bottom end" className={MENU}>
-            <Dropdown.Menu aria-label="Paneles visibles" className="hubly-sin-anillo">
-              <Dropdown.Section aria-label="Paneles de Hoy" selectionMode="multiple" selectedKeys={PANELES.filter((panel) => panels[panel.id]).map((panel) => panel.id)}
+            <Dropdown.Menu aria-label="Vista y aspecto" className="hubly-sin-anillo" onAction={(key) => { if (key === "aspecto") onOpenBackground(); }}>
+              <Dropdown.Section aria-label="Aspecto" className="border-b border-(--glass-line) pb-1.5">
+                <Dropdown.Item id="aspecto" textValue="Personalizar aspecto" className={ITEM}>
+                  <Icon name="imagen" /> <span className="flex grow flex-col"><span>Personalizar aspecto</span><span className="text-xs text-(--text-muted)">Fondo, tema, colores y tamaño</span></span>
+                </Dropdown.Item>
+              </Dropdown.Section>
+              <Dropdown.Section aria-label="Paneles del Hub" selectionMode="multiple" selectedKeys={PANELES.filter((panel) => panels[panel.id]).map((panel) => panel.id)}
                 onSelectionChange={(selection) => {
                   if (selection === "all") return;
                   const changed = PANELES.find((panel) => selection.has(panel.id) !== panels[panel.id]);
                   if (changed) onTogglePanel(changed.id);
-                }}>
+                }} className="pt-1.5">
                 {PANELES.map((panel) => (
                   <Dropdown.Item key={panel.id} id={panel.id} textValue={panel.label} className={ITEM}>
                     <Icon name={panel.icon} /> <span className="grow">{panel.label}</span>

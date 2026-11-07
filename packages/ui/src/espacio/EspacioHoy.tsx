@@ -181,7 +181,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [openNoteId, setOpenNoteId] = useState<string | null>(() => notes.find((n) => n.isPinned && !n.isArchived)?.id ?? notes.find((n) => !n.isArchived)?.id ?? null);
   const [linkedNoteId, setLinkedNoteId] = useState<string | null>(null);
   const [recentlyDone, setRecentlyDone] = useState<ReadonlySet<string>>(new Set());
-  const [pickerOpen, setPickerOpen] = useState<"desktop" | "mobile" | null>(null);
+  const [pickerOpen, setPickerOpen] = useState<"desktop" | "arriba" | "mobile" | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [herramienta, setHerramienta] = useState<HerramientaId>(props.initialHerramienta ?? "hoy");
@@ -292,10 +292,9 @@ export function EspacioHoy(props: EspacioHoyProps) {
     focusCapture();
   };
 
-  const openBackground = () => {
-    selectHerramienta("hoy");
-    setPickerOpen(isDesktop() ? "desktop" : "mobile");
-  };
+  // Desde el lienzo se abre sobre la barra de abajo; desde la barra superior, debajo de ella, en cualquier sección.
+  const openBackground = () => setPickerOpen(isDesktop() ? "desktop" : "mobile");
+  const openBackgroundArriba = () => setPickerOpen(isDesktop() ? "arriba" : "mobile");
 
   // Elegir una foto abre el recorte (issue 150); se sube lo que la persona encuadra.
   const pickAvatar = (file: File) => {
@@ -453,13 +452,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
       <Wallpaper fondo={prefs.fondo === "imagen" && !wallpaperUrl ? "contornos" : prefs.fondo} imagenUrl={wallpaperUrl} animado={fondoMovimiento === "animado"} />
       <a href="#contenido" className="sr-only z-50 rounded-lg bg-(--surface-raised) px-3 py-2 text-sm font-semibold focus:not-sr-only focus:fixed focus:top-3 focus:left-3">Saltar al contenido</a>
 
-      <div className="hubly-marco-arriba sticky top-0 z-30 shrink-0 p-3 lg:static lg:col-span-2 lg:p-0">
+      <div className="hubly-marco-arriba relative sticky top-0 z-30 shrink-0 p-3 lg:static lg:col-span-2 lg:p-0">
         <TopBar
           todayDate={todayDate}
           timezone={timezone}
           shortcuts={shortcuts}
           onOpenPalette={() => setPaletteOpen(true)}
-          onOpenBackground={openBackground}
+          onOpenBackground={openBackgroundArriba}
           onExport={onExport}
           onSignOut={onSignOut}
           workspaces={workspaces}
@@ -481,6 +480,8 @@ export function EspacioHoy(props: EspacioHoyProps) {
           {...(props.profile?.onChangePresence ? { onChangePresence: (status: EspacioPresence) => void changePresence(status) } : {})}
           {...(props.profile ? { onEditProfile: () => setProfileOpen(true), onPickAvatar: pickAvatar } : {})}
         />
+        <BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs} isOpen={pickerOpen === "arriba"} placement="bottom end"
+          onOpenChange={(open) => setPickerOpen(open ? "arriba" : null)} triggerClassName="pointer-events-none invisible absolute right-24 top-full size-0 min-w-0 p-0" />
       </div>
 
       <div className="z-20 hidden min-h-0 lg:col-start-1 lg:row-span-2 lg:row-start-2 lg:flex lg:items-center">
@@ -509,6 +510,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         <Icon name="chat" className="size-5" />
         <span>{chat.unread === null ? "Abrir chat" : chat.unread === 0 ? "Chat al día" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
       </a>}
+      <div key={chat?.active ? "chat" : herramienta} className={`flex min-h-0 grow flex-col gap-3 ${!chat?.active && herramienta === "hoy" && enLienzo ? "hubly-seccion-fundido" : "hubly-seccion-entra"}`}>
       {chat?.active ? chat.content : herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : enLienzo ? (
         <Lienzo items={lienzoItems} barra={{ slot: barraSlot, ...barraProps }} menu={{
           onNuevoPendiente: focusCapture, onNuevaNota: () => void createNote(), onPersonalizar: openBackground,
@@ -522,6 +524,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         {panels.notas && notasPanel(sideClass)}
       </div>
       )}
+      </div>
       </div>
       {switching && <div role="status" className="hubly-espacio-carga hubly-glass pointer-events-none absolute inset-x-3 top-0 flex items-center gap-3 rounded-2xl p-4 text-sm font-semibold lg:inset-x-0">Abriendo {targetName}…</div>}
       </main>

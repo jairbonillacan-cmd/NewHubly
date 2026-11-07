@@ -31,7 +31,7 @@ describe("Marco fijo de Tu espacio (issue 105): barra superior, carril y dock fi
     const html = render({ userEmail: "ana@agencia.es" });
     const toolbar = html.slice(html.indexOf('role="toolbar" aria-label="Controles del espacio"'));
     // Sin repetidos: el tema vive en Apariencia; Enfoque abre el grupo, a la izquierda.
-    const order = ["Enfoque", "Buscar o ejecutar (Ctrl K)", "Avisos", "Ayuda y atajos", "Paneles visibles"].map((label) => toolbar.indexOf(label));
+    const order = ["Enfoque", "Buscar o ejecutar (Ctrl K)", "Avisos", "Ayuda y atajos", "Vista y aspecto"].map((label) => toolbar.indexOf(label));
     expect(toolbar).not.toContain("Cambiar a tema");
     expect(order.every((index) => index > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
@@ -80,7 +80,8 @@ describe("Carril de herramientas", () => {
   });
 
   it("abre Calendario desde el estado inicial y muestra Próximamente en lugar de los paneles", () => {
-    const content = (html: string) => html.match(/<main\b[^>]*>(?:<div class="hubly-espacio-escena[^>]*>)?(.*?)(?:<\/div>)?<\/main>/s)?.[1];
+    // El contenido va dentro de la escena del espacio y de la envoltura que anima el cambio de sección.
+    const content = (html: string) => html.match(/<main\b[^>]*>(?:<div class="hubly-espacio-escena[^>]*>)?(?:<div class="[^"]*hubly-seccion-[^"]*">)?(.*?)(?:<\/div>)?(?:<\/div>)?<\/main>/s)?.[1];
     expect(content(render())).toContain("Hoy");
     expect(content(render({ initialHerramienta: "calendario" }))).toMatch(/^<section[^>]*aria-labelledby="proximamente-titulo"[\s\S]*>Calendario<\/h2>[\s\S]*<\/section>$/);
   });
