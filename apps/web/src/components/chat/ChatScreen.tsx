@@ -252,7 +252,7 @@ export function ChatScreen({ workspaceId, workspaceName, userId, role, initially
   if (accessLost) return <section className="hubly-glass rounded-2xl p-4" aria-labelledby="chat-access">
     <h1 id="chat-access" className="text-lg font-semibold">Chat</h1>
     <p role="alert" className="mt-2 text-sm text-(--text-secondary)">{connectionError ?? "Chat o conversación no disponible."}</p>
-    <a href="/inicio" className="mt-2 inline-flex min-h-11 items-center font-semibold text-(--accent-primary)">Volver a Hoy</a>
+    <a href="/hub" className="mt-2 inline-flex min-h-11 items-center font-semibold text-(--accent-primary)">Volver a Hoy</a>
   </section>;
 
   return <ChatView workspaceName={workspaceName} userId={userId} canManage={role === "owner" || role === "admin"}

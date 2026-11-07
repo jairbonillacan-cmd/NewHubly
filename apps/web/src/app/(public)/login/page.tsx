@@ -63,7 +63,7 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
   }, []);
   // Una cuenta nueva sin confirmación por correo entra directo a Hoy, también con la bienvenida.
   const navigate = (wsId: string | null, welcome = false) =>
-    onAuthenticated ? onAuthenticated(wsId) : (typeof window !== "undefined" && window.location.assign(welcome ? "/inicio?bienvenida=1" : "/inicio"));
+    onAuthenticated ? onAuthenticated(wsId) : (typeof window !== "undefined" && window.location.assign(welcome ? "/hub?bienvenida=1" : "/hub"));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +114,7 @@ export function LoginScreen({ initialMode = "signin", onAuthenticated }: LoginSc
   // la sesión y se entra sola. La otra pestaña ya mostró la bienvenida, así que aquí se va a Hoy sin ella.
   const checkConfirmed = async (manual: boolean) => {
     const confirmed = await hasActiveSessionAction().catch(() => false);
-    if (confirmed) window.location.assign("/inicio");
+    if (confirmed) window.location.assign("/hub");
     else if (manual) setNotConfirmedYet(true);
   };
   React.useEffect(() => {

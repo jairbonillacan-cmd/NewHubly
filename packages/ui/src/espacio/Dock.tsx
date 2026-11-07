@@ -9,6 +9,7 @@ import { Icon } from "./icons";
 import { FONDOS_ILUSTRADOS, WALLPAPERS, WALLPAPERS_ILUSTRADOS, type EspacioPreferencias, type PreferenciasPatch } from "./preferencias";
 import type { CaptureFieldProps, DockConfig, DockSuggestion } from "./dockConfig";
 import { WallpaperSwatch } from "./Wallpaper";
+import { useFondoMovimiento } from "./fondoMovimiento";
 
 const DOCK_GROUP = "hubly-glass flex h-(--frame-dock-h) shrink-0 items-center gap-1 rounded-(--glass-radius-access-card) px-1.5";
 const DOCK_BUTTON = "size-(--dock-control) shrink-0 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
@@ -89,15 +90,16 @@ export interface BackgroundPickerProps {
   triggerLabel?: string;
 }
 
-function WallpaperTile({ wallpaper, label, prefs, onChange }: { wallpaper: (typeof WALLPAPERS)[number]; label: string; prefs: EspacioPreferencias; onChange: (patch: PreferenciasPatch) => void }) {
+function WallpaperTile({ wallpaper, label, selected, vivo = false, onSelect }: { wallpaper: (typeof WALLPAPERS)[number]; label: string; selected: boolean; vivo?: boolean; onSelect: () => void }) {
   return (
     <ToggleButton
       aria-label={label}
-      isSelected={prefs.fondo === wallpaper.id}
-      onChange={() => onChange({ fondo: wallpaper.id })}
-      className="hubly-fondo-tile h-auto w-full min-w-0 rounded-xl border-2 border-transparent bg-transparent p-0.5 data-[hovered]:border-(--glass-line-strong) data-[selected]:border-(--accent-primary)"
+      isSelected={selected}
+      onChange={onSelect}
+      className="hubly-fondo-tile relative h-auto w-full min-w-0 rounded-xl border-2 border-transparent bg-transparent p-0.5 data-[hovered]:border-(--glass-line-strong) data-[selected]:border-(--accent-primary)"
     >
       <WallpaperSwatch fondo={wallpaper.id} className="h-12" />
+      {vivo && <span aria-hidden="true" className="hubly-fondo-vivo absolute right-2 bottom-2 size-2 rounded-full bg-(--accent-primary)" />}
     </ToggleButton>
   );
 }
@@ -155,7 +157,8 @@ function TemaYAcento() {
 export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange, triggerClassName, triggerLabel }: BackgroundPickerProps) {
   const [theme] = useHublyTheme();
   const elegido = [...WALLPAPERS, ...WALLPAPERS_ILUSTRADOS].find((wallpaper) => wallpaper.id === prefs.fondo);
-  const nombreFondo = prefs.fondo === "imagen" ? "Tu imagen" : elegido ? (theme === "dark" ? elegido.oscuro : elegido.claro) : "";
+  const [movimiento, setMovimiento] = useFondoMovimiento();
+  const nombreFondo = prefs.fondo === "imagen" ? "Tu imagen" : elegido ? `${theme === "dark" ? elegido.oscuro : elegido.claro}${ANIMADOS.has(elegido.id) && movimiento === "animado" ? " · animado" : ""}` : "";
   return (
     <Popover isOpen={isOpen} onOpenChange={onOpenChange}>
       <Button variant="ghost" isIconOnly={!triggerLabel} aria-label="Apariencia" className={triggerClassName ?? DOCK_BUTTON}>
@@ -171,22 +174,27 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
           <TemaYAcento />
           <span className="flex justify-between"><span className={SECCION}>Fondo</span><span className="text-xs text-(--text-muted)">{nombreFondo}</span></span>
           <div className="hubly-scroll -mx-1 flex max-h-80 flex-col gap-3 overflow-x-hidden overflow-y-auto px-1">
+            <span className="text-xs text-(--text-muted)">Estáticos</span>
+            <div role="group" aria-label="Estáticos" className="grid grid-cols-4 gap-1.5">
+              {WALLPAPERS_ILUSTRADOS.map((wallpaper) => (
+                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={wallpaper.claro}
+                  selected={prefs.fondo === wallpaper.id && (!ANIMADOS.has(wallpaper.id) || movimiento === "quieto")}
+                  onSelect={() => { setMovimiento("quieto"); onChange({ fondo: wallpaper.id }); }} />
+              ))}
+            </div>
             <span className="text-xs text-(--text-muted)">Animados</span>
             <div role="group" aria-label="Animados" className="grid grid-cols-4 gap-1.5">
               {WALLPAPERS_ILUSTRADOS.filter((wallpaper) => ANIMADOS.has(wallpaper.id)).map((wallpaper) => (
-                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={`${wallpaper.claro}, animado`} prefs={prefs} onChange={onChange} />
-              ))}
-            </div>
-            <span className="text-xs text-(--text-muted)">Estáticos</span>
-            <div role="group" aria-label="Estáticos" className="grid grid-cols-4 gap-1.5">
-              {WALLPAPERS_ILUSTRADOS.filter((wallpaper) => !ANIMADOS.has(wallpaper.id)).map((wallpaper) => (
-                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={wallpaper.claro} prefs={prefs} onChange={onChange} />
+                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={`${wallpaper.claro}, animado`} vivo
+                  selected={prefs.fondo === wallpaper.id && movimiento === "animado"}
+                  onSelect={() => { setMovimiento("animado"); onChange({ fondo: wallpaper.id }); }} />
               ))}
             </div>
             <span className="text-xs text-(--text-muted)">Patrones</span>
             <div role="group" aria-label="Patrones" className="grid grid-cols-4 gap-1.5">
-              {WALLPAPERS.map((wallpaper) => (
-                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={theme === "dark" ? wallpaper.oscuro : wallpaper.claro} prefs={prefs} onChange={onChange} />
+              {WALLPAPERS.filter((wallpaper) => wallpaper.id !== "patron").map((wallpaper) => (
+                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={theme === "dark" ? wallpaper.oscuro : wallpaper.claro}
+                  selected={prefs.fondo === wallpaper.id} onSelect={() => onChange({ fondo: wallpaper.id })} />
               ))}
             </div>
             {imagen ? (
@@ -204,16 +212,20 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
             step={2}
             value={prefs.opacidad}
             onChange={(value) => onChange({ opacidad: Array.isArray(value) ? (value[0] ?? prefs.opacidad) : value })}
-            className="flex flex-col gap-2"
+            className="hubly-opacidad flex flex-col gap-2.5 rounded-xl bg-(--glass-hover) px-3 py-2.5"
           >
-            <span className="flex justify-between text-xs text-(--text-secondary)">
-              Opacidad de los paneles
-              <Slider.Output className="font-semibold text-(--text-primary)">{() => `${prefs.opacidad} %`}</Slider.Output>
+            <span className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-(--text-secondary)">Opacidad de los paneles</span>
+              <Slider.Output className="rounded-md bg-(--accent-primary-subtle) px-1.5 py-0.5 font-semibold text-(--accent-primary) tabular-nums">{() => `${prefs.opacidad} %`}</Slider.Output>
             </span>
-            <Slider.Track>
-              <Slider.Fill />
-              <Slider.Thumb />
-            </Slider.Track>
+            <span className="flex items-center gap-2.5">
+              <span aria-hidden="true" className="hubly-opacidad-muestra hubly-opacidad-muestra-clara size-3.5 shrink-0 rounded" />
+              <Slider.Track className="h-1.5 grow rounded-full bg-(--glass-line-strong)">
+                <Slider.Fill className="rounded-full bg-(--accent-primary)" />
+                <Slider.Thumb className="size-4 rounded-full border-2 border-(--accent-primary) bg-(--surface-raised) shadow-md" />
+              </Slider.Track>
+              <span aria-hidden="true" className="hubly-opacidad-muestra size-3.5 shrink-0 rounded" />
+            </span>
           </Slider>
         </Popover.Dialog>
       </Popover.Content>

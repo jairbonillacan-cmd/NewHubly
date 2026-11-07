@@ -14,11 +14,11 @@ describe("Páginas públicas legales /privacidad y /terminos (#11)", () => {
     expect(html).toContain("Portabilidad y exportación abierta");
     expect(html).toContain("Retención y eliminación");
     expect(html).toContain('href="/"');
-    expect(html).toContain('href="/inicio"');
+    expect(html).toContain('href="/hub"');
     expect(html).toContain('href="/privacidad"');
     expect(html).toContain('href="/terminos"');
     expect(html).toContain("Volver al inicio");
-    expect(html).toContain("Ir a Inicio");
+    expect(html).toContain("Ir a tu Hub");
     expect(html).not.toContain('href="#"');
   });
 
@@ -31,11 +31,11 @@ describe("Páginas públicas legales /privacidad y /terminos (#11)", () => {
     expect(html).toContain("Transparencia operativa");
     expect(html).toContain("Uso responsable y seguridad de la cuenta");
     expect(html).toContain('href="/"');
-    expect(html).toContain('href="/inicio"');
+    expect(html).toContain('href="/hub"');
     expect(html).toContain('href="/privacidad"');
     expect(html).toContain('href="/terminos"');
     expect(html).toContain("Volver al inicio");
-    expect(html).toContain("Ir a Inicio");
+    expect(html).toContain("Ir a tu Hub");
     expect(html).not.toContain('href="#"');
   });
 });

@@ -12,7 +12,7 @@ import {
   saveNoteAction,
   toggleTodoAction,
 } from "../../src/actions";
-import { HoyPage } from "../../src/app/(workspace)/inicio/page";
+import { HoyPage } from "../../src/app/(workspace)/hub/page";
 import { shouldTriggerQuickCaptureShortcut } from "../../src/components/WorkspaceScreen";
 import { DEFAULT_APP_TIMEZONE, ensureAuthenticatedWorkspace, setSupabaseServerClientFactoryForTests } from "../../src/server/composition";
 

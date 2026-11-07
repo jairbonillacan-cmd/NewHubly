@@ -6,6 +6,7 @@ import { HubiFace } from "../components/brand/HublyLogo";
 import { Hubi, type HubiPose } from "../components/brand/Hubi";
 import { hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyTheme, type HublyThemePreference } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
+import { useFondoMovimiento } from "./fondoMovimiento";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
 import { BackgroundPicker, CaptureField, Dock, DockMore, DockStatus, type WallpaperImageControls } from "./Dock";
 import { captureChips, createShortcutRegistry, createTodayDock, findNoteByQuery, type DockSuggestion } from "./dockConfig";
@@ -152,6 +153,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         },
       }
     : undefined;
+  const [fondoMovimiento] = useFondoMovimiento();
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
   const initialPreference = props.initialThemePreference ?? props.initialTheme ?? null;
@@ -440,7 +442,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   return (
     // Marco fijo (#105): en escritorio, una cuadrícula con la barra superior, el carril y el dock fijos; solo el contenido se desliza.
     <div ref={rootRef} className={`relative isolate min-h-dvh text-(--text-primary) lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-[var(--frame-topbar-h)_minmax(0,1fr)_auto] lg:gap-3 lg:overflow-hidden lg:p-3 ${chat?.active ? "flex h-dvh flex-col overflow-hidden" : ""}`}>
-      <Wallpaper fondo={prefs.fondo === "imagen" && !wallpaperUrl ? "contornos" : prefs.fondo} imagenUrl={wallpaperUrl} />
+      <Wallpaper fondo={prefs.fondo === "imagen" && !wallpaperUrl ? "contornos" : prefs.fondo} imagenUrl={wallpaperUrl} animado={fondoMovimiento === "animado"} />
       <a href="#contenido" className="sr-only z-50 rounded-lg bg-(--surface-raised) px-3 py-2 text-sm font-semibold focus:not-sr-only focus:fixed focus:top-3 focus:left-3">Saltar al contenido</a>
 
       <div className="hubly-marco-arriba sticky top-0 z-30 shrink-0 p-3 lg:static lg:col-span-2 lg:p-0">
