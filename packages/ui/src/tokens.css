@@ -210,10 +210,11 @@ html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primar
 /* Acento personalizado: textos posibles sobre el acento y color con el que empieza el selector. */
 :root { --accent-on-claro: #FFFFFF; --accent-on-oscuro: #0C0D0F; --accent-personalizado-inicial: #7C3AED; }
 /* Acento personalizado: el color lo elige la persona; hover y fondo sutil se derivan, y el texto encima se elige por contraste. */
-:root[data-accent="personalizado"] { --accent-primary: var(--accent-custom, #1D4ED8); --accent-primary-hover: color-mix(in srgb, var(--accent-custom, #1D4ED8) 85%, #000000);
-  --accent-primary-subtle: color-mix(in srgb, var(--accent-custom, #1D4ED8) 12%, #FFFFFF); --text-on-accent: var(--accent-custom-on, #FFFFFF); }
-:root[data-theme="dark"][data-accent="personalizado"] { --accent-primary-hover: color-mix(in srgb, var(--accent-custom, #6F98FF) 80%, #FFFFFF);
-  --accent-primary-subtle: color-mix(in srgb, var(--accent-custom, #6F98FF) 22%, #111317); }
+/* Acento libre (issue 239): ThemeToggle calcula acento, hover, fondo suave y texto para el tema y estilo actuales (acentoAccesible). */
+:root[data-accent="personalizado"] { --accent-primary: var(--accent-custom, #1D4ED8); --accent-primary-hover: var(--accent-custom-hover, #1A44BE);
+  --accent-primary-subtle: var(--accent-custom-subtle, #E8EDFB); --text-on-accent: var(--accent-custom-on, #FFFFFF); }
+:root[data-theme="dark"][data-accent="personalizado"] { --accent-primary: var(--accent-custom, #6F98FF); --accent-primary-hover: var(--accent-custom-hover, #8FB0FF);
+  --accent-primary-subtle: var(--accent-custom-subtle, #1F2A47); --text-on-accent: var(--accent-custom-on, #0C0D0F); }
 .hubly-acento-arcoiris { background: conic-gradient(#EF4444, #F59E0B, #EAB308, #22C55E, #06B6D4, #3B82F6, #8B5CF6, #EC4899, #EF4444); }
 .hubly-acento-elegido { background-color: var(--accent-custom, #7C3AED); }
 /* Muestras del selector de acento: cada una pinta su propio color en el tema actual. */
@@ -471,7 +472,8 @@ body {
 /* Buscador (issue 133): baja con un rebote suave, las filas entran en cascada y el campo no lleva recuadro (el cursor ya indica el foco). */
 /* Buscador: aparece desde un poco más arriba y más pequeño, se enfoca mientras crece y se asienta sin rebote brusco;
    al cerrarse se desvanece rápido hacia arriba. Las filas entran en cascada, cada una un poco después. */
-@keyframes hubly-palette-in { 0% { transform: translateY(-1.25rem) scale(0.94); opacity: 0; filter: blur(10px); } 60% { opacity: 1; filter: blur(0); } 100% { transform: none; opacity: 1; filter: none; } }
+/* Solo transform y opacity, con tokens y sin pasar de 300 ms (docs/diseno/movimiento.md). */
+@keyframes hubly-palette-in { 0% { transform: translateY(-0.75rem) scale(0.96); opacity: 0; } 100% { transform: none; opacity: 1; } }
 @keyframes hubly-palette-out { 0% { transform: none; opacity: 1; } 100% { transform: translateY(-0.5rem) scale(0.97); opacity: 0; } }
 @keyframes hubly-palette-row { 0% { transform: translateY(-0.25rem); opacity: 0; } 100% { transform: none; opacity: 1; } }
 @keyframes hubly-fade-out { 0% { opacity: 1; } 100% { opacity: 0; } }
@@ -481,14 +483,14 @@ body {
 @keyframes hubly-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
 .hubly-palette-overlay { animation: hubly-fade-in 0.22s var(--motion-ease) both; }
 .hubly-palette-overlay[data-exiting] { animation: hubly-fade-out 0.16s var(--motion-ease) both; }
-.hubly-palette { animation: hubly-palette-in 0.36s cubic-bezier(0.32, 0.72, 0, 1) both; }
-.hubly-palette[data-exiting] { animation: hubly-palette-out 0.16s var(--motion-ease) both; }
-.hubly-palette-row { animation: hubly-palette-row calc(var(--motion-fast) * 2) var(--motion-ease) both; transition: background-color var(--motion-fast) var(--motion-ease); }
-.hubly-palette-row:nth-child(2) { animation-delay: 40ms; }
-.hubly-palette-row:nth-child(3) { animation-delay: 70ms; }
-.hubly-palette-row:nth-child(4) { animation-delay: 100ms; }
-.hubly-palette-row:nth-child(5) { animation-delay: 130ms; }
-.hubly-palette-row:nth-child(n+6) { animation-delay: 160ms; }
+.hubly-palette { animation: hubly-palette-in var(--motion-space) var(--motion-ease) both; }
+.hubly-palette[data-exiting] { animation: hubly-palette-out calc(var(--motion-space) * 2 / 3) var(--motion-ease) both; }
+.hubly-palette-row { animation: hubly-palette-row var(--motion-fast) var(--motion-ease) both; transition: background-color var(--motion-fast) var(--motion-ease); }
+.hubly-palette-row:nth-child(2) { animation-delay: 30ms; }
+.hubly-palette-row:nth-child(3) { animation-delay: 50ms; }
+.hubly-palette-row:nth-child(4) { animation-delay: 70ms; }
+.hubly-palette-row:nth-child(5) { animation-delay: 90ms; }
+.hubly-palette-row:nth-child(n+6) { animation-delay: 110ms; }
 .hubly-palette-input:focus-visible { outline: none; }
 /* Contenedores de ventanitas que reciben el foco al abrirse: el anillo enmarcaría todo el contenido. */
 .hubly-sin-anillo:focus-visible { outline: none; }
@@ -621,13 +623,14 @@ body {
 .hubly-seccion-fundido { animation: hubly-seccion-fundido 0.3s var(--motion-ease) backwards; }
 @media (prefers-reduced-motion: reduce) { .hubly-carril-item svg { transition: none; } .hubly-carril-item[data-hovered] svg, .hubly-carril-item:hover svg { transform: none; } .hubly-seccion-entra, .hubly-seccion-fundido { animation: none; } }
 /* Al desplegar, los textos entran en cascada después de que el carril empieza a abrirse; al plegar, desaparecen sin esperar. */
-@keyframes hubly-carril-texto { 0% { opacity: 0; transform: translateX(-8px); filter: blur(2px); } 100% { opacity: 1; transform: none; filter: none; } }
-.hubly-carril-texto { animation: hubly-carril-texto 0.36s cubic-bezier(0.32, 0.72, 0, 1) 0.1s both; }
-.hubly-carril li:nth-child(1) .hubly-carril-texto { animation-delay: 0.12s; }
-.hubly-carril li:nth-child(2) .hubly-carril-texto { animation-delay: 0.15s; }
-.hubly-carril li:nth-child(3) .hubly-carril-texto { animation-delay: 0.18s; }
-.hubly-carril li:nth-child(4) .hubly-carril-texto { animation-delay: 0.21s; }
-.hubly-carril li:nth-child(5) .hubly-carril-texto { animation-delay: 0.24s; }
+/* Texto del carril: elemento pequeño (180 ms) y escalonado que termina antes de 300 ms. */
+@keyframes hubly-carril-texto { 0% { opacity: 0; transform: translateX(-0.5rem); } 100% { opacity: 1; transform: none; } }
+.hubly-carril-texto { animation: hubly-carril-texto var(--motion-fast) var(--motion-ease) 40ms both; }
+.hubly-carril li:nth-child(1) .hubly-carril-texto { animation-delay: 40ms; }
+.hubly-carril li:nth-child(2) .hubly-carril-texto { animation-delay: 60ms; }
+.hubly-carril li:nth-child(3) .hubly-carril-texto { animation-delay: 80ms; }
+.hubly-carril li:nth-child(4) .hubly-carril-texto { animation-delay: 100ms; }
+.hubly-carril li:nth-child(5) .hubly-carril-texto { animation-delay: 120ms; }
 /* Punto «en vivo» de los fondos animados y muestras de lo transparente y lo sólido junto al control de opacidad. */
 @keyframes hubly-fondo-vivo { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.8); } }
 .hubly-fondo-vivo { box-shadow: 0 0 0 2px rgb(var(--glass-rgb) / 0.9); animation: hubly-fondo-vivo 1.6s ease-in-out infinite; }

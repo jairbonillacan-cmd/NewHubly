@@ -41,6 +41,7 @@ function apply(next: HublyThemePreference): void {
   preference = next;
   currentTheme = next === "system" ? systemTheme() : next;
   if (typeof document !== "undefined") document.documentElement.setAttribute("data-theme", currentTheme);
+  reajustarAcento();
 }
 
 function ensureInitialized(): void {
@@ -159,11 +160,61 @@ export function luminancia(hex: string): number {
   return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
 }
 
+/** Contraste WCAG entre dos colores hexadecimales de seis cifras. */
+export function contraste(a: string, b: string): number {
+  const [x, y] = [luminancia(a), luminancia(b)].sort((p, q) => q - p);
+  return (x! + 0.05) / (y! + 0.05);
+}
+
 /** Contraste del color con el blanco (luminancia 1). */
 export const contrasteConBlanco = (hex: string) => 1.05 / (luminancia(hex) + 0.05);
 
-/** Texto que va sobre el acento: el claro si contrasta lo suficiente (AA); si no, el oscuro. Ambos son tokens. */
-export const textoSobreAcento = (hex: string) => (contrasteConBlanco(hex) >= 4.5 ? "var(--accent-on-claro)" : "var(--accent-on-oscuro)");
+const canales = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const aHex = (rgb: number[]) => `#${rgb.map((n) => Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, "0")).join("")}`.toUpperCase();
+/** Mezcla `peso` de `hacia` sobre `desde`, como color-mix en sRGB. */
+const mezclar = (desde: string, hacia: string, peso: number) => { const a = canales(desde), b = canales(hacia); return aHex(a.map((n, i) => n * (1 - peso) + b[i]! * peso)); };
+
+/** Colores del tema actual que el acento libre tiene que respetar; todos salen de tokens. */
+export interface ReferenciasAcento {
+  oscuro: boolean;
+  /** Superficies sobre las que el acento se usa como texto, borde o anillo de foco. */
+  superficies: string[];
+  /** Texto que va encima del acento en tema claro y en oscuro. */
+  textoClaro: string;
+  textoOscuro: string;
+}
+
+export interface AcentoAccesible { acento: string; hover: string; suave: string; texto: "var(--accent-on-claro)" | "var(--accent-on-oscuro)" }
+
+/**
+ * Ajusta un color libre para que funcione en todos sus usos (issue 239):
+ * - como texto, borde o foco sobre cada superficie del tema, a 4,5:1 (cubre también el 3:1 de los indicadores);
+ * - con su texto encima, a 4,5:1, en reposo y al pasar el ratón;
+ * - como texto sobre su propio fondo suave, a 4,5:1.
+ * En claro se oscurece y lleva texto claro; en oscuro se aclara y lleva texto oscuro. El hover se aleja más en la misma
+ * dirección, así que su contraste solo puede subir.
+ */
+export function acentoAccesible(hex: string, ref: ReferenciasAcento): AcentoAccesible {
+  const hacia = ref.oscuro ? ref.textoClaro : ref.textoOscuro;
+  const texto = ref.oscuro ? ref.textoOscuro : ref.textoClaro;
+  const base = ref.superficies[0] ?? texto;
+  const suaveDe = (color: string) => (ref.oscuro ? mezclar(base, color, 0.22) : mezclar(ref.textoClaro, color, 0.12));
+  const cumple = (color: string) => [...ref.superficies, texto, suaveDe(color)].every((fondo) => contraste(color, fondo) >= 4.5);
+  let acento = aHex(canales(hex));
+  for (let paso = 0; paso < 80 && !cumple(acento); paso++) acento = mezclar(acento, hacia, 0.05);
+  return { acento, hover: mezclar(acento, hacia, 0.15), suave: suaveDe(acento), texto: ref.oscuro ? "var(--accent-on-oscuro)" : "var(--accent-on-claro)" };
+}
+
+const HEX_TOKEN = /^#[0-9a-f]{6}$/i;
+function referenciasDelTema(): ReferenciasAcento | null {
+  if (typeof document === "undefined") return null;
+  const estilos = getComputedStyle(document.documentElement);
+  const token = (nombre: string) => estilos.getPropertyValue(nombre).trim();
+  const superficies = ["--surface-canvas", "--surface-raised", "--surface-subtle", "--surface-interactive"].map(token).filter((valor) => HEX_TOKEN.test(valor));
+  const textoClaro = token("--accent-on-claro"), textoOscuro = token("--accent-on-oscuro");
+  if (superficies.length === 0 || !HEX_TOKEN.test(textoClaro) || !HEX_TOKEN.test(textoOscuro)) return null;
+  return { oscuro: document.documentElement.getAttribute("data-theme") === "dark", superficies, textoClaro, textoOscuro };
+}
 
 let accentColor: string | null = null;
 function colorInicial(): string {
@@ -179,10 +230,23 @@ function readAccentColor(): string {
   return accentColor;
 }
 
+/** Aplica el acento libre ajustado al tema y estilo actuales; se vuelve a llamar cuando cambian. */
 function aplicarColorPersonalizado(hex: string) {
   if (typeof document === "undefined" || !HEX.test(hex)) return;
-  document.documentElement.style.setProperty("--accent-custom", hex);
-  document.documentElement.style.setProperty("--accent-custom-on", textoSobreAcento(hex));
+  const ref = referenciasDelTema();
+  if (!ref) return;
+  const ajustado = acentoAccesible(hex, ref);
+  const estilo = document.documentElement.style;
+  estilo.setProperty("--accent-custom", ajustado.acento);
+  estilo.setProperty("--accent-custom-hover", ajustado.hover);
+  estilo.setProperty("--accent-custom-subtle", ajustado.suave);
+  estilo.setProperty("--accent-custom-on", ajustado.texto);
+}
+
+/** Tras cambiar tema o estilo, las superficies cambian: se recalcula el acento libre si es el elegido. */
+function reajustarAcento() {
+  if (typeof document === "undefined" || document.documentElement.getAttribute("data-accent") !== "personalizado") return;
+  aplicarColorPersonalizado(readAccentColor());
 }
 
 /** Elige un color libre como acento; se guarda en este navegador. */
@@ -211,9 +275,9 @@ export function setAccent(next: HublyAccent): void {
     try { window.localStorage.setItem(ACCENT_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
   }
   if (typeof document !== "undefined") {
-    if (next === "personalizado") aplicarColorPersonalizado(readAccentColor());
     if (next === "azul") document.documentElement.removeAttribute("data-accent");
     else document.documentElement.setAttribute("data-accent", next);
+    if (next === "personalizado") aplicarColorPersonalizado(readAccentColor());
   }
   accentListeners.forEach((listener) => listener());
 }
@@ -273,6 +337,7 @@ export function setEstilo(next: HublyEstilo): void {
     else document.documentElement.setAttribute("data-estilo", next);
   }
   setThemePreference(estilo.base);
+  reajustarAcento();
   estiloListeners.forEach((listener) => listener());
 }
 
@@ -326,3 +391,6 @@ export function useHublyHud() {
   );
   return [current, setHud] as const;
 }
+
+// Al cargar en el navegador, el acento libre que pintó el arranque se ajusta al tema y estilo reales (issue 239).
+if (typeof window !== "undefined") queueMicrotask(reajustarAcento);
