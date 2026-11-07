@@ -4,7 +4,7 @@ import { Button, Popover } from "@heroui/react";
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { GlassPanel, IconButton } from "./GlassPanel";
 import { Icon, type IconName } from "./icons";
-import type { EspacioTodo } from "./types";
+import { relativeDateLabel, type EspacioTodo } from "./types";
 
 /** Widgets del Hub: piezas pequeñas que viven en el lienzo o ancladas a la bandeja. Solo muestran datos reales. */
 export type WidgetId = "reloj" | "enfoque" | "semana" | "vencidos";
@@ -261,12 +261,13 @@ function Vencidos({ todos, todayDate, onToggleTodo }: { todos: readonly EspacioT
     <ul className="m-0 flex list-none flex-col gap-1 p-2">
       {vencidos.map((todo) => (
         <li key={todo.id}>
-          {/* Toda la fila es el control (al menos 44 px de alto); la casilla es solo el dibujo (issue 240). */}
-          <button type="button" onClick={() => onToggleTodo(todo.id)} aria-label={`Marcar como hecho: ${todo.title}, venció el ${todo.dueDate}`}
+          {/* Toda la fila es el control (al menos 44 px de alto); la casilla es solo el dibujo (issue 240).
+              La fecha se lee como en el panel de Hoy («Ayer», «5 nov»), no en ISO (revisión de Prisma, #246). */}
+          <button type="button" onClick={() => onToggleTodo(todo.id)} aria-label={`Marcar como hecho: ${todo.title}, venció: ${relativeDateLabel(todo.dueDate, todayDate)}`}
             className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-(--hover-acento) focus-visible:ring-2 focus-visible:ring-(--accent-primary) focus-visible:outline-none">
             <span aria-hidden="true" className="size-4 shrink-0 rounded border border-(--border-control)" />
             <span className="min-w-0 grow truncate text-sm">{todo.title}</span>
-            <span aria-hidden="true" className="shrink-0 text-xs text-(--status-danger-text)">{todo.dueDate}</span>
+            <span aria-hidden="true" className="shrink-0 text-xs text-(--status-danger-text)">{relativeDateLabel(todo.dueDate, todayDate)}</span>
           </button>
         </li>
       ))}
