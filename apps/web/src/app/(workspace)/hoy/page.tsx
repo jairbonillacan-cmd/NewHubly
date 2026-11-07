@@ -1,5 +1,5 @@
 import { type HerramientaId } from "@hubly/ui";
-import { notFound, redirect, unstable_rethrow } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { loadWorkspaceDashboardAction } from "../../../actions";
 import { WorkspaceScreen } from "../../../components/WorkspaceScreen";
 
@@ -11,7 +11,8 @@ export async function HoyPage({ todayDate, showWelcome = false, herramienta, cha
 } = {}) {
   try {
     const data = await loadWorkspaceDashboardAction();
-    if (chatMode && !data.chat) notFound();
+    // El espacio sale de la cookie: al volver atrás o recargar /chat tras cambiar a un espacio sin chat, se va a Hoy en vez de dar 404.
+    if (chatMode && !data.chat) redirect("/hoy");
     return (
       <WorkspaceScreen
         initialChat={data.chat ?? null} chatMode={chatMode} initiallyUnread={initiallyUnread}
