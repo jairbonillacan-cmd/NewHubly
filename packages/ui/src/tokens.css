@@ -129,6 +129,34 @@
   --glass-radius-access-bar: 0.875rem; --glass-radius-access-card: 1.125rem; --container-access: 27.5rem;
 }
 @media (pointer: fine) { :root { --dock-control: 2rem; --frame-dock-h: 2.75rem; } }
+
+/* Estilos de tema: variantes de claro u oscuro con contraste AA comprobado. Hubly claro y oscuro son los de siempre. */
+:root[data-theme="light"][data-estilo="papel"] { --surface-canvas: #F5F0E6; --surface-raised: #FFFCF6; --surface-subtle: #EFE8DA; --surface-interactive: #E6DDCB;
+  --text-primary: #231F1A; --text-secondary: #4A4239; --text-muted: #5F574C; --border-subtle: #EBE3D4; --border-default: #E2D8C6;
+  --glass-rgb: 255 251 243; --pop-bg: rgba(255, 251, 243, 0.96); --wallpaper-contornos: #EDE5D6; }
+:root[data-theme="light"][data-estilo="niebla"] { --surface-canvas: #EEF2F6; --surface-raised: #FBFCFE; --surface-subtle: #E6EBF1; --surface-interactive: #DCE3EB;
+  --text-primary: #10161F; --text-secondary: #374151; --text-muted: #4B5563; --border-subtle: #E2E8EF; --border-default: #D7DFE8;
+  --glass-rgb: 250 252 255; --pop-bg: rgba(250, 252, 255, 0.96); --wallpaper-contornos: #E3E9F1; }
+:root[data-theme="dark"][data-estilo="calido"] { --surface-canvas: #15120F; --surface-raised: #211C18; --surface-subtle: #2A241F; --surface-interactive: #352E28;
+  --text-primary: #F3EEE8; --text-secondary: #D2C9BF; --text-muted: #B3A99D; --border-subtle: #2E2823; --border-default: #3A332C;
+  --glass-rgb: 36 31 27; --pop-bg: rgba(38, 33, 28, 0.95); --wallpaper-contornos: #1A1612; }
+:root[data-theme="dark"][data-estilo="medianoche"] { --surface-canvas: #0B1020; --surface-raised: #141B30; --surface-subtle: #1B2440; --surface-interactive: #243052;
+  --text-primary: #EEF2FB; --text-secondary: #C6CEE3; --text-muted: #A3AEC9; --border-subtle: #1F2944; --border-default: #2A3658;
+  --glass-rgb: 20 27 48; --pop-bg: rgba(22, 30, 52, 0.95); --wallpaper-contornos: #0A0F1E; }
+:root[data-theme="dark"][data-estilo="carbon"] { --surface-canvas: #050506; --surface-raised: #121214; --surface-subtle: #19191C; --surface-interactive: #232327;
+  --text-primary: #F4F4F5; --text-secondary: #CFCFD4; --text-muted: #ABABB3; --border-subtle: #1D1D21; --border-default: #2A2A2F;
+  --glass-rgb: 18 18 20; --pop-bg: rgba(20, 20, 23, 0.96); --wallpaper-contornos: #08080A; }
+/* Muestras del selector de estilo: cada una se pinta con sus propios colores. */
+.hubly-estilo-muestra[data-estilo-muestra="hubly-claro"] { --muestra-fondo: #F7F7F8; --muestra-barra: #FFFFFF; }
+.hubly-estilo-muestra[data-estilo-muestra="papel"] { --muestra-fondo: #F5F0E6; --muestra-barra: #FFFCF6; }
+.hubly-estilo-muestra[data-estilo-muestra="niebla"] { --muestra-fondo: #EEF2F6; --muestra-barra: #FBFCFE; }
+.hubly-estilo-muestra[data-estilo-muestra="hubly-oscuro"] { --muestra-fondo: #111317; --muestra-barra: #1B1E24; }
+.hubly-estilo-muestra[data-estilo-muestra="calido"] { --muestra-fondo: #15120F; --muestra-barra: #2A241F; }
+.hubly-estilo-muestra[data-estilo-muestra="medianoche"] { --muestra-fondo: #0B1020; --muestra-barra: #1B2440; }
+.hubly-estilo-muestra[data-estilo-muestra="carbon"] { --muestra-fondo: #050506; --muestra-barra: #19191C; }
+.hubly-estilo-muestra[data-estilo-muestra="sistema"] { --muestra-fondo: linear-gradient(135deg, #F7F7F8 50%, #111317 50%); --muestra-barra: #8A8D96; }
+.hubly-estilo-muestra { background: var(--muestra-fondo); }
+.hubly-estilo-muestra-barra { background: var(--muestra-barra); }
 /* Muestras del selector de acento: cada una pinta su propio color en el tema actual. */
 .hubly-acento-muestra[data-acento="azul"] { background-color: #1D4ED8; }
 .hubly-acento-muestra[data-acento="violeta"] { background-color: #6D28D9; }
@@ -374,6 +402,12 @@ body {
   .hubly-corto-entrada { min-height: var(--control-min-tap); height: var(--control-min-tap); padding-block: 0.375rem; }
 }
 .hubly-popover-scroll { overflow-y: auto; overscroll-behavior: contain; }
+/* Barra de desplazamiento delgada con el color de acento (Firefox y Chromium). */
+.hubly-scroll, .hubly-popover-scroll { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent-primary) 70%, transparent) transparent; }
+.hubly-scroll::-webkit-scrollbar, .hubly-popover-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.hubly-scroll::-webkit-scrollbar-track, .hubly-popover-scroll::-webkit-scrollbar-track { background: transparent; }
+.hubly-scroll::-webkit-scrollbar-thumb, .hubly-popover-scroll::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--accent-primary) 70%, transparent); border-radius: 999px; }
+.hubly-scroll::-webkit-scrollbar-thumb:hover, .hubly-popover-scroll::-webkit-scrollbar-thumb:hover { background-color: var(--accent-primary); }
 /* Buscador (issue 133): baja con un rebote suave, las filas entran en cascada y el campo no lleva recuadro (el cursor ya indica el foco). */
 @keyframes hubly-palette-in { 0% { transform: translateY(-14px) scale(0.97); opacity: 0; filter: blur(6px); } 100% { transform: none; opacity: 1; filter: none; } }
 @keyframes hubly-palette-row { 0% { transform: translateY(6px); opacity: 0; } 100% { transform: none; opacity: 1; } }

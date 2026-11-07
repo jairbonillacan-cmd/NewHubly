@@ -4,7 +4,7 @@ import { Button, Chip, Kbd, Popover, Slider, ToggleButton } from "@heroui/react"
 import { forwardRef, useId, useState, type FormEvent, type ReactNode } from "react";
 import { FileTrigger } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
-import { HUBLY_ACCENTS, useHublyAccent, useHublyTheme, useHublyThemePreference, type HublyThemePreference } from "../landing/ThemeToggle";
+import { HUBLY_ACCENTS, HUBLY_ESTILOS, useHublyAccent, useHublyEstilo, useHublyTheme } from "../landing/ThemeToggle";
 import { Icon } from "./icons";
 import { WALLPAPERS, WALLPAPERS_ILUSTRADOS, type EspacioPreferencias, type PreferenciasPatch } from "./preferencias";
 import type { CaptureFieldProps, DockConfig, DockSuggestion } from "./dockConfig";
@@ -92,38 +92,37 @@ export interface BackgroundPickerProps {
 function WallpaperTile({ wallpaper, label, prefs, onChange }: { wallpaper: (typeof WALLPAPERS)[number]; label: string; prefs: EspacioPreferencias; onChange: (patch: PreferenciasPatch) => void }) {
   return (
     <ToggleButton
+      aria-label={label}
       isSelected={prefs.fondo === wallpaper.id}
       onChange={() => onChange({ fondo: wallpaper.id })}
-      className="h-auto w-full min-w-0 flex-col items-stretch justify-start text-center gap-1.5 rounded-xl border-2 border-transparent bg-transparent p-1 text-xs font-normal text-(--text-secondary) transition-transform data-[hovered]:-translate-y-0.5 data-[selected]:border-(--accent-primary) data-[selected]:bg-transparent data-[selected]:text-(--text-primary)"
+      className="hubly-fondo-tile h-auto w-full min-w-0 rounded-xl border-2 border-transparent bg-transparent p-0.5 data-[hovered]:border-(--glass-line-strong) data-[selected]:border-(--accent-primary)"
     >
-      <WallpaperSwatch fondo={wallpaper.id} />
-      <span className="leading-tight whitespace-normal">{label}</span>
+      <WallpaperSwatch fondo={wallpaper.id} className="h-12" />
     </ToggleButton>
   );
 }
 
 /** Selector de fondo y opacidad de los paneles (#75, sección 3). «Tu imagen» llega con Storage (#84). */
-const TEMAS: { id: HublyThemePreference; nombre: string; icon: "sol" | "luna" | "paneles" }[] = [
-  { id: "light", nombre: "Claro", icon: "sol" },
-  { id: "dark", nombre: "Oscuro", icon: "luna" },
-  { id: "system", nombre: "Sistema", icon: "paneles" },
-];
 const SECCION = "text-xs font-semibold text-(--text-secondary)";
 
 /** Tema y acento de la apariencia: se guardan para esta persona (tema en su cuenta, acento en este navegador). */
 function TemaYAcento() {
-  const [preference, , setPreference] = useHublyThemePreference();
+  const [estilo, setEstiloValue] = useHublyEstilo();
   const [accent, setAccentValue] = useHublyAccent();
   const accentName = HUBLY_ACCENTS.find((entry) => entry.id === accent)?.nombre ?? "";
+  const estiloName = HUBLY_ESTILOS.find((entry) => entry.id === estilo)?.nombre ?? "";
   return (
     <>
       <div className="flex flex-col gap-2">
-        <span className={SECCION}>Tema</span>
-        <div role="radiogroup" aria-label="Tema" className="grid grid-cols-3 gap-1 rounded-xl bg-(--glass-hover) p-1">
-          {TEMAS.map((tema) => (
-            <button key={tema.id} type="button" role="radio" aria-checked={preference === tema.id} onClick={() => setPreference(tema.id)}
-              className={`flex min-h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg text-xs font-semibold focus-visible:ring-2 focus-visible:ring-(--accent-primary) ${preference === tema.id ? "bg-(--surface-raised) text-(--text-primary) shadow-sm" : "text-(--text-secondary) hover:text-(--text-primary)"}`}>
-              <Icon name={tema.icon} className="size-4" />{tema.nombre}
+        <span className="flex justify-between"><span className={SECCION}>Tema</span><span className="text-xs text-(--text-muted)">{estiloName}</span></span>
+        <div role="radiogroup" aria-label="Tema" className="grid grid-cols-4 gap-2">
+          {HUBLY_ESTILOS.map((entry) => (
+            <button key={entry.id} type="button" role="radio" aria-checked={estilo === entry.id} aria-label={entry.nombre} title={entry.nombre} onClick={() => setEstiloValue(entry.id)}
+              className={`cursor-pointer rounded-xl border-2 p-0.5 focus-visible:ring-2 focus-visible:ring-(--accent-primary) ${estilo === entry.id ? "border-(--accent-primary)" : "border-transparent hover:border-(--glass-line-strong)"}`}>
+              <span data-estilo-muestra={entry.id} className="hubly-estilo-muestra flex h-9 flex-col justify-between overflow-hidden rounded-lg border border-(--glass-line) p-1.5">
+                <span className="hubly-estilo-muestra-barra h-1.5 w-full rounded-full" />
+                <span className="size-2 rounded-full bg-(--accent-primary)" />
+              </span>
             </button>
           ))}
         </div>
@@ -145,42 +144,38 @@ function TemaYAcento() {
 
 export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange, triggerClassName, triggerLabel }: BackgroundPickerProps) {
   const [theme] = useHublyTheme();
+  const elegido = [...WALLPAPERS, ...WALLPAPERS_ILUSTRADOS].find((wallpaper) => wallpaper.id === prefs.fondo);
+  const nombreFondo = prefs.fondo === "imagen" ? "Tu imagen" : elegido ? (theme === "dark" ? elegido.oscuro : elegido.claro) : "";
   return (
     <Popover isOpen={isOpen} onOpenChange={onOpenChange}>
       <Button variant="ghost" isIconOnly={!triggerLabel} aria-label="Apariencia" className={triggerClassName ?? DOCK_BUTTON}>
         <Icon name="imagen" className="size-5" />
         {triggerLabel && <span className="text-xs">{triggerLabel}</span>}
       </Button>
-      <Popover.Content placement="top" className="hubly-pop-surface hubly-popover-scroll w-80 rounded-2xl p-4 text-(--text-primary)">
+      <Popover.Content placement="top" className="hubly-pop-surface hubly-popover-scroll w-84 rounded-2xl p-4 text-(--text-primary)">
         <Popover.Dialog aria-label="Apariencia" className="hubly-sin-anillo flex flex-col gap-4 outline-none">
           <div className="flex items-baseline justify-between">
             <Popover.Heading className="m-0 text-sm font-semibold">Apariencia</Popover.Heading>
             <span className="text-xs text-(--text-muted)">Solo lo ves tú</span>
           </div>
           <TemaYAcento />
-          <span className={SECCION}>Fondo</span>
-          <div className="-mx-1 flex max-h-96 flex-col gap-3 overflow-x-hidden overflow-y-auto px-1">
-            <div className="grid grid-cols-3 gap-2">
-              {WALLPAPERS.map((wallpaper) => (
-                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={theme === "dark" ? wallpaper.oscuro : wallpaper.claro} prefs={prefs} onChange={onChange} />
-              ))}
-              {imagen ? (
-                <TuImagenTile controls={imagen} selected={prefs.fondo === "imagen"} onSelect={() => onChange({ fondo: "imagen" })} />
-              ) : (
-                <span className="flex flex-col gap-1.5 p-1 text-xs text-(--text-muted)">
-                  <span className="flex h-14 items-center justify-center rounded-lg border border-dashed border-(--glass-line-strong)">
-                    <Icon name="imagen" />
-                  </span>
-                  Tu imagen · pronto
-                </span>
-              )}
-            </div>
-            <span className="text-xs font-medium text-(--text-muted)">Ilustraciones</span>
-            <div className="grid grid-cols-3 gap-2">
+          <span className="flex justify-between"><span className={SECCION}>Fondo</span><span className="text-xs text-(--text-muted)">{nombreFondo}</span></span>
+          <div className="hubly-scroll -mx-1 flex max-h-80 flex-col gap-3 overflow-x-hidden overflow-y-auto px-1">
+            <div role="group" aria-label="Fondos" className="grid grid-cols-4 gap-1.5">
               {WALLPAPERS_ILUSTRADOS.map((wallpaper) => (
                 <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={wallpaper.claro} prefs={prefs} onChange={onChange} />
               ))}
+              {WALLPAPERS.map((wallpaper) => (
+                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={theme === "dark" ? wallpaper.oscuro : wallpaper.claro} prefs={prefs} onChange={onChange} />
+              ))}
             </div>
+            {imagen ? (
+              <TuImagenTile controls={imagen} selected={prefs.fondo === "imagen"} onSelect={() => onChange({ fondo: "imagen" })} />
+            ) : (
+              <span className="flex items-center gap-2 rounded-xl border border-dashed border-(--glass-line-strong) p-2 text-xs text-(--text-muted)">
+                <Icon name="imagen" /> Tu imagen · pronto
+              </span>
+            )}
           </div>
           <Slider
             aria-label="Opacidad de los paneles"

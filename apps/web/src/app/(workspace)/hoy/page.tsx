@@ -25,6 +25,7 @@ export async function HoyPage({ todayDate, showWelcome = false, herramienta, cha
   } catch (err) {
     // La redirección a /login por sesión caducada (#92) no es un fallo: se deja pasar.
     unstable_rethrow(err);
+    console.error("[hoy] No se pudo cargar el espacio:", err);
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("Sesión caducada")) redirect("/login");
     return <WorkspaceScreen initialStatus="error" {...(todayDate ? { todayDate } : {})} errorMessage="No se pudo cargar tu espacio de trabajo." />;

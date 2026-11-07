@@ -178,3 +178,57 @@ export function useHublyAccent() {
   );
   return [current, setAccent] as const;
 }
+
+/** Estilos de tema: variantes de claro u oscuro. Los originales (Hubly claro y oscuro) no cambian nada. */
+export const HUBLY_ESTILOS = [
+  { id: "sistema", nombre: "Sistema", base: "system" },
+  { id: "hubly-claro", nombre: "Hubly claro", base: "light" },
+  { id: "papel", nombre: "Papel", base: "light" },
+  { id: "niebla", nombre: "Niebla", base: "light" },
+  { id: "hubly-oscuro", nombre: "Hubly oscuro", base: "dark" },
+  { id: "calido", nombre: "Oscuro cálido", base: "dark" },
+  { id: "medianoche", nombre: "Medianoche", base: "dark" },
+  { id: "carbon", nombre: "Carbón", base: "dark" },
+] as const;
+export type HublyEstilo = (typeof HUBLY_ESTILOS)[number]["id"];
+const ESTILO_STORAGE_KEY = "hubly-estilo";
+const ORIGINALES: readonly string[] = ["sistema", "hubly-claro", "hubly-oscuro"];
+const isEstilo = (value: unknown): value is HublyEstilo => HUBLY_ESTILOS.some((estilo) => estilo.id === value);
+let estiloActual: HublyEstilo | null = null;
+const estiloListeners = new Set<() => void>();
+
+function readEstilo(): HublyEstilo | null {
+  if (estiloActual) return estiloActual;
+  let stored: string | null = null;
+  try { stored = typeof window === "undefined" ? null : window.localStorage.getItem(ESTILO_STORAGE_KEY); } catch { /* sin almacenamiento */ }
+  estiloActual = isEstilo(stored) ? stored : null;
+  return estiloActual;
+}
+
+/** Elige un estilo: fija la base (claro, oscuro o sistema) y la variante de colores. */
+export function setEstilo(next: HublyEstilo): void {
+  const estilo = HUBLY_ESTILOS.find((entry) => entry.id === next)!;
+  estiloActual = next;
+  if (typeof window !== "undefined") {
+    try { window.localStorage.setItem(ESTILO_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
+  }
+  if (typeof document !== "undefined") {
+    if (ORIGINALES.includes(next)) document.documentElement.removeAttribute("data-estilo");
+    else document.documentElement.setAttribute("data-estilo", next);
+  }
+  setThemePreference(estilo.base);
+  estiloListeners.forEach((listener) => listener());
+}
+
+/** Estilo elegido; si no hay uno guardado, el original que corresponde a la preferencia de tema. */
+export function useHublyEstilo() {
+  const [preference] = useHublyThemePreference();
+  const guardado = useSyncExternalStore(
+    (listener) => { estiloListeners.add(listener); return () => { estiloListeners.delete(listener); }; },
+    readEstilo,
+    () => null,
+  );
+  const base = HUBLY_ESTILOS.find((entry) => entry.id === guardado)?.base;
+  const actual: HublyEstilo = guardado && base === preference ? guardado : preference === "system" ? "sistema" : preference === "dark" ? "hubly-oscuro" : "hubly-claro";
+  return [actual, setEstilo] as const;
+}

@@ -131,11 +131,11 @@ export function Wallpaper({ fondo, imagenUrl, preview }: { fondo: WallpaperId; i
 }
 
 /** Miniatura de cada fondo para el selector. */
-export function WallpaperSwatch({ fondo }: { fondo: WallpaperId }) {
+export function WallpaperSwatch({ fondo, className = "h-14" }: { fondo: WallpaperId; className?: string }) {
   const pattern = PATTERN_ID[fondo];
   const ilustrado = fondoIlustrado(fondo);
   return (
-    <span aria-hidden="true" className={`relative block h-14 w-full overflow-hidden rounded-lg border border-(--glass-line-strong) ${bgDe(fondo)}`}>
+    <span aria-hidden="true" className={`relative block ${className} w-full overflow-hidden rounded-lg border border-(--glass-line-strong) ${bgDe(fondo)}`}>
       {ilustrado && <img src={`/fondos/${ilustrado.id}-mini.webp`} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />}
       {fondo === "contornos" && (
         <svg viewBox="0 0 120 56" preserveAspectRatio="none" className="absolute inset-0 size-full">
