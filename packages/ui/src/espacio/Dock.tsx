@@ -2,9 +2,9 @@
 
 import { Button, Chip, Kbd, Popover, Slider, ToggleButton } from "@heroui/react";
 import { forwardRef, useId, useState, type FormEvent, type ReactNode } from "react";
-import { ColorArea, ColorField, ColorPicker, ColorSlider, ColorSwatch, ColorSwatchPicker, ColorSwatchPickerItem, ColorThumb, FileTrigger, Input, SliderTrack, parseColor, type Color } from "react-aria-components";
+import { ColorArea, ColorField, ColorPicker, ColorSlider, ColorSwatch, ColorSwatchPicker, ColorSwatchPickerItem, ColorThumb, FileTrigger, Input, Radio, RadioGroup, SliderTrack, parseColor, type Color } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
-import { HUBLY_ACCENTS, HUBLY_ESTILOS, HUBLY_HUD, setAccentColor, useHublyAccent, useHublyAccentColor, useHublyEstilo, useHublyHud, useHublyTheme } from "../landing/ThemeToggle";
+import { HUBLY_ACCENTS, HUBLY_ESTILOS, HUBLY_HUD, setAccentColor, useHublyAccent, useHublyAccentColor, useHublyEstilo, useHublyHud, useHublyTheme, type HublyAccent, type HublyEstilo, type HublyHud } from "../landing/ThemeToggle";
 import { Icon } from "./icons";
 import { FONDOS_ILUSTRADOS, WALLPAPERS, WALLPAPERS_ILUSTRADOS, type EspacioPreferencias, type PreferenciasPatch } from "./preferencias";
 import type { CaptureFieldProps, DockConfig, DockSuggestion } from "./dockConfig";
@@ -123,8 +123,8 @@ function SelectorColor({ seleccionado, valor }: { seleccionado: boolean; valor: 
   const sugeridos = SUGERIDOS.map(leerToken).filter((hex) => hex.startsWith("#"));
   return (
     <Popover>
-      <Button isIconOnly variant="ghost" aria-label="Elegir otro color de acento" aria-pressed={seleccionado}
-        className={`size-9 min-w-9 rounded-full border-2 p-0 ${seleccionado ? "border-(--text-primary)" : "border-transparent"}`}>
+      <Button isIconOnly variant="ghost" aria-label={seleccionado ? "Color de acento personalizado, elegido. Cambiar el color" : "Elegir un color de acento personalizado"}
+        className={`size-11 min-w-11 rounded-full border-2 p-0 ${seleccionado ? "border-(--text-primary)" : "border-transparent"}`}>
         <span className="hubly-acento-arcoiris flex size-6 items-center justify-center rounded-full">
           {seleccionado && <span className="hubly-acento-elegido size-4 rounded-full" />}
         </span>
@@ -150,10 +150,10 @@ function SelectorColor({ seleccionado, valor }: { seleccionado: boolean; valor: 
                   <span className="flex h-8 shrink-0 items-center rounded-lg bg-(--accent-primary) px-2 text-xs font-semibold text-(--text-on-accent)">Aa</span>
                 </div>
                 {sugeridos.length > 0 && (
-                  <ColorSwatchPicker aria-label="Colores sugeridos" className="grid grid-cols-8 gap-1.5">
+                  <ColorSwatchPicker aria-label="Colores sugeridos" className="grid grid-cols-4 gap-1.5">
                     {sugeridos.map((hex) => (
-                      <ColorSwatchPickerItem key={hex} color={hex} className="hubly-color-sugerido cursor-pointer rounded-full p-0.5 outline-none">
-                        <ColorSwatch className="size-5 rounded-full" />
+                      <ColorSwatchPickerItem key={hex} color={hex} className="hubly-color-sugerido flex size-11 cursor-pointer items-center justify-center rounded-full outline-none">
+                        <ColorSwatch className="size-8 rounded-full" />
                       </ColorSwatchPickerItem>
                     ))}
                   </ColorSwatchPicker>
@@ -179,40 +179,44 @@ function TemaYAcento() {
     <>
       <div className="flex flex-col gap-2">
         <span className="flex justify-between"><span className={SECCION}>Tema</span><span className="text-xs text-(--text-muted)">{estiloName}</span></span>
-        <div role="radiogroup" aria-label="Tema" className="grid grid-cols-4 gap-2">
+        {/* Grupos de radio de React Aria: las flechas mueven la selección y el tabulador entra y sale del grupo (issue 239). */}
+        <RadioGroup aria-label="Tema" orientation="horizontal" value={estilo} onChange={(value) => setEstiloValue(value as HublyEstilo)} className="grid grid-cols-4 gap-2">
           {HUBLY_ESTILOS.map((entry) => (
-            <button key={entry.id} type="button" role="radio" aria-checked={estilo === entry.id} aria-label={entry.nombre} title={entry.nombre} onClick={() => setEstiloValue(entry.id)}
-              className={`cursor-pointer rounded-xl border-2 p-0.5 focus-visible:ring-2 focus-visible:ring-(--accent-primary) ${estilo === entry.id ? "border-(--accent-primary)" : "border-transparent hover:border-(--glass-line-strong)"}`}>
-              <span data-estilo-muestra={entry.id} className="hubly-estilo-muestra flex h-9 flex-col justify-between overflow-hidden rounded-lg border border-(--glass-line) p-1.5">
+            <Radio key={entry.id} value={entry.id} aria-label={entry.nombre}
+              className={({ isSelected, isHovered, isFocusVisible }) => `flex min-h-11 cursor-pointer rounded-xl border-2 p-0.5 outline-none ${isFocusVisible ? "ring-2 ring-(--accent-primary)" : ""} ${isSelected ? "border-(--accent-primary)" : isHovered ? "border-(--glass-line-strong)" : "border-transparent"}`}>
+              <span data-estilo-muestra={entry.id} className="hubly-estilo-muestra flex min-h-9 w-full flex-col justify-between overflow-hidden rounded-lg border border-(--glass-line) p-1.5">
                 <span className="hubly-estilo-muestra-barra h-1.5 w-full rounded-full" />
                 <span className="size-2 rounded-full bg-(--accent-primary)" />
               </span>
-            </button>
+            </Radio>
           ))}
-        </div>
+        </RadioGroup>
       </div>
       <div className="flex flex-col gap-2">
         <span className="flex justify-between"><span className={SECCION}>Acento</span><span className="text-xs text-(--text-muted)">{accentName}</span></span>
-        <div role="radiogroup" aria-label="Color de acento" className="flex gap-2">
-          {HUBLY_ACCENTS.filter((entry) => entry.id !== "personalizado").map((entry) => (
-            <button key={entry.id} type="button" role="radio" aria-checked={accent === entry.id} aria-label={entry.nombre} title={entry.nombre} onClick={() => setAccentValue(entry.id)}
-              className={`flex size-9 cursor-pointer items-center justify-center rounded-full border-2 focus-visible:ring-2 focus-visible:ring-(--accent-primary) ${accent === entry.id ? "border-(--text-primary)" : "border-transparent"}`}>
-              <span data-acento={entry.id} className="hubly-acento-muestra size-6 rounded-full" />
-            </button>
-          ))}
+        {/* El color libre abre un diálogo: va fuera del grupo de radio para no mezclar dos patrones en una sola parada de tabulador. */}
+        <div className="flex flex-wrap items-center gap-0.5">
+          <RadioGroup aria-label="Color de acento" orientation="horizontal" value={accent === "personalizado" ? null : accent} onChange={(value) => setAccentValue(value as HublyAccent)} className="flex gap-0.5">
+            {HUBLY_ACCENTS.filter((entry) => entry.id !== "personalizado").map((entry) => (
+              <Radio key={entry.id} value={entry.id} aria-label={entry.nombre}
+                className={({ isSelected, isFocusVisible }) => `flex size-11 cursor-pointer items-center justify-center rounded-full border-2 outline-none ${isFocusVisible ? "ring-2 ring-(--accent-primary)" : ""} ${isSelected ? "border-(--text-primary)" : "border-transparent"}`}>
+                <span data-acento={entry.id} className="hubly-acento-muestra size-7 rounded-full" />
+              </Radio>
+            ))}
+          </RadioGroup>
           <SelectorColor seleccionado={accent === "personalizado"} valor={accentColor} />
         </div>
       </div>
       <div className="flex flex-col gap-2">
         <span className={SECCION}>Tamaño del HUD</span>
-        <div role="radiogroup" aria-label="Tamaño del HUD" className="grid grid-cols-3 gap-1 rounded-xl bg-(--glass-hover) p-1">
+        <RadioGroup aria-label="Tamaño del HUD" orientation="horizontal" value={hud} onChange={(value) => setHudValue(value as HublyHud)} className="grid grid-cols-3 gap-1 rounded-xl bg-(--glass-hover) p-1">
           {HUBLY_HUD.map((entry) => (
-            <button key={entry.id} type="button" role="radio" aria-checked={hud === entry.id} onClick={() => setHudValue(entry.id)}
-              className={`flex min-h-8 cursor-pointer items-center justify-center rounded-lg text-xs font-semibold focus-visible:ring-2 focus-visible:ring-(--accent-primary) ${hud === entry.id ? "bg-(--surface-raised) text-(--text-primary) shadow-sm" : "text-(--text-secondary) hover:bg-(--hover-acento) hover:text-(--text-primary)"}`}>
+            <Radio key={entry.id} value={entry.id}
+              className={({ isSelected, isHovered, isFocusVisible }) => `flex min-h-11 cursor-pointer items-center justify-center rounded-lg text-xs font-semibold outline-none ${isFocusVisible ? "ring-2 ring-(--accent-primary)" : ""} ${isSelected ? "bg-(--surface-raised) text-(--text-primary) shadow-sm" : isHovered ? "bg-(--hover-acento) text-(--text-primary)" : "text-(--text-secondary)"}`}>
               {entry.nombre}
-            </button>
+            </Radio>
           ))}
-        </div>
+        </RadioGroup>
       </div>
     </>
   );
@@ -229,7 +233,7 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
         <Icon name="imagen" className="size-5" />
         {triggerLabel && <span className="text-xs">{triggerLabel}</span>}
       </Button>
-      <Popover.Content placement={placement} className="hubly-pop-surface hubly-popover-scroll w-84 rounded-2xl p-4 text-(--text-primary)">
+      <Popover.Content placement={placement} className="hubly-pop-surface hubly-popover-scroll w-88 max-w-full rounded-2xl p-4 text-(--text-primary)">
         <Popover.Dialog aria-label="Apariencia" className="hubly-sin-anillo flex flex-col gap-4 outline-none">
           <div className="flex items-baseline justify-between">
             <Popover.Heading className="m-0 text-sm font-semibold">Apariencia</Popover.Heading>
