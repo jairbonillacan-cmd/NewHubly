@@ -157,7 +157,7 @@ export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: Li
               ))}
             </Dropdown.Section>
             <Dropdown.Section aria-label="Vista" className="py-1.5">
-              <Dropdown.Item id="fondo" textValue="Fondo y opacidad" className={ITEM}><Icon name="imagen" /> <span className="grow">Fondo y opacidad</span></Dropdown.Item>
+              <Dropdown.Item id="fondo" textValue="Apariencia" className={ITEM}><Icon name="imagen" /> <span className="grow">Apariencia</span></Dropdown.Item>
               {lienzo ? <>
                 <Dropdown.Item id="mapa" textValue="Mostrar el mapa" className={ITEM}><Icon name="mapa" /> <span className="grow">Mostrar el mapa</span>{check(lienzo.opciones.mapa)}</Dropdown.Item>
                 <Dropdown.Item id="iman" textValue="Alinear a la cuadrícula" className={ITEM}><Icon name="paneles" /> <span className="grow">Alinear a la cuadrícula</span>{check(lienzo.opciones.iman)}</Dropdown.Item>

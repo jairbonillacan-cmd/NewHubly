@@ -14,7 +14,7 @@ export interface BienvenidaDialogProps {
 const PRIMEROS_PASOS = [
   { tecla: "C", texto: "Escribe un pendiente en la barra de abajo: «mañana», «!alta» o «@nota» se entienden solos." },
   { tecla: "Ctrl K", texto: "Busca o haz cualquier cosa sin soltar el teclado." },
-  { tecla: "Fondo", texto: "Elige tu fondo y el tema claro u oscuro desde el dock." },
+  { tecla: "Apariencia", texto: "Elige el tema, el color de acento y el fondo de tu espacio." },
 ] as const;
 
 /** Se abre una sola vez, al entrar a Hoy después de confirmar la cuenta. */
