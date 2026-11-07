@@ -1,4 +1,4 @@
--- Fondos ilustrados para el espacio: doce imágenes de la casa (seis con versión animada).
+-- Fondos ilustrados para el espacio: doce imágenes de la casa, todas con versión animada en bucle además de la estática.
 -- Solo amplía la lista permitida; ningún valor guardado deja de ser válido.
 alter table public.user_preferences drop constraint if exists user_preferences_wallpaper_check;
 alter table public.user_preferences add constraint user_preferences_wallpaper_check
