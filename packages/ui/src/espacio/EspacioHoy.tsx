@@ -499,9 +499,10 @@ export function EspacioHoy(props: EspacioHoyProps) {
       <main id="contenido" tabIndex={-1} className={`relative flex flex-col gap-3 px-3 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:p-0 ${chat?.active ? "min-h-0 grow overflow-hidden pb-20" : "pb-44 lg:overflow-y-auto"}`} aria-busy={switching}>
       <div key={activeWorkspace.id} className={`hubly-espacio-escena flex min-h-0 grow flex-col gap-3 ${switched ? "hubly-espacio-entra" : ""}`} {...hide}>
       {actionError && (
-        <div role="alert" className="hubly-pop hubly-glass relative z-30 flex shrink-0 items-center justify-between gap-3 rounded-xl border-(--status-danger-text) px-4 py-3 text-sm text-(--status-danger-text)">
-          <span>{actionError.message}</span>
-          <Button size="sm" variant="danger-soft" onPress={actionError.onRetry}>Reintentar</Button>
+        <div role="alert" className="hubly-aviso hubly-pop hubly-pop-surface fixed left-1/2 z-40 flex max-w-lg -translate-x-1/2 items-center gap-2 rounded-full py-1 pr-1 pl-3 text-xs text-(--status-danger-text)">
+          <span className="size-1.5 shrink-0 rounded-full bg-(--status-danger-text)" aria-hidden="true" />
+          <span className="min-w-0 truncate">{actionError.message}</span>
+          <Button size="sm" variant="danger-soft" className="h-7 shrink-0 rounded-full px-2.5 text-xs" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
       {chat && !chat.active && herramienta === "hoy" && <a href={chat.unread ? chat.unreadHref : chat.href}

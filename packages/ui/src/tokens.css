@@ -68,7 +68,7 @@
   --chat-list-min: 15rem; --chat-list-max: 19rem;
   /* Marco de Tu espacio (#184): carril, barra superior y dock. Los objetivos táctiles de dentro siguen en 44 px. */
   /* Dock delgado: con ratón, controles de 32 px en barra de 44 px; en pantallas táctiles se mantienen los 44 px. */
-  --dock-control: 2.75rem; --rail-item: 2.75rem;
+  --dock-control: 2.75rem; --rail-item: 2.75rem; --hud-icono: 1.5rem;
   --frame-topbar-h: 3rem; --frame-dock-h: 3rem; --frame-rail-w: 3.5rem; --frame-rail-w-open: 13rem; --frame-rail-pad: 0.375rem;
   /* Modales (#186): separación al borde, distancia desde arriba en pantallas holgadas y altura máxima. */
   --modal-gap: 0.75rem; --modal-top: 5rem; --modal-max-h: 40rem;
@@ -106,14 +106,14 @@
   --landing-hero-size: clamp(2.625rem, 5.3vw, 4.75rem);
   --tint-blue: #EEF2FB; --tint-sand: #F7F1E7; --tint-green: #EAF4EE; --tint-lilac: #F2EEF8; --text-faint: #8A8D96;
   /* Iconos a dos tonos de las herramientas (#105): relleno «Niebla» y relleno sobre el acento cuando la herramienta está activa. */
-  --icon-fill: #DCE5F8; --icon-fill-active: rgba(255, 255, 255, 0.28);
+  --icon-fill: color-mix(in srgb, var(--accent-primary) 16%, #FFFFFF); --icon-fill-active: rgba(255, 255, 255, 0.28);
   /* Espacio con paneles de cristal sobre fondo personal (#75, #76): fondos, cristal, menús flotantes y dock */
   --wallpaper-contornos: #E9ECF2; --wallpaper-patron: #F1F2F4; --wallpaper-tinta: #DCE5F8; --wallpaper-grafito: #F4F4F5;
   --wallpaper-line: rgba(17, 19, 22, 0.09); --wallpaper-line-accent: rgba(29, 78, 216, 0.28);
   --wallpaper-pattern: rgba(17, 19, 22, 0.05); --wallpaper-pattern-accent: rgba(29, 78, 216, 0.14);
   --wallpaper-image-veil: rgba(247, 247, 248, 0.30);
   /* Iconos de la identidad (issue 148): grafito y azul tinta. */
-  --hi-borde: #262C36; --hi-tono-1: #515968; --hi-tono-2: #303743; --hi-relieve: #E5EAF3; --hi-brillo: #DCE5F8; --hi-acento: #1D4ED8;
+  --hi-borde: #262C36; --hi-tono-1: #515968; --hi-tono-2: #303743; --hi-relieve: color-mix(in srgb, var(--accent-primary) 8%, #F1F3F7); --hi-brillo: color-mix(in srgb, var(--accent-primary) 16%, #FFFFFF); --hi-acento: var(--accent-primary);
   --hi-medio: #606A7B; --hi-fondo: #FFFFFF; --hi-peligro: #8C1D18; --hi-aviso: #6E4506; --hi-exito: #165632; --hi-papel: #F7F7F8;
   --avatar-veil: rgba(12, 13, 15, 0.45);
   --presence-online: #16A34A; --presence-away: #F59E0B; --presence-dnd: #DC2626;
@@ -128,7 +128,7 @@
   /* Acceso (#100) */
   --glass-radius-access-bar: 0.875rem; --glass-radius-access-card: 1.125rem; --container-access: 27.5rem;
 }
-@media (pointer: fine) { :root { --dock-control: 2rem; --frame-dock-h: 2.75rem; --rail-item: 2.25rem; } }
+@media (pointer: fine) { :root { --dock-control: 1.8rem; --frame-dock-h: 2.5rem; --rail-item: 2rem; --frame-topbar-h: 2.7rem; --frame-rail-w: 3.15rem; --hud-icono: 1.35rem; } }
 /* Avance del widget de Enfoque, en pasos de 5 %, para no usar estilos en línea. */
 .hubly-widget-avance { transition: width 1s linear; }
 .hubly-widget-avance[data-avance="0"] { width: 0%; }
@@ -152,6 +152,8 @@
 .hubly-widget-avance[data-avance="90"] { width: 90%; }
 .hubly-widget-avance[data-avance="95"] { width: 95%; }
 .hubly-widget-avance[data-avance="100"] { width: 100%; }
+/* Avisos de error compactos, abajo al centro y por encima del dock; no empujan el contenido. */
+.hubly-aviso { bottom: calc(var(--frame-dock-h) + 2.25rem); }
 /* Hover con el color de acento, leve; en oscuro un poco más presente para que se note. */
 :root { --hover-acento: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
 html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primary) 16%, transparent); }
@@ -271,12 +273,12 @@ html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primar
   --landing-end: #13214A; --landing-end-border: #24356A;
   --landing-shadow: 0 1.5rem 3rem -0.5rem rgb(0 0 0 / 0.55);
   --tint-blue: #1A2238; --tint-sand: #2A2419; --tint-green: #17261E; --tint-lilac: #221D2E; --text-faint: #7A7E88;
-  --icon-fill: #23304F; --icon-fill-active: rgba(12, 13, 15, 0.22);
+  --icon-fill: color-mix(in srgb, var(--accent-primary) 28%, #16181C); --icon-fill-active: rgba(12, 13, 15, 0.22);
   --wallpaper-contornos: #10141C; --wallpaper-patron: #14161B; --wallpaper-tinta: #132350; --wallpaper-grafito: #1A1C21;
   --wallpaper-line: rgba(232, 232, 235, 0.12); --wallpaper-line-accent: rgba(111, 152, 255, 0.34);
   --wallpaper-pattern: rgba(232, 232, 235, 0.08); --wallpaper-pattern-accent: rgba(111, 152, 255, 0.16);
   --wallpaper-image-veil: rgba(12, 13, 15, 0.32);
-  --hi-borde: #818B9E; --hi-tono-1: #E8E8EB; --hi-tono-2: #B9BCC4; --hi-relieve: #24272D; --hi-brillo: #FFFFFF; --hi-acento: #6F98FF;
+  --hi-borde: #818B9E; --hi-tono-1: #E8E8EB; --hi-tono-2: #B9BCC4; --hi-relieve: #24272D; --hi-brillo: #FFFFFF; --hi-acento: var(--accent-primary);
   --hi-medio: #A6ADBC; --hi-fondo: #0C0D0F; --hi-peligro: #F99B96; --hi-aviso: #F3C677; --hi-exito: #8CE0AD; --hi-papel: #16181C;
   --wallpaper-puntos: #12151C; --wallpaper-cuadricula: #15181F; --wallpaper-aurora: #0F1220; --wallpaper-hubis: #121C3A; --wallpaper-arena: #12182C;
   --wallpaper-dot: rgba(232, 232, 235, 0.16); --wallpaper-aurora-1: rgba(59, 108, 255, 0.50); --wallpaper-aurora-2: rgba(139, 92, 246, 0.40); --wallpaper-aurora-3: rgba(14, 165, 233, 0.34);

@@ -30,7 +30,7 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
     <Button variant="ghost" aria-label={etiqueta} {...(activa ? { "aria-current": "page" as const } : {})} onPress={onSelect}
       className={`${ITEM} ${tono} ${expandido ? "h-(--rail-item) justify-start gap-3 px-3" : "h-(--rail-item) justify-center px-0"}`}>
       <span className="relative">
-        <HerramientaIcono id={herramienta.id} activo={activa} />
+        <HerramientaIcono id={herramienta.id} activo={activa} className="size-(--hud-icono)" />
         {herramienta.disponible && !expandido && ficha && (
           <span aria-hidden="true" className={`absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs leading-none font-bold ${activa ? "bg-(--text-on-accent) text-(--accent-primary)" : "bg-(--accent-primary) text-(--text-on-accent)"}`}>{ficha}</span>
         )}
@@ -61,7 +61,7 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
       {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined} aria-label="Chat"
         className={`${ITEM} flex items-center gap-3 ${expandido ? "px-3" : "justify-center"} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--hover-acento)"}`}>
-        <Icon name="chat" active={chat.active} className="size-6" />
+        <Icon name="chat" active={chat.active} className="size-(--hud-icono)" />
         {expandido && <span className="hubly-carril-texto text-sm font-semibold">Chat</span>}
       </a>}
       <span aria-hidden="true" className="mx-2 my-1 h-px bg-(--glass-line-strong)" />
