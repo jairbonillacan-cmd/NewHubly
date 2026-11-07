@@ -20,17 +20,33 @@ export interface ThreadPanelProps {
 
 /** Debajo de `lg` (1024 px, el mismo corte que EspacioHoy) el hilo se muestra a pantalla completa. */
 const LG_MIN_WIDTH = 1024;
+const narrowQuery = () => `(max-width: ${LG_MIN_WIDTH - 1}px)`;
 function useNarrowViewport(): boolean {
-  const [narrow, setNarrow] = useState(false);
+  // Se lee al montar (el hilo solo se abre en el cliente) para que el papel de diálogo exista desde el primer pintado.
+  const [narrow, setNarrow] = useState(() => typeof window !== "undefined" && typeof window.matchMedia === "function"
+    && window.matchMedia(narrowQuery()).matches);
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-    const query = window.matchMedia(`(max-width: ${LG_MIN_WIDTH - 1}px)`);
+    const query = window.matchMedia(narrowQuery());
     const update = () => setNarrow(query.matches);
     update();
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
   return narrow;
+}
+
+const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Mantiene el foco dentro de `container`: del último control vuelve al primero y al revés. */
+export function trapTab(event: Pick<KeyboardEvent, "shiftKey" | "preventDefault">, container: HTMLElement): void {
+  const items = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.hasAttribute("inert"));
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (!first || !last) { event.preventDefault(); return; }
+  const active = container.ownerDocument.activeElement;
+  if (event.shiftKey && (active === first || !container.contains(active))) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && (active === last || !container.contains(active))) { event.preventDefault(); first.focus(); }
 }
 
 export function ThreadPanel({
@@ -40,6 +56,7 @@ export function ThreadPanel({
   const [busy, setBusy] = useState(false);
 
   const title = useRef<HTMLHeadingElement>(null);
+  const panel = useRef<HTMLElement>(null);
   const narrow = useNarrowViewport();
 
   // Al abrir, el foco entra al hilo; al cerrar, vuelve al control que lo abrió («Abrir hilo» o «Ver hilo»).
@@ -71,9 +88,13 @@ export function ThreadPanel({
   }
 
   // En pantallas estrechas el hilo cubre la vista: es una capa modal que respeta zonas seguras y el teclado (#186).
-  return <aside role={narrow ? "dialog" : "region"} aria-modal={narrow ? true : undefined} aria-labelledby="chat-thread-title" tabIndex={-1}
-    onKeyDown={(event) => { if (event.key === "Escape" && !event.defaultPrevented) { event.stopPropagation(); onClose(); } }}
-    className="hubly-glass hubly-pop hubly-hilo fixed inset-x-0 top-0 z-40 flex min-h-0 w-full flex-col overflow-hidden rounded-2xl lg:static lg:z-auto lg:w-96 lg:shrink-0">
+  return <aside ref={panel} role={narrow ? "dialog" : "region"} aria-modal={narrow ? true : undefined} aria-labelledby="chat-thread-title" tabIndex={-1}
+    onKeyDown={(event) => {
+      if (event.key === "Escape" && !event.defaultPrevented) { event.stopPropagation(); onClose(); return; }
+      // Como capa modal en pantallas estrechas, Tab y Mayús+Tab no salen del hilo.
+      if (event.key === "Tab" && narrow && panel.current) trapTab(event, panel.current);
+    }}
+    className="hubly-glass hubly-pop hubly-hilo fixed inset-x-0 top-0 z-40 flex min-h-0 w-full flex-col overflow-hidden lg:static lg:rounded-2xl lg:z-auto lg:w-96 lg:shrink-0">
     <div className="flex shrink-0 items-center justify-between gap-2 border-b border-(--border-subtle) px-3 py-2.5">
       <div>
         <h3 ref={title} id="chat-thread-title" tabIndex={-1} className="text-base font-semibold outline-none">Hilo</h3>

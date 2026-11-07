@@ -151,7 +151,7 @@ function ConversationView({ props, conversation, people }: {
           attachmentsEnabled={props.attachmentsEnabled} />
       </section>
       {threadRoot && (
-        <ThreadPanel rootMessage={threadRoot} replies={threadReplies} people={people} userId={props.userId}
+        <ThreadPanel key={threadRoot.id} rootMessage={threadRoot} replies={threadReplies} people={people} userId={props.userId}
           writable={conversation.writable} now={props.now} sending={props.sending}
           onClose={() => { setThreadRootId(null); props.onOpenThread?.(null); }}
           onSendReply={props.onSendThreadReply} />

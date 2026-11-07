@@ -9,7 +9,7 @@ import {
   executeOptimisticReaction, formatReactorNames, jumpToQuotedMessage, type ChatMessageView, type ChatReactionSummary,
 } from "../src/components/chat/MessageItem";
 import { daySeparatorLabel, shouldGroupMessages } from "../src/components/chat/MessageList";
-import { ThreadPanel } from "../src/components/chat/ThreadPanel";
+import { ThreadPanel, trapTab } from "../src/components/chat/ThreadPanel";
 import { agencyExportHref } from "../src/components/chat/transport";
 
 const channel: ChatConversation = {
@@ -317,7 +317,9 @@ describe("Revisión de Prisma del PR 261", () => {
     );
     expect(html).toContain('aria-label="Acciones del mensaje de Tú" aria-expanded="false"');
     const toolbar = html.match(/<div role="toolbar"[^>]*>/)?.[0] ?? "";
-    expect(toolbar).toMatch(/class="[^"]*\bhidden\b[^"]*lg:group-hover:flex[^"]*lg:absolute/);
+    // Cerrada no se pinta (ni flota sobre el texto): solo se abre en línea, bajo el mensaje.
+    expect(toolbar).toMatch(/class="[^"]*\bhidden\b/);
+    expect(toolbar).not.toMatch(/absolute|group-hover/);
     expect(toolbar).not.toContain("data-actions-open");
   });
 
@@ -347,5 +349,44 @@ describe("Revisión de Prisma del PR 261", () => {
     // Sin permisos de gestión, la fila tampoco queda vacía: contiene el directo.
     const member = renderToStaticMarkup(<ChatView {...props} canManage={false} people={[...directory.values()]} />);
     expect(member).toMatch(/<div data-chat-list-actions="" class="[^"]*"><details class="text-sm"><summary[^>]*>Nuevo directo/);
+  });
+});
+
+describe("Hilo como capa modal en pantallas estrechas", () => {
+  function fakeContainer(count: number, activeIndex: number | null) {
+    const focused: string[] = [];
+    const items = Array.from({ length: count }, (_, i) => ({ id: `c${i}`, hasAttribute: () => false, focus: () => focused.push(`c${i}`) }));
+    const active = activeIndex === null ? { id: "fuera" } : items[activeIndex];
+    const container = {
+      querySelectorAll: () => items,
+      ownerDocument: { activeElement: active },
+      contains: (node: unknown) => items.includes(node as (typeof items)[number]),
+    } as unknown as HTMLElement;
+    return { container, focused };
+  }
+
+  it("Tab desde el último control vuelve al primero y Mayús+Tab desde el primero va al último", () => {
+    const fromLast = fakeContainer(3, 2);
+    const forward = { shiftKey: false, preventDefault: vi.fn() };
+    trapTab(forward, fromLast.container);
+    expect(forward.preventDefault).toHaveBeenCalled();
+    expect(fromLast.focused).toEqual(["c0"]);
+
+    const fromFirst = fakeContainer(3, 0);
+    const backward = { shiftKey: true, preventDefault: vi.fn() };
+    trapTab(backward, fromFirst.container);
+    expect(fromFirst.focused).toEqual(["c2"]);
+  });
+
+  it("si el foco está fuera del hilo, Tab lo devuelve dentro; en medio no interviene", () => {
+    const outside = fakeContainer(2, null);
+    trapTab({ shiftKey: false, preventDefault: vi.fn() }, outside.container);
+    expect(outside.focused).toEqual(["c0"]);
+
+    const middle = fakeContainer(3, 1);
+    const event = { shiftKey: false, preventDefault: vi.fn() };
+    trapTab(event, middle.container);
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(middle.focused).toEqual([]);
   });
 });

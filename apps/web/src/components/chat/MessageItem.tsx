@@ -209,6 +209,7 @@ export function MessageItem({
   const editInput = useRef<HTMLTextAreaElement>(null);
   const confirmRemove = useRef<HTMLButtonElement>(null);
   const editButton = useRef<HTMLButtonElement>(null);
+  const actionsButton = useRef<HTMLButtonElement>(null);
   const item = useRef<HTMLLIElement>(null);
   const returnFocus = useRef(false);
   const removedHere = useRef(false);
@@ -258,7 +259,13 @@ export function MessageItem({
     data-mentions-viewer={mentionsMe ? "true" : undefined}
     onPointerDown={() => longPress.current.start()} onPointerUp={() => longPress.current.cancel()}
     onPointerCancel={() => longPress.current.cancel()} onPointerLeave={() => longPress.current.cancel()}
-    onKeyDown={(event) => { if (event.key === "Escape" && (pickerOpen || actionsOpen)) { event.stopPropagation(); setPickerOpen(false); setActionsOpen(false); } }}
+    onKeyDown={(event) => {
+      if (event.key !== "Escape" || !(pickerOpen || actionsOpen)) return;
+      // Al cerrar la barra con Escape, el foco vuelve a «Acciones del mensaje» en vez de perderse en el body.
+      event.preventDefault(); event.stopPropagation();
+      setPickerOpen(false); setActionsOpen(false);
+      actionsButton.current?.focus();
+    }}
     className={`group relative flex gap-3 rounded-xl px-2 outline-none transition-colors duration-(--motion-fast) ease-(--motion-ease) focus-visible:ring-2 focus-visible:ring-(--focus-ring-color) motion-reduce:transition-none ${grouped ? "py-1" : "py-2.5"} ${highlighted ? "bg-(--accent-primary-subtle) ring-1 ring-(--accent-primary)" : mentionsMe ? "bg-(--accent-primary-subtle) shadow-[inset_2px_0_0_var(--accent-primary)]" : ""} ${isNew ? "hubly-chat-msg-enter" : ""}`}>
     {grouped ? <span className="flex w-8 shrink-0 items-baseline justify-center pt-0.5">
       <time dateTime={entry.sentAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>{hhmm(entry.sentAt)}</time>
@@ -281,7 +288,7 @@ export function MessageItem({
         void save({ kind: "edit", conversationId: entry.conversationId, messageId: entry.id, body });
       }}>
         <TextArea ref={editInput} aria-label="Editar mensaje" name="body" fullWidth defaultValue={entry.body} required maxLength={4000}
-          onKeyDown={(event) => { if (event.key === "Escape") setMode(null); }} />
+          onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setMode(null); } }} />
         <Button type="submit" variant="primary" size="sm" className={control} isPending={busy}>Guardar</Button>
         <Button variant="ghost" size="sm" className={control} onPress={() => setMode(null)}>Cancelar</Button>
       </form> : <p className={`text-sm wrap-anywhere whitespace-pre-wrap ${entry.body === null ? "text-(--text-muted) italic" : ""}`}>
@@ -313,9 +320,9 @@ export function MessageItem({
         </Button>
         {entry.threadLastReplyAt && <time dateTime={entry.threadLastReplyAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>Última a las {hhmm(entry.threadLastReplyAt)}</time>}
       </div>}
-      {/* Una sola entrada por mensaje: abre la barra con teclado o toque. En escritorio aparece al pasar el ratón
-          o con el foco dentro del mensaje; flota sobre él y no ocupa espacio. */}
-      {entry.body !== null && mode === null && <Button isIconOnly size="sm" variant="ghost"
+      {/* Una sola entrada por mensaje (teclado, toque o ratón): abre la barra completa bajo el mensaje.
+          En escritorio el botón solo se ve al pasar el ratón o con el foco dentro; no ocupa espacio. */}
+      {entry.body !== null && mode === null && <Button ref={actionsButton} isIconOnly size="sm" variant="ghost"
         aria-label={`Acciones del mensaje de ${name}`} aria-expanded={actionsOpen || pickerOpen}
         onPress={() => { setPickerOpen(false); setActionsOpen((open) => !open); }}
         className={`absolute top-1 right-1 ${actionsOpen || pickerOpen ? "" : "lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"}`}>
@@ -323,7 +330,7 @@ export function MessageItem({
       </Button>}
       {entry.body !== null && mode === null && <div role="toolbar" aria-label={`Acciones del mensaje de ${name}`}
         data-actions-open={actionsOpen || pickerOpen ? "true" : undefined}
-        className={`items-center gap-1 ${actionsOpen || pickerOpen ? "mt-1 flex flex-wrap" : "hidden lg:group-hover:flex lg:absolute lg:-top-4 lg:right-11 lg:z-10 lg:rounded-xl lg:border lg:border-(--border-subtle) lg:bg-(--surface-raised) lg:p-1 lg:shadow-sm"}`}>
+        className={`flex-wrap items-center gap-1 ${actionsOpen || pickerOpen ? "mt-1 flex" : "hidden"}`}>
         {writable && QUICK_REACTIONS.map((emoji) => {
           const reacted = localReactions.some((r) => r.emoji === emoji && r.userIds.includes(effectiveViewerId));
           return <button key={emoji} type="button" aria-label={`Reaccionar con ${emoji}`} aria-pressed={reacted} onClick={() => void triggerReaction(emoji)}
