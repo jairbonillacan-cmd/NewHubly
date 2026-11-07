@@ -1,13 +1,13 @@
 "use client";
 
-import type { ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
+import type { ChatConversation, ChatMessage, ChatParticipant, ChatReactionSummary } from "@hubly/contracts";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatView, type BrowserNotificationPermission, type ChatViewCommand } from "./ChatView";
 import { readBrowserNotificationPermission } from "./ConversationHeader";
 import { conversationName, personName } from "./MemberList";
 import { messageMentionsViewer } from "./MessageItem";
-import { CHAT_POLL_MS, incomingChatNotice, mergeChatMessages, startChatPolling } from "./sync";
-import { ChatRequestError, chatTransport } from "./transport";
+import { CHAT_POLL_MS, incomingChatNotice, incomingMainMessages, mergeChatMessages, startChatPolling } from "./sync";
+import { ChatRequestError, chatTransport, resolveChatPollIntervalMs } from "./transport";
 
 export interface ChatScreenProps {
   workspaceId: string;
@@ -17,6 +17,8 @@ export interface ChatScreenProps {
   initiallyUnread?: boolean;
   initialUnreadMentions?: number;
   onUnreadMentionsChange?: (count: number) => void;
+  /** Quién escribe en la conversación abierta (sin la propia persona). Se conecta al compositor al integrar su PR. */
+  onTypingUsersChange?: (userIds: readonly string[]) => void;
 }
 
 const stripTitlePrefix = (title: string): string => title.replace(/^\(\d+\)\s*/, "").trim() || "Hubly";
@@ -102,7 +104,7 @@ const hasStatus = (error: unknown, status: number) => error instanceof ChatReque
 
 export function ChatScreen({
   workspaceId, workspaceName, userId, role, initiallyUnread = false,
-  initialUnreadMentions = 0, onUnreadMentionsChange,
+  initialUnreadMentions = 0, onUnreadMentionsChange, onTypingUsersChange,
 }: ChatScreenProps) {
   const api = useMemo(() => chatTransport(workspaceId), [workspaceId]);
   const [unreadOnly, setUnreadOnly] = useState(initiallyUnread);
@@ -141,8 +143,21 @@ export function ChatScreen({
   const readThrough = useRef(new Map<string, number>());
   const sending = useRef(new Set<string>());
   const mutations = useRef(new Set<AbortController>());
+  // Social (ADR 0012): reacciones por mensaje, menciones del servidor, hilo abierto, cita y «escribiendo».
+  const [reactionsByMessage, setReactionsByMessage] = useState<Record<string, ChatReactionSummary[]>>({});
+  const [serverMentionIds, setServerMentionIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [threadRootId, setThreadRootId] = useState<string | null>(null);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  // Pendiente de conectar al compositor (PR del compositor): quién escribe y el aviso con enfriamiento.
+  const [typingUserIds, setTypingUserIds] = useState<readonly string[]>([]);
+  const locallyReadMentionIds = useRef(new Set<string>());
+  const typingSentAt = useRef(0);
   const draft = currentId ? drafts[currentId] ?? emptyDraft : emptyDraft;
-  const unreadMentionsCount = extraUnreadMentions + unreadMentionIds.size;
+  const mentionIds = useMemo(
+    () => serverMentionIds.size ? new Set([...serverMentionIds, ...unreadMentionIds]) : unreadMentionIds,
+    [serverMentionIds, unreadMentionIds],
+  );
+  const unreadMentionsCount = extraUnreadMentions + mentionIds.size;
 
   useEffect(() => {
     peopleRef.current = people;
@@ -156,6 +171,10 @@ export function ChatScreen({
   useEffect(() => {
     onUnreadMentionsChange?.(unreadMentionsCount);
   }, [onUnreadMentionsChange, unreadMentionsCount]);
+
+  useEffect(() => {
+    onTypingUsersChange?.(typingUserIds);
+  }, [onTypingUsersChange, typingUserIds]);
 
   const requestNotificationPermission = useCallback(async () => {
     if (
@@ -194,6 +213,10 @@ export function ChatScreen({
     setLoading(id !== null);
     setActionError(null);
     setNotice(null);
+    setReactionsByMessage({});
+    setThreadRootId(null);
+    setReplyingToId(null);
+    setTypingUserIds([]);
     announced.current = 0;
   }, []);
 
@@ -287,12 +310,22 @@ export function ChatScreen({
           return false;
         }
         cursor = update.after;
+        if (update.unreadMentions) {
+          // El servidor manda; se ocultan las que ya se marcaron aquí hasta que el servidor deje de enviarlas.
+          const reported = new Set(update.unreadMentions.map((entry) => entry.messageId));
+          for (const id of locallyReadMentionIds.current) if (!reported.has(id)) locallyReadMentionIds.current.delete(id);
+          for (const id of locallyReadMentionIds.current) reported.delete(id);
+          setServerMentionIds(reported);
+          setExtraUnreadMentions(0);
+        }
+        const typing = update.typingUserIds ?? [];
+        setTypingUserIds((previous) => previous.join() === typing.join() ? previous : typing);
+        const reactions = update.reactions;
+        if (reactions && Object.keys(reactions).length) setReactionsByMessage((previous) => ({ ...previous, ...reactions }));
         if (update.changes.length) {
           const previousLatest = latestNumber;
           setMessages((previous) => mergeChatMessages(previous, update.changes));
-          const incomingItems = update.changes.filter(
-            (item) => item.number > previousLatest && item.authorId !== userId && item.body !== null,
-          );
+          const incomingItems = incomingMainMessages(update.changes, previousLatest, userId);
           const incoming = incomingItems.length;
           latestNumber = Math.max(latestNumber, ...update.changes.map((item) => item.number));
           if (incoming) {
@@ -346,7 +379,9 @@ export function ChatScreen({
         return false;
       }
     }
-    const poll = startChatPolling(update);
+    const poll = startChatPolling(update, window, document, () => resolveChatPollIntervalMs({
+      hasOpenConversation: currentId !== null, visibilityState: document.visibilityState,
+    }));
     refresh.current = poll.refresh;
     return () => {
       controller.abort();
@@ -383,13 +418,43 @@ export function ChatScreen({
     const body = draft.text.trim();
     if (!id || active.current !== id || !body || sending.current.has(id)) return;
     const key = draft.key ?? crypto.randomUUID();
+    const replyToId = replyingToId && messages.some((entry) => entry.id === replyingToId) ? replyingToId : null;
     sending.current.add(id);
     setDrafts((previous) => ({ ...previous, [id]: { text: draft.text, key, sending: true, failed: false } }));
-    const ok = await submit({ kind: "send", conversationId: id, retryKey: key, body });
+    const ok = await submit({ kind: "send", conversationId: id, retryKey: key, body, ...(replyToId ? { replyToId } : {}) });
     sending.current.delete(id);
+    if (ok && replyToId) setReplyingToId((previous) => previous === replyToId ? null : previous);
     setDrafts((previous) => previous[id]?.key !== key ? previous : {
       ...previous, [id]: ok ? emptyDraft : { text: draft.text, key, sending: false, failed: true },
     });
+  }
+
+  async function sendThreadReply(rootMessageId: string, body: string): Promise<boolean> {
+    const id = active.current;
+    const text = body.trim();
+    if (!id || !text) return false;
+    return await submit({ kind: "send", conversationId: id, retryKey: crypto.randomUUID(), body: text, threadRootId: rootMessageId });
+  }
+
+  async function toggleReaction(messageId: string, emoji: string): Promise<boolean> {
+    const id = active.current;
+    if (!id) return false;
+    try {
+      await api.command({ kind: "toggleReaction", workspaceId, conversationId: id, messageId, emoji }, selection.current?.signal);
+      refresh.current();
+      return true;
+    } catch (error) {
+      if (hasStatus(error, 401) || hasStatus(error, 404)) refresh.current();
+      return false;
+    }
+  }
+
+  /** Aviso de «escribiendo» con enfriamiento de 3 s (el servidor también lo limita). */
+  function sendTyping() {
+    const id = active.current;
+    if (!id || role === "viewer" || Date.now() - typingSentAt.current < 3000) return;
+    typingSentAt.current = Date.now();
+    void api.command({ kind: "typing", workspaceId, conversationId: id }, selection.current?.signal).catch(() => {});
   }
 
   async function loadOlder() {
@@ -436,7 +501,13 @@ export function ChatScreen({
 
   function handleMarkMentionsRead(conversationId: string, upToNumber: number, messageIds: string[]) {
     if (messageIds.length === 0) return;
-    const extraDiscount = messageIds.filter((id) => !unreadMentionIds.has(id)).length;
+    const extraDiscount = messageIds.filter((id) => !mentionIds.has(id)).length;
+    for (const id of messageIds) locallyReadMentionIds.current.add(id);
+    setServerMentionIds((previous) => {
+      const next = new Set(previous);
+      for (const id of messageIds) next.delete(id);
+      return next.size === previous.size ? previous : next;
+    });
     setUnreadMentionIds((previous) => {
       let changed = false;
       const next = new Set(previous);
@@ -449,7 +520,27 @@ export function ChatScreen({
       setExtraUnreadMentions((previous) => Math.max(0, previous - extraDiscount));
     }
     markVisible(conversationId, upToNumber);
+    const signal = selection.current?.signal;
+    void api.command({ kind: "markMentionsRead", workspaceId, conversationId, upToNumber }, signal).then(
+      () => { if (!signal?.aborted) refresh.current(); },
+      () => { for (const id of messageIds) locallyReadMentionIds.current.delete(id); },
+    );
   }
+
+  // Al abrir un hilo se cargan sus respuestas; las nuevas llegan por la sincronización de la conversación.
+  useEffect(() => {
+    if (!currentId || !threadRootId) return;
+    const controller = new AbortController();
+    api.history(currentId, null, controller.signal, threadRootId).then((page) => {
+      if (!controller.signal.aborted) setMessages((previous) => mergeChatMessages(previous, page.messages));
+    }, (error: unknown) => {
+      if (!controller.signal.aborted) setActionError(displayError(error));
+    });
+    return () => controller.abort();
+  }, [api, currentId, threadRootId]);
+
+  const mainMessages = messages.filter((entry) => !entry.threadRootId && (before === null || entry.number >= before));
+  const threadMessages = threadRootId ? messages.filter((entry) => entry.threadRootId === threadRootId) : [];
 
   if (accessLost) return <section className="hubly-glass rounded-2xl p-4" aria-labelledby="chat-access">
     <h1 id="chat-access" className="text-lg font-semibold">Chat</h1>
@@ -459,16 +550,22 @@ export function ChatScreen({
 
   return <ChatView workspaceName={workspaceName} userId={userId} canManage={role === "owner" || role === "admin"}
     canSend={role !== "viewer"} unreadOnly={unreadOnly} conversations={conversations} people={people} currentId={currentId}
-    listLoading={!listReady} messages={before === null ? messages : messages.filter((entry) => entry.number >= before)} loading={loading} hasOlder={before !== null} loadingOlder={loadingOlder}
+    listLoading={!listReady} messages={mainMessages} loading={loading} hasOlder={before !== null} loadingOlder={loadingOlder}
     draft={draft.text} sending={draft.sending} failedSend={draft.failed} error={actionError ?? connectionError}
     directoryError={directoryError} onRetryDirectory={() => void loadDirectory()} notice={notice}
-    unreadMentionsCount={unreadMentionsCount} unreadMentionMessageIds={unreadMentionIds}
+    unreadMentionsCount={unreadMentionsCount} unreadMentionMessageIds={mentionIds}
+    reactionsByMessage={reactionsByMessage} activeThreadRootId={threadRootId} threadMessages={threadMessages}
+    replyingToMessageId={replyingToId}
+    onReplyToMessage={(message) => setReplyingToId(message?.id ?? null)}
+    onOpenThread={(message) => setThreadRootId(message?.id ?? null)}
+    onSendThreadReply={sendThreadReply} onToggleReaction={toggleReaction}
     notificationPermission={notificationPermission}
     onRequestNotificationPermission={requestNotificationPermission}
     onMarkMentionsRead={handleMarkMentionsRead}
     onFilter={setUnreadOnly} onSelect={select} onOlder={() => void loadOlder()}
     onVisible={markVisible} onCommand={submit}
     onDraft={(text) => {
+      if (text.trim()) sendTyping();
       if (currentId) setDrafts((previous) => {
         const old = previous[currentId];
         const keep = old?.key !== undefined && old.text.trim() === text.trim();

@@ -21,6 +21,17 @@ export function agencyExportHref(workspaceId: string, format: "json" | "md") {
   return `${chatPath}?${new URLSearchParams({ op: "export", workspaceId, format })}`;
 }
 
+export const CHAT_ACTIVE_POLL_MS = 2000;
+export const CHAT_IDLE_POLL_MS = 3000;
+
+/** Intervalo de sondeo (ADR 0012): 2 s con conversación abierta y pestaña visible; 3 s en el resto. */
+export function resolveChatPollIntervalMs({ hasOpenConversation, visibilityState }: {
+  hasOpenConversation: boolean;
+  visibilityState: DocumentVisibilityState | undefined;
+}): number {
+  return hasOpenConversation && visibilityState === "visible" ? CHAT_ACTIVE_POLL_MS : CHAT_IDLE_POLL_MS;
+}
+
 export function chatTransport(workspaceId: string) {
   function url(op: string, params: Record<string, string> = {}) {
     return `${chatPath}?${new URLSearchParams({ op, workspaceId, ...params })}`;
@@ -37,8 +48,10 @@ export function chatTransport(workspaceId: string) {
     bootstrap: (signal?: AbortSignal) => post({ kind: "bootstrap", workspaceId }, signal),
     command: post,
     directory: (signal: AbortSignal) => request<ChatParticipant[]>(url("directory"), { signal }),
-    history: (conversationId: string, before: number | null, signal: AbortSignal) =>
-      request<ChatHistory>(url("history", { conversationId, ...(before === null ? {} : { before: String(before) }) }), { signal }),
+    history: (conversationId: string, before: number | null, signal: AbortSignal, threadRootId?: string) =>
+      request<ChatHistory>(url("history", {
+        conversationId, ...(before === null ? {} : { before: String(before) }), ...(threadRootId ? { threadRootId } : {}),
+      }), { signal }),
     sync: (conversationId: string | null, after: number, signal: AbortSignal) =>
       request<ChatSync>(url("sync", { after: String(after), ...(conversationId ? { conversationId } : {}) }), { signal }),
     agencyExportHref: (format: "json" | "md") => agencyExportHref(workspaceId, format),
