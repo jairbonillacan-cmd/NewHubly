@@ -4,7 +4,7 @@ import { Button, Dropdown } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { Hubi, type HubiPose } from "../components/brand/Hubi";
-import { hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyThemePreference } from "../landing/ThemeToggle";
+import { createThemePersistenceTracker, hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyThemePreference } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { EquipoDialog, type EquipoDialogMode } from "./EquipoDialog";
 import { BackgroundPicker, CaptureField, Dock, DockMore, DockStatus, type WallpaperImageControls } from "./Dock";
@@ -153,8 +153,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
   const initialPreference = props.initialThemePreference ?? null;
-  const lastPersistedTheme = useRef<HublyThemePreference | null>(initialPreference);
-  const skipFirstTheme = useRef(true);
+  const shouldPersistTheme = useRef(createThemePersistenceTracker(initialPreference));
 
   // El tema guardado en el servidor manda al entrar; después, cada cambio de preferencia se guarda una sola vez.
   useEffect(() => {
@@ -162,14 +161,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
     // Solo al montar: initialPreference es el valor con el que se cargó la página.
   }, []);
   useEffect(() => {
-    if (skipFirstTheme.current) {
-      skipFirstTheme.current = false;
-      if (lastPersistedTheme.current === null) lastPersistedTheme.current = themePreference;
-      return;
-    }
-    if (themePreference === lastPersistedTheme.current) return;
-    lastPersistedTheme.current = themePreference;
-    onThemeChangeRef.current?.(themePreference);
+    if (shouldPersistTheme.current(themePreference)) onThemeChangeRef.current?.(themePreference);
   }, [themePreference]);
   const [filter, setFilter] = useState<HoyFilter>(null);
   const [openNoteId, setOpenNoteId] = useState<string | null>(() => notes.find((n) => n.isPinned && !n.isArchived)?.id ?? notes.find((n) => !n.isArchived)?.id ?? null);
