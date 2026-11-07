@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Carril, EspacioHoy, Proximamente, herramientaPorId, resumenSemana, type CarrilProps, type EspacioHoyProps } from "../index";
+import * as commandPalette from "./CommandPalette";
 
 const noop = () => {};
 const base: EspacioHoyProps = {
@@ -41,6 +42,19 @@ describe("Marco fijo de Tu espacio (issue 105): barra superior, carril y dock fi
     const enfoque = render({ initialPreferences: { fondo: "contornos", opacidad: 78, distribucion: "enfoque", paneles: { hoy: true, nota: true, notas: true } } });
     expect(enfoque).toMatch(/aria-pressed="true"[^>]*>(?:(?!<\/button>).)*Enfoque/);
     expect(render()).toMatch(/aria-pressed="false"[^>]*>(?:(?!<\/button>).)*Enfoque/);
+  });
+
+  it("llama Hub a la página activa en la navegación móvil", () => {
+    const mobileNav = render().match(/<nav aria-label="Navegación del espacio"[^>]*>(.*?)<\/nav>/s)?.[1];
+    expect(mobileNav).toMatch(/<button[^>]*aria-current="page"[^>]*>Hub<\/button>/);
+  });
+
+  it("ofrece Volver al Hub como acción y ejemplo del buscador en Chat", () => {
+    using palette = vi.spyOn(commandPalette, "CommandPalette");
+    render({ chat: { href: "/chat", todayHref: "/hub", unreadHref: "/chat/sin-leer", unread: 0, active: true } });
+    const props = palette.mock.lastCall?.[0];
+    expect(props?.actions.find((action) => action.id === "hoy")?.label).toBe("Volver al Hub");
+    expect(props?.examples?.[0]).toBe("Volver al Hub");
   });
 });
 
