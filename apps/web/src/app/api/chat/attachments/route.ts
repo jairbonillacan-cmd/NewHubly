@@ -1,9 +1,7 @@
 import { ChatAccessError, ChatRequestError } from "@hubly/application";
 import { SessionExpiredError } from "../../../../server/composition/auth";
 import {
-  CHAT_ATTACHMENT_MAX_BYTES, CHAT_ATTACHMENT_MAX_COUNT, ChatAttachmentError,
-  commitChatAttachmentUploads, listSignedChatMessageAttachments,
-  reserveChatAttachmentUploads, uploadChatMessageAttachments,
+  ChatAttachmentError, commitChatAttachmentUploads, listSignedChatMessageAttachments, reserveChatAttachmentUploads,
 } from "../../../../server/composition/chat-attachments";
 
 export const dynamic = "force-dynamic";
@@ -44,43 +42,31 @@ export async function GET(request: Request): Promise<Response> {
   } catch (error) { return failed(error); }
 }
 
+// Solo JSON: el archivo sube directo a Storage con una URL firmada (op "reserve") y el servidor lo sanea al confirmar (op "commit").
 export async function POST(request: Request): Promise<Response> {
-  const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
-  if (!sameOrigin(request) || (!contentType.startsWith("multipart/form-data") && !contentType.startsWith("application/json"))) {
-    return json({ error: "La solicitud de adjuntos no está permitida." }, 403);
+  if (!sameOrigin(request)) return json({ error: "La solicitud de adjuntos no está permitida." }, 403);
+  if (request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "application/json") {
+    return json({ error: "La solicitud de adjuntos debe enviarse como JSON." }, 415);
   }
-  if (contentType.startsWith("application/json")) {
-    const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-    if (!body) return json({ error: "La solicitud de adjuntos no es válida." }, 400);
-    const workspaceId = String(body.workspaceId ?? ""), conversationId = String(body.conversationId ?? ""), messageId = String(body.messageId ?? "");
-    try {
-      if (body.op === "reserve") {
-        const rawFiles = Array.isArray(body.files) ? body.files : [];
-        return json({ reservations: await reserveChatAttachmentUploads({
-          workspaceId, conversationId, messageId,
-          files: rawFiles.map((f: Record<string, unknown>) => ({ fileName: String(f?.fileName ?? "adjunto"), mimeType: String(f?.mimeType ?? ""), byteSize: Number(f?.byteSize ?? 0) })),
-        }) });
-      }
-      if (body.op === "commit") {
-        const reservationIds = Array.isArray(body.reservationIds) ? body.reservationIds.map(String) : [];
-        return json({ attachments: await commitChatAttachmentUploads({ workspaceId, conversationId, messageId, reservationIds }) });
-      }
-      return json({ error: "Operación de adjuntos no válida." }, 400);
-    } catch (error) { return failed(error); }
-  }
-  const form = await request.formData().catch(() => null);
-  if (!form) return json({ error: "El formulario de adjuntos no es válido." }, 400);
-  const rawEntries = form.getAll("files").length > 0 ? form.getAll("files") : form.getAll("file");
-  if (rawEntries.length === 0 || rawEntries.length > CHAT_ATTACHMENT_MAX_COUNT) return json({ error: "Puedes adjuntar entre 1 y 5 archivos por mensaje." }, 400);
+  const body: unknown = await request.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "La solicitud de adjuntos no es válida." }, 400);
+  const input = body as Record<string, unknown>;
+  const workspaceId = String(input.workspaceId ?? ""), conversationId = String(input.conversationId ?? ""), messageId = String(input.messageId ?? "");
   try {
-    const files: Array<{ name: string; bytes: Uint8Array }> = [];
-    for (const entry of rawEntries) {
-      if (typeof entry === "string" || typeof entry.arrayBuffer !== "function") return json({ error: "Archivo adjunto inválido." }, 400);
-      if (entry.size > CHAT_ATTACHMENT_MAX_BYTES) return json({ error: "El archivo supera el límite de 10 MB." }, 400);
-      files.push({ name: entry.name || "adjunto", bytes: new Uint8Array(await entry.arrayBuffer()) });
+    if (input.op === "reserve") {
+      const rawFiles: unknown[] = Array.isArray(input.files) ? input.files : [];
+      return json({ reservations: await reserveChatAttachmentUploads({
+        workspaceId, conversationId, messageId,
+        files: rawFiles.map((raw) => {
+          const f = (raw ?? {}) as Record<string, unknown>;
+          return { fileName: String(f.fileName ?? "adjunto"), mimeType: String(f.mimeType ?? ""), byteSize: Number(f.byteSize ?? 0) };
+        }),
+      }) });
     }
-    return json({ attachments: await uploadChatMessageAttachments({
-      workspaceId: String(form.get("workspaceId") ?? ""), conversationId: String(form.get("conversationId") ?? ""), messageId: String(form.get("messageId") ?? ""), files,
-    }) });
+    if (input.op === "commit") {
+      const reservationIds = Array.isArray(input.reservationIds) ? input.reservationIds.map(String) : [];
+      return json({ attachments: await commitChatAttachmentUploads({ workspaceId, conversationId, messageId, reservationIds }) });
+    }
+    return json({ error: "Operación de adjuntos no válida." }, 400);
   } catch (error) { return failed(error); }
 }

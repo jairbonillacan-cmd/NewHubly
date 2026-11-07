@@ -63,6 +63,8 @@ describe("Catálogo RLS y Seguridad (ADR 0004, ADR 0007, Issue #23 & #62)", () =
       "private.chat_toggle_reaction(uuid,uuid,uuid,text)", "private.chat_set_typing(uuid,uuid)", "private.chat_mark_mentions_read(uuid,uuid,integer)", "private.chat_directory(uuid)",
       "private.chat_can_read_attachment_object(text)", "private.chat_can_upload_attachment_object(text)", "private.chat_reserve_attachment_upload(uuid,uuid,uuid,text,text,integer)",
       "private.chat_register_attachment(uuid,uuid,uuid,uuid,text,text,integer,integer,integer)", "private.chat_purge_deleted_message_attachments()",
+      "private.chat_can_purge_message_attachments(uuid,uuid,uuid)", "private.chat_can_delete_attachment_object(text)",
+      "private.chat_message_attachment_paths(uuid,uuid,uuid)", "private.chat_expired_reservation_paths(uuid,uuid,uuid)",
       "private.chat_lock_agency_role(uuid)", "private.chat_require_direct_writers(uuid,uuid,uuid)", "private.chat_lock_writable(uuid,uuid)"]) {
       const [fa] = await sql<Array<{ p: boolean }>>`select has_function_privilege('anon', ${fn}, 'execute') as p;`;
       const [fp] = await sql<Array<{ p: boolean }>>`select has_function_privilege('public', ${fn}, 'execute') as p;`;
