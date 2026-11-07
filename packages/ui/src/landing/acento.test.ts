@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
+import { parseColor } from "@heroui/react";
 import postcss from "postcss";
 import { describe, expect, it } from "vitest";
+import { conSaturacionMinima, SATURACION_MINIMA_ACENTO } from "../espacio/Dock";
 import { acentoAccesible, contraste, contrasteConBlanco, type ReferenciasAcento } from "./ThemeToggle";
 
 // El selector del sistema entrega colores hexadecimales; aquí se arman a partir de sus canales RGB.
@@ -56,5 +58,14 @@ describe("Acento personalizado (issue 239)", () => {
     const gris = acentoAccesible(rgb(119, 119, 119), claro);
     expect(gris.texto).toBe("var(--accent-on-claro)");
     expect(contraste(gris.acento, claro.textoClaro)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("eleva la saturación de un gris o color apagado al mínimo para que no parezca desactivado (issue 251)", () => {
+    const azul = parseColor(rgb(29, 78, 216));
+    expect(conSaturacionMinima(azul, null).toString("hex")).toBe(azul.toString("hex"));
+    const gris = parseColor(rgb(119, 119, 119));
+    const saturado = conSaturacionMinima(gris, azul).toFormat("hsb");
+    expect(saturado.getChannelValue("saturation")).toBeGreaterThanOrEqual(SATURACION_MINIMA_ACENTO);
+    expect(Math.round(saturado.getChannelValue("hue"))).toBe(Math.round(azul.toFormat("hsb").getChannelValue("hue")));
   });
 });

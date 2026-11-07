@@ -643,10 +643,6 @@ body {
 .hubly-carril li:nth-child(3) .hubly-carril-texto { animation-delay: 80ms; }
 .hubly-carril li:nth-child(4) .hubly-carril-texto { animation-delay: 100ms; }
 .hubly-carril li:nth-child(5) .hubly-carril-texto { animation-delay: 120ms; }
-/* Punto «en vivo» de los fondos animados y muestras de lo transparente y lo sólido junto al control de opacidad. */
-@keyframes hubly-fondo-vivo { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.8); } }
-.hubly-fondo-vivo { box-shadow: 0 0 0 2px rgb(var(--glass-rgb) / 0.9); animation: hubly-fondo-vivo 1.6s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .hubly-fondo-vivo { animation: none; } }
 /* Recorte de la foto de perfil (issue 150): el componente pone el tamaño natural y el encuadre en variables. */
 .hubly-recorte-visor { box-shadow: inset 0 0 0 2px var(--accent-primary-subtle); }
 .hubly-recorte-foto { position: absolute; left: 50%; top: 50%; width: var(--foto-w); height: var(--foto-h); max-width: none; user-select: none; pointer-events: none;
