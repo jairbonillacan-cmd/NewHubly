@@ -87,7 +87,7 @@ export const removeMemberInputSchema = z.object({ workspaceId: z.string().min(1,
 export const changeItemVisibilityInputSchema = z.object({ workspaceId: z.string().min(1, 'El ID de espacio es obligatorio'), itemId: z.string().min(1, 'El ID del elemento es obligatorio'), itemType: z.enum(['note', 'todo'] as const, { message: 'Tipo de elemento inválido' }), visibility: itemVisibilitySchema });
 
 // Preferencias visuales por persona del espacio de Hoy (#83). Mismos valores que los check de public.user_preferences.
-export const wallpaperSchema = z.enum(['contornos', 'patron', 'tinta', 'grafito', 'puntos', 'cuadricula', 'aurora', 'hubis', 'arena', 'imagen'] as const, { message: 'Fondo inválido' });
+export const wallpaperSchema = z.enum(['contornos', 'patron', 'tinta', 'grafito', 'puntos', 'cuadricula', 'aurora', 'hubis', 'arena', 'aurora-polar', 'bosque-de-niebla', 'dunas-de-cobre', 'herbario-de-tinta', 'jardin-japones', 'jardin-submarino', 'lluvia-en-casa', 'luz-de-cantera', 'marea-lenta', 'papel-plegado', 'refugio-alpino', 'tokio-nocturno', 'imagen'] as const, { message: 'Fondo inválido' });
 export const layoutModeSchema = z.enum(['free', 'side_by_side', 'focus'] as const, { message: 'Distribución inválida' });
 export const preferencePanelSchema = z.enum(['today', 'open_note', 'pinned_notes'] as const, { message: 'Panel inválido' });
 // Estado de presencia (issue 143). Mismos valores que el check de public.user_presence.
