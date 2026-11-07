@@ -76,7 +76,7 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
       <Button variant="ghost" isDisabled aria-label="Agregar una herramienta, muy pronto"
         className={`${ITEM} mt-0.5 border border-dashed border-(--glass-line-strong) bg-transparent text-(--text-secondary) ${FORMA(expandido)}`}>
         <Icon name="mas" className="size-5" />
-        {expandido && <span className="hubly-carril-texto min-w-0 grow truncate text-left text-sm">Agregar una herramienta</span>}
+        {expandido && <span className="hubly-carril-texto min-w-0 grow truncate text-left text-sm">Agregar</span>}
         {expandido && <span className="hubly-carril-texto shrink-0 text-xs">Pronto</span>}
       </Button>
       <span className="grow" />

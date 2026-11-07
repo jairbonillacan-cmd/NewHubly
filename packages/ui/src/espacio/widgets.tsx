@@ -332,7 +332,7 @@ export function Bandeja({ datos, anclados }: { datos: WidgetDatos; anclados: rea
           <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
             <FilaBandeja icon="hoy" titulo="Tu semana" detalle={semana.total ? `${semana.hechos} de ${semana.total} hechos · ${pct} %` : "Sin pendientes esta semana"}>
               <span className="flex shrink-0 flex-col items-end text-xs">
-                <span className={vencidos ? "font-semibold text-(--status-danger-text)" : "text-(--text-muted)"}>{vencidos} vencidos</span>
+                <span className={vencidos ? "font-semibold text-(--status-danger-text)" : "text-(--text-muted)"}>{vencidos} {vencidos === 1 ? "vencido" : "vencidos"}</span>
                 <span className="text-(--text-muted)">{paraHoy} para hoy</span>
               </span>
             </FilaBandeja>
@@ -347,7 +347,7 @@ export function Bandeja({ datos, anclados }: { datos: WidgetDatos; anclados: rea
                 </FilaBandeja>
               );
               if (id === "semana") return <FilaBandeja key={id} icon="hoy" titulo={`${pct} % de la semana`} detalle={`${semana.hechos} de ${semana.total} pendientes`} onLienzo={alLienzo} />;
-              return <FilaBandeja key={id} icon={widget.icon} titulo={`${vencidos} vencidos`} detalle={vencidos ? "Ciérralos desde el lienzo" : "Vas al día"} onLienzo={alLienzo} />;
+              return <FilaBandeja key={id} icon={widget.icon} titulo={`${vencidos} ${vencidos === 1 ? "vencido" : "vencidos"}`} detalle={vencidos ? "Ciérralos desde el lienzo" : "Vas al día"} onLienzo={alLienzo} />;
             })}
           </ul>
           {!anclados.length && <p className="m-0 px-2 pt-1 pb-2 text-xs text-(--text-muted)">Ancla aquí un widget con el alfiler de su cabecera.</p>}

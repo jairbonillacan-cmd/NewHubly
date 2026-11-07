@@ -160,7 +160,9 @@
 .hubly-widget-avance[data-avance="95"] { width: 95%; }
 .hubly-widget-avance[data-avance="100"] { width: 100%; }
 /* Avisos de error compactos, abajo al centro y por encima del dock; no empujan el contenido. */
-.hubly-aviso { bottom: calc(var(--frame-dock-h) + 2.25rem); }
+/* En mÃ³vil, la barra inferior es mÃ¡s alta que el dock: el aviso sube a la altura de los demÃ¡s avisos (bottom-36) para no taparla (revisiÃ³n de Prisma, #247). */
+.hubly-aviso { bottom: 9rem; }
+@media (min-width: 64rem) { .hubly-aviso { bottom: calc(var(--frame-dock-h) + 2.25rem); } }
 /* Hover con el color de acento, leve; en oscuro un poco más presente para que se note. */
 :root { --hover-acento: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
 html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primary) 16%, transparent); }
@@ -410,7 +412,9 @@ body {
 
 /* Movimiento del landing (#85). Solo se ocultan elementos si el script de arranque marcó <html class="hubly-motion">;
    sin JavaScript o con movimiento reducido todo se ve de inmediato. */
-:root { --motion-fast: 180ms; --motion-base: 600ms; --motion-slow: 900ms; --motion-ease: cubic-bezier(0.22, 1, 0.36, 1); --motion-step: 90ms; --motion-rise: 1.25rem; --motion-space: 240ms; }
+:root { --motion-fast: 180ms; --motion-base: 600ms; --motion-slow: 900ms; --motion-ease: cubic-bezier(0.22, 1, 0.36, 1); --motion-step: 90ms; --motion-rise: 1.25rem; --motion-space: 240ms;
+  /* Lo que ya estÃ¡ en pantalla y cambia de lugar (un panel que se desliza) va con entrada y salida suaves (movimiento.md). */
+  --motion-ease-move: cubic-bezier(0.65, 0, 0.35, 1); }
 .hubly-reveal { transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
 .hubly-motion .hubly-reveal:not([data-visible="true"]) { opacity: 0; transform: translateY(var(--motion-rise)); }
 .hubly-reveal[data-delay="1"] { transition-delay: calc(var(--motion-step) * 1); }
@@ -482,8 +486,8 @@ body {
 .hubly-sin-barra { scrollbar-width: none; }
 .hubly-sin-barra::-webkit-scrollbar { display: none; }
 @keyframes hubly-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
-.hubly-palette-overlay { animation: hubly-fade-in 0.22s var(--motion-ease) both; }
-.hubly-palette-overlay[data-exiting] { animation: hubly-fade-out 0.16s var(--motion-ease) both; }
+.hubly-palette-overlay { animation: hubly-fade-in var(--motion-fast) var(--motion-ease) both; }
+.hubly-palette-overlay[data-exiting] { animation: hubly-fade-out calc(var(--motion-fast) * 2 / 3) var(--motion-ease) both; }
 .hubly-palette { animation: hubly-palette-in var(--motion-space) var(--motion-ease) both; }
 .hubly-palette[data-exiting] { animation: hubly-palette-out calc(var(--motion-space) * 2 / 3) var(--motion-ease) both; }
 .hubly-palette-row { animation: hubly-palette-row var(--motion-fast) var(--motion-ease) both; transition: background-color var(--motion-fast) var(--motion-ease); }
@@ -616,18 +620,19 @@ body {
 @media (prefers-reduced-transparency: reduce) { .hubly-carril-asa { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); background-image: none; } }
 /* Sin transformaciones al pasar el ratón: el botón no se mueve, solo se marca su borde. */
 /* Al pasar el ratón solo cambia el color de la flecha, sin anillo; la zona activa es el propio botón de 24 px. */
-.hubly-carril { transition: width 0.42s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.3s var(--motion-ease); scrollbar-width: none; will-change: width; }
+.hubly-carril { transition: width var(--motion-space) var(--motion-ease-move), box-shadow var(--motion-fast) var(--motion-ease); scrollbar-width: none; will-change: width; }
 .hubly-carril::-webkit-scrollbar { display: none; }
 /* Herramientas del carril: el icono crece un poco al pasar el ratón y la activa flota con un halo del acento. */
-.hubly-carril-item { transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease), box-shadow 0.25s var(--motion-ease); }
-.hubly-carril-item svg { transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1); }
+.hubly-carril-item { transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
+.hubly-carril-item svg { transition: transform var(--motion-fast) var(--motion-ease); }
 .hubly-carril-item[data-hovered] svg, .hubly-carril-item:hover svg { transform: scale(1.1); }
-.hubly-carril-item[aria-current="page"] { box-shadow: 0 0.375rem 1rem -0.375rem color-mix(in srgb, var(--accent-primary) 70%, transparent); }
+/* La activa ya va sÃ³lida en el acento: su sombra es neutra, sin halo de color (punto 8; revisiÃ³n de Prisma, #247). */
+.hubly-carril-item[aria-current="page"] { box-shadow: var(--bento-card-shadow); }
 /* Cambio de sección: el contenido entra con un fundido y un leve ascenso; el lienzo (fijo) solo con fundido. */
 @keyframes hubly-seccion-entra { 0% { opacity: 0; transform: translateY(0.75rem) scale(0.985); } 100% { opacity: 1; transform: none; } }
 @keyframes hubly-seccion-fundido { 0% { opacity: 0; } 100% { opacity: 1; } }
-.hubly-seccion-entra { animation: hubly-seccion-entra 0.38s cubic-bezier(0.32, 0.72, 0, 1) backwards; }
-.hubly-seccion-fundido { animation: hubly-seccion-fundido 0.3s var(--motion-ease) backwards; }
+.hubly-seccion-entra { animation: hubly-seccion-entra var(--motion-space) var(--motion-ease) backwards; }
+.hubly-seccion-fundido { animation: hubly-seccion-fundido var(--motion-space) var(--motion-ease) backwards; }
 @media (prefers-reduced-motion: reduce) { .hubly-carril-item svg { transition: none; } .hubly-carril-item[data-hovered] svg, .hubly-carril-item:hover svg { transform: none; } .hubly-seccion-entra, .hubly-seccion-fundido { animation: none; } }
 /* Al desplegar, los textos entran en cascada después de que el carril empieza a abrirse; al plegar, desaparecen sin esperar. */
 /* Texto del carril: elemento pequeño (180 ms) y escalonado que termina antes de 300 ms. */

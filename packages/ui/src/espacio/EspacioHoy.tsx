@@ -510,7 +510,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
       <main id="contenido" tabIndex={-1} className={`relative flex flex-col gap-3 px-3 outline-none lg:col-start-2 lg:row-start-2 lg:min-h-0 lg:p-0 ${chat?.active ? "min-h-0 grow overflow-hidden pb-20" : "pb-44 lg:overflow-y-auto"}`} aria-busy={switching}>
       <div key={activeWorkspace.id} className={`hubly-espacio-escena flex min-h-0 grow flex-col gap-3 ${switched ? "hubly-espacio-entra" : ""}`} {...hide}>
       {actionError && (
-        <div role="alert" className="hubly-aviso hubly-pop hubly-pop-surface fixed left-1/2 z-40 flex max-w-lg -translate-x-1/2 items-center gap-2 rounded-2xl py-1 pr-1 pl-3 text-xs text-(--status-danger-text)">
+        <div role="alert" className="hubly-aviso hubly-pop hubly-pop-surface fixed inset-x-3 z-40 mx-auto flex w-fit max-w-lg items-center gap-2 rounded-2xl py-1 pr-1 pl-3 text-xs text-(--status-danger-text)">
           <span className="size-1.5 shrink-0 rounded-full bg-(--status-danger-text)" aria-hidden="true" />
           {/* El mensaje se lee completo aunque falte ancho; el botón conserva su tamaño visual con una zona de 44 px. */}
           <span className="min-w-0 py-1 break-words">{actionError.message}</span>

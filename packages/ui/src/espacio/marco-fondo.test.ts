@@ -39,3 +39,44 @@ describe("Marco del espacio (issue 241)", () => {
     expect(leer("./EspacioHoy.tsx")).toMatch(/className="hubly-zona-tactil relative[^"]*"[^>]*onPress=\{actionError\.onRetry\}/);
   });
 });
+
+describe("Marco del espacio: revisión de Prisma (PR 247)", () => {
+  const css = postcss.parse(leer("../tokens.css"));
+  const decls = (selector: string) => {
+    let texto = "";
+    css.walkRules((rule) => { if (rule.selector === selector && rule.parent?.type === "root") rule.walkDecls((decl) => { texto += `${decl.prop}:${decl.value};`; }); });
+    return texto;
+  };
+
+  it("el carril y el cambio de sección se mueven con tokens y sin pasar de 300 ms (movimiento.md)", () => {
+    for (const selector of [".hubly-carril", ".hubly-carril-item", ".hubly-carril-item svg", ".hubly-seccion-entra", ".hubly-seccion-fundido", ".hubly-palette-overlay", ".hubly-palette-overlay[data-exiting]"]) {
+      const valor = decls(selector);
+      expect(valor, selector).not.toMatch(/\d(\.\d+)?m?s\b/);
+      expect(valor, selector).not.toMatch(/cubic-bezier/);
+    }
+    expect(decls(":root")).toMatch(/--motion-space:\s*(\d+)ms/);
+    expect(Number(/--motion-space:\s*(\d+)ms/.exec(decls(":root"))![1])).toBeLessThanOrEqual(300);
+  });
+
+  it("la herramienta activa del carril no lleva un halo de color (punto 8)", () => {
+    expect(decls('.hubly-carril-item[aria-current="page"]')).not.toMatch(/accent/);
+  });
+
+  it("el aviso de error ocupa el ancho disponible en móvil y no tapa la barra inferior", () => {
+    const aviso = /className="hubly-aviso [^"]*"/.exec(leer("./EspacioHoy.tsx"))![0];
+    expect(aviso).toContain("inset-x-3");
+    expect(aviso).toContain("w-fit");
+    expect(aviso).not.toContain("left-1/2");
+    // En móvil no depende del dock (la barra inferior es más alta); en escritorio sí.
+    expect(decls(".hubly-aviso")).not.toContain("--frame-dock-h");
+    let escritorio = "";
+    css.walkAtRules("media", (regla) => { if (/min-width/.test(regla.params)) regla.walkRules(".hubly-aviso", (rule) => { rule.walkDecls((decl) => { escritorio += decl.value; }); }); });
+    expect(escritorio).toContain("--frame-dock-h");
+  });
+
+  it("la bandeja concuerda en número: «1 vencido», «2 vencidos»", () => {
+    const widgets = leer("./widgets.tsx");
+    expect(widgets).not.toMatch(/\{vencidos\} vencidos/);
+    expect(widgets.match(/vencidos === 1 \? "vencido" : "vencidos"/g)).toHaveLength(2);
+  });
+});
