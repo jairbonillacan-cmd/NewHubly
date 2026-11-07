@@ -68,7 +68,7 @@
   --chat-list-min: 15rem; --chat-list-max: 19rem;
   /* Marco de Tu espacio (#184): carril, barra superior y dock. Los objetivos táctiles de dentro siguen en 44 px. */
   /* Dock delgado: con ratón, controles de 32 px en barra de 44 px; en pantallas táctiles se mantienen los 44 px. */
-  --dock-control: 2.75rem;
+  --dock-control: 2.75rem; --rail-item: 2.75rem;
   --frame-topbar-h: 3rem; --frame-dock-h: 3rem; --frame-rail-w: 3.5rem; --frame-rail-w-open: 13rem; --frame-rail-pad: 0.375rem;
   /* Modales (#186): separación al borde, distancia desde arriba en pantallas holgadas y altura máxima. */
   --modal-gap: 0.75rem; --modal-top: 5rem; --modal-max-h: 40rem;
@@ -123,12 +123,12 @@
   --glass-panel-shadow: 0 0.5rem 1.5rem rgba(17, 19, 22, 0.10); --pop-bg: rgba(255, 255, 255, 0.96); --pop-shadow: 0 1rem 2.5rem rgba(17, 19, 22, 0.16);
   --glass-hover: rgba(17, 19, 22, 0.05); --glass-field: rgba(17, 19, 22, 0.04); --glass-blur-panel: 24px;
   /* Liquid glass (#224): brillo superior, filo de luz interior y saturación del fondo que asoma. */
-  --glass-saturate: 180%; --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 38%, rgba(255, 255, 255, 0) 100%);
-  --glass-highlight: inset 0 0.0625rem 0 rgba(255, 255, 255, 0.85), inset 0 0 0 0.0625rem rgba(255, 255, 255, 0.35), inset 0 -0.0625rem 0 rgba(17, 19, 22, 0.04);
+  --glass-saturate: 140%; --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 30%, rgba(255, 255, 255, 0) 100%);
+  --glass-highlight: inset 0 0.0625rem 0 rgba(255, 255, 255, 0.6), inset 0 0 0 0.0625rem rgba(255, 255, 255, 0.18);
   /* Acceso (#100) */
   --glass-radius-access-bar: 0.875rem; --glass-radius-access-card: 1.125rem; --container-access: 27.5rem;
 }
-@media (pointer: fine) { :root { --dock-control: 2rem; --frame-dock-h: 2.75rem; } }
+@media (pointer: fine) { :root { --dock-control: 2rem; --frame-dock-h: 2.75rem; --rail-item: 2.25rem; } }
 
 /* Estilos de tema: variantes de claro u oscuro con contraste AA comprobado. Hubly claro y oscuro son los de siempre. */
 :root[data-theme="light"][data-estilo="papel"] { --surface-canvas: #F5F0E6; --surface-raised: #FFFCF6; --surface-subtle: #EFE8DA; --surface-interactive: #E6DDCB;
@@ -248,8 +248,8 @@
   --glass-rgb: 32 35 43; --panel-alpha: 0.80; --glass-line: rgba(255, 255, 255, 0.14); --glass-line-strong: rgba(255, 255, 255, 0.22);
   --glass-panel-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.45); --pop-bg: rgba(34, 37, 45, 0.94); --pop-shadow: 0 1.125rem 2.75rem rgba(0, 0, 0, 0.5);
   --glass-hover: rgba(255, 255, 255, 0.09); --glass-field: rgba(255, 255, 255, 0.08);
-  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.03) 38%, rgba(255, 255, 255, 0) 100%);
-  --glass-highlight: inset 0 0.0625rem 0 rgba(255, 255, 255, 0.16), inset 0 0 0 0.0625rem rgba(255, 255, 255, 0.05), inset 0 -0.0625rem 0 rgba(0, 0, 0, 0.25);
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 30%);
+  --glass-highlight: inset 0 0.0625rem 0 rgba(255, 255, 255, 0.10), inset 0 0 0 0.0625rem rgba(255, 255, 255, 0.04);
 }
 
 

@@ -117,6 +117,8 @@ describe("Marco compacto: medidas por tokens y objetivos táctiles de 44 px", ()
     const rail = (expandido: boolean) => renderToStaticMarkup(createElement(Carril, { expandido, activa: "hoy", onToggleExpandido: noop, onSelect: noop, hoyPendientes: 0, semana: { hechos: 0, total: 0 } }));
     expect(rail(false)).toContain("w-(--frame-rail-w) ");
     expect(rail(true)).toContain("w-(--frame-rail-w-open)");
-    expect(/<button[^>]*aria-label="Hoy"[^>]*>/.exec(rail(false))![0]).toContain(" h-11 ");
+    // Cada herramienta usa --rail-item: 44 px en táctil (valor base); con ratón el token baja a 36 px.
+    expect(px("--rail-item")).toBeGreaterThanOrEqual(44);
+    expect(/<button[^>]*aria-label="Hoy"[^>]*>/.exec(rail(false))![0]).toContain(" h-(--rail-item) ");
   });
 });

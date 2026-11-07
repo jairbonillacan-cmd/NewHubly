@@ -19,7 +19,7 @@ export interface CarrilProps {
   cargando?: boolean;
 }
 
-const ITEM = "relative w-full min-h-11 cursor-pointer rounded-xl border-0 transition-colors";
+const ITEM = "relative w-full min-h-(--rail-item) cursor-pointer rounded-xl border-0 transition-colors";
 
 function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta: Herramienta; activa: boolean; expandido: boolean; ficha: string | null; onSelect: () => void }) {
   const tono = activa
@@ -28,7 +28,7 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
   const etiqueta = herramienta.disponible ? herramienta.nombre : `${herramienta.nombre}, próximamente`;
   const boton = (
     <Button variant="ghost" aria-label={etiqueta} {...(activa ? { "aria-current": "page" as const } : {})} onPress={onSelect}
-      className={`${ITEM} ${tono} ${expandido ? "h-11 justify-start gap-3 px-3" : "h-11 justify-center px-0"}`}>
+      className={`${ITEM} ${tono} ${expandido ? "h-(--rail-item) justify-start gap-3 px-3" : "h-(--rail-item) justify-center px-0"}`}>
       <span className="relative">
         <HerramientaIcono id={herramienta.id} activo={activa} />
         {herramienta.disponible && !expandido && ficha && (
@@ -57,16 +57,16 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
   return (
     <div className="group/carril relative flex max-h-full flex-col">
     <nav aria-label="Herramientas" data-delay="1"
-      className={`hubly-glass hubly-enter hubly-carril flex min-h-0 flex-col gap-1 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-(--frame-rail-pad) whitespace-nowrap ${expandido ? "w-(--frame-rail-w-open)" : "w-(--frame-rail-w) items-center"}`}>
+      className={`hubly-glass hubly-enter hubly-carril flex min-h-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-(--frame-rail-pad) whitespace-nowrap ${expandido ? "w-(--frame-rail-w-open)" : "w-(--frame-rail-w) items-center"}`}>
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
       {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined} aria-label="Chat"
         className={`${ITEM} flex items-center gap-3 ${expandido ? "px-3" : "justify-center"} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--glass-hover)"}`}>
         <Icon name="chat" active={chat.active} className="size-6" />
         {expandido && <span className="hubly-carril-texto text-sm font-semibold">Chat</span>}
       </a>}
-      <span aria-hidden="true" className="mx-2 my-1.5 h-px bg-(--glass-line-strong)" />
+      <span aria-hidden="true" className="mx-2 my-1 h-px bg-(--glass-line-strong)" />
       {expandido && <p className="hubly-carril-texto m-0 px-3 pb-1 text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">Herramientas</p>}
-      <ul aria-label="Herramientas" className="m-0 flex list-none flex-col gap-1 p-0">
+      <ul aria-label="Herramientas" className="m-0 flex list-none flex-col gap-0.5 p-0">
         {herramientas.map((herramienta) => (
           <li key={herramienta.id}>
             <Item herramienta={herramienta} activa={activa === herramienta.id} expandido={expandido} ficha={ficha(herramienta)} onSelect={() => onSelect(herramienta.id)} />
@@ -74,7 +74,7 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
         ))}
       </ul>
       <Button variant="ghost" isDisabled aria-label="Agregar una herramienta, muy pronto"
-        className={`${ITEM} mt-1 border border-dashed border-(--glass-line-strong) bg-transparent text-(--text-secondary) ${expandido ? "h-11 justify-start gap-3 px-3" : "h-11 justify-center px-0"}`}>
+        className={`${ITEM} mt-0.5 border border-dashed border-(--glass-line-strong) bg-transparent text-(--text-secondary) ${expandido ? "h-(--rail-item) justify-start gap-3 px-3" : "h-(--rail-item) justify-center px-0"}`}>
         <Icon name="mas" className="size-5" />
         {expandido && <span className="hubly-carril-texto min-w-0 grow truncate text-left text-sm">Agregar una herramienta</span>}
         {expandido && <span className="hubly-carril-texto shrink-0 text-xs">Pronto</span>}

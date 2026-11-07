@@ -135,9 +135,11 @@ function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, pre
   const avatarGrande = <Avatar url={avatarUrl ?? null} initial={initial} className="size-14 text-xl" iconClassName="size-6" />;
   return (
     <Dropdown>
-      <Dropdown.Trigger aria-label="Menú de tu cuenta" className="relative size-11 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0 transition-transform data-[hovered]:scale-105">
-        <Avatar url={avatarUrl ?? null} initial={initial} className="size-11 text-base" />
-        <PresenceDot status={status} className="absolute -right-0.5 -bottom-0.5 size-4" />
+      <Dropdown.Trigger aria-label="Menú de tu cuenta" className="relative flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 transition-transform data-[hovered]:scale-105">
+        <span className="relative">
+          <Avatar url={avatarUrl ?? null} initial={initial} className="size-8 text-sm" iconClassName="size-4" />
+          <PresenceDot status={status} className="absolute -right-0.5 -bottom-0.5 size-3" />
+        </span>
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom end" className={`${MENU} w-80`}>
         <div className="flex items-center gap-3 border-b border-(--glass-line) px-2.5 pt-2 pb-3">
@@ -215,7 +217,7 @@ function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, pre
   );
 }
 
-const CONTROL = "size-11 min-w-11 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
+const CONTROL = "size-(--dock-control) min-w-(--dock-control) text-(--text-secondary) data-[hovered]:text-(--text-primary)";
 
 
 /** Botón de icono que abre una ventanita (avisos y ayuda). */
@@ -246,13 +248,13 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, panels, onTogglePan
   return (
     <div role="toolbar" aria-label="Controles del espacio" className="flex items-center gap-0.5">
       <ToggleButton isSelected={focusMode} onChange={onToggleFocus}
-        className="hidden h-11 shrink-0 gap-2 rounded-xl border-0 bg-transparent px-3 text-sm font-semibold text-(--text-secondary) data-[hovered]:text-(--text-primary) data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary) lg:inline-flex">
+        className="hidden h-(--dock-control) shrink-0 gap-2 rounded-xl border-0 bg-transparent px-2.5 text-xs font-semibold text-(--text-secondary) data-[hovered]:text-(--text-primary) data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary) lg:inline-flex">
         <Icon name="enfoque" className="size-5" /> Enfoque
       </ToggleButton>
       <span aria-hidden="true" className="mx-1.5 hidden h-6 w-px bg-(--glass-line-strong) lg:block" />
-      <Button variant="ghost" onPress={onOpenPalette} aria-label="Buscar o ejecutar (Ctrl K)" className="h-11 min-w-11 gap-2 px-3 text-sm text-(--text-secondary) data-[hovered]:text-(--text-primary)">
-        <Icon name="buscar" className="size-5" />
-        <span className="hidden lg:inline">Buscar</span>
+      <Button variant="ghost" onPress={onOpenPalette} aria-label="Buscar o ejecutar (Ctrl K)" className="h-(--dock-control) min-w-(--dock-control) gap-1.5 rounded-lg bg-(--glass-field) px-2.5 text-xs text-(--text-secondary) data-[hovered]:text-(--text-primary) lg:min-w-44 lg:justify-start">
+        <Icon name="buscar" className="size-4" />
+        <span className="hidden grow text-left lg:inline">Buscar</span>
         <Kbd className="hidden lg:inline-flex"><Kbd.Abbr keyValue="ctrl" /><Kbd.Content>K</Kbd.Content></Kbd>
       </Button>
       <span aria-hidden="true" className="mx-1.5 hidden h-6 w-px bg-(--glass-line-strong) lg:block" />
