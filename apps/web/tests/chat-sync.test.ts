@@ -1,6 +1,6 @@
 import type { ChatMessage } from "@hubly/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { incomingChatNotice, isMessageEndVisible, mergeChatMessages, startChatPolling } from "../src/components/chat/sync";
+import { incomingChatNotice, incomingMainMessages, isMessageEndVisible, mergeChatMessages, startChatPolling } from "../src/components/chat/sync";
 import { chatTransport, resolveChatPollIntervalMs } from "../src/components/chat/transport";
 
 const base = {
@@ -123,5 +123,19 @@ describe("Transporte social del chat", () => {
       await api.command(input);
       expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body))).toEqual(input);
     }
+  });
+});
+
+describe("Avisos de mensajes nuevos con hilos (issue 204)", () => {
+  it("solo avisan los mensajes principales nuevos de otras personas, no las respuestas de hilo", () => {
+    const me = "00000000-0000-4000-8000-000000000001", other = "00000000-0000-4000-8000-000000000002";
+    const changes = [
+      { id: "a", number: 4, authorId: other, body: "viejo", threadRootId: null },
+      { id: "b", number: 6, authorId: other, body: "principal", threadRootId: null },
+      { id: "c", number: 7, authorId: other, body: "en hilo", threadRootId: "b" },
+      { id: "d", number: 8, authorId: me, body: "mío", threadRootId: null },
+      { id: "e", number: 9, authorId: other, body: null, threadRootId: null },
+    ];
+    expect(incomingMainMessages(changes, 5, me).map((item) => item.id)).toEqual(["b"]);
   });
 });

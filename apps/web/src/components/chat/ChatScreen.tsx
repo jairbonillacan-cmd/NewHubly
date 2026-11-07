@@ -6,7 +6,7 @@ import { ChatView, type BrowserNotificationPermission, type ChatViewCommand } fr
 import { readBrowserNotificationPermission } from "./ConversationHeader";
 import { conversationName, personName } from "./MemberList";
 import { messageMentionsViewer } from "./MessageItem";
-import { CHAT_POLL_MS, incomingChatNotice, mergeChatMessages, startChatPolling } from "./sync";
+import { CHAT_POLL_MS, incomingChatNotice, incomingMainMessages, mergeChatMessages, startChatPolling } from "./sync";
 import { ChatRequestError, chatTransport, resolveChatPollIntervalMs } from "./transport";
 
 export interface ChatScreenProps {
@@ -325,9 +325,7 @@ export function ChatScreen({
         if (update.changes.length) {
           const previousLatest = latestNumber;
           setMessages((previous) => mergeChatMessages(previous, update.changes));
-          const incomingItems = update.changes.filter(
-            (item) => item.number > previousLatest && item.authorId !== userId && item.body !== null,
-          );
+          const incomingItems = incomingMainMessages(update.changes, previousLatest, userId);
           const incoming = incomingItems.length;
           latestNumber = Math.max(latestNumber, ...update.changes.map((item) => item.number));
           if (incoming) {

@@ -158,6 +158,10 @@ describe("Chat: casos de uso y repositorio", { timeout: 30000 }, () => {
     expect(main.messages.some((entry) => entry.id === threadReply.id)).toBe(false);
     expect(main.messages.find((entry) => entry.id === root.id)).toMatchObject({ threadReplyCount: 1 });
     expect(main.messages.find((entry) => entry.id === root.id)?.threadLastReplyAt).toEqual(expect.any(String));
+    // Leer hasta el último mensaje principal deja la conversación leída aunque la respuesta de hilo tenga un número mayor.
+    expect(threadReply.number).toBeGreaterThan(quoted.number);
+    await writer.command({ kind: "read", workspaceId, conversationId: general, through: quoted.number });
+    expect((await writer.list(workspaceId)).find((entry) => entry.id === general)?.unread).toBe(false);
     expect((await writer.history(workspaceId, general, undefined, root.id)).messages.map((entry) => entry.id)).toEqual([threadReply.id]);
 
     const before = (await writer.history(workspaceId, general)).conversation.changeCursor;

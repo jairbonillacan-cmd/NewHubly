@@ -57,7 +57,7 @@ export class DrizzleChatRepository implements ChatRepository {
           and private.chat_agency_role(c.workspace_id) in ('owner', 'admin', 'editor')
           and (c.kind = 'channel' or pm.role in ('owner', 'admin', 'editor')), false) as writable,
         exists (select 1 from private.chat_messages m where m.workspace_id = c.workspace_id and m.conversation_id = c.id
-          and m.author_id <> ${userId}::uuid and m.deleted_at is null
+          and m.author_id <> ${userId}::uuid and m.deleted_at is null and m.thread_root_id is null
           and m.message_number > coalesce(r.message_number, 0)) as unread,
         c.last_change_number as "changeCursor"
       from private.chat_conversations c
