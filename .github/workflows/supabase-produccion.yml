@@ -1,0 +1,73 @@
+name: Migraciones de Supabase en producción
+
+on:
+  workflow_dispatch:
+    inputs:
+      aplicar:
+        description: Aplicar las migraciones pendientes después de la aprobación
+        type: boolean
+        default: false
+      sha_simulado:
+        description: SHA completo de la simulación aprobada, obligatorio al aplicar
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-produccion
+  cancel-in-progress: false
+
+jobs:
+  validar:
+    if: github.ref == 'refs/heads/produccion'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      deployments: read
+    steps:
+      - name: Comparar la ejecución con el SHA de la simulación
+        if: inputs.aplicar
+        env:
+          EXPECTED_SHA: ${{ inputs.sha_simulado }}
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_SHA" = "$GITHUB_SHA"
+      - name: Exigir revisores y ramas limitadas en el entorno de producción
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/environments/production" |
+            jq -e 'any(.protection_rules[]; .type == "required_reviewers" and (.reviewers | length > 0))
+              and .deployment_branch_policy != null
+              and .deployment_branch_policy.custom_branch_policies == true' >/dev/null
+
+  migrar:
+    needs: validar
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 2.109.1
+      - name: Mostrar migraciones pendientes
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.PRODUCTION_MIGRATION_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$MIGRATION_DATABASE_URL"
+          supabase db push --db-url "$MIGRATION_DATABASE_URL" --dry-run
+      - name: Aplicar migraciones y comprobar el historial
+        if: inputs.aplicar
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.PRODUCTION_MIGRATION_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          supabase db push --db-url "$MIGRATION_DATABASE_URL" --yes
+          supabase migration list --db-url "$MIGRATION_DATABASE_URL"

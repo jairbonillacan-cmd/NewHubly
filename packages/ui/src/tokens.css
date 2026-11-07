@@ -24,6 +24,7 @@
   --accent-primary: #1D4ED8;
   --accent-primary-hover: #1A43BD;
   --accent-primary-subtle: #EEF2FB;
+  --logo-color: var(--accent-primary);
   --status-success-bg: #eaf4ee;
   --status-success-text: #165632;
   --status-warning-bg: #fbf2e1;
@@ -64,6 +65,11 @@
   --container-reading: 44rem;
   --container-workspace: 72rem;
   --measure-viewport-height: 100dvh;
+  --chat-list-min: 15rem; --chat-list-max: 19rem;
+  /* Marco de Tu espacio (#184): carril, barra superior y dock. Los objetivos táctiles de dentro siguen en 44 px. */
+  --frame-topbar-h: 3rem; --frame-dock-h: 3.5rem; --frame-rail-w: 3.5rem; --frame-rail-w-open: 13rem; --frame-rail-pad: 0.375rem;
+  /* Modales (#186): separación al borde, distancia desde arriba en pantallas holgadas y altura máxima. */
+  --modal-gap: 0.75rem; --modal-top: 5rem; --modal-max-h: 40rem;
   /* Tokens de dirección visual: Grafito y azul tinta, bento y liquid glass (Issues #8, #47 y #52) */
   --surface-brand: #111316; --surface-brand-subtle: #1C1F24; --surface-brand-contrast: #FFFFFF; --surface-brand-muted: #B9BCC4;
   --bento-surface-base: #F0F0F2; --bento-card-bg: #FFFFFF; --bento-card-border: #E4E4E7; --bento-card-hover: #F7F7F8;
@@ -135,6 +141,7 @@
   --accent-primary: #6F98FF;
   --accent-primary-hover: #8FB0FF;
   --accent-primary-subtle: #1A2238;
+  --logo-color: var(--text-primary);
   --status-success-bg: #132a1e;
   --status-success-text: #8ce0ad;
   --status-warning-bg: #2d210c;
@@ -235,7 +242,7 @@
 html,
 body {
   margin: var(--space-0);
-  padding: var(--space-0);
+  padding: var(--space-0) env(safe-area-inset-right) var(--space-0) env(safe-area-inset-left);
   background-color: var(--surface-canvas);
   color: var(--text-primary);
   font-family: var(--font-sans);
@@ -279,7 +286,7 @@ body {
 
 /* Movimiento del landing (#85). Solo se ocultan elementos si el script de arranque marcó <html class="hubly-motion">;
    sin JavaScript o con movimiento reducido todo se ve de inmediato. */
-:root { --motion-fast: 180ms; --motion-base: 600ms; --motion-slow: 900ms; --motion-ease: cubic-bezier(0.22, 1, 0.36, 1); --motion-step: 90ms; --motion-rise: 1.25rem; }
+:root { --motion-fast: 180ms; --motion-base: 600ms; --motion-slow: 900ms; --motion-ease: cubic-bezier(0.22, 1, 0.36, 1); --motion-step: 90ms; --motion-rise: 1.25rem; --motion-space: 240ms; }
 .hubly-reveal { transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
 .hubly-motion .hubly-reveal:not([data-visible="true"]) { opacity: 0; transform: translateY(var(--motion-rise)); }
 .hubly-reveal[data-delay="1"] { transition-delay: calc(var(--motion-step) * 1); }
@@ -307,7 +314,31 @@ body {
 .hubly-bars > span:nth-child(7) { transition-delay: calc(var(--motion-step) * 3); }
 .hubly-bars > span:nth-child(8) { transition-delay: calc(var(--motion-step) * 3.5); }
 @keyframes hubly-pop { 0% { transform: scale(0.96); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.hubly-espacio-escena { transition: opacity calc(var(--motion-space) / 2) var(--motion-ease), visibility 0s linear calc(var(--motion-space) / 2); }
+.hubly-espacio-escena[data-cambiando] { opacity: 0; visibility: hidden; pointer-events: none; }
+@keyframes hubly-espacio-entra { from { opacity: 0; transform: translateY(calc(var(--motion-rise) * 0.4)); } to { opacity: 1; transform: none; } }
+.hubly-espacio-entra { animation: hubly-espacio-entra var(--motion-space) var(--motion-ease) backwards; }
+/* El aviso de carga espera un instante: si el espacio llega rápido, no parpadea. */
+.hubly-espacio-carga { animation: hubly-espacio-entra var(--motion-space) var(--motion-ease) var(--motion-fast) backwards; }
+@media (prefers-reduced-motion: reduce) { .hubly-espacio-escena { transition: none; } .hubly-espacio-entra, .hubly-espacio-carga { animation: none; } }
 .hubly-pop { animation: hubly-pop var(--motion-fast) var(--motion-ease) both; }
+/* Modales (#186): hoja inferior en pantallas chicas y centrada arriba desde sm si la altura alcanza. La altura sigue al visor
+   (teclado virtual) y respeta las zonas seguras; el contenido se desplaza dentro del modal, nunca la página. */
+.hubly-modal-overlay { display: flex; align-items: flex-end; justify-content: center; height: var(--visual-viewport-height, 100dvh); overflow: hidden; overscroll-behavior: contain;
+  padding: max(var(--modal-gap), env(safe-area-inset-top)) max(var(--modal-gap), env(safe-area-inset-right)) max(var(--modal-gap), env(safe-area-inset-bottom)) max(var(--modal-gap), env(safe-area-inset-left)); }
+.hubly-modal { display: flex; flex-direction: column; width: 100%; max-height: min(100%, var(--modal-max-h)); }
+.hubly-modal > [role="dialog"] { min-height: 0; }
+@media (min-width: 40rem) and (min-height: 36rem) { .hubly-modal-overlay { align-items: flex-start; padding-top: max(var(--modal-top), env(safe-area-inset-top)); } }
+/* Ventanas emergentes: si no caben, se desplazan en vez de cortarse. */
+.hubly-barra-movil { left: max(0.5rem, env(safe-area-inset-left)); right: max(0.5rem, env(safe-area-inset-right)); bottom: max(0.5rem, env(safe-area-inset-bottom)); }
+@media (max-width: 63.99rem) { .hubly-marco-arriba { padding-top: max(var(--modal-gap), env(safe-area-inset-top)); } }
+
+@media (max-height: 30rem) {
+  .hubly-corto-compacto { padding: 0.25rem 0.5rem; }
+  .hubly-corto-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .hubly-corto-entrada { min-height: var(--control-min-tap); height: var(--control-min-tap); padding-block: 0.375rem; }
+}
+.hubly-popover-scroll { overflow-y: auto; overscroll-behavior: contain; }
 /* Buscador (issue 133): baja con un rebote suave, las filas entran en cascada y el campo no lleva recuadro (el cursor ya indica el foco). */
 @keyframes hubly-palette-in { 0% { transform: translateY(-14px) scale(0.97); opacity: 0; filter: blur(6px); } 100% { transform: none; opacity: 1; filter: none; } }
 @keyframes hubly-palette-row { 0% { transform: translateY(6px); opacity: 0; } 100% { transform: none; opacity: 1; } }
@@ -336,6 +367,7 @@ body {
 @keyframes hubly-drop { 0% { opacity: 0; transform: translateY(-120%) rotate(-8deg); } 60% { opacity: 1; transform: translateY(6%) rotate(3deg); } 80% { transform: translateY(-3%) rotate(-1deg); } 100% { opacity: 1; transform: none; } }
 .hubly-drop { animation: hubly-drop 1.1s var(--motion-ease) calc(var(--motion-step) * 6) both; }
 @keyframes hubly-underline { to { background-size: 100% 0.32em; } }
+.hubly-logo { color: var(--logo-color); }
 .hubly-underline { --hubly-underline-color: color-mix(in srgb, var(--accent-primary) 24%, transparent); background: linear-gradient(var(--hubly-underline-color), var(--hubly-underline-color)) no-repeat 0 88% / 0% 0.32em; animation: hubly-underline 0.9s var(--motion-ease) calc(var(--motion-step) * 5) forwards; }
 @media (prefers-reduced-motion: reduce) {
   .hubly-reveal, .hubly-bars > span { transition: none; }
@@ -414,6 +446,7 @@ body {
   transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
 /* Sin transformaciones al pasar el ratón: el botón no se mueve, solo se marca su borde. */
 .hubly-carril-asa[data-hovered] { border-color: var(--accent-primary); box-shadow: 0 0 0 3px var(--accent-primary-subtle); }
+.hubly-carril-asa::before { content: ""; position: absolute; inset: -0.625rem; } /* área táctil de 44 px alrededor del botón de 24 px */
 .hubly-carril { transition: width 0.34s cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes hubly-carril-texto { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
 .hubly-carril-texto { animation: hubly-carril-texto 0.32s var(--motion-ease) 0.12s both; }

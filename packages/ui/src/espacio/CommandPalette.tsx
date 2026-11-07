@@ -23,7 +23,8 @@ export interface CommandPaletteProps {
   todos: EspacioTodo[];
   onOpenNote: (id: string) => void;
   onFocusTodo: (id: string) => void;
-  onCreateTodo: (title: string) => void;
+  onCreateTodo?: (title: string) => void;
+  examples?: readonly string[];
 }
 
 interface Option {
@@ -42,11 +43,11 @@ export const PALETTE_EXAMPLES = ["Nueva nota", "Busca una nota o un pendiente", 
 const TYPE_MS = 55;
 const HOLD_MS = 1600;
 
-function useTypedPlaceholder(active: boolean) {
-  const [text, setText] = useState<string>(PALETTE_EXAMPLES[0]);
+function useTypedPlaceholder(active: boolean, examples: readonly string[]) {
+  const [text, setText] = useState<string>(examples[0] ?? "");
   useEffect(() => {
-    if (!active || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setText(PALETTE_EXAMPLES[0]);
+    if (!active || !examples.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setText(examples[0] ?? "");
       return;
     }
     let example = 0;
@@ -54,28 +55,28 @@ function useTypedPlaceholder(active: boolean) {
     let erasing = false;
     let timer: ReturnType<typeof setTimeout>;
     const tick = () => {
-      const target = PALETTE_EXAMPLES[example]!;
+      const target = examples[example]!;
       if (!erasing && length < target.length) length += 1;
       else if (!erasing) { erasing = true; timer = setTimeout(tick, HOLD_MS); return; }
       else if (length > 0) length -= 1;
-      else { erasing = false; example = (example + 1) % PALETTE_EXAMPLES.length; }
-      setText(PALETTE_EXAMPLES[example]!.slice(0, length));
+      else { erasing = false; example = (example + 1) % examples.length; }
+      setText(examples[example]!.slice(0, length));
       timer = setTimeout(tick, erasing ? TYPE_MS / 2 : TYPE_MS);
     };
     setText("");
     timer = setTimeout(tick, TYPE_MS * 4);
     return () => clearTimeout(timer);
-  }, [active]);
+  }, [active, examples]);
   return text;
 }
 
 /** Paleta de comandos (#81, rediseño issue 133): acciones, notas y pendientes; Enter sin resultados crea el pendiente. */
-export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, onOpenNote, onFocusTodo, onCreateTodo }: CommandPaletteProps) {
+export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, onOpenNote, onFocusTodo, onCreateTodo, examples = PALETTE_EXAMPLES }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const listId = useId();
   const listRef = useRef<HTMLUListElement>(null);
-  const placeholder = useTypedPlaceholder(isOpen && query === "");
+  const placeholder = useTypedPlaceholder(isOpen && query === "", examples);
 
   useEffect(() => {
     if (isOpen) {
@@ -120,7 +121,7 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
       event.preventDefault();
       const option = options[active];
       if (option) runOption(option);
-      else if (query.trim()) {
+      else if (query.trim() && onCreateTodo) {
         close();
         onCreateTodo(query.trim());
       }
@@ -131,10 +132,10 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
   const activeId = options[active] ? `${listId}-${options[active].key}` : undefined;
 
   return (
-    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable className="hubly-palette-overlay fixed inset-0 z-50 flex items-start justify-center bg-(--glass-hover) px-3 pt-20 backdrop-blur-sm">
-      <Modal className="hubly-palette w-full max-w-2xl">
-        <Dialog aria-label="Buscar o ejecutar" className="hubly-pop-surface flex max-h-160 flex-col overflow-hidden rounded-3xl text-(--text-primary) outline-none">
-          <div className="flex items-center gap-4 border-b border-(--glass-line) px-6">
+    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable className="hubly-palette-overlay hubly-modal-overlay fixed inset-0 z-50 bg-(--glass-hover) backdrop-blur-sm">
+      <Modal className="hubly-palette hubly-modal max-w-2xl">
+        <Dialog aria-label="Buscar o ejecutar" className="hubly-pop-surface flex flex-col overflow-hidden rounded-3xl text-(--text-primary) outline-none">
+          <div className="flex shrink-0 items-center gap-4 border-b border-(--glass-line) px-6">
             <Icon name="buscar" className="size-6 shrink-0 text-(--text-muted)" strokeWidth={2.25} />
             <input
               autoFocus
@@ -185,11 +186,11 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
             )}
             {options.length === 0 && (
               <li role="presentation" className="px-6 py-8 text-center text-sm text-(--text-secondary)">
-                Nada coincide con «{query}». Pulsa Enter para crearlo como pendiente.
+                Nada coincide con «{query}».{onCreateTodo && " Pulsa Enter para crearlo como pendiente."}
               </li>
             )}
           </ul>
-          <div aria-hidden="true" className="flex items-center gap-4 border-t border-(--glass-line) bg-(--glass-hover) px-6 py-3 text-xs text-(--text-secondary)">
+          <div aria-hidden="true" className="flex shrink-0 items-center gap-4 border-t border-(--glass-line) bg-(--glass-hover) px-6 py-3 text-xs text-(--text-secondary)">
             <span className="flex items-center gap-1.5"><Kbd><Kbd.Content>↑</Kbd.Content></Kbd><Kbd><Kbd.Content>↓</Kbd.Content></Kbd> Navegar</span>
             <span className="flex items-center gap-1.5"><Kbd><Kbd.Content>↵</Kbd.Content></Kbd> Abrir</span>
             <button type="button" tabIndex={-1} onClick={close} className="ml-auto flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-xs text-(--text-secondary)"><Kbd><Kbd.Content>Esc</Kbd.Content></Kbd> Cerrar</button>

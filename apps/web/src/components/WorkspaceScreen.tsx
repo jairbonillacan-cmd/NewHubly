@@ -11,6 +11,9 @@ import {
   type WorkspaceInvitationSummary, type WorkspaceMemberSummary, type WorkspaceNote, type WorkspaceSummary, type WorkspaceTodo, type WorkspaceTodoView,
 } from "../actions";
 import { signOutAction } from "../actions/auth";
+import { createLatestWins } from "./latest-wins";
+import { ChatScreen } from "./chat/ChatScreen";
+import { ChatRequestError, chatTransport } from "./chat/transport";
 import { fromEspacioPreferencias, toEspacioPreferencias } from "./preferences";
 
 export type ScreenStatus = "loading" | "unauthenticated" | "error" | "ready";
@@ -35,6 +38,9 @@ export interface WorkspaceScreenProps {
   initialPresence?: PresenceStatus;
   /** Herramienta abierta al cargar (?herramienta=). */
   initialHerramienta?: HerramientaId;
+  initialChat?: { unread: number | null } | null;
+  chatMode?: boolean;
+  initiallyUnread?: boolean;
   onSavePreferences?: (patch: Partial<UserPreferences>) => Promise<unknown>;
   onRetry?: () => void; onLoginRedirect?: () => void; onTimezoneRefresh?: () => void; onSignOut?: () => Promise<void>;
   onSaveNote?: (note: WorkspaceNote, nextTitle: string, nextContent: string) => Promise<WorkspaceNote>;
@@ -113,12 +119,14 @@ export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialTodos = [], initialNotes = [], initialActionError = null,
   currentUserId = "", initialActiveWorkspace, initialWorkspaces, initialMembers = [], initialPendingInvitations = [], initialPreferences, initialWallpaperImageUrl = null, showWelcome = false, currentUserEmail = null, currentUserName = null, initialAvatarUrl = null, initialPresence = "online", initialHerramienta, onSavePreferences,
+  initialChat = null, chatMode = false, initiallyUnread = false,
   onRetry, onLoginRedirect, onTimezoneRefresh, onSignOut, onSaveNote, onCreateTodo, onToggleTodo, onExport,
 }: WorkspaceScreenProps) {
   const [todos, setTodos] = useState<WorkspaceTodo[]>(initialTodos);
   const [movingOverdue, setMovingOverdue] = useState(false);
   const movingOverdueRef = useRef(false);
   const [notes, setNotes] = useState<WorkspaceNote[]>(initialNotes);
+  const [chat, setChat] = useState(initialChat);
   const [activeWs, setActiveWs] = useState<WorkspaceSummary | undefined>(initialActiveWorkspace);
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>(initialWorkspaces ?? (initialActiveWorkspace ? [initialActiveWorkspace] : []));
   const [members, setMembers] = useState<WorkspaceMemberSummary[]>(initialMembers);
@@ -140,8 +148,31 @@ export function WorkspaceScreen({
     return () => { window.removeEventListener("pagehide", onPageHide); void flushRef.current(); };
   }, []);
   const wsId = activeWs?.id;
+  const chatAvailable = chat !== null;
+  useEffect(() => {
+    if (!wsId || !chatAvailable || chatMode) return;
+    let controller: AbortController | undefined;
+    const api = chatTransport(wsId);
+    const update = () => {
+      if (document.hidden) return;
+      controller?.abort();
+      const current = new AbortController();
+      controller = current;
+      void api.sync(null, 0, current.signal).then((result) => {
+        if (!current.signal.aborted) setChat({ unread: result.conversations.filter((item) => item.unread).length });
+      }, (error: unknown) => {
+        if (!current.signal.aborted && error instanceof ChatRequestError && (error.status === 401 || error.status === 404)) setChat(null);
+      });
+    };
+    const interval = setInterval(update, 15_000);
+    window.addEventListener("focus", update);
+    return () => { clearInterval(interval); window.removeEventListener("focus", update); controller?.abort(); };
+  }, [wsId, chatAvailable, chatMode]);
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<ActionErrorState | null>(initialActionError);
+  // Espacio al que se está cambiando (#215): mientras llega, la pantalla no muestra datos del anterior. Gana siempre el último cambio pedido.
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null);
+  const enqueueSwitch = useRef(createLatestWins()).current;
   const [noteStatus, setNoteStatus] = useState<Record<string, NoteSaveState>>({});
   const redirectLogin = () => { if (onLoginRedirect) onLoginRedirect(); else if (typeof window !== "undefined") window.location.assign("/login"); };
   const runSafe = (fallbackMsg: string, fn: () => Promise<void>) => executeProtectedAction(fallbackMsg, fn, redirectLogin, setActionError);
@@ -259,15 +290,23 @@ export function WorkspaceScreen({
     }
   });
 
-  const reload = async (nextWsId?: string) => {
+  const reload = async (nextWsId?: string, onApplied?: () => void) => {
     const fresh = await loadWorkspaceDashboardAction(nextWsId);
+    if (chatMode && (fresh.activeWorkspace.id !== wsId || !fresh.chat)) { window.location.assign("/hoy"); return; }
+    setChat(fresh.chat ?? null);
     setActiveWs(fresh.activeWorkspace); setWorkspaces(fresh.workspaces); setMembers(fresh.members); setInvitations(fresh.pendingInvitations);
     setNotes(fresh.notes); setTodos(fresh.todos); setNoteStatus({});
+    onApplied?.();
   };
-  const handleSelectWorkspace = (id: string) => runSafe("No se pudo cambiar de espacio.", async () => { await selectActiveWorkspaceAction(id); setInviteLink(null); await reload(id); });
+  /** Cambia de espacio en orden: lo anterior se oculta ya, y los datos nuevos y el fin del cambio llegan en una sola actualización. */
+  const switchWorkspace = (targetId: string, fallbackMsg: string, change: (done: () => void) => Promise<void>) => {
+    setSwitchingTo(targetId);
+    return enqueueSwitch((isCurrent) => runSafe(fallbackMsg, () => change(() => { if (isCurrent()) setSwitchingTo(null); })), () => setSwitchingTo(null));
+  };
+  const handleSelectWorkspace = (id: string) => switchWorkspace(id, "No se pudo cambiar de espacio.", async (done) => { await selectActiveWorkspaceAction(id); setInviteLink(null); await reload(id, done); });
   const handleCreateAgency = async (name: string): Promise<boolean> => {
     let ok = false;
-    await runSafe("No se pudo crear la agencia.", async () => { const created = await createAgencyWorkspaceAction({ name }); setInviteLink(null); await reload(created.id); ok = true; });
+    await switchWorkspace("nuevo", "No se pudo crear la agencia.", async (done) => { const created = await createAgencyWorkspaceAction({ name }); setInviteLink(null); await reload(created.id, done); ok = true; });
     return ok;
   };
   const handleInvite = (email: string, role: "admin" | "editor" | "viewer") => runSafe("No se pudo generar la invitación.", async () => {
@@ -326,6 +365,14 @@ export function WorkspaceScreen({
     <>
     <BienvenidaDialog isOpen={welcomeOpen} onClose={closeWelcome} {...(activeWs ? { workspaceName: activeWs.name } : {})} />
     <EspacioHoy
+      {...(chat && activeWs ? { chat: {
+        todayHref: `/hoy?workspaceId=${encodeURIComponent(activeWs.id)}`,
+        href: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}`,
+        unreadHref: `/chat?workspaceId=${encodeURIComponent(activeWs.id)}&vista=sin-leer`,
+        unread: chat.unread, active: chatMode,
+        ...(chatMode ? { content: <ChatScreen key={activeWs.id} workspaceId={activeWs.id} workspaceName={activeWs.name}
+          userId={currentUserId} role={activeWs.role} initiallyUnread={initiallyUnread} /> } : {}),
+      } } : {})}
       todayDate={todayDate}
       {...(initialPreferences ? { initialPreferences: toEspacioPreferencias(initialPreferences), initialThemePreference: initialPreferences.theme } : {})}
       onPreferencesChange={(prefs) => persistPreferences(fromEspacioPreferencias(prefs))}
@@ -376,6 +423,7 @@ export function WorkspaceScreen({
       members={members.map((m) => ({ userId: m.userId, role: m.role as EspacioWorkspace["role"], isCurrentUser: m.userId === currentUserId }))}
       invitations={invitations.map((i) => ({ id: i.id, email: i.email, role: i.role, expiresAt: i.expiresAt }))}
       inviteLink={inviteLink}
+      switchingTo={switchingTo}
       onSelectWorkspace={(id) => void handleSelectWorkspace(id)}
       onCreateAgency={handleCreateAgency}
       onInvite={(email, role) => void handleInvite(email, role)}

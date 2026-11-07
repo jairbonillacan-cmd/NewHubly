@@ -14,3 +14,7 @@ Thumbs.db
 *.log
 next-env.d.ts
 *.tsbuildinfo
+
+# Archivos locales de agentes (#172)
+.agents/
+apps/web/AGENTS.md

@@ -11,6 +11,8 @@ import {
   toggleTodoUseCase, updateNoteUseCase, updateTodoUseCase, type AcceptInvitationResult, type UserWorkspaceSummary, type WorkspaceInvitationRecord,
 } from "../server/composition";
 
+import { composeChatService, isChatEnabled } from "../server/composition/chat";
+
 export type WorkspaceNote = Awaited<ReturnType<ReturnType<typeof listNotesUseCase>>>[number];
 export type WorkspaceTodo = Awaited<ReturnType<ReturnType<typeof listTodosUseCase>>>[number];
 export type WorkspaceTodoView = Parameters<ReturnType<typeof listTodosUseCase>>[0];
@@ -30,6 +32,7 @@ export interface WorkspaceDashboardData {
   avatarUrl: string | null;
   /** Estado de presencia elegido (issue 143). */
   presence: PresenceStatus;
+  chat?: { unread: number | null } | null;
 }
 
 const autosaveNoteSchema = updateNoteSchema.required({ expectedVersion: true });
@@ -45,7 +48,11 @@ export async function loadWorkspaceDashboardAction(workspaceId?: string): Promis
   const todos = [...todayTodos, ...upcomingTodos, ...noDateTodos, ...doneTodos].filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)));
   const activeWorkspace: WorkspaceSummary = { id: ctx.workspaceId, name: ctx.workspaceName, slug: ctx.workspaceSlug ?? ctx.workspaceId, kind: ctx.workspaceKind, role: ctx.role };
   const wallpaperImageUrl = preferences.wallpaper === "imagen" ? await signUserWallpaper(ctx.userId) : null;
-  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences, wallpaperImageUrl, currentUserEmail: ctx.userEmail, currentUserName: profile.name, avatarUrl: profile.avatarUrl, presence: profile.presence };
+  const chat = activeWorkspace.kind === "agency" && isChatEnabled(activeWorkspace.id)
+    ? { unread: await composeChatService(activeWorkspace, ctx.claims, ctx.db).list(activeWorkspace.id)
+      .then((conversations) => conversations.filter((item) => item.unread).length, () => null) }
+    : null;
+  return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences, wallpaperImageUrl, currentUserEmail: ctx.userEmail, currentUserName: profile.name, avatarUrl: profile.avatarUrl, presence: profile.presence, chat };
 }
 
 export async function createTodoAction(input: CreateTodoInput, workspaceId?: string): Promise<WorkspaceTodo> {

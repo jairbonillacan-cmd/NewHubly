@@ -8,12 +8,15 @@ import { Icon } from "./icons";
 export interface CarrilProps {
   expandido: boolean;
   onToggleExpandido: () => void;
-  activa: HerramientaId;
+  activa: HerramientaId | undefined;
+  chat?: { href: string; active: boolean } | undefined;
   onSelect: (id: HerramientaId) => void;
   /** Pendientes de Hoy sin hacer (vencidos y de hoy): la ficha de Hoy. */
   hoyPendientes: number;
   /** Pendientes de esta semana: hechos y totales, para la tarjeta «Tu semana». */
   semana: { hechos: number; total: number };
+  /** Se está cambiando de espacio: no se muestran las cuentas del anterior (#215). */
+  cargando?: boolean;
 }
 
 const ITEM = "relative w-full min-h-11 cursor-pointer rounded-xl border-0 transition-colors";
@@ -25,7 +28,7 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
   const etiqueta = herramienta.disponible ? herramienta.nombre : `${herramienta.nombre}, próximamente`;
   const boton = (
     <Button variant="ghost" aria-label={etiqueta} {...(activa ? { "aria-current": "page" as const } : {})} onPress={onSelect}
-      className={`${ITEM} ${tono} ${expandido ? "h-11 justify-start gap-3 px-3" : "h-12 justify-center px-0"}`}>
+      className={`${ITEM} ${tono} ${expandido ? "h-11 justify-start gap-3 px-3" : "h-11 justify-center px-0"}`}>
       <span className="relative">
         <HerramientaIcono id={herramienta.id} activo={activa} />
         {!herramienta.disponible && !expandido && (
@@ -50,15 +53,20 @@ function Item({ herramienta, activa, expandido, ficha, onSelect }: { herramienta
   );
 }
 
-/** Carril izquierdo (#105, sección 3): Hoy primero y el grupo «Herramientas»; compacto (64 px) o completo (232 px). */
-export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPendientes, semana }: CarrilProps) {
+/** Carril izquierdo (#105, sección 3): Hoy primero y el grupo «Herramientas»; compacto o completo, con el ancho de `--frame-rail-w` y `--frame-rail-w-open`. */
+export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPendientes, semana, chat, cargando = false }: CarrilProps) {
   const [hoy, ...herramientas] = HERRAMIENTAS;
-  const ficha = (herramienta: Herramienta) => herramienta.id === "hoy" ? (hoyPendientes > 0 ? String(hoyPendientes) : null) : "Pronto";
+  const ficha = (herramienta: Herramienta) => herramienta.id === "hoy" ? (hoyPendientes > 0 && !cargando ? String(hoyPendientes) : null) : "Pronto";
   return (
     <div className="group/carril relative h-full">
     <nav aria-label="Herramientas" data-delay="1"
-      className={`hubly-glass hubly-enter hubly-carril flex h-full flex-col gap-1 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-2 whitespace-nowrap ${expandido ? "w-60" : "w-18 items-center"}`}>
+      className={`hubly-glass hubly-enter hubly-carril flex h-full flex-col gap-1 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-(--frame-rail-pad) whitespace-nowrap ${expandido ? "w-(--frame-rail-w-open)" : "w-(--frame-rail-w) items-center"}`}>
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
+      {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined} aria-label="Chat"
+        className={`${ITEM} flex items-center gap-3 ${expandido ? "px-3" : "justify-center"} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--glass-hover)"}`}>
+        <Icon name="chat" active={chat.active} className="size-6" />
+        {expandido && <span className="hubly-carril-texto text-sm font-semibold">Chat</span>}
+      </a>}
       <span aria-hidden="true" className="mx-2 my-1.5 h-px bg-(--glass-line-strong)" />
       {expandido && <p className="hubly-carril-texto m-0 px-3 pb-1 text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">Herramientas</p>}
       <ul className="m-0 flex list-none flex-col gap-1 p-0">
@@ -78,8 +86,8 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
       {expandido && (
         <div className="hubly-carril-texto mb-1 flex flex-col gap-2 rounded-xl bg-(--glass-hover) p-3 whitespace-normal">
           <p className="m-0 text-sm font-semibold">Tu semana</p>
-          <p className="m-0 text-xs text-(--text-secondary)">{semana.hechos} de {semana.total} pendientes hechos</p>
-          <progress value={semana.hechos} max={Math.max(semana.total, 1)} aria-label="Pendientes hechos esta semana"
+          <p className="m-0 text-xs text-(--text-secondary)">{cargando ? "Cargando…" : `${semana.hechos} de ${semana.total} pendientes hechos`}</p>
+          <progress value={cargando ? 0 : semana.hechos} max={Math.max(cargando ? 1 : semana.total, 1)} aria-label="Pendientes hechos esta semana"
             className="h-1.5 w-full appearance-none overflow-hidden rounded-full [&::-moz-progress-bar]:bg-(--accent-primary) [&::-webkit-progress-bar]:bg-(--glass-line-strong) [&::-webkit-progress-value]:bg-(--accent-primary)" />
         </div>
       )}

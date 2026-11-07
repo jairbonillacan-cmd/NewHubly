@@ -1,0 +1,82 @@
+import type { ChatMessage } from "@hubly/contracts";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { incomingChatNotice, isMessageEndVisible, mergeChatMessages, startChatPolling } from "../src/components/chat/sync";
+
+const base = {
+  id: "one", conversationId: "canal", authorId: "autor", body: "Primero", number: 1, change: 1,
+  sentAt: "2026-11-05T15:00:00.000Z", editedAt: null, deletedAt: null,
+} satisfies ChatMessage;
+
+describe("Sincronización de chat en el navegador", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("ordena y combina el historial con cambios fuera de orden sin restaurar mensajes retirados", () => {
+    const second = { ...base, id: "two", number: 2, change: 2 };
+    const tombstone = { ...base, body: null, change: 4, deletedAt: base.sentAt };
+    expect(mergeChatMessages([second, tombstone], [base, second])).toEqual([tombstone, second]);
+    expect(mergeChatMessages([second], [tombstone, { ...base, change: 3 }])).toEqual([tombstone, second]);
+  });
+
+  it("cambia el aviso accesible cuando llegan mensajes en consultas consecutivas", () => {
+    expect(incomingChatNotice(1)).toBe("Llegó un mensaje nuevo.");
+    expect(incomingChatNotice(2)).toContain("2 mensajes nuevos");
+    expect(incomingChatNotice(3)).toContain("3 mensajes nuevos");
+  });
+
+  it("marca la lectura solo cuando el final del mensaje queda dentro del historial y la pantalla", () => {
+    expect(isMessageEndVisible(440, { top: 100, bottom: 440 }, 800)).toBe(true);
+    expect(isMessageEndVisible(451, { top: 100, bottom: 440 }, 800)).toBe(false);
+    expect(isMessageEndVisible(660, { top: 100, bottom: 700 }, 650)).toBe(false);
+    expect(isMessageEndVisible(99, { top: 100, bottom: 440 }, 800)).toBe(false);
+  });
+
+  it("sincroniza cada tres segundos, pausa al ocultarse y retoma en foco o al reconectar", async () => {
+    vi.useFakeTimers();
+    const page = Object.assign(new EventTarget(), { hidden: false });
+    const win = Object.assign(new EventTarget(), { navigator: { onLine: true } });
+    const sync = vi.fn().mockResolvedValue(false);
+    const poll = startChatPolling(sync, win as unknown as Window, page as unknown as Document);
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(sync).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(sync).toHaveBeenCalledTimes(2);
+
+    page.hidden = true;
+    page.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(sync).toHaveBeenCalledTimes(2);
+    page.hidden = false;
+    win.dispatchEvent(new Event("focus"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sync).toHaveBeenCalledTimes(3);
+
+    win.navigator.onLine = false;
+    win.dispatchEvent(new Event("offline"));
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(sync).toHaveBeenCalledTimes(3);
+    win.navigator.onLine = true;
+    win.dispatchEvent(new Event("online"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sync).toHaveBeenCalledTimes(4);
+    poll.stop();
+    win.dispatchEvent(new Event("focus"));
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(sync).toHaveBeenCalledTimes(4);
+  });
+
+  it("encola una sincronización inmediata si se pide mientras otra sigue en curso", async () => {
+    vi.useFakeTimers();
+    const page = Object.assign(new EventTarget(), { hidden: false });
+    const win = Object.assign(new EventTarget(), { navigator: { onLine: true } });
+    let finish: (value: boolean) => void = () => {};
+    const sync = vi.fn(() => new Promise<boolean>((resolve) => { finish = resolve; }));
+    const poll = startChatPolling(sync, win as unknown as Window, page as unknown as Document);
+    expect(sync).toHaveBeenCalledTimes(1);
+    poll.refresh();
+    expect(sync).toHaveBeenCalledTimes(1);
+    finish(false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sync).toHaveBeenCalledTimes(2);
+    poll.stop();
+  });
+});

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -77,7 +78,7 @@ describe("Carril de herramientas", () => {
   });
 
   it("abre Calendario desde el estado inicial y muestra Próximamente en lugar de los paneles", () => {
-    const content = (html: string) => html.match(/<main\b[^>]*>(.*?)<\/main>/s)?.[1];
+    const content = (html: string) => html.match(/<main\b[^>]*>(?:<div class="hubly-espacio-escena[^>]*>)?(.*?)(?:<\/div>)?<\/main>/s)?.[1];
     expect(content(render())).toContain("Hoy");
     expect(content(render({ initialHerramienta: "calendario" }))).toMatch(/^<section[^>]*aria-labelledby="proximamente-titulo"[\s\S]*>Calendario<\/h2>[\s\S]*<\/section>$/);
   });
@@ -91,5 +92,29 @@ describe("Carril de herramientas", () => {
       { dueDate: "2026-11-09", isDone: true },
       { dueDate: null, isDone: true },
     ], date)).toEqual({ hechos: 2, total: 3 });
+  });
+});
+
+describe("Marco compacto: medidas por tokens y objetivos táctiles de 44 px", () => {
+  const css = readFileSync(new URL("../tokens.css", import.meta.url), "utf8");
+  const px = (name: string) => Number(new RegExp(`${name}:\\s*([\\d.]+)rem`).exec(css)![1]) * 16;
+
+  it("define el ancho del carril y la altura de la barra y del dock como tokens, y el marco los usa", () => {
+    expect(px("--frame-rail-w")).toBe(56);
+    expect(px("--frame-rail-w-open")).toBeLessThan(240);
+    expect(px("--frame-topbar-h")).toBeLessThan(56);
+    expect(px("--frame-dock-h")).toBeLessThan(64);
+    const html = render();
+    expect(html).toContain("lg:grid-rows-[var(--frame-topbar-h)_minmax(0,1fr)_auto]");
+    expect(html).toContain("h-(--frame-topbar-h)");
+    expect(html).toContain("h-(--frame-dock-h)");
+  });
+
+  it("el carril retraído deja 44 px útiles por botón (ancho menos el relleno) y el desplegado usa su token", () => {
+    expect(px("--frame-rail-w") - 2 * px("--frame-rail-pad")).toBeGreaterThanOrEqual(44);
+    const rail = (expandido: boolean) => renderToStaticMarkup(createElement(Carril, { expandido, activa: "hoy", onToggleExpandido: noop, onSelect: noop, hoyPendientes: 0, semana: { hechos: 0, total: 0 } }));
+    expect(rail(false)).toContain("w-(--frame-rail-w) ");
+    expect(rail(true)).toContain("w-(--frame-rail-w-open)");
+    expect(/<button[^>]*aria-label="Hoy"[^>]*>/.exec(rail(false))![0]).toContain(" h-11 ");
   });
 });

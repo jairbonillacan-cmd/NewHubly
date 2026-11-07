@@ -5,7 +5,7 @@ import { createSupabaseServerClient, enforceHttpOnlyCookieOptions } from "./serv
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   // /invitacion lee la sesión en el servidor: hay que refrescarla aquí, porque un componente de servidor no puede escribir cookies.
-  if (!path.startsWith("/hoy") && !path.startsWith("/login") && !path.startsWith("/auth") && !path.startsWith("/invitacion")) {
+  if (!path.startsWith("/hoy") && path !== "/chat" && !path.startsWith("/login") && !path.startsWith("/auth") && !path.startsWith("/invitacion")) {
     return NextResponse.next({ request });
   }
   let response = NextResponse.next({ request });
@@ -23,7 +23,7 @@ export async function updateSession(request: NextRequest) {
   // Una Server Action (POST con cabecera «next-action») no se redirige aquí: el cliente recibiría el HTML de /login como
   // respuesta inesperada. Se deja pasar y la propia acción redirige a /login con una respuesta que Next entiende (#92).
   const isServerAction = request.method === "POST" && request.headers.has("next-action");
-  if (path.startsWith("/hoy") && !isServerAction && (error || !data?.user?.id)) {
+  if ((path.startsWith("/hoy") || path === "/chat") && !isServerAction && (error || !data?.user?.id)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   return response;

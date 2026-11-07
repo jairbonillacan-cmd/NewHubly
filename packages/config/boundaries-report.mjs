@@ -25,12 +25,14 @@ const HEROUI_PRO_CODE_IMPORT_RE = /(from\s+["']@heroui(-|\/)pro(\/.*)?["']|impor
 // Regla 1 (#69): Registro explícito y documentado de rutas vigentes en apps/web/src/app.
 export const KNOWN_APP_ROUTES = new Map([
   ["/", "Página principal pública (landing)"],
+  ["/chat", "Chat interno de agencias habilitadas"],
   ["/hoy", "Espacio de trabajo operativo (vista Hoy)"],
   ["/login", "Inicio de sesión, registro y enlace mágico"],
   ["/invitacion", "Aceptación de invitación a agencia por fragmento URL"],
   ["/privacidad", "Política de privacidad pública"],
   ["/terminos", "Términos del servicio públicos"],
   ["/precios", "Planes y precios públicos (precio en «Próximamente»)"],
+  ["/api/chat", "API privada de chat de agencia"],
   ["/auth/callback", "Callback de intercambio de código de autenticación"],
   ["/auth/confirm", "Enlaces de los correos de Auth (token validado en el servidor)"],
 ]);

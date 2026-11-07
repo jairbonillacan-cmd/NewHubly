@@ -12,6 +12,8 @@ Cada decisión relevante tiene un ADR breve. Un ADR aceptado no se edita: se ree
 | [0006](0006-componentes-heroui-v3-oss.md) | Adopción de HeroUI v3 OSS para componentes base | Propuesto |
 | [0007](0007-roles-invitaciones-y-visibilidad-agencia.md) | Modelo de roles de agencia, invitaciones con token hasheado y visibilidad compartida en RLS | Propuesto |
 | [0008](0008-fondo-propio-storage-privado.md) | «Tu imagen»: fondo propio en Storage privado, sin metadatos y con URL firmada | Propuesto |
+| [0010](0010-chat-interno-de-agencia.md) | Chat interno de agencia | Aceptado |
+| [0013](0013-rama-produccion.md) | Rama `produccion`: integración en `main` y publicación controlada | Propuesto |
 
 ## Plantilla
 
