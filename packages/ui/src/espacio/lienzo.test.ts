@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PANEL_MIN, redimensionar, LIENZO_PASO, LIENZO_ZOOM_MAX, LIENZO_ZOOM_MIN, alinear, clampZoom, fitView, visibleRect, zoomAt } from "./Lienzo";
+import { PANEL_MIN, redimensionar, LIENZO_PASO, LIENZO_ZOOM_MAX, LIENZO_ZOOM_MIN, alinear, clampZoom, fitView, panelesEnSeleccion, seleccionEnLienzo, visibleRect, zoomAt } from "./Lienzo";
 
 describe("Lienzo infinito (issue 136)", () => {
   it("acerca y aleja sin mover el punto bajo el cursor", () => {
@@ -42,5 +42,21 @@ describe("Lienzo infinito (issue 136)", () => {
     const chico = redimensionar(rect, "nw", 999, 999);
     expect([chico.w, chico.h]).toEqual([PANEL_MIN.w, PANEL_MIN.h]);
     expect(chico.x + chico.w).toBe(rect.x + rect.w);
+  });
+});
+
+describe("Selección con el botón izquierdo", () => {
+  it("convierte el rectángulo de pantalla al lienzo con desplazamiento y zoom", () => {
+    expect(seleccionEnLienzo({ x: 100, y: 50, zoom: 2 }, 300, 250, 100, 50)).toEqual({ x: 0, y: 0, w: 100, h: 100 });
+  });
+
+  it("selecciona los paneles que toca el rectángulo, aunque sea solo una parte", () => {
+    const panels = [
+      { id: "hoy", rect: { x: 0, y: 0, w: 100, h: 100 } },
+      { id: "nota", rect: { x: 150, y: 0, w: 100, h: 100 } },
+      { id: "notas", rect: { x: 0, y: 300, w: 100, h: 100 } },
+    ];
+    expect(panelesEnSeleccion(panels, { x: 90, y: 10, w: 80, h: 20 })).toEqual(["hoy", "nota"]);
+    expect(panelesEnSeleccion(panels, { x: 400, y: 400, w: 10, h: 10 })).toEqual([]);
   });
 });
