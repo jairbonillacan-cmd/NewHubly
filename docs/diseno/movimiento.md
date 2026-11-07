@@ -33,6 +33,17 @@ Hubly debe sentirse inmediato. El movimiento sirve para confirmar una acción o 
 - Con `prefers-reduced-motion: reduce` no hay desplazamientos, escalas ni rebotes. Se permite como máximo un fundido de 100 ms, o un cambio instantáneo.
 - Toda animación nueva incluye su regla de movimiento reducido en el mismo PR.
 
+## Excepción: fondos ilustrados animados
+
+Decisión del dueño (#250). Un fondo ilustrado puede moverse en bucle, aunque sea decorativo, si se cumplen todas estas condiciones:
+
+- **Lo elige la persona.** En Apariencia hay que activar «Con movimiento» (#251); nunca viene activado por defecto.
+- **Va detrás de todo.** El movimiento es lento y ambiental (lluvia, vapor, un movimiento de cámara sin salto) y queda bajo el velo del fondo y los paneles.
+- **Respeta el movimiento reducido.** Con `prefers-reduced-motion: reduce` solo se descarga y se muestra la versión estática.
+- **Se puede apagar desde la interfaz** en cualquier momento, sin ir a los ajustes del sistema (WCAG 2.2.2).
+
+Nada más en la interfaz del producto usa bucles decorativos: los indicadores y las miniaturas se quedan quietos.
+
 ## Esperas: primero que no se note
 
 1. **Actualización optimista.** Si una acción casi nunca falla (marcar hecho, mover, renombrar, reprogramar), la interfaz cambia al instante. Si el servidor falla, se revierte y se explica qué pasó con una acción de reintento.
