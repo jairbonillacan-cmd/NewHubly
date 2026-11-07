@@ -158,6 +158,36 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
     expect(authRes.cookies.get("sb-access-token")?.httpOnly).toBe(true);
   });
 
+  it("middleware lleva /login a /hoy con sesión válida y conserva las cookies renovadas", async () => {
+    setSupabaseServerClientFactoryForTests((cookieMethods) => ({
+      auth: {
+        getUser: vi.fn().mockImplementation(async () => {
+          cookieMethods?.setAll([{ name: "sb-access-token", value: "nuevo-jwt", options: { httpOnly: false } }]);
+          return { data: { user: { id: "u-1", email: "ana@agencia.es" } }, error: null };
+        }),
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any);
+    for (const url of ["http://localhost:3100/login", "http://localhost:3100/login?modo=registro"]) {
+      const res = await middleware(new NextRequest(url));
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe("http://localhost:3100/hoy");
+      expect(res.cookies.get("sb-access-token")?.value).toBe("nuevo-jwt");
+      expect(res.cookies.get("sb-access-token")?.httpOnly).toBe(true);
+    }
+    // Las Server Actions del formulario de /login no se redirigen: el cliente decide a dónde ir.
+    const actionRes = await middleware(new NextRequest("http://localhost:3100/login", { method: "POST", headers: { "next-action": "abc123" } }));
+    expect(actionRes.status).toBe(200);
+    expect(actionRes.headers.get("location")).toBeNull();
+
+    // Sin sesión, /login muestra el formulario.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSupabaseServerClientFactoryForTests(() => ({ auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: new Error("No session") }) } }) as any);
+    const anonRes = await middleware(new NextRequest("http://localhost:3100/login"));
+    expect(anonRes.status).toBe(200);
+    expect(anonRes.headers.get("location")).toBeNull();
+  });
+
   it("acciones de auth ocultan errores de enumeración, pasan emailRedirectTo a /auth/callback y crean espacio al primer inicio", async () => {
     const members: Array<{ workspaceId: string; userId: string; role: string }> = [];
     const tx = {

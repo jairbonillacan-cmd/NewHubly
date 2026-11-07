@@ -26,6 +26,13 @@ export async function updateSession(request: NextRequest) {
   if ((path.startsWith("/hoy") || path === "/chat") && !isServerAction && (error || !data?.user?.id)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
+  // Con sesión válida, /login (p. ej. «Entrar» desde la landing) lleva directo a Hoy (#198). Se copian las cookies
+  // renovadas por getUser(): si se perdieran, el refresh token ya rotado dejaría la sesión inservible.
+  if (path === "/login" && !isServerAction && !error && data?.user?.id) {
+    const redirect = NextResponse.redirect(new URL("/hoy", request.url));
+    for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+    return redirect;
+  }
   return response;
 }
 
