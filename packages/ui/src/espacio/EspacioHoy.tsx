@@ -368,7 +368,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const dock = !chat?.active && herramienta === "hoy" ? createTodayDock({
     todos, date: todayDate, layout, onLayout: (distribucion) => setPrefs({ distribucion }),
     filter, onFilter: (next) => { setFilter(next); setPrefs({ paneles: { hoy: true } }); },
-    createNote: () => void createNote(), exportData: () => onExport("json"), saveState, suggestion,
+    createNote: () => void createNote(), saveState, suggestion,
     entry: {
       label: "Capturar pendiente", hint: "Captura… prueba «llamar a Lumen mañana !alta»", shortcut: "C",
       submitIcon: <HubiFace className="size-5" />,

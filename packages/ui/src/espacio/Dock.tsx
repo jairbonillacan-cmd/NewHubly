@@ -4,7 +4,7 @@ import { Button, Chip, Kbd, Popover, Slider, ToggleButton } from "@heroui/react"
 import { forwardRef, useId, useState, type FormEvent, type ReactNode } from "react";
 import { ColorArea, ColorField, ColorPicker, ColorSlider, ColorSwatch, ColorSwatchPicker, ColorSwatchPickerItem, ColorThumb, FileTrigger, Input, SliderTrack, parseColor, type Color } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
-import { HUBLY_ACCENTS, HUBLY_ESTILOS, setAccentColor, useHublyAccent, useHublyAccentColor, useHublyEstilo, useHublyTheme } from "../landing/ThemeToggle";
+import { HUBLY_ACCENTS, HUBLY_ESTILOS, HUBLY_HUD, setAccentColor, useHublyAccent, useHublyAccentColor, useHublyEstilo, useHublyHud, useHublyTheme } from "../landing/ThemeToggle";
 import { Icon } from "./icons";
 import { FONDOS_ILUSTRADOS, WALLPAPERS, WALLPAPERS_ILUSTRADOS, type EspacioPreferencias, type PreferenciasPatch } from "./preferencias";
 import type { CaptureFieldProps, DockConfig, DockSuggestion } from "./dockConfig";
@@ -170,6 +170,7 @@ function TemaYAcento() {
   const [estilo, setEstiloValue] = useHublyEstilo();
   const [accent, setAccentValue] = useHublyAccent();
   const accentColor = useHublyAccentColor();
+  const [hud, setHudValue] = useHublyHud();
   const accentName = HUBLY_ACCENTS.find((entry) => entry.id === accent)?.nombre ?? "";
   const estiloName = HUBLY_ESTILOS.find((entry) => entry.id === estilo)?.nombre ?? "";
   return (
@@ -198,6 +199,17 @@ function TemaYAcento() {
             </button>
           ))}
           <SelectorColor seleccionado={accent === "personalizado"} valor={accentColor} />
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <span className={SECCION}>Tamaño del HUD</span>
+        <div role="radiogroup" aria-label="Tamaño del HUD" className="grid grid-cols-3 gap-1 rounded-xl bg-(--glass-hover) p-1">
+          {HUBLY_HUD.map((entry) => (
+            <button key={entry.id} type="button" role="radio" aria-checked={hud === entry.id} onClick={() => setHudValue(entry.id)}
+              className={`flex min-h-8 cursor-pointer items-center justify-center rounded-lg text-xs font-semibold focus-visible:ring-2 focus-visible:ring-(--accent-primary) ${hud === entry.id ? "bg-(--surface-raised) text-(--text-primary) shadow-sm" : "text-(--text-secondary) hover:bg-(--hover-acento) hover:text-(--text-primary)"}`}>
+              {entry.nombre}
+            </button>
+          ))}
         </div>
       </div>
     </>

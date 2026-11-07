@@ -128,7 +128,14 @@
   /* Acceso (#100) */
   --glass-radius-access-bar: 0.875rem; --glass-radius-access-card: 1.125rem; --container-access: 27.5rem;
 }
-@media (pointer: fine) { :root { --dock-control: 1.8rem; --frame-dock-h: 2.5rem; --rail-item: 2rem; --frame-topbar-h: 2.7rem; --frame-rail-w: 3.15rem; --hud-icono: 1.35rem; } }
+/* Tamaño del HUD (Apariencia): normal (90 %, el predeterminado), grande (100 %) o muy grande (115 %).
+   Con ratón escala todo el marco; en táctil solo crece, nunca baja de 44 px. */
+:root { --hud-escala: 0.9; }
+:root[data-hud="grande"] { --hud-escala: 1; }
+:root[data-hud="muy-grande"] { --hud-escala: 1.15; }
+@media (pointer: fine) { :root { --dock-control: calc(2rem * var(--hud-escala)); --frame-dock-h: calc(2.75rem * var(--hud-escala)); --rail-item: calc(2.25rem * var(--hud-escala));
+  --frame-topbar-h: calc(3rem * var(--hud-escala)); --frame-rail-w: calc(3.5rem * var(--hud-escala)); --hud-icono: calc(1.5rem * var(--hud-escala)); } }
+@media (pointer: coarse) { :root[data-hud="muy-grande"] { --dock-control: 3rem; --rail-item: 3rem; --frame-dock-h: 3.25rem; --frame-topbar-h: 3.25rem; --frame-rail-w: 3.75rem; --hud-icono: 1.65rem; } }
 /* Avance del widget de Enfoque, en pasos de 5 %, para no usar estilos en línea. */
 .hubly-widget-avance { transition: width 1s linear; }
 .hubly-widget-avance[data-avance="0"] { width: 0%; }

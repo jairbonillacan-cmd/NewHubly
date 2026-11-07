@@ -288,3 +288,41 @@ export function useHublyEstilo() {
   const actual: HublyEstilo = guardado && base === preference ? guardado : preference === "system" ? "sistema" : preference === "dark" ? "hubly-oscuro" : "hubly-claro";
   return [actual, setEstilo] as const;
 }
+
+/** Tamaño del HUD (barra superior, dock y carril): se guarda en este navegador y se aplica con data-hud en <html>. */
+export const HUBLY_HUD = [
+  { id: "normal", nombre: "Normal" },
+  { id: "grande", nombre: "Grande" },
+  { id: "muy-grande", nombre: "Muy grande" },
+] as const;
+export type HublyHud = (typeof HUBLY_HUD)[number]["id"];
+const HUD_KEY = "hubly-hud";
+let hudActual: HublyHud | null = null;
+const hudListeners = new Set<() => void>();
+
+function readHud(): HublyHud {
+  if (hudActual) return hudActual;
+  let stored: string | null = null;
+  try { stored = typeof window === "undefined" ? null : window.localStorage.getItem(HUD_KEY); } catch { /* sin almacenamiento */ }
+  hudActual = stored === "grande" || stored === "muy-grande" ? stored : "normal";
+  return hudActual;
+}
+
+export function setHud(next: HublyHud): void {
+  hudActual = next;
+  try { window.localStorage.setItem(HUD_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
+  if (typeof document !== "undefined") {
+    if (next === "normal") document.documentElement.removeAttribute("data-hud");
+    else document.documentElement.setAttribute("data-hud", next);
+  }
+  hudListeners.forEach((listener) => listener());
+}
+
+export function useHublyHud() {
+  const current = useSyncExternalStore(
+    (listener) => { hudListeners.add(listener); return () => { hudListeners.delete(listener); }; },
+    readHud,
+    () => "normal" as HublyHud,
+  );
+  return [current, setHud] as const;
+}
