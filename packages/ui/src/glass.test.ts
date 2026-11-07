@@ -35,6 +35,13 @@ describe("Cristal con reducción de transparencia (issue 224)", () => {
       return found;
     };
     const light = vars(":root"), dark = new Map([...light, ...vars(':root[data-theme="dark"]')]);
+    // Los estilos de tema (#245) cambian el tinte del cristal y el texto: el peor caso se comprueba también en cada uno.
+    const estilo = (base: Map<string, string>, tema: string, id: string) => new Map([...base, ...vars(`:root[data-theme="${tema}"][data-estilo="${id}"]`)]);
+    const temas = [
+      ["claro", light], ["oscuro", dark],
+      ["papel", estilo(light, "light", "papel")], ["niebla", estilo(light, "light", "niebla")],
+      ["cálido", estilo(dark, "dark", "calido")], ["medianoche", estilo(dark, "dark", "medianoche")], ["carbón", estilo(dark, "dark", "carbon")],
+    ] as const;
     const hex = (value: string) => [1, 3, 5].map((i) => parseInt(value.slice(i, i + 2), 16));
     const rgba = (value: string) => { const n = /rgba\(([^)]+)\)/.exec(value)![1]!.split(",").map(Number); return { rgb: n.slice(0, 3), alpha: n[3]! }; };
     const channel = (c: number) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
@@ -42,7 +49,7 @@ describe("Cristal con reducción de transparencia (issue 224)", () => {
     const ratio = (a: number[], b: number[]) => { const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p); return (x! + 0.05) / (y! + 0.05); };
     const over = (top: number[], alpha: number, bottom: number[]) => top.map((t, i) => t * alpha + bottom[i]! * (1 - alpha));
 
-    for (const [name, theme] of [["claro", light], ["oscuro", dark]] as const) {
+    for (const [name, theme] of temas) {
       const glass = theme.get("--glass-rgb")!.split(/\s+/).map(Number);
       const floor = Number(theme.get("--panel-alpha-min-image"));
       const veil = rgba(theme.get("--wallpaper-image-veil")!);

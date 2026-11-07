@@ -544,7 +544,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           </Dropdown>
           {dock && <>
             <BackgroundPicker imagen={imagenControls} prefs={prefs} onChange={setPrefs} isOpen={pickerOpen === "mobile"}
-              onOpenChange={(open) => setPickerOpen(open ? "mobile" : null)} triggerLabel="Fondo" triggerClassName="min-h-11 w-full" />
+              onOpenChange={(open) => setPickerOpen(open ? "mobile" : null)} triggerLabel="Apariencia" triggerClassName="min-h-11 w-full" />
             <DockMore config={dock} extra={<Button variant="ghost" className="min-h-11" onPress={() => document.getElementById("panel-notas")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Notas</Button>} />
           </>}
         </nav>

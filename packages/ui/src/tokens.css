@@ -177,10 +177,12 @@ html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primar
 /* Estilos de tema: variantes de claro u oscuro con contraste AA comprobado. Hubly claro y oscuro son los de siempre. */
 :root[data-theme="light"][data-estilo="papel"] { --surface-canvas: #F5F0E6; --surface-raised: #FFFCF6; --surface-subtle: #EFE8DA; --surface-interactive: #E6DDCB;
   --text-primary: #231F1A; --text-secondary: #4A4239; --text-muted: #5F574C; --border-subtle: #EBE3D4; --border-default: #E2D8C6;
-  --glass-rgb: 255 251 243; --pop-bg: rgba(255, 251, 243, 0.96); --wallpaper-contornos: #EDE5D6; }
+  --glass-rgb: 255 251 243; --pop-bg: rgba(255, 251, 243, 0.96); --wallpaper-contornos: #EDE5D6;
+  /* El cristal tintado queda algo más oscuro que el blanco: el borde de control baja un poco para seguir en 3:1 sobre una imagen (revisión de Prisma, #245). */
+  --border-control: #857F75; }
 :root[data-theme="light"][data-estilo="niebla"] { --surface-canvas: #EEF2F6; --surface-raised: #FBFCFE; --surface-subtle: #E6EBF1; --surface-interactive: #DCE3EB;
   --text-primary: #10161F; --text-secondary: #374151; --text-muted: #4B5563; --border-subtle: #E2E8EF; --border-default: #D7DFE8;
-  --glass-rgb: 250 252 255; --pop-bg: rgba(250, 252, 255, 0.96); --wallpaper-contornos: #E3E9F1; }
+  --glass-rgb: 250 252 255; --pop-bg: rgba(250, 252, 255, 0.96); --wallpaper-contornos: #E3E9F1; --border-control: #858891; }
 :root[data-theme="dark"][data-estilo="calido"] { --surface-canvas: #15120F; --surface-raised: #211C18; --surface-subtle: #2A241F; --surface-interactive: #352E28;
   --text-primary: #F3EEE8; --text-secondary: #D2C9BF; --text-muted: #B3A99D; --border-subtle: #2E2823; --border-default: #3A332C;
   --glass-rgb: 36 31 27; --pop-bg: rgba(38, 33, 28, 0.95); --wallpaper-contornos: #1A1612; }
@@ -215,7 +217,6 @@ html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primar
   --accent-primary-subtle: var(--accent-custom-subtle, #E8EDFB); --text-on-accent: var(--accent-custom-on, #FFFFFF); }
 :root[data-theme="dark"][data-accent="personalizado"] { --accent-primary: var(--accent-custom, #6F98FF); --accent-primary-hover: var(--accent-custom-hover, #8FB0FF);
   --accent-primary-subtle: var(--accent-custom-subtle, #1F2A47); --text-on-accent: var(--accent-custom-on, #0C0D0F); }
-.hubly-acento-arcoiris { background: conic-gradient(#EF4444, #F59E0B, #EAB308, #22C55E, #06B6D4, #3B82F6, #8B5CF6, #EC4899, #EF4444); }
 .hubly-acento-elegido { background-color: var(--accent-custom, #7C3AED); }
 /* Muestras del selector de acento: cada una pinta su propio color en el tema actual. */
 .hubly-acento-muestra[data-acento="azul"] { background-color: #1D4ED8; }
