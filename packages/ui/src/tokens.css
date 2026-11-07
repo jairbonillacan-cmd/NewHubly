@@ -111,7 +111,7 @@
   --wallpaper-contornos: #E9ECF2; --wallpaper-patron: #F1F2F4; --wallpaper-tinta: #DCE5F8; --wallpaper-grafito: #F4F4F5;
   --wallpaper-line: rgba(17, 19, 22, 0.09); --wallpaper-line-accent: rgba(29, 78, 216, 0.28);
   --wallpaper-pattern: rgba(17, 19, 22, 0.05); --wallpaper-pattern-accent: rgba(29, 78, 216, 0.14);
-  --wallpaper-image-veil: rgba(247, 247, 248, 0.60);
+  --wallpaper-image-veil: rgba(247, 247, 248, 0.30);
   /* Iconos de la identidad (issue 148): grafito y azul tinta. */
   --hi-borde: #262C36; --hi-tono-1: #515968; --hi-tono-2: #303743; --hi-relieve: color-mix(in srgb, var(--accent-primary) 8%, #F1F3F7); --hi-brillo: color-mix(in srgb, var(--accent-primary) 16%, #FFFFFF); --hi-acento: var(--accent-primary);
   --hi-medio: #606A7B; --hi-fondo: #FFFFFF; --hi-peligro: #8C1D18; --hi-aviso: #6E4506; --hi-exito: #165632; --hi-papel: #F7F7F8;
@@ -119,7 +119,7 @@
   --presence-online: #16A34A; --presence-away: #F59E0B; --presence-dnd: #DC2626;
   --wallpaper-puntos: #EEF0F4; --wallpaper-cuadricula: #F5F6F8; --wallpaper-aurora: #EEF1F8; --wallpaper-hubis: #E8EEFB; --wallpaper-arena: #F3EEE6;
   --wallpaper-dot: rgba(17, 19, 22, 0.16); --wallpaper-aurora-1: rgba(29, 78, 216, 0.30); --wallpaper-aurora-2: rgba(124, 92, 255, 0.24); --wallpaper-aurora-3: rgba(14, 165, 233, 0.24);
-  --glass-rgb: 255 255 255; --panel-alpha: 0.78; --panel-alpha-min-image: 0.90; --glass-line: rgba(17, 19, 22, 0.08); --glass-line-strong: rgba(17, 19, 22, 0.14);
+  --glass-rgb: 255 255 255; --panel-alpha: 0.78; --panel-alpha-min-image: 0.94; --glass-line: rgba(17, 19, 22, 0.08); --glass-line-strong: rgba(17, 19, 22, 0.14);
   --glass-panel-shadow: 0 0.5rem 1.5rem rgba(17, 19, 22, 0.10); --pop-bg: rgba(255, 255, 255, 0.96); --pop-shadow: 0 1rem 2.5rem rgba(17, 19, 22, 0.16);
   --glass-hover: rgba(17, 19, 22, 0.05); --glass-field: rgba(17, 19, 22, 0.04); --glass-blur-panel: 24px;
   /* Liquid glass (#224): brillo superior, filo de luz interior y saturación del fondo que asoma. */
@@ -525,7 +525,8 @@ body {
 
 /* Paneles de cristal del espacio (#75): la opacidad la elige cada persona (60–98 %) y se aplica en --panel-alpha del contenedor.
    Sobre una imagen (propia o ilustrada) el brillo de detrás es arbitrario: el contenedor lleva .hubly-fondo-imagen y la opacidad
-   no baja de --panel-alpha-min-image, el mínimo que mantiene 4,5:1 en texto tenue y 3:1 en bordes de controles (issue 224). */
+   no baja de --panel-alpha-min-image, el mínimo que mantiene 4,5:1 en texto tenue y 3:1 en bordes de controles (issue 224).
+   En claro el velo es ligero (30 %) para que la ilustración se vea entre los paneles, y el mínimo sube a 94 % para compensar (revisión de Prisma, #244). */
 .hubly-fondo-imagen { --panel-alpha-min: var(--panel-alpha-min-image); }
 .hubly-glass {
   background-color: rgb(var(--glass-rgb) / max(var(--panel-alpha), var(--panel-alpha-min, 0)));
