@@ -204,9 +204,9 @@ describe("Adjuntos de chat: firma binaria, limpieza, cuarentena y ruta privada (
     expect((await POST(jsonRequest({ op: "upload", workspaceId: WS_ID }))).status).toBe(400);
   });
 
-  it("al retirar un mensaje borra sus adjuntos con bucket.remove ANTES del comando, también si lo retira el owner", async () => {
-    // El owner (otro usuario) retira el mensaje de otra persona: el permiso lo decide SQL (chat_message_attachment_paths).
-    installStorageStub("77777777-7777-4777-8777-777777777777");
+  it("al retirar un mensaje propio borra sus adjuntos con bucket.remove ANTES del comando", async () => {
+    // El permiso es el mismo que el de retirar (solo el autor); lo decide SQL (chat_message_attachment_paths).
+    installStorageStub();
     const path = seedStoredAttachment();
     const res = await chatPOST(chatRequest({ kind: "remove", workspaceId: WS_ID, conversationId: CONV_ID, messageId: MSG_ID }));
     expect(res.status).toBe(200);
@@ -230,9 +230,12 @@ describe("Adjuntos de chat: firma binaria, limpieza, cuarentena y ruta privada (
     expect((await chatPOST(chatRequest({ kind: "remove", workspaceId: WS_ID, conversationId: CONV_ID, messageId: MSG_ID }))).status).toBe(503);
     expect(commandSpy).not.toHaveBeenCalled();
 
-    // Sin permiso para purgar (SQL 42501): 404 y sin comando.
+    // Quien no puede retirar el mensaje (otra persona, viewer, conversación archivada): SQL 42501, 404,
+    // ningún archivo borrado y sin comando.
     purgeDenied = true;
+    const callsBefore = calls.length;
     expect((await chatPOST(chatRequest({ kind: "remove", workspaceId: WS_ID, conversationId: CONV_ID, messageId: MSG_ID }))).status).toBe(404);
+    expect(calls.slice(callsBefore).some((call) => call.startsWith("remove:"))).toBe(false);
     expect(commandSpy).not.toHaveBeenCalled();
   });
 });
