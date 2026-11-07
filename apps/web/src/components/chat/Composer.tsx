@@ -295,12 +295,13 @@ export function Composer({
   }
 
   return <div data-dragging={dragging ? "true" : undefined}
-    onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+    // preventDefault siempre, para que el navegador no abra el archivo; sin adjuntos activos no se resalta ni se añade.
+    onDragOver={(event) => { event.preventDefault(); if (attachmentsEnabled) setDragging(true); }}
     onDragLeave={() => setDragging(false)}
     onDrop={(event) => {
       event.preventDefault();
       setDragging(false);
-      handleFiles(Array.from(event.dataTransfer?.files ?? []));
+      if (attachmentsEnabled) handleFiles(Array.from(event.dataTransfer?.files ?? []));
     }}
     className={`relative shrink-0 border-t border-(--border-default) p-3 ${dragging ? "bg-(--accent-primary-subtle)" : ""}`}>
     {typingText && <div role="status" aria-live="polite" className="mb-1.5 flex items-center gap-2 text-xs text-(--text-secondary)">
@@ -332,7 +333,7 @@ export function Composer({
         onSelect={(emoji) => { onDraft(`${draft}${emoji}`); setEmojiOpen(false); composer.current?.focus(); }}
         onClose={() => { setEmojiOpen(false); composer.current?.focus(); }} />
     </div>}
-    {activeAttachments.length > 0 && <ul aria-label="Archivos adjuntos pendientes" className="mb-2 flex flex-wrap gap-2">
+    {attachmentsEnabled && activeAttachments.length > 0 && <ul aria-label="Archivos adjuntos pendientes" className="mb-2 flex flex-wrap gap-2">
       {activeAttachments.map((item) => (
         <li key={item.id} className="flex items-center gap-2 rounded-xl border border-(--border-subtle) bg-(--surface-sunken) px-2.5 py-1.5 text-xs">
           {item.mimeType.startsWith("image/") ? (
@@ -405,7 +406,7 @@ export function Composer({
         <Button type="button" variant="ghost" size="sm" aria-label="Insertar emoji" aria-expanded={emojiOpen}
           className={control} onPress={() => setEmojiOpen((open) => !open)}>😊</Button>
         <Button type="submit" variant="primary" className={control} isPending={sending}
-          isDisabled={!propsCanSend(sending, draft, activeAttachments.length)}>
+          isDisabled={!propsCanSend(sending, draft, attachmentsEnabled ? activeAttachments.length : 0)}>
           {sending ? "Enviando…" : failedSend ? "Reintentar envío" : "Enviar"}
         </Button>
       </div>

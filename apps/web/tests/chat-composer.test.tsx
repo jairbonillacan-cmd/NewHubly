@@ -10,6 +10,7 @@ import {
   applyMentionSelection, detectMentionQuery, filterMentionCandidates, formatTypingIndicator, revokePreviewUrl,
   uploadComposerAttachments, validateAndAddAttachments, type ComposerAttachmentDraft,
 } from "../src/components/chat/Composer";
+import { draftAfterSend, mentionsToSend } from "../src/components/chat/ChatScreen";
 import { ChatView, type ChatViewProps } from "../src/components/chat/ChatView";
 import { ThreadPanel, type ThreadMessageView } from "../src/components/chat/ThreadPanel";
 
@@ -274,10 +275,29 @@ describe("Adjuntos ocultos mientras los mensajes no los muestran (Constitución:
     expect(html).not.toContain('type="file"');
   });
 
-  it("ChatScreen desactiva los adjuntos y pasa menciones y escritura al compositor", () => {
-    const source = readFileSync(resolve(__dirname, "../src/components/chat/ChatScreen.tsx"), "utf8");
-    expect(source).toContain("attachmentsEnabled={false}");
-    expect(source).toMatch(/typingUserIds=\{typingUserIds\} onTyping=\{sendTyping\}/);
-    expect(source).toMatch(/mentionedUserIds: mentioned/);
+  it("con attachmentsEnabled={false} no muestra fichas de adjuntos ni habilita «Enviar» sin texto", () => {
+    const pending: ComposerAttachmentDraft[] = [{ id: "a1", file: new File([], "foto.png"), fileName: "foto.png", mimeType: "image/png", byteSize: 1200 }];
+    const html = renderToStaticMarkup(
+      <Composer writable loading={false} draft="" sending={false} failedSend={false} attachmentsEnabled={false}
+        attachments={pending} onDraft={vi.fn()} onSend={vi.fn()} />,
+    );
+    expect(html).not.toContain("Archivos adjuntos pendientes");
+    expect(html).not.toContain("foto.png");
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*disabled/);
+  });
+});
+
+describe("Menciones guardadas con el borrador de ChatScreen (issue 207)", () => {
+  it("solo envía menciones del directorio cuyo @Nombre sigue en el texto", () => {
+    const body = "Hola @Ana López, ¿lo ves?";
+    expect(mentionsToSend(["u-ana", "u-beto", "u-desconocido"], members, body)).toEqual(["u-ana"]);
+  });
+
+  it("un envío fallido conserva menciones y clave para que el reintento las lleve", () => {
+    const failed = draftAfterSend("Hola @Ana López", "clave-1", ["u-ana"], false);
+    expect(failed).toEqual({ text: "Hola @Ana López", key: "clave-1", sending: false, failed: true, mentions: ["u-ana"] });
+    // El reintento usa las menciones del borrador fallido.
+    expect(mentionsToSend(failed.mentions ?? [], members, failed.text)).toEqual(["u-ana"]);
+    expect(draftAfterSend("Hola @Ana López", "clave-1", ["u-ana"], true)).toEqual({ text: "", sending: false, failed: false });
   });
 });
