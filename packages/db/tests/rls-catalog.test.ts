@@ -34,7 +34,7 @@ describe("Catálogo RLS y Seguridad (ADR 0004, ADR 0007, Issue #23 & #62)", () =
   });
 
   it("las tablas del chat en private tienen RLS forzado y anon no las lee", async () => {
-    const chatTables = ["chat_conversations", "chat_messages", "chat_reads", "chat_reactions", "chat_mentions", "chat_typing", "chat_quotas"];
+    const chatTables = ["chat_conversations", "chat_messages", "chat_reads", "chat_reactions", "chat_mentions", "chat_typing", "chat_quotas", "chat_attachments", "chat_attachment_reservations"];
     const rows = await sql<Array<{ relname: string; relrowsecurity: boolean; relforcerowsecurity: boolean }>>`
       select c.relname, c.relrowsecurity, c.relforcerowsecurity from pg_class c
       join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'private' and c.relname in ${sql(chatTables)};
@@ -50,7 +50,7 @@ describe("Catálogo RLS y Seguridad (ADR 0004, ADR 0007, Issue #23 & #62)", () =
   });
 
   it("las funciones internas del chat no las ejecuta ni authenticated", async () => {
-    for (const fn of ["private.chat_lock_agency_role(uuid)", "private.chat_require_direct_writers(uuid,uuid,uuid)", "private.chat_lock_writable(uuid,uuid)"]) {
+    for (const fn of ["private.chat_lock_agency_role(uuid)", "private.chat_require_direct_writers(uuid,uuid,uuid)", "private.chat_lock_writable(uuid,uuid)", "private.chat_purge_deleted_message_attachments()"]) {
       const [fa] = await sql<Array<{ p: boolean }>>`select has_function_privilege('authenticated', ${fn}, 'execute') as p;`;
       expect(fa?.p, `authenticated no ejecuta ${fn}`).toBe(false);
     }
@@ -61,6 +61,10 @@ describe("Catálogo RLS y Seguridad (ADR 0004, ADR 0007, Issue #23 & #62)", () =
       "private.chat_agency_role(uuid)", "private.chat_ensure_general(uuid)", "private.chat_open_direct(uuid,uuid)", "private.chat_manage_channel(uuid,uuid,text,boolean)",
       "private.chat_send_message(uuid,uuid,uuid,text,uuid,uuid,uuid[])", "private.chat_change_message(uuid,uuid,uuid,text)", "private.chat_mark_read(uuid,uuid,integer)",
       "private.chat_toggle_reaction(uuid,uuid,uuid,text)", "private.chat_set_typing(uuid,uuid)", "private.chat_mark_mentions_read(uuid,uuid,integer)", "private.chat_directory(uuid)",
+      "private.chat_can_read_attachment_object(text)", "private.chat_can_upload_attachment_object(text)", "private.chat_reserve_attachment_upload(uuid,uuid,uuid,text,text,integer)",
+      "private.chat_register_attachment(uuid,uuid,uuid,uuid,text,text,integer,integer,integer)", "private.chat_purge_deleted_message_attachments()",
+      "private.chat_can_purge_message_attachments(uuid,uuid,uuid)", "private.chat_can_delete_attachment_object(text)",
+      "private.chat_message_attachment_paths(uuid,uuid,uuid)", "private.chat_expired_reservation_paths(uuid,uuid,uuid)",
       "private.chat_lock_agency_role(uuid)", "private.chat_require_direct_writers(uuid,uuid,uuid)", "private.chat_lock_writable(uuid,uuid)"]) {
       const [fa] = await sql<Array<{ p: boolean }>>`select has_function_privilege('anon', ${fn}, 'execute') as p;`;
       const [fp] = await sql<Array<{ p: boolean }>>`select has_function_privilege('public', ${fn}, 'execute') as p;`;

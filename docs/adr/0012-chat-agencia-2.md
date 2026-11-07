@@ -59,11 +59,15 @@ Las menciones se resuelven íntegramente dentro de la aplicación (sin push exte
 
 - **Almacenamiento y catálogo:** bucket privado `chat-attachments` con rutas `<workspaceId>/<conversationId>/<uuid>` y tabla `private.chat_attachments` vinculada al mensaje (`message_id`, `conversation_id`, `workspace_id`, nombre seguro, tipo MIME verificado, tamaño en bytes y dimensiones opcionales para imágenes).
 - **Aislamiento y ciclo de vida:** solo los miembros con acceso de lectura a la conversación pueden leer sus adjuntos. Al retirar un mensaje, sus adjuntos dejan de servirse.
-- **Subida por ruta de servidor:**
+- **Subida con saneado en servidor:**
   - Lista blanca estricta de tipos comprobada por firma binaria real: `image/jpeg`, `image/png`, `image/webp`, `image/gif` y `application/pdf`.
   - Límite máximo de **10 MB** por archivo y hasta **5 adjuntos por mensaje**.
   - Limpieza de metadatos (EXIF, XMP, IPTC, comentarios) en el servidor reutilizando `sanitizeWallpaperImage` ([ADR 0008](0008-fondo-propio-storage-privado.md)) sin añadir dependencias externas.
   - Entrega mediante URL firmada de **1 hora** generada en el servidor con la sesión del usuario; las descargas se sirven con `Content-Disposition: attachment`.
+- **Flujo de subida (reserve → PUT → commit):** `POST /api/chat/attachments` solo acepta JSON. Con `op: "reserve"` el servidor crea una reserva de 10 minutos y devuelve una URL firmada de subida a `<workspaceId>/<conversationId>/quarantine/<id>`; el navegador hace el `PUT` directo a Storage (sin pasar por el límite de 4,5 MB de las funciones). Con `op: "commit"` el servidor descarga la copia en cuarentena, la sanea, sube el resultado limpio a la ruta final, registra el adjunto en una transacción y borra la cuarentena con `bucket.remove`. Antes de reservar, las reservas vencidas de quien sube se borran de Storage por la API.
+- **Borrado por la API de Storage:** nunca se borran filas de `storage.objects` por SQL, porque eso deja el archivo físico huérfano. Al retirar un mensaje, la ruta del chat borra sus archivos con `bucket.remove` **antes** de retirarlo; si la purga falla, el mensaje no se retira y se devuelve un error. Puede purgar exactamente quien puede retirar el mensaje: su autor, con rol de escritura y en una conversación que se puede escribir. Mientras no exista moderación, un `owner`/`admin` no borra adjuntos ajenos. La purga se puede repetir: un adjunto que ya no está en Storage cuenta como borrado. El disparador SQL queda como red de seguridad y solo borra las filas de catálogo y reservas.
+- **PDF rechazados:** se admiten enlaces normales (`/URI`). Se rechazan, también ocultos con escapes `#xx`, los PDF con acciones automáticas o scripts (`/JavaScript`, `/JS`, `/Launch`, `/OpenAction`, `/AA`, `/SubmitForm`, `/ImportData`, `/GoToR`, `/GoToE`), archivos o medios incrustados (`/EmbeddedFile(s)`, `/RichMedia`), formularios XFA y flujos de objetos comprimidos (`/ObjStm`, que no podemos revisar). Esto incluye muchos PDF exportados desde procesadores de texto; el mensaje de error pide exportarlo de nuevo como PDF sencillo.
+- **Riesgo aceptado:** las URL firmadas ya emitidas siguen válidas hasta 1 hora aunque a la persona le bajen el rol o salga de la agencia, porque Storage no las revoca. Las URL nuevas sí respetan los permisos vigentes.
 
 ### 6. Exportación exclusiva del propietario (`owner`)
 
