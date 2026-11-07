@@ -121,7 +121,10 @@
   --wallpaper-dot: rgba(17, 19, 22, 0.16); --wallpaper-aurora-1: rgba(29, 78, 216, 0.30); --wallpaper-aurora-2: rgba(124, 92, 255, 0.24); --wallpaper-aurora-3: rgba(14, 165, 233, 0.24);
   --glass-rgb: 255 255 255; --panel-alpha: 0.78; --glass-line: rgba(17, 19, 22, 0.08); --glass-line-strong: rgba(17, 19, 22, 0.14);
   --glass-panel-shadow: 0 0.5rem 1.5rem rgba(17, 19, 22, 0.10); --pop-bg: rgba(255, 255, 255, 0.96); --pop-shadow: 0 1rem 2.5rem rgba(17, 19, 22, 0.16);
-  --glass-hover: rgba(17, 19, 22, 0.05); --glass-field: rgba(17, 19, 22, 0.04); --glass-blur-panel: 18px;
+  --glass-hover: rgba(17, 19, 22, 0.05); --glass-field: rgba(17, 19, 22, 0.04); --glass-blur-panel: 24px;
+  /* Liquid glass (#224): brillo superior, filo de luz interior y saturación del fondo que asoma. */
+  --glass-saturate: 180%; --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 38%, rgba(255, 255, 255, 0) 100%);
+  --glass-highlight: inset 0 0.0625rem 0 rgba(255, 255, 255, 0.85), inset 0 0 0 0.0625rem rgba(255, 255, 255, 0.35), inset 0 -0.0625rem 0 rgba(17, 19, 22, 0.04);
   /* Acceso (#100) */
   --glass-radius-access-bar: 0.875rem; --glass-radius-access-card: 1.125rem; --container-access: 27.5rem;
 }
@@ -129,21 +132,21 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --surface-canvas: #0C0D0F;
-  --surface-raised: #16181C;
-  --surface-subtle: #1C1F24;
-  --surface-interactive: #24272D;
-  --text-primary: #E8E8EB;
-  --text-secondary: #B9BCC4;
-  --text-muted: #9A9DA6;
+  --surface-canvas: #111317;
+  --surface-raised: #1B1E24;
+  --surface-subtle: #22252C;
+  --surface-interactive: #2C3038;
+  --text-primary: #F1F2F4;
+  --text-secondary: #C9CCD3;
+  --text-muted: #A9ADB6;
   --text-on-accent: #0C0D0F;
-  --border-subtle: #202329;
-  --border-default: #26292F;
-  --border-control: #6B6F79;
-  --border-strong: #6B6F79;
+  --border-subtle: #2A2E35;
+  --border-default: #343841;
+  --border-control: #7D828D;
+  --border-strong: #7D828D;
   --accent-primary: #6F98FF;
   --accent-primary-hover: #8FB0FF;
-  --accent-primary-subtle: #1A2238;
+  --accent-primary-subtle: #1F2A47;
   --logo-color: var(--text-primary);
   --status-success-bg: #132a1e;
   --status-success-text: #8ce0ad;
@@ -155,9 +158,9 @@
   --surface-brand: #16181C; --surface-brand-subtle: #202329; --surface-brand-contrast: #E8E8EB; --surface-brand-muted: #9A9DA6;
   --bento-surface-base: #1C1F24; --bento-card-bg: #16181C; --bento-card-border: #26292F; --bento-card-hover: #202329;
   --bento-card-shadow: 0 0.0625rem 0.1875rem 0 rgba(0, 0, 0, 0.45); --bento-col-min: 14rem; --bento-highlight-text: #6F98FF;
-  --glass-bg: rgba(22, 24, 28, 0.80); --glass-border: rgba(255, 255, 255, 0.14); --glass-border-strong: rgba(255, 255, 255, 0.26);
-  --glass-shadow: 0 1.25rem 2.5rem -0.5rem rgba(0, 0, 0, 0.55); --glass-fallback-bg: #16181C;
-  --glass-text-primary: #E8E8EB; --glass-text-secondary: #B9BCC4; --glass-text-muted: #9A9DA6;
+  --glass-bg: rgba(30, 33, 40, 0.72); --glass-border: rgba(255, 255, 255, 0.16); --glass-border-strong: rgba(255, 255, 255, 0.28);
+  --glass-shadow: 0 1.25rem 2.5rem -0.5rem rgba(0, 0, 0, 0.55); --glass-fallback-bg: #1B1E24;
+  --glass-text-primary: #F1F2F4; --glass-text-secondary: #C9CCD3; --glass-text-muted: #A9ADB6;
   --glass-hero-veil: linear-gradient(180deg, rgba(12, 13, 15, 0.84) 0%, rgba(12, 13, 15, 0.88) 60%, rgba(12, 13, 15, 0.96) 100%);
   --pill-active-bg: #6F98FF; --pill-active-text: #0C0D0F;
   --pill-glass-bg: rgba(22, 24, 28, 0.84); --pill-glass-border: rgba(255, 255, 255, 0.22); --pill-glass-text: #E8E8EB;
@@ -172,17 +175,19 @@
   --landing-shadow: 0 1.5rem 3rem -0.5rem rgb(0 0 0 / 0.55);
   --tint-blue: #1A2238; --tint-sand: #2A2419; --tint-green: #17261E; --tint-lilac: #221D2E; --text-faint: #7A7E88;
   --icon-fill: #23304F; --icon-fill-active: rgba(12, 13, 15, 0.22);
-  --wallpaper-contornos: #0B0D12; --wallpaper-patron: #101115; --wallpaper-tinta: #0E1A3A; --wallpaper-grafito: #16181C;
-  --wallpaper-line: rgba(232, 232, 235, 0.09); --wallpaper-line-accent: rgba(111, 152, 255, 0.34);
-  --wallpaper-pattern: rgba(232, 232, 235, 0.06); --wallpaper-pattern-accent: rgba(111, 152, 255, 0.16);
-  --wallpaper-image-veil: rgba(12, 13, 15, 0.40);
+  --wallpaper-contornos: #10141C; --wallpaper-patron: #14161B; --wallpaper-tinta: #132350; --wallpaper-grafito: #1A1C21;
+  --wallpaper-line: rgba(232, 232, 235, 0.12); --wallpaper-line-accent: rgba(111, 152, 255, 0.34);
+  --wallpaper-pattern: rgba(232, 232, 235, 0.08); --wallpaper-pattern-accent: rgba(111, 152, 255, 0.16);
+  --wallpaper-image-veil: rgba(12, 13, 15, 0.32);
   --hi-borde: #818B9E; --hi-tono-1: #E8E8EB; --hi-tono-2: #B9BCC4; --hi-relieve: #24272D; --hi-brillo: #FFFFFF; --hi-acento: #6F98FF;
   --hi-medio: #A6ADBC; --hi-fondo: #0C0D0F; --hi-peligro: #F99B96; --hi-aviso: #F3C677; --hi-exito: #8CE0AD; --hi-papel: #16181C;
-  --wallpaper-puntos: #0D0F14; --wallpaper-cuadricula: #111318; --wallpaper-aurora: #0A0C14; --wallpaper-hubis: #0C1328; --wallpaper-arena: #0B1020;
-  --wallpaper-dot: rgba(232, 232, 235, 0.16); --wallpaper-aurora-1: rgba(59, 108, 255, 0.40); --wallpaper-aurora-2: rgba(139, 92, 246, 0.32); --wallpaper-aurora-3: rgba(14, 165, 233, 0.26);
-  --glass-rgb: 16 17 21; --panel-alpha: 0.80; --glass-line: rgba(255, 255, 255, 0.09); --glass-line-strong: rgba(255, 255, 255, 0.15);
-  --glass-panel-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.35); --pop-bg: rgba(20, 22, 26, 0.96); --pop-shadow: 0 1.125rem 2.75rem rgba(0, 0, 0, 0.5);
-  --glass-hover: rgba(255, 255, 255, 0.06); --glass-field: rgba(255, 255, 255, 0.06);
+  --wallpaper-puntos: #12151C; --wallpaper-cuadricula: #15181F; --wallpaper-aurora: #0F1220; --wallpaper-hubis: #121C3A; --wallpaper-arena: #12182C;
+  --wallpaper-dot: rgba(232, 232, 235, 0.16); --wallpaper-aurora-1: rgba(59, 108, 255, 0.50); --wallpaper-aurora-2: rgba(139, 92, 246, 0.40); --wallpaper-aurora-3: rgba(14, 165, 233, 0.34);
+  --glass-rgb: 32 35 43; --panel-alpha: 0.80; --glass-line: rgba(255, 255, 255, 0.14); --glass-line-strong: rgba(255, 255, 255, 0.22);
+  --glass-panel-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.45); --pop-bg: rgba(34, 37, 45, 0.94); --pop-shadow: 0 1.125rem 2.75rem rgba(0, 0, 0, 0.5);
+  --glass-hover: rgba(255, 255, 255, 0.09); --glass-field: rgba(255, 255, 255, 0.08);
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.03) 38%, rgba(255, 255, 255, 0) 100%);
+  --glass-highlight: inset 0 0.0625rem 0 rgba(255, 255, 255, 0.16), inset 0 0 0 0.0625rem rgba(255, 255, 255, 0.05), inset 0 -0.0625rem 0 rgba(0, 0, 0, 0.25);
 }
 
 
@@ -267,15 +272,16 @@ body {
 /* Liquid glass accesible (WCAG 2.2 AA) con respaldo sólido y reducción de transparencia */
 .glass-panel {
   background-color: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  background-image: var(--glass-sheen);
   border: var(--border-width-thin) solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
   color: var(--glass-text-primary);
   border-radius: var(--radius-xl);
 }
 @supports not (backdrop-filter: blur(1px)) { .glass-panel { background-color: var(--glass-fallback-bg); } }
-@media (prefers-reduced-transparency: reduce) { .glass-panel { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--glass-fallback-bg); } }
+@media (prefers-reduced-transparency: reduce) { .glass-panel { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--glass-fallback-bg); background-image: none; } }
 @media (max-width: 640px) { .glass-panel { backdrop-filter: blur(var(--glass-blur-mobile)); -webkit-backdrop-filter: blur(var(--glass-blur-mobile)); } }
 
 .hubly-hubi { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; }
@@ -390,21 +396,23 @@ body {
 /* Paneles de cristal del espacio (#75): la opacidad la elige cada persona (60–98 %) y se aplica en --panel-alpha del contenedor. */
 .hubly-glass {
   background-color: rgb(var(--glass-rgb) / var(--panel-alpha));
+  background-image: var(--glass-sheen);
   border: var(--border-width-thin) solid var(--glass-line);
-  box-shadow: var(--glass-panel-shadow);
-  backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%);
+  box-shadow: var(--glass-highlight), var(--glass-panel-shadow);
+  backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-saturate));
 }
 .hubly-pop-surface {
   background-color: var(--pop-bg);
+  background-image: var(--glass-sheen);
   border: var(--border-width-thin) solid var(--glass-line-strong);
-  box-shadow: var(--pop-shadow);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
+  box-shadow: var(--glass-highlight), var(--pop-shadow);
+  backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-saturate));
 }
 @supports not (backdrop-filter: blur(1px)) { .hubly-glass, .hubly-pop-surface { background-color: var(--surface-raised); } }
 @media (prefers-reduced-transparency: reduce) {
-  .hubly-glass, .hubly-pop-surface { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); }
+  .hubly-glass, .hubly-pop-surface, .hubly-carril-asa { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); background-image: none; }
 }
 /* Lienzo infinito de Hoy (issues 136, 141 y 147): la capa se mueve y escala con variables que pone el componente. */
 .hubly-lienzo { touch-action: none; cursor: grab; }
@@ -445,8 +453,8 @@ body {
   --hi-acento: var(--text-on-accent); --hi-relieve: var(--accent-primary); --hi-brillo: var(--accent-primary); --hi-fondo: var(--accent-primary); }
 /* Carril (issue 150): el ancho se abre con un muelle suave y los textos entran después, deslizándose. */
 /* Botón del carril: el mismo cristal y borde que el carril, un poco más opaco porque asoma sobre el hueco. */
-.hubly-carril-asa { top: calc(50% - 0.75rem); right: -0.75rem; background-color: rgb(var(--glass-rgb) / 0.96); border: var(--border-width-thin) solid var(--glass-line-strong); box-shadow: var(--glass-panel-shadow);
-  backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%); -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(140%);
+.hubly-carril-asa { top: calc(50% - 0.75rem); right: -0.75rem; background-color: rgb(var(--glass-rgb) / 0.96); background-image: var(--glass-sheen); border: var(--border-width-thin) solid var(--glass-line-strong); box-shadow: var(--glass-highlight), var(--glass-panel-shadow);
+  backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-saturate)); -webkit-backdrop-filter: blur(var(--glass-blur-panel)) saturate(var(--glass-saturate));
   transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
 /* Sin transformaciones al pasar el ratón: el botón no se mueve, solo se marca su borde. */
 /* Al pasar el ratón solo cambia el color de la flecha, sin anillo; la zona activa es el propio botón de 24 px. */
