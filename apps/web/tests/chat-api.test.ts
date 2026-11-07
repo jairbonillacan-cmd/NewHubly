@@ -4,9 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "../src/app/api/chat/route";
 import { SessionExpiredError } from "../src/server/composition/auth";
 import { getChatService } from "../src/server/composition/chat";
+import { signCoworkerAvatars } from "../src/server/composition/profile";
 
 vi.mock("server-only", () => ({}));
 vi.mock("../src/server/composition/chat", () => ({ getChatService: vi.fn() }));
+vi.mock("../src/server/composition/profile", () => ({ signCoworkerAvatars: vi.fn() }));
 
 const host = "https://hubly.test";
 const workspaceId = randomUUID();
@@ -60,18 +62,72 @@ describe("API privada de chat", () => {
     expect(sync).toHaveBeenCalledWith(workspaceId, conversationId, 5);
   });
 
-  it("conserva la clave de reintento, sanitiza los errores y sirve exportaciones como descargas", async () => {
+  it("conserva la clave de reintento, sanitiza los errores y sirve exportaciones del owner como descargas", async () => {
     const send = vi.fn().mockRejectedValueOnce({ cause: { code: "P0429" } });
-    const exportOwn = vi.fn().mockResolvedValue([sampleMessage]);
-    vi.mocked(getChatService).mockResolvedValue({ command: send, exportOwn } as unknown as Awaited<ReturnType<typeof getChatService>>);
+    const exportAgency = vi.fn().mockResolvedValue([sampleMessage]);
+    vi.mocked(getChatService).mockResolvedValue({ command: send, exportAgency } as unknown as Awaited<ReturnType<typeof getChatService>>);
     expect((await POST(makePost(command))).status).toBe(429);
     expect(send).toHaveBeenCalledWith(command);
 
     const json = await GET(makeGet("op=export&format=json"));
     expect(json.headers.get("content-disposition")).toContain("hubly-chat.json");
     expect(await json.json()).toEqual({ version: 1, messages: [sampleMessage] });
+    expect(exportAgency).toHaveBeenCalledWith(workspaceId);
     const markdown = await GET(makeGet("op=export&format=md"));
     expect(markdown.headers.get("content-disposition")).toContain("hubly-chat.md");
-    expect(await markdown.text()).toContain("    Mi mensaje");
+    const markdownText = await markdown.text();
+    expect(markdownText).toContain("# Mensajes de la agencia en Hubly");
+    expect(markdownText).toContain("    Mi mensaje");
+
+    exportAgency.mockRejectedValueOnce(new ChatAccessError());
+    expect((await GET(makeGet("op=export&format=json"))).status).toBe(404);
+  });
+
+  it("firma solo los avatares de compañeros con foto en el directorio", async () => {
+    const withPhoto = randomUUID();
+    const withoutPhoto = randomUUID();
+    const directory = vi.fn().mockResolvedValue([
+      { id: withPhoto, name: "Ana", role: "editor", status: "online", hasAvatar: true },
+      { id: withoutPhoto, name: null, role: "viewer", status: null, hasAvatar: false },
+    ]);
+    vi.mocked(getChatService).mockResolvedValue({ directory } as unknown as Awaited<ReturnType<typeof getChatService>>);
+    vi.mocked(signCoworkerAvatars).mockResolvedValue(new Map([[withPhoto, "https://firmada.test/ana"], [withoutPhoto, null]]));
+    const response = await GET(makeGet("op=directory"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([
+      { id: withPhoto, name: "Ana", role: "editor", status: "online", hasAvatar: true, avatarUrl: "https://firmada.test/ana" },
+      { id: withoutPhoto, name: null, role: "viewer", status: null, hasAvatar: false, avatarUrl: null },
+    ]);
+    expect(signCoworkerAvatars).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ id: withPhoto, hasAvatar: true })]));
+  });
+
+  it("pasa el hilo al historial y acepta reacciones, escribiendo y menciones leídas", async () => {
+    const history = vi.fn().mockResolvedValue({
+      conversation: { id: conversationId, kind: "channel", slug: "general", peerId: null, archived: false, writable: true, unread: false, changeCursor: 3 },
+      messages: [{ ...sampleMessage, threadRootId: conversationId, reactions: [{ emoji: "👍", count: 1, userIds: [sampleMessage.authorId] }] }],
+      before: null,
+    });
+    const command = vi.fn().mockResolvedValue({ conversationId, added: true });
+    vi.mocked(getChatService).mockResolvedValue({ history, command } as unknown as Awaited<ReturnType<typeof getChatService>>);
+    const root = randomUUID();
+    expect((await GET(makeGet(`op=history&conversationId=${conversationId}&threadRootId=${root}`))).status).toBe(200);
+    expect(history).toHaveBeenCalledWith(workspaceId, conversationId, undefined, root);
+    expect((await GET(makeGet(`op=history&conversationId=${conversationId}&threadRootId=raiz`))).status).toBe(400);
+
+    const messageId = randomUUID();
+    for (const input of [
+      { kind: "toggleReaction", workspaceId, conversationId, messageId, emoji: "🎉" },
+      { kind: "typing", workspaceId, conversationId },
+      { kind: "markMentionsRead", workspaceId, conversationId, upToNumber: 2 },
+    ]) {
+      const response = await POST(makePost(input));
+      expect(response.status).toBe(200);
+      expect(command).toHaveBeenLastCalledWith(input);
+    }
+    expect(await (await POST(makePost({ kind: "toggleReaction", workspaceId, conversationId, messageId, emoji: "🎉" }))).json())
+      .toEqual({ conversationId, added: true });
+    expect((await POST(makePost({ kind: "toggleReaction", workspaceId, conversationId, messageId, emoji: "" }))).status).toBe(400);
+    command.mockRejectedValueOnce({ cause: { code: "P0429" } });
+    expect((await POST(makePost({ kind: "typing", workspaceId, conversationId }))).status).toBe(429);
   });
 });

@@ -91,7 +91,17 @@ export interface EspacioHoyProps {
   profile?: EspacioProfile | undefined;
   /** Herramienta abierta al cargar (su ruta, p. ej. /calendario); por defecto, Hoy. */
   initialHerramienta?: HerramientaId | undefined;
-  chat?: { href: string; todayHref: string; unreadHref: string; unread: number | null; active: boolean; content?: ReactNode };
+  chatUnreadMentions?: number | undefined;
+  chat?: {
+    href: string;
+    todayHref: string;
+    unreadHref: string;
+    exportHref?: ((format: "json" | "md") => string) | undefined;
+    unread: number | null;
+    unreadMentions?: number | undefined;
+    active: boolean;
+    content?: ReactNode;
+  };
 }
 
 /** Acomodo inicial de los paneles en el lienzo de escritorio (issue 136), en píxeles del lienzo. */
@@ -501,7 +511,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           expandido={carrilExpandido}
           onToggleExpandido={toggleCarril}
           activa={chat?.active ? undefined : herramienta}
-          chat={chat}
+          chat={chat ? { ...chat, unreadMentions: props.chatUnreadMentions ?? chat.unreadMentions } : undefined}
           onSelect={selectHerramienta}
           cargando={switching}
           hoyPendientes={overdueCount + todayCount}
@@ -518,11 +528,21 @@ export function EspacioHoy(props: EspacioHoyProps) {
           <Button size="sm" variant="danger-soft" className="hubly-zona-tactil relative h-7 shrink-0 rounded-full px-2.5 text-xs" onPress={actionError.onRetry}>Reintentar</Button>
         </div>
       )}
-      {chat && !chat.active && herramienta === "hoy" && <a href={chat.unread ? chat.unreadHref : chat.href}
-        className="hubly-glass relative z-10 flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-(--hover-acento)">
-        <Icon name="chat" className="size-5" />
-        <span>{chat.unread === null ? "Abrir chat" : chat.unread === 0 ? "Chat al día" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
-      </a>}
+      {chat && !chat.active && herramienta === "hoy" && (() => {
+        const mentions = props.chatUnreadMentions ?? chat.unreadMentions ?? 0;
+        const mentionText = mentions === 1 ? "1 mención sin leer" : `${mentions} menciones sin leer`;
+        return <a href={chat.unread || mentions > 0 ? chat.unreadHref : chat.href}
+          className="hubly-glass relative z-10 flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-(--hover-acento)">
+          <Icon name="chat" className="size-5" />
+          <span className="grow">{chat.unread === null ? "Abrir chat" : chat.unread === 0 ? "Chat al día" : chat.unread === 1 ? "1 conversación sin leer" : `${chat.unread} conversaciones sin leer`}</span>
+          {mentions > 0 && (
+            <span data-hoy-mentions={mentions} aria-label={mentionText}
+              className="rounded-full border border-(--accent-primary) bg-(--accent-primary-subtle) px-2.5 py-0.5 text-xs font-semibold text-(--accent-primary)">
+              {mentionText}
+            </span>
+          )}
+        </a>;
+      })()}
       <div key={chat?.active ? "chat" : herramienta} className={`flex min-h-0 grow flex-col gap-3 ${!chat?.active && herramienta === "hoy" && enLienzo ? "hubly-seccion-fundido" : "hubly-seccion-entra"}`}>
       {chat?.active ? chat.content : herramienta !== "hoy" ? <Proximamente herramienta={herramientaPorId(herramienta)} /> : enLienzo ? (
         <Lienzo items={lienzoItems} barra={{ slot: barraSlot, ...barraProps }} menu={{
@@ -604,6 +624,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         onRemoveMember={props.onRemoveMember ?? noop}
         onLeave={() => { setTeamMode(null); props.onLeaveAgency?.(); }}
         onExportOwn={() => onExport("json")}
+        chatExportHref={chat?.exportHref}
       />
 
       {props.profile && (

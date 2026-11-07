@@ -450,6 +450,10 @@ body {
 .hubly-espacio-carga { animation: hubly-espacio-entra var(--motion-space) var(--motion-ease) var(--motion-fast) backwards; }
 @media (prefers-reduced-motion: reduce) { .hubly-espacio-escena { transition: none; } .hubly-espacio-entra, .hubly-espacio-carga { animation: none; } }
 .hubly-pop { animation: hubly-pop var(--motion-fast) var(--motion-ease) both; }
+@keyframes hubly-chat-msg-in { 0% { opacity: 0; transform: translateY(var(--space-2)); } 100% { opacity: 1; transform: none; } }
+.hubly-chat-msg-enter { animation: hubly-chat-msg-in var(--motion-fast) var(--motion-ease) both; }
+/* Indicador de «escribiendo»: puntos quietos (movimiento.md: los indicadores no se mueven en bucle). */
+.hubly-typing-dot { display: inline-block; width: 0.375rem; height: 0.375rem; border-radius: 9999px; background-color: var(--text-secondary); opacity: 0.6; }
 /* Modales (#186): hoja inferior en pantallas chicas y centrada arriba desde sm si la altura alcanza. La altura sigue al visor
    (teclado virtual) y respeta las zonas seguras; el contenido se desplaza dentro del modal, nunca la página. */
 .hubly-modal-overlay { display: flex; align-items: flex-end; justify-content: center; height: var(--visual-viewport-height, 100dvh); overflow: hidden; overscroll-behavior: contain;
@@ -460,6 +464,11 @@ body {
 /* Ventanas emergentes: si no caben, se desplazan en vez de cortarse. */
 .hubly-barra-movil { left: max(0.5rem, env(safe-area-inset-left)); right: max(0.5rem, env(safe-area-inset-right)); bottom: max(0.5rem, env(safe-area-inset-bottom)); }
 @media (max-width: 63.99rem) { .hubly-marco-arriba { padding-top: max(var(--modal-gap), env(safe-area-inset-top)); } }
+/* Hilo del chat en pantallas estrechas: capa a pantalla completa que sigue al visor (teclado) y respeta zonas seguras. */
+@media (max-width: 63.99rem) {
+  .hubly-hilo { height: var(--visual-viewport-height, 100dvh);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+}
 
 @media (max-height: 30rem) {
   .hubly-corto-compacto { padding: 0.25rem 0.5rem; }
@@ -517,7 +526,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .hubly-reveal, .hubly-bars > span { transition: none; }
   .hubly-motion .hubly-reveal:not([data-visible="true"]), .hubly-motion .hubly-bars:not([data-visible="true"]) > span { opacity: 1; transform: none; }
-  .hubly-enter, .hubly-float, .hubly-pop, .hubly-palette, .hubly-palette-overlay, .hubly-palette-row { animation: none; }
+  .hubly-enter, .hubly-float, .hubly-pop, .hubly-chat-msg-enter, .hubly-palette, .hubly-palette-overlay, .hubly-palette-row { animation: none; transform: none; }
   .hubly-peek { transition: none; }
   .hubly-motion .hubly-reveal:not([data-visible="true"]) .hubly-peek { opacity: 1; transform: none; }
   .hubly-wiggle:hover { animation: none; }

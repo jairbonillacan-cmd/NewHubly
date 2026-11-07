@@ -9,7 +9,7 @@ export interface CarrilProps {
   expandido: boolean;
   onToggleExpandido: () => void;
   activa: HerramientaId | undefined;
-  chat?: { href: string; active: boolean } | undefined;
+  chat?: { href: string; active: boolean; unreadMentions?: number | undefined } | undefined;
   onSelect: (id: HerramientaId) => void;
   /** Pendientes de Hoy sin hacer (vencidos y de hoy): la ficha de Hoy. */
   hoyPendientes: number;
@@ -59,11 +59,32 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
     <nav aria-label="Herramientas" data-delay="1"
       className={`hubly-glass hubly-enter hubly-carril flex min-h-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-(--frame-rail-pad) whitespace-nowrap ${expandido ? "w-(--frame-rail-w-open)" : "w-(--frame-rail-w) items-center"}`}>
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
-      {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined} aria-label="Chat"
-        className={`${ITEM} flex items-center ${FORMA(expandido)} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--hover-acento)"}`}>
-        <Icon name="chat" active={chat.active} className="size-(--hud-icono)" />
-        {expandido && <span className="hubly-carril-texto text-sm font-semibold">Chat</span>}
-      </a>}
+      {chat && (() => {
+        const mentions = chat.unreadMentions ?? 0;
+        const mentionText = mentions === 1 ? "1 mención sin leer" : `${mentions} menciones sin leer`;
+        return <a href={chat.href} aria-current={chat.active ? "page" : undefined} aria-label={mentions > 0 ? `Chat, ${mentionText}` : "Chat"}
+          className={`${ITEM} flex items-center ${FORMA(expandido)} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--hover-acento)"}`}>
+          <span className="relative">
+            <Icon name="chat" active={chat.active} className="size-(--hud-icono)" />
+            {!expandido && mentions > 0 && (
+              <span aria-hidden="true" data-carril-mentions={mentions}
+                className={`absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs leading-none font-bold ${chat.active ? "bg-(--text-on-accent) text-(--accent-primary)" : "bg-(--accent-primary) text-(--text-on-accent)"}`}>
+                {mentions}
+              </span>
+            )}
+          </span>
+          {expandido && <span className="hubly-carril-texto grow text-sm font-semibold">Chat</span>}
+          {expandido && mentions > 0 && (
+            <>
+              {" "}
+              <span data-carril-mentions={mentions} aria-label={mentionText}
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${chat.active ? "bg-(--icon-fill-active)" : "bg-(--accent-primary-subtle) text-(--accent-primary)"}`}>
+                {mentions}
+              </span>
+            </>
+          )}
+        </a>;
+      })()}
       <span aria-hidden="true" className="mx-2 my-1 h-px bg-(--glass-line-strong)" />
       {expandido && <p className="hubly-carril-texto m-0 px-3 pb-1 text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">Herramientas</p>}
       <ul aria-label="Herramientas" className="m-0 flex list-none flex-col gap-0.5 p-0">
