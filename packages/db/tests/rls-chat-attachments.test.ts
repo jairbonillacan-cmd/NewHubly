@@ -119,16 +119,33 @@ describe("Chat: adjuntos en bucket privado, cuarentena y retiro inmediato (Issue
     // El autor puede borrar la cuarentena ya registrada (limpieza tras commit) y el archivo final.
     expect(await canDelete(editor, res!.quarantine_path)).toBe(true);
     expect(await canDelete(editor, res!.final_path)).toBe(true);
-    // Un owner de la agencia puede purgar adjuntos ajenos de un canal; otro editor, un viewer o alguien de fuera, no.
-    expect(await canDelete(owner, res!.final_path)).toBe(true);
+    // Solo quien puede retirar el mensaje (su autor) purga sus adjuntos: ni el owner, ni otro editor, ni un viewer, ni alguien de fuera.
+    expect(await canDelete(owner, res!.final_path)).toBe(false);
     expect(await canDelete(third, res!.final_path)).toBe(false);
     expect(await canDelete(viewer, res!.final_path)).toBe(false);
     expect(await canDelete(outsider, res!.final_path)).toBe(false);
 
-    const ownerPaths = await as<{ object_path: string; required: boolean }>(owner, sql`select object_path, required from private.chat_message_attachment_paths(${agency}::uuid, ${general}::uuid, ${msg}::uuid)`);
-    expect(ownerPaths.filter((r: { required: boolean }) => r.required).map((r: { object_path: string }) => r.object_path)).toEqual([res!.final_path]);
-    expect(ownerPaths.map((r: { object_path: string }) => r.object_path)).toContain(res!.quarantine_path);
-    await expect(as(third, sql`select object_path from private.chat_message_attachment_paths(${agency}::uuid, ${general}::uuid, ${msg}::uuid)`)).rejects.toMatchObject({ cause: { code: "42501" } });
+    const authorPaths = await as<{ object_path: string; required: boolean }>(editor, sql`select object_path, required from private.chat_message_attachment_paths(${agency}::uuid, ${general}::uuid, ${msg}::uuid)`);
+    expect(authorPaths.filter((r: { required: boolean }) => r.required).map((r: { object_path: string }) => r.object_path)).toEqual([res!.final_path]);
+    expect(authorPaths.map((r: { object_path: string }) => r.object_path)).toContain(res!.quarantine_path);
+    for (const other of [owner, third]) {
+      await expect(as(other, sql`select object_path from private.chat_message_attachment_paths(${agency}::uuid, ${general}::uuid, ${msg}::uuid)`)).rejects.toMatchObject({ cause: { code: "42501" } });
+    }
+
+    // Repetible: un adjunto ya borrado de Storage en un intento anterior deja de ser obligatorio.
+    await db.execute(sql`select set_config('storage.allow_delete_query', 'true', false)`);
+    await db.execute(sql`delete from storage.objects where bucket_id = 'chat-attachments' and name = ${res!.final_path}`);
+    const retry = await as<{ object_path: string; required: boolean }>(editor, sql`select object_path, required from private.chat_message_attachment_paths(${agency}::uuid, ${general}::uuid, ${msg}::uuid)`);
+    expect(retry.filter((r: { required: boolean }) => r.required)).toHaveLength(0);
+
+    // Si el autor pasa a viewer, ya no puede retirar ni, por tanto, purgar.
+    await db.execute(sql`update public.workspace_members set role = 'viewer' where workspace_id = ${agency}::uuid and user_id = ${editor}::uuid`);
+    expect(await canDelete(editor, res!.final_path)).toBe(false);
+    await db.execute(sql`update public.workspace_members set role = 'editor' where workspace_id = ${agency}::uuid and user_id = ${editor}::uuid`);
+    // Con la conversación archivada tampoco.
+    await db.execute(sql`update private.chat_conversations set archived_at = now() where workspace_id = ${agency}::uuid and id = ${general}::uuid`);
+    expect(await canDelete(editor, res!.final_path)).toBe(false);
+    await db.execute(sql`update private.chat_conversations set archived_at = null where workspace_id = ${agency}::uuid and id = ${general}::uuid`);
 
     // Reservas vencidas: su autor obtiene las rutas para borrarlas por la API y puede borrarlas aunque estén vencidas.
     const [stale] = await as<{ id: string; quarantine_path: string; final_path: string }>(editor, sql`select id, quarantine_path, final_path from private.chat_reserve_attachment_upload(${agency}::uuid, ${general}::uuid, ${msg}::uuid, 'tarde.png', 'image/png', 512)`);

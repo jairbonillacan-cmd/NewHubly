@@ -119,16 +119,21 @@ begin
   return attachment_id;
 end; $$;
 
--- Quién puede borrar los archivos de un mensaje vigente: su autor (si sigue en la agencia) o un owner/admin
--- de la agencia que pueda leer la conversación (canales, o directos en los que participa).
+-- Quién puede borrar los archivos de un mensaje: exactamente quien puede retirarlo (chat_change_message +
+-- chat_lock_writable). El autor del mensaje vigente, con rol de escritura en la agencia y en una conversación
+-- que se puede escribir: no archivada; en directos, participa y los dos miembros pueden escribir.
 create or replace function private.chat_can_purge_message_attachments(agency_id uuid, target_id uuid, msg_id uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
-  select private.chat_agency_role(agency_id) is not null and exists (
+  select coalesce(private.chat_agency_role(agency_id) in ('owner', 'admin', 'editor'), false) and exists (
     select 1 from private.chat_messages m
     join private.chat_conversations c on c.workspace_id = m.workspace_id and c.id = m.conversation_id
     where m.workspace_id = agency_id and m.conversation_id = target_id and m.id = msg_id and m.deleted_at is null
-      and (m.author_id = (select auth.uid())
-        or (private.chat_agency_role(agency_id) in ('owner', 'admin') and (c.kind = 'channel' or (select auth.uid()) in (c.member_low, c.member_high))))
+      and m.author_id = (select auth.uid()) and c.archived_at is null
+      and (c.kind = 'channel' or (
+        (select auth.uid()) in (c.member_low, c.member_high)
+        and (select count(*) from public.workspace_members wm join public.workspaces w on w.id = wm.workspace_id
+          where wm.workspace_id = agency_id and w.kind = 'agency' and wm.user_id in (c.member_low, c.member_high)
+            and wm.role in ('owner', 'admin', 'editor')) = 2))
   );
 $$;
 
@@ -150,7 +155,8 @@ language sql stable security definer set search_path = '' as $$
 $$;
 
 -- Rutas que la aplicación borra por la API de Storage ANTES de retirar el mensaje. `required` marca los
--- adjuntos registrados, cuyo borrado debe confirmarse; el resto (cuarentena y reservas) puede no existir.
+-- adjuntos registrados que aún existen en Storage, cuyo borrado debe confirmarse; uno ya borrado en un intento
+-- anterior cuenta como hecho, así que el retiro se puede repetir. El resto (cuarentena y reservas) puede no existir.
 create or replace function private.chat_message_attachment_paths(agency_id uuid, target_id uuid, msg_id uuid)
 returns table (object_path text, required boolean) language plpgsql stable security definer set search_path = '' as $$
 begin
@@ -158,7 +164,7 @@ begin
     raise exception 'Mensaje no disponible para esta operación' using errcode = '42501';
   end if;
   return query
-    select a.object_path, true from private.chat_attachments a where a.workspace_id = agency_id and a.conversation_id = target_id and a.message_id = msg_id
+    select a.object_path, exists (select 1 from storage.objects o where o.bucket_id = 'chat-attachments' and o.name = a.object_path) from private.chat_attachments a where a.workspace_id = agency_id and a.conversation_id = target_id and a.message_id = msg_id
     union all
     select a.workspace_id::text || '/' || a.conversation_id::text || '/quarantine/' || a.id::text, false from private.chat_attachments a where a.workspace_id = agency_id and a.conversation_id = target_id and a.message_id = msg_id
     union all
