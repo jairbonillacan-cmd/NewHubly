@@ -52,6 +52,16 @@ describe("Registro de atajos", () => {
     expect(search).toHaveBeenCalledOnce();
     expect(preventDefault).toHaveBeenCalledTimes(2);
   });
+
+  it("mientras se escribe en un campo, Ctrl K sigue abriendo la búsqueda y las letras sueltas no", () => {
+    const run = vi.fn(), search = vi.fn();
+    const dispatch = createShortcutRegistry([{ key: "N", label: "Nota", run }, { key: "Ctrl K", label: "Buscar", run: search }]);
+    const input = { tagName: "INPUT" };
+    dispatch({ key: "k", ctrlKey: true, target: input, preventDefault: vi.fn() } as unknown as KeyboardEvent);
+    dispatch({ key: "n", target: input, preventDefault: vi.fn() } as unknown as KeyboardEvent);
+    expect(search).toHaveBeenCalledOnce();
+    expect(run).not.toHaveBeenCalled();
+  });
 });
 
 describe("Lengüeta de Hubi", () => {

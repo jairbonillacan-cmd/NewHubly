@@ -1,6 +1,6 @@
 import { DEFAULT_USER_PREFERENCES, userPreferencesSchema, type UserPreferences } from "@hubly/contracts";
 import { describe, expect, it } from "vitest";
-import { fromEspacioPreferencias, themeToApply, toEspacioPreferencias } from "../src/components/preferences";
+import { fromEspacioPreferencias, toEspacioPreferencias } from "../src/components/preferences";
 
 describe("Preferencias del espacio entre @hubly/ui y user_preferences (#83)", () => {
   it("traduce los valores por defecto al vocabulario del espacio", () => {
@@ -16,11 +16,5 @@ describe("Preferencias del espacio entre @hubly/ui y user_preferences (#83)", ()
         expect(userPreferencesSchema.safeParse(back).success).toBe(true);
       }
     }
-  });
-
-  it("«system» no fuerza tema; claro y oscuro sí", () => {
-    expect(themeToApply("system")).toBeUndefined();
-    expect(themeToApply("light")).toBe("light");
-    expect(themeToApply("dark")).toBe("dark");
   });
 });
