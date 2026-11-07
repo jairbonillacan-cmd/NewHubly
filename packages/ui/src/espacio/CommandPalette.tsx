@@ -153,7 +153,7 @@ export function CommandPalette({ isOpen, onOpenChange, actions, notes, todos, on
             />
             <Kbd className="hidden sm:inline-flex"><Kbd.Abbr keyValue="ctrl" /><Kbd.Content>K</Kbd.Content></Kbd>
           </div>
-          <ul ref={listRef} id={listId} role="listbox" aria-label="Resultados" className="m-0 min-h-0 grow list-none overflow-y-auto p-0 pb-2">
+          <ul ref={listRef} id={listId} role="listbox" aria-label="Resultados" className="hubly-sin-barra m-0 min-h-0 grow list-none overflow-y-auto p-0 pb-2">
             {groups.map(({ group, items }) =>
               items.length === 0 ? null : (
                 <li key={group} role="presentation">

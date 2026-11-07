@@ -459,6 +459,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
           shortcuts={shortcuts}
           onOpenPalette={() => setPaletteOpen(true)}
           onOpenBackground={openBackgroundArriba}
+          seccion={{ esHub: !chat?.active && herramienta === "hoy", nombre: chat?.active ? "Chat" : herramientaPorId(herramienta).nombre }}
           onExport={onExport}
           onSignOut={onSignOut}
           workspaces={workspaces}

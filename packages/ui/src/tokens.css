@@ -468,17 +468,26 @@ body {
 .hubly-scroll::-webkit-scrollbar-thumb, .hubly-popover-scroll::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--accent-primary) 70%, transparent); border-radius: 999px; }
 .hubly-scroll::-webkit-scrollbar-thumb:hover, .hubly-popover-scroll::-webkit-scrollbar-thumb:hover { background-color: var(--accent-primary); }
 /* Buscador (issue 133): baja con un rebote suave, las filas entran en cascada y el campo no lleva recuadro (el cursor ya indica el foco). */
-@keyframes hubly-palette-in { 0% { transform: translateY(-14px) scale(0.97); opacity: 0; filter: blur(6px); } 100% { transform: none; opacity: 1; filter: none; } }
-@keyframes hubly-palette-row { 0% { transform: translateY(6px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+/* Buscador: aparece desde un poco más arriba y más pequeño, se enfoca mientras crece y se asienta sin rebote brusco;
+   al cerrarse se desvanece rápido hacia arriba. Las filas entran en cascada, cada una un poco después. */
+@keyframes hubly-palette-in { 0% { transform: translateY(-1.25rem) scale(0.94); opacity: 0; filter: blur(10px); } 60% { opacity: 1; filter: blur(0); } 100% { transform: none; opacity: 1; filter: none; } }
+@keyframes hubly-palette-out { 0% { transform: none; opacity: 1; } 100% { transform: translateY(-0.5rem) scale(0.97); opacity: 0; } }
+@keyframes hubly-palette-row { 0% { transform: translateY(-0.25rem); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes hubly-fade-out { 0% { opacity: 1; } 100% { opacity: 0; } }
+/* Listas que se desplazan sin enseñar la barra (la rueda, el teclado y el tacto siguen funcionando). */
+.hubly-sin-barra { scrollbar-width: none; }
+.hubly-sin-barra::-webkit-scrollbar { display: none; }
 @keyframes hubly-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
-.hubly-palette-overlay { animation: hubly-fade-in var(--motion-fast) var(--motion-ease) both; }
-.hubly-palette { animation: hubly-palette-in calc(var(--motion-fast) * 2) cubic-bezier(0.2, 0.9, 0.3, 1.15) both; }
+.hubly-palette-overlay { animation: hubly-fade-in 0.22s var(--motion-ease) both; }
+.hubly-palette-overlay[data-exiting] { animation: hubly-fade-out 0.16s var(--motion-ease) both; }
+.hubly-palette { animation: hubly-palette-in 0.36s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.hubly-palette[data-exiting] { animation: hubly-palette-out 0.16s var(--motion-ease) both; }
 .hubly-palette-row { animation: hubly-palette-row calc(var(--motion-fast) * 2) var(--motion-ease) both; transition: background-color var(--motion-fast) var(--motion-ease); }
-.hubly-palette-row:nth-child(2) { animation-delay: 30ms; }
-.hubly-palette-row:nth-child(3) { animation-delay: 60ms; }
-.hubly-palette-row:nth-child(4) { animation-delay: 90ms; }
-.hubly-palette-row:nth-child(5) { animation-delay: 120ms; }
-.hubly-palette-row:nth-child(n+6) { animation-delay: 150ms; }
+.hubly-palette-row:nth-child(2) { animation-delay: 40ms; }
+.hubly-palette-row:nth-child(3) { animation-delay: 70ms; }
+.hubly-palette-row:nth-child(4) { animation-delay: 100ms; }
+.hubly-palette-row:nth-child(5) { animation-delay: 130ms; }
+.hubly-palette-row:nth-child(n+6) { animation-delay: 160ms; }
 .hubly-palette-input:focus-visible { outline: none; }
 /* Contenedores de ventanitas que reciben el foco al abrirse: el anillo enmarcaría todo el contenido. */
 .hubly-sin-anillo:focus-visible { outline: none; }

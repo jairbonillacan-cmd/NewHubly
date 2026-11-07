@@ -16,6 +16,8 @@ export interface TopBarProps {
   shortcuts: readonly Shortcut[];
   onOpenPalette: () => void;
   onOpenBackground: () => void;
+  /** Sección abierta: en el Hub se eligen sus paneles; en las demás, los ajustes de esa sección. */
+  seccion?: { esHub: boolean; nombre: string } | undefined;
   onExport: (format: "json" | "md") => void;
   onSignOut: () => void;
   workspaces: EspacioWorkspace[];
@@ -244,7 +246,8 @@ const PANELES: { id: PanelId; label: string; icon: IconName }[] = [
 ];
 
 /** Grupo de controles de la barra superior (#105, sección 2), en el orden de la maqueta. */
-function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, panels, onTogglePanel, shortcuts }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "onOpenBackground" | "panels" | "onTogglePanel" | "shortcuts">) {
+function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, panels, onTogglePanel, shortcuts, seccion }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "onOpenBackground" | "panels" | "onTogglePanel" | "shortcuts" | "seccion">) {
+  const esHub = seccion?.esHub ?? true;
   return (
     <div role="toolbar" aria-label="Controles del espacio" className="flex items-center gap-0.5">
       <ToggleButton isSelected={focusMode} onChange={onToggleFocus}
@@ -284,19 +287,27 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, p
                   <Icon name="imagen" /> <span className="flex grow flex-col"><span>Personalizar aspecto</span><span className="text-xs text-(--text-muted)">Fondo, tema, colores y tamaño</span></span>
                 </Dropdown.Item>
               </Dropdown.Section>
-              <Dropdown.Section aria-label="Paneles del Hub" selectionMode="multiple" selectedKeys={PANELES.filter((panel) => panels[panel.id]).map((panel) => panel.id)}
-                onSelectionChange={(selection) => {
-                  if (selection === "all") return;
-                  const changed = PANELES.find((panel) => selection.has(panel.id) !== panels[panel.id]);
-                  if (changed) onTogglePanel(changed.id);
-                }} className="pt-1.5">
-                {PANELES.map((panel) => (
-                  <Dropdown.Item key={panel.id} id={panel.id} textValue={panel.label} className={ITEM}>
-                    <Icon name={panel.icon} /> <span className="grow">{panel.label}</span>
-                    <Dropdown.ItemIndicator />
+              {esHub ? (
+                <Dropdown.Section aria-label="Paneles del Hub" selectionMode="multiple" selectedKeys={PANELES.filter((panel) => panels[panel.id]).map((panel) => panel.id)}
+                  onSelectionChange={(selection) => {
+                    if (selection === "all") return;
+                    const changed = PANELES.find((panel) => selection.has(panel.id) !== panels[panel.id]);
+                    if (changed) onTogglePanel(changed.id);
+                  }} className="pt-1.5">
+                  {PANELES.map((panel) => (
+                    <Dropdown.Item key={panel.id} id={panel.id} textValue={panel.label} className={ITEM}>
+                      <Icon name={panel.icon} /> <span className="grow">{panel.label}</span>
+                      <Dropdown.ItemIndicator />
+                    </Dropdown.Item>
+                  ))}
+                </Dropdown.Section>
+              ) : (
+                <Dropdown.Section aria-label={`Ajustes de ${seccion?.nombre ?? "esta sección"}`} className="pt-1.5">
+                  <Dropdown.Item id="seccion" isDisabled textValue={`Ajustes de ${seccion?.nombre ?? "esta sección"}`} className={ITEM}>
+                    <Icon name="ajustes" /> <span className="flex grow flex-col"><span>Ajustes de {seccion?.nombre}</span><span className="text-xs text-(--text-muted)">Llegan con la herramienta</span></span>
                   </Dropdown.Item>
-                ))}
-              </Dropdown.Section>
+                </Dropdown.Section>
+              )}
             </Dropdown.Menu>
           </Dropdown.Popover>
         </Dropdown>
@@ -312,7 +323,7 @@ export function TopBar(props: TopBarProps) {
     <div className="flex flex-col gap-2">
       <header className="hubly-glass hubly-enter flex h-(--frame-topbar-h) items-center gap-2 rounded-(--glass-radius-access-bar) pr-1.5 pl-3 lg:gap-3 lg:pl-0">
         {/* En escritorio el logo ocupa el ancho del carril: la cara de Hubi queda en la misma columna que sus iconos. */}
-        <a href="/" aria-label="Hubly, inicio" className="flex min-h-11 min-w-11 items-center justify-center lg:-ml-px lg:w-(--frame-rail-w) lg:shrink-0">
+        <a href="/hub" aria-label="Ir a tu Hub" className="flex min-h-11 min-w-11 items-center justify-center lg:-ml-px lg:w-(--frame-rail-w) lg:shrink-0">
           <HubiFace className="size-7" />
         </a>
         <SpaceMenu {...props} />
