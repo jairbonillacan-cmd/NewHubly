@@ -473,7 +473,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
         />
       </div>
 
-      <div className="z-20 hidden min-h-0 lg:col-start-1 lg:row-span-2 lg:row-start-2 lg:block">
+      <div className="z-20 hidden min-h-0 lg:col-start-1 lg:row-span-2 lg:row-start-2 lg:flex lg:items-center">
         <Carril
           expandido={carrilExpandido}
           onToggleExpandido={toggleCarril}
@@ -512,10 +512,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
       {switching && <div role="status" className="hubly-espacio-carga hubly-glass pointer-events-none absolute inset-x-3 top-0 flex items-center gap-3 rounded-2xl p-4 text-sm font-semibold lg:inset-x-0">Abriendo {targetName}…</div>}
       </main>
 
-      {dock && <div className="hubly-espacio-escena z-20 hidden min-w-0 gap-3 lg:col-start-2 lg:row-start-3 lg:flex lg:items-end" {...hide}>
-        <div className="min-w-0 grow"><Dock ref={desktopCapture} config={dock} sinVista /></div>
+      {/* Fila de abajo: el dock al centro y la barra del lienzo (zoom y mapa) a la derecha, en cápsulas separadas. */}
+      {dock && <div className="hubly-espacio-escena z-20 hidden min-w-0 gap-3 lg:col-start-2 lg:row-start-3 lg:flex lg:items-end 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" {...hide}>
+        {/* Centrado exacto solo donde cabe (2xl); antes, el dock se centra en el espacio que deja la barra del lienzo. */}
+        <span aria-hidden="true" className="hidden 2xl:block" />
+        <div className="flex min-w-0 grow justify-center"><Dock ref={desktopCapture} config={dock} sinVista /></div>
         {/* Barra propia del lienzo (issue 147): en el lienzo libre la llena el propio lienzo; si no, solo el modo y el fondo. */}
-        <div ref={setBarraSlot} className="contents">
+        <div ref={setBarraSlot} className="flex shrink-0 justify-end">
           {!enLienzo && <LienzoBarra {...barraProps} />}
         </div>
       </div>}

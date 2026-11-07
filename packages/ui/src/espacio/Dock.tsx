@@ -10,7 +10,8 @@ import { WALLPAPERS, type EspacioPreferencias, type PreferenciasPatch } from "./
 import type { CaptureFieldProps, DockConfig, DockSuggestion } from "./dockConfig";
 import { WallpaperSwatch } from "./Wallpaper";
 
-const DOCK_BUTTON = "size-11 shrink-0 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
+const DOCK_GROUP = "hubly-glass flex h-(--frame-dock-h) shrink-0 items-center gap-1 rounded-(--glass-radius-access-card) px-1.5";
+const DOCK_BUTTON = "size-(--dock-control) shrink-0 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
 
 /** «Tu imagen» (#84): URL firmada actual y acciones del servidor. Sin esto, el selector la muestra como no disponible. */
 export interface WallpaperImageControls {
@@ -164,20 +165,20 @@ export const CaptureField = forwardRef<HTMLInputElement, CaptureFieldProps>(func
     setText("");
   };
   return (
-    <form onSubmit={submit} className="relative flex min-w-44 grow items-center gap-2">
+    <form onSubmit={submit} className="relative flex min-w-0 grow items-center gap-1.5">
       {(tokens.length > 0 || linked) && (
         <div className="hubly-pop hubly-pop-surface absolute right-0 bottom-full left-0 mb-2 flex flex-wrap items-center gap-1 rounded-xl p-2">
-          {linked && <Button size="sm" variant="secondary" onPress={linked.remove} aria-label={`Quitar el vínculo con la nota ${linked.label}`} className="min-h-11">Nota: {linked.label} ×</Button>}
+          {linked && <Button size="sm" variant="secondary" onPress={linked.remove} aria-label={`Quitar el vínculo con la nota ${linked.label}`} className="min-h-(--dock-control)">Nota: {linked.label} ×</Button>}
           {tokens.map((chip) => <Chip key={chip.label} color={chip.color} variant="soft" size="sm">{chip.label}</Chip>)}
         </div>
       )}
-      <label className="flex h-11 min-w-0 grow items-center gap-2 rounded-xl border border-(--glass-line) bg-(--glass-field) px-3 focus-within:border-(--accent-primary)">
+      <label className="flex h-(--dock-control) min-w-0 grow items-center gap-2 rounded-xl border border-(--glass-line) bg-(--glass-field) px-3 focus-within:border-(--accent-primary)">
         <span className="sr-only">{label}</span>
         <input ref={ref} value={text} onChange={(event) => setText(event.target.value)} placeholder={hint} aria-describedby={error ? errorId : undefined}
           className="min-w-0 grow border-0 bg-transparent text-base text-(--text-primary) outline-none placeholder:text-(--text-muted) lg:text-sm" />
         <Kbd className="hidden shrink-0 xl:inline-flex"><Kbd.Content>{shortcut}</Kbd.Content></Kbd>
       </label>
-      <Button type="submit" variant="primary" className="h-11 shrink-0 gap-1 px-2">{submitIcon} Agregar</Button>
+      <Button type="submit" variant="primary" className="h-(--dock-control) shrink-0 gap-1 px-2">{submitIcon} Agregar</Button>
       {error && <span id={errorId} role="alert" className="sr-only">{error}</span>}
     </form>
   );
@@ -186,16 +187,15 @@ export const CaptureField = forwardRef<HTMLInputElement, CaptureFieldProps>(func
 function Waiting({ waiting }: Pick<DockConfig, "waiting">) {
   return (
     <Popover>
-      <Button variant="ghost" className="h-11 shrink-0 flex-col gap-0 px-1 text-xs" aria-label={`Te esperan: ${waiting.detail}`}>
+      <Button variant="ghost" className="h-(--dock-control) shrink-0 gap-1 px-2 text-xs" aria-label={`Te esperan: ${waiting.detail}`}>
         <span>Te esperan <strong className="text-(--status-danger-text)">{waiting.items.length}</strong></span>
-        <span className="text-(--text-secondary)">{waiting.detail}</span>
       </Button>
       <Popover.Content placement="top" className="hubly-pop-surface hubly-popover-scroll w-64 rounded-xl p-3">
         <Popover.Dialog aria-label="Pendientes que te esperan">
           <Popover.Heading className="text-sm font-semibold">Te esperan</Popover.Heading>
           {waiting.items.length ? <ul className="my-2 max-h-48 list-disc overflow-y-auto ps-5 text-sm">{waiting.items.map((item) => <li key={item.id}>{item.title}</li>)}</ul> : <p className="my-2 text-sm">Estás al día.</p>}
           <div className="flex flex-wrap gap-1">{waiting.filters.map((filter) => (
-            <ToggleButton key={filter.label} variant="default" className="min-h-11" isSelected={filter.selected} onChange={filter.run}>{filter.label}</ToggleButton>
+            <ToggleButton key={filter.label} variant="default" className="min-h-(--dock-control)" isSelected={filter.selected} onChange={filter.run}>{filter.label}</ToggleButton>
           ))}</div>
         </Popover.Dialog>
       </Popover.Content>
@@ -220,7 +220,7 @@ function DockDetails({ config, sinVista = false }: { config: DockConfig; sinVist
         {config.views.map((view) => (
           <label key={view.id} title={view.label} className="cursor-pointer">
             <input type="radio" name={name} aria-label={view.label} checked={view.selected} onChange={view.run} className="peer sr-only" />
-            <span className="flex size-11 items-center justify-center rounded-md text-(--text-secondary) peer-checked:bg-(--surface-raised) peer-checked:text-(--accent-primary) peer-focus-visible:ring-2 peer-focus-visible:ring-(--accent-primary)"><Icon name={view.icon} /></span>
+            <span className="flex size-(--dock-control) items-center justify-center rounded-md text-(--text-secondary) peer-checked:bg-(--surface-raised) peer-checked:text-(--accent-primary) peer-focus-visible:ring-2 peer-focus-visible:ring-(--accent-primary)"><Icon name={view.icon} /></span>
           </label>
         ))}
       </div>
@@ -231,7 +231,7 @@ function DockDetails({ config, sinVista = false }: { config: DockConfig; sinVist
 
 function DockActions({ actions }: Pick<DockConfig, "actions">) {
   return actions.map((action) => (
-    <button key={action.key} type="button" onClick={action.run} title={`${action.label} (${action.key})`} className="flex size-11 shrink-0 cursor-pointer flex-col items-center justify-center rounded-lg text-xs text-(--text-secondary) hover:bg-(--glass-hover) focus-visible:ring-2 focus-visible:ring-(--accent-primary)">
+    <button key={action.key} type="button" onClick={action.run} title={`${action.label} (${action.key})`} className="flex h-(--dock-control) shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-(--text-secondary) hover:bg-(--glass-hover) focus-visible:ring-2 focus-visible:ring-(--accent-primary)">
       <Icon name={action.icon} className="size-4 rounded-sm bg-(--icon-fill) text-(--accent-primary)" />{action.label}
     </button>
   ));
@@ -243,7 +243,7 @@ export function DockStatus({ suggestion }: { suggestion: DockSuggestion | null }
     <div role="status" className="hubly-pop-surface relative mx-auto flex h-7.5 w-fit max-w-full items-center gap-2 rounded-t-xl px-3 text-xs text-(--text-primary)">
       <HubiFace className="size-5" />
       <span className="min-w-0 truncate">{suggestion.message}</span>
-      {suggestion.action && <Button variant="ghost" onPress={suggestion.action.run} isDisabled={suggestion.action.pending ?? false} className="-mt-3.5 h-11 min-h-11 shrink-0 px-2 pt-3.5 text-xs text-(--accent-primary)">{suggestion.action.label}</Button>}
+      {suggestion.action && <Button variant="ghost" onPress={suggestion.action.run} isDisabled={suggestion.action.pending ?? false} className="-mt-3.5 h-(--dock-control) min-h-(--dock-control) shrink-0 px-2 pt-3.5 text-xs text-(--accent-primary)">{suggestion.action.label}</Button>}
     </div>
   );
 }
@@ -252,14 +252,21 @@ export function DockStatus({ suggestion }: { suggestion: DockSuggestion | null }
 /** `sinVista`: el modo de paneles, el guardado y el fondo van en la barra del lienzo (issue 147). */
 export const Dock = forwardRef<HTMLInputElement, { config: DockConfig; extra?: ReactNode; sinVista?: boolean }>(function Dock({ config, extra, sinVista = false }, ref) {
   return (
-    <div>
+    <div className="flex min-w-0 flex-col items-center">
       <DockStatus suggestion={config.suggestion ?? null} />
-      <div role="toolbar" aria-label={config.label} data-delay="3" className="hubly-glass hubly-enter flex h-(--frame-dock-h) w-full min-w-0 items-center gap-1 rounded-(--glass-radius-access-card) px-2">
-        <span className={`w-16 shrink-0 px-1 text-xs font-semibold ${sinVista ? "hidden xl:block" : ""}`}>{config.context}</span>
-        <DockActions actions={config.actions} />
-        <CaptureField ref={ref} {...config.entry} />
-        <DockDetails config={config} sinVista={sinVista} />
-        {extra}
+      {/* Dock en cápsulas separadas: acciones, captura y estado, cada una con su propio cristal. */}
+      <div role="toolbar" aria-label={config.label} data-delay="3" className="hubly-enter flex max-w-full min-w-0 items-center gap-2">
+        <div className={DOCK_GROUP}>
+          <span className={`shrink-0 px-1.5 text-xs font-semibold ${sinVista ? "hidden xl:block" : ""}`}>{config.context}</span>
+          <DockActions actions={config.actions} />
+        </div>
+        <div className={`${DOCK_GROUP} w-72 min-w-0 shrink 2xl:w-96`}>
+          <CaptureField ref={ref} {...config.entry} />
+        </div>
+        <div className={DOCK_GROUP}>
+          <DockDetails config={config} sinVista={sinVista} />
+          {extra}
+        </div>
       </div>
     </div>
   );
@@ -268,7 +275,7 @@ export const Dock = forwardRef<HTMLInputElement, { config: DockConfig; extra?: R
 export function DockMore({ config, extra }: { config: DockConfig; extra?: ReactNode }) {
   return (
     <Popover>
-      <Button variant="ghost" className="min-h-11">Más</Button>
+      <Button variant="ghost" className="min-h-(--dock-control)">Más</Button>
       <Popover.Content placement="top" className="hubly-pop-surface hubly-popover-scroll w-72 rounded-xl p-3">
         <Popover.Dialog aria-label={`Más opciones · ${config.label}`} className="flex flex-wrap items-center gap-2">
           <DockDetails config={config} />

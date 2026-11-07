@@ -55,9 +55,9 @@ export function Carril({ expandido, onToggleExpandido, activa, onSelect, hoyPend
   const [hoy, ...herramientas] = HERRAMIENTAS;
   const ficha = (herramienta: Herramienta) => herramienta.id === "hoy" ? (hoyPendientes > 0 && !cargando ? String(hoyPendientes) : null) : "Pronto";
   return (
-    <div className="group/carril relative h-full">
+    <div className="group/carril relative flex max-h-full flex-col">
     <nav aria-label="Herramientas" data-delay="1"
-      className={`hubly-glass hubly-enter hubly-carril flex h-full flex-col gap-1 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-(--frame-rail-pad) whitespace-nowrap ${expandido ? "w-(--frame-rail-w-open)" : "w-(--frame-rail-w) items-center"}`}>
+      className={`hubly-glass hubly-enter hubly-carril flex min-h-0 flex-col gap-1 overflow-x-hidden overflow-y-auto rounded-(--glass-radius-access-bar) p-(--frame-rail-pad) whitespace-nowrap ${expandido ? "w-(--frame-rail-w-open)" : "w-(--frame-rail-w) items-center"}`}>
       <Item herramienta={hoy!} activa={activa === "hoy"} expandido={expandido} ficha={ficha(hoy!)} onSelect={() => onSelect("hoy")} />
       {chat && <a href={chat.href} aria-current={chat.active ? "page" : undefined} aria-label="Chat"
         className={`${ITEM} flex items-center gap-3 ${expandido ? "px-3" : "justify-center"} ${chat.active ? "bg-(--accent-primary) text-(--text-on-accent)" : "hover:bg-(--glass-hover)"}`}>

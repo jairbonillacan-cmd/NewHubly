@@ -91,7 +91,7 @@ type Gesture =
 const NOT_DRAG = "button, a, input, textarea, select, [contenteditable='true'], [role='button'], [role='menuitem'], [role='switch'], [role='checkbox']";
 const MENU = "hubly-pop-surface min-w-64 rounded-xl p-1.5 text-(--text-primary)";
 const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover)";
-const CONTROL = "size-11 min-w-11 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
+const CONTROL = "size-(--dock-control) min-w-(--dock-control) text-(--text-secondary) data-[hovered]:text-(--text-primary)";
 const MODOS: { id: LayoutId; label: string; icon: IconName }[] = [
   { id: "libre", label: "Lienzo libre", icon: "libre" },
   { id: "lado", label: "Lado a lado", icon: "lado" },
@@ -356,7 +356,7 @@ export function Lienzo({ items, barra }: LienzoProps) {
         </div>
       </div>
       {opciones.mapa && size.w > 0 && (
-        <div className="absolute right-3 bottom-3 z-10">
+        <div className="absolute right-0 bottom-0 z-10">
           <MiniMapa panels={panelRects} view={view} size={size} onCenter={(x, y) => setView((current) => ({ ...current, x: size.w / 2 - x * current.zoom, y: size.h / 2 - y * current.zoom }))} />
         </div>
       )}
