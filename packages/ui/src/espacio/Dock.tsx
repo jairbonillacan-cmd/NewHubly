@@ -119,15 +119,19 @@ const aColor = (valor: string) => { try { return parseColor(valor); } catch { re
 function SelectorColor({ seleccionado, valor }: { seleccionado: boolean; valor: string }) {
   const inicial = aColor(valor) ?? aColor(leerToken("--accent-personalizado-inicial"));
   const [color, setColor] = useState<Color | null>(inicial);
-  const aplicar = (next: Color | null) => { if (!next) return; setColor(next); setAccentColor(next.toString("hex")); };
+  // El tono se ajusta para que se lea en el tema (acentoAccesible): se lee el que quedó aplicado para decírselo a la persona.
+  const [aplicado, setAplicado] = useState(() => (seleccionado ? leerToken("--accent-custom") : ""));
+  const aplicar = (next: Color | null) => { if (!next) return; setColor(next); setAccentColor(next.toString("hex")); setAplicado(leerToken("--accent-custom")); };
+  const ajustado = seleccionado && aplicado.startsWith("#") && color !== null && aplicado.toLowerCase() !== color.toString("hex").toLowerCase();
   const sugeridos = SUGERIDOS.map(leerToken).filter((hex) => hex.startsWith("#"));
   return (
     <Popover>
       <Button isIconOnly variant="ghost" aria-label={seleccionado ? "Color de acento personalizado, elegido. Cambiar el color" : "Elegir un color de acento personalizado"}
         className={`size-11 min-w-11 rounded-full border-2 p-0 ${seleccionado ? "border-(--text-primary)" : "border-transparent"}`}>
-        <span className="hubly-acento-arcoiris flex size-6 items-center justify-center rounded-full">
-          {seleccionado && <span className="hubly-acento-elegido size-4 rounded-full" />}
-        </span>
+        {/* Mismo tamaño que los demás acentos: el color elegido o, si aún no hay, un círculo con «+». */}
+        {seleccionado
+          ? <span className="hubly-acento-elegido size-7 rounded-full" />
+          : <span className="flex size-7 items-center justify-center rounded-full border border-dashed border-(--border-control) text-(--text-secondary)"><Icon name="mas" /></span>}
       </Button>
       <Popover.Content placement="left" className="hubly-pop-surface w-64 rounded-2xl p-3 text-(--text-primary)">
         <Popover.Dialog aria-label="Color de acento personalizado" className="hubly-sin-anillo outline-none">
@@ -142,12 +146,17 @@ function SelectorColor({ seleccionado, valor }: { seleccionado: boolean; valor: 
                     <ColorThumb className="hubly-color-pomo top-1/2 size-5 rounded-full" />
                   </SliderTrack>
                 </ColorSlider>
-                <div className="flex items-center gap-2">
-                  <ColorSwatch className="size-8 shrink-0 rounded-lg" />
-                  <ColorField aria-label="Color en hexadecimal" className="min-w-0 grow">
-                    <Input className="h-8 w-full rounded-lg border border-(--glass-line-strong) bg-(--glass-field) px-2 font-mono text-sm text-(--text-primary) uppercase outline-none focus:border-(--accent-primary)" />
-                  </ColorField>
-                  <span className="flex h-8 shrink-0 items-center rounded-lg bg-(--accent-primary) px-2 text-xs font-semibold text-(--text-on-accent)">Aa</span>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <ColorSwatch className="size-8 shrink-0 rounded-lg" />
+                    <ColorField aria-label="Color en hexadecimal" className="min-w-0 grow">
+                      <Input className="h-8 w-full rounded-lg border border-(--glass-line-strong) bg-(--glass-field) px-2 font-mono text-sm text-(--text-primary) uppercase outline-none focus:border-(--accent-primary)" />
+                    </ColorField>
+                    <span className="flex h-8 shrink-0 items-center rounded-lg bg-(--accent-primary) px-2 text-xs font-semibold text-(--text-on-accent)">Aa</span>
+                  </div>
+                  <p aria-live="polite" className="m-0 text-xs text-(--text-muted)">
+                    {ajustado ? `Ajustado a ${aplicado.toUpperCase()} para que se lea en este tema.` : "Si hace falta, Hubly ajusta el tono para que se lea."}
+                  </p>
                 </div>
                 {sugeridos.length > 0 && (
                   <ColorSwatchPicker aria-label="Colores sugeridos" className="grid grid-cols-4 gap-1.5">
@@ -184,7 +193,7 @@ function TemaYAcento() {
           {HUBLY_ESTILOS.map((entry) => (
             <Radio key={entry.id} value={entry.id} aria-label={entry.nombre}
               className={({ isSelected, isHovered, isFocusVisible }) => `flex min-h-11 cursor-pointer rounded-xl border-2 p-0.5 outline-none ${isFocusVisible ? "ring-2 ring-(--accent-primary)" : ""} ${isSelected ? "border-(--accent-primary)" : isHovered ? "border-(--glass-line-strong)" : "border-transparent"}`}>
-              <span data-estilo-muestra={entry.id} className="hubly-estilo-muestra flex min-h-9 w-full flex-col justify-between overflow-hidden rounded-lg border border-(--glass-line) p-1.5">
+              <span data-estilo-muestra={entry.id} className="hubly-estilo-muestra flex min-h-9 w-full flex-col justify-between overflow-hidden rounded-lg border border-(--glass-line-strong) p-1.5">
                 <span className="hubly-estilo-muestra-barra h-1.5 w-full rounded-full" />
                 <span className="size-2 rounded-full bg-(--accent-primary)" />
               </span>
@@ -195,8 +204,10 @@ function TemaYAcento() {
       <div className="flex flex-col gap-2">
         <span className="flex justify-between"><span className={SECCION}>Acento</span><span className="text-xs text-(--text-muted)">{accentName}</span></span>
         {/* El color libre abre un diálogo: va fuera del grupo de radio para no mezclar dos patrones en una sola parada de tabulador. */}
-        <div className="flex flex-wrap items-center gap-0.5">
-          <RadioGroup aria-label="Color de acento" orientation="horizontal" value={accent === "personalizado" ? null : accent} onChange={(value) => setAccentValue(value as HublyAccent)} className="flex gap-0.5">
+        {/* 7 zonas de 44 px no caben en una fila: van en la misma rejilla de 4 columnas que el tema (subgrid), y el color libre
+            ocupa la tercera celda de la segunda fila, alineado con el resto en vez de caer suelto en otra línea. */}
+        <div className="grid grid-cols-4 grid-rows-2 justify-items-center gap-x-2 gap-y-1">
+          <RadioGroup aria-label="Color de acento" orientation="horizontal" value={accent === "personalizado" ? null : accent} onChange={(value) => setAccentValue(value as HublyAccent)} className="col-span-4 col-start-1 row-span-2 row-start-1 grid grid-cols-subgrid grid-rows-subgrid justify-items-center">
             {HUBLY_ACCENTS.filter((entry) => entry.id !== "personalizado").map((entry) => (
               <Radio key={entry.id} value={entry.id} aria-label={entry.nombre}
                 className={({ isSelected, isFocusVisible }) => `flex size-11 cursor-pointer items-center justify-center rounded-full border-2 outline-none ${isFocusVisible ? "ring-2 ring-(--accent-primary)" : ""} ${isSelected ? "border-(--text-primary)" : "border-transparent"}`}>
@@ -204,7 +215,7 @@ function TemaYAcento() {
               </Radio>
             ))}
           </RadioGroup>
-          <SelectorColor seleccionado={accent === "personalizado"} valor={accentColor} />
+          <div className="col-start-3 row-start-2"><SelectorColor seleccionado={accent === "personalizado"} valor={accentColor} /></div>
         </div>
       </div>
       <div className="flex flex-col gap-2">
