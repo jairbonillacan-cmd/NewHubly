@@ -30,8 +30,8 @@ describe("Marco fijo de Tu espacio (issue 105): barra superior, carril y dock fi
   it("la barra superior tiene el grupo de controles en orden y el avatar con la inicial del correo", () => {
     const html = render({ userEmail: "ana@agencia.es" });
     const toolbar = html.slice(html.indexOf('role="toolbar" aria-label="Controles del espacio"'));
-    // Sin repetidos: el tema vive en Apariencia; Enfoque queda al final, a la derecha.
-    const order = ["Buscar o ejecutar (Ctrl K)", "Avisos", "Ayuda y atajos", "Vista y aspecto", "Enfoque"].map((label) => toolbar.indexOf(label));
+    // Sin repetidos: el tema vive en Apariencia; Enfoque abre el grupo, a la izquierda.
+    const order = ["Enfoque", "Buscar o ejecutar (Ctrl K)", "Avisos", "Ayuda y atajos", "Paneles visibles"].map((label) => toolbar.indexOf(label));
     expect(toolbar).not.toContain("Cambiar a tema");
     expect(order.every((index) => index > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);

@@ -4,9 +4,9 @@ import { Button, Chip, Kbd, Popover, Slider, ToggleButton } from "@heroui/react"
 import { forwardRef, useId, useState, type FormEvent, type ReactNode } from "react";
 import { FileTrigger } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
-import { HUBLY_ACCENTS, HUBLY_ESTILOS, useHublyAccent, useHublyEstilo, useHublyTheme } from "../landing/ThemeToggle";
+import { HUBLY_ACCENTS, HUBLY_ESTILOS, setAccentColor, useHublyAccent, useHublyAccentColor, useHublyEstilo, useHublyTheme } from "../landing/ThemeToggle";
 import { Icon } from "./icons";
-import { WALLPAPERS, WALLPAPERS_ILUSTRADOS, type EspacioPreferencias, type PreferenciasPatch } from "./preferencias";
+import { FONDOS_ILUSTRADOS, WALLPAPERS, WALLPAPERS_ILUSTRADOS, type EspacioPreferencias, type PreferenciasPatch } from "./preferencias";
 import type { CaptureFieldProps, DockConfig, DockSuggestion } from "./dockConfig";
 import { WallpaperSwatch } from "./Wallpaper";
 
@@ -104,11 +104,13 @@ function WallpaperTile({ wallpaper, label, prefs, onChange }: { wallpaper: (type
 
 /** Selector de fondo y opacidad de los paneles (#75, sección 3). «Tu imagen» llega con Storage (#84). */
 const SECCION = "text-xs font-semibold text-(--text-secondary)";
+const ANIMADOS: ReadonlySet<string> = new Set(FONDOS_ILUSTRADOS.filter((fondo) => fondo.animado).map((fondo) => fondo.id));
 
 /** Tema y acento de la apariencia: se guardan para esta persona (tema en su cuenta, acento en este navegador). */
 function TemaYAcento() {
   const [estilo, setEstiloValue] = useHublyEstilo();
   const [accent, setAccentValue] = useHublyAccent();
+  const accentColor = useHublyAccentColor();
   const accentName = HUBLY_ACCENTS.find((entry) => entry.id === accent)?.nombre ?? "";
   const estiloName = HUBLY_ESTILOS.find((entry) => entry.id === estilo)?.nombre ?? "";
   return (
@@ -130,12 +132,20 @@ function TemaYAcento() {
       <div className="flex flex-col gap-2">
         <span className="flex justify-between"><span className={SECCION}>Acento</span><span className="text-xs text-(--text-muted)">{accentName}</span></span>
         <div role="radiogroup" aria-label="Color de acento" className="flex gap-2">
-          {HUBLY_ACCENTS.map((entry) => (
+          {HUBLY_ACCENTS.filter((entry) => entry.id !== "personalizado").map((entry) => (
             <button key={entry.id} type="button" role="radio" aria-checked={accent === entry.id} aria-label={entry.nombre} title={entry.nombre} onClick={() => setAccentValue(entry.id)}
               className={`flex size-9 cursor-pointer items-center justify-center rounded-full border-2 focus-visible:ring-2 focus-visible:ring-(--accent-primary) ${accent === entry.id ? "border-(--text-primary)" : "border-transparent"}`}>
               <span data-acento={entry.id} className="hubly-acento-muestra size-6 rounded-full" />
             </button>
           ))}
+          {/* Color libre: el arcoíris abre el selector del sistema; elegido, muestra el color dentro de un anillo de arcoíris. */}
+          <label title="Elegir otro color" className={`relative flex size-9 cursor-pointer items-center justify-center rounded-full border-2 focus-within:ring-2 focus-within:ring-(--accent-primary) ${accent === "personalizado" ? "border-(--text-primary)" : "border-transparent"}`}>
+            <span className="hubly-acento-arcoiris flex size-6 items-center justify-center rounded-full">
+              {accent === "personalizado" && <span className="hubly-acento-elegido size-4 rounded-full" />}
+            </span>
+            <input type="color" role="radio" aria-checked={accent === "personalizado"} aria-label="Color de acento personalizado" value={accentColor}
+              onChange={(event) => setAccentColor(event.target.value)} className="absolute inset-0 size-full cursor-pointer opacity-0" />
+          </label>
         </div>
       </div>
     </>
@@ -161,10 +171,20 @@ export function BackgroundPicker({ imagen, prefs, onChange, isOpen, onOpenChange
           <TemaYAcento />
           <span className="flex justify-between"><span className={SECCION}>Fondo</span><span className="text-xs text-(--text-muted)">{nombreFondo}</span></span>
           <div className="hubly-scroll -mx-1 flex max-h-80 flex-col gap-3 overflow-x-hidden overflow-y-auto px-1">
-            <div role="group" aria-label="Fondos" className="grid grid-cols-4 gap-1.5">
-              {WALLPAPERS_ILUSTRADOS.map((wallpaper) => (
+            <span className="text-xs text-(--text-muted)">Animados</span>
+            <div role="group" aria-label="Animados" className="grid grid-cols-4 gap-1.5">
+              {WALLPAPERS_ILUSTRADOS.filter((wallpaper) => ANIMADOS.has(wallpaper.id)).map((wallpaper) => (
+                <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={`${wallpaper.claro}, animado`} prefs={prefs} onChange={onChange} />
+              ))}
+            </div>
+            <span className="text-xs text-(--text-muted)">Estáticos</span>
+            <div role="group" aria-label="Estáticos" className="grid grid-cols-4 gap-1.5">
+              {WALLPAPERS_ILUSTRADOS.filter((wallpaper) => !ANIMADOS.has(wallpaper.id)).map((wallpaper) => (
                 <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={wallpaper.claro} prefs={prefs} onChange={onChange} />
               ))}
+            </div>
+            <span className="text-xs text-(--text-muted)">Patrones</span>
+            <div role="group" aria-label="Patrones" className="grid grid-cols-4 gap-1.5">
               {WALLPAPERS.map((wallpaper) => (
                 <WallpaperTile key={wallpaper.id} wallpaper={wallpaper} label={theme === "dark" ? wallpaper.oscuro : wallpaper.claro} prefs={prefs} onChange={onChange} />
               ))}

@@ -242,9 +242,14 @@ const PANELES: { id: PanelId; label: string; icon: IconName }[] = [
 ];
 
 /** Grupo de controles de la barra superior (#105, sección 2), en el orden de la maqueta. */
-function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, panels, onTogglePanel, shortcuts }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "onOpenBackground" | "panels" | "onTogglePanel" | "shortcuts">) {
+function Controls({ focusMode, onToggleFocus, onOpenPalette, panels, onTogglePanel, shortcuts }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "panels" | "onTogglePanel" | "shortcuts">) {
   return (
     <div role="toolbar" aria-label="Controles del espacio" className="flex items-center gap-0.5">
+      <ToggleButton isSelected={focusMode} onChange={onToggleFocus}
+        className="hidden h-11 shrink-0 gap-2 rounded-xl border-0 bg-transparent px-3 text-sm font-semibold text-(--text-secondary) data-[hovered]:text-(--text-primary) data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary) lg:inline-flex">
+        <Icon name="enfoque" className="size-5" /> Enfoque
+      </ToggleButton>
+      <span aria-hidden="true" className="mx-1.5 hidden h-6 w-px bg-(--glass-line-strong) lg:block" />
       <Button variant="ghost" onPress={onOpenPalette} aria-label="Buscar o ejecutar (Ctrl K)" className="h-11 min-w-11 gap-2 px-3 text-sm text-(--text-secondary) data-[hovered]:text-(--text-primary)">
         <Icon name="buscar" className="size-5" />
         <span className="hidden lg:inline">Buscar</span>
@@ -267,17 +272,17 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, p
           </ul>
         </ControlPopover>
         <Dropdown>
-          <Dropdown.Trigger aria-label="Vista y aspecto" className={`flex cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent hover:bg-(--glass-hover) ${CONTROL}`}>
+          <Dropdown.Trigger aria-label="Paneles visibles" className={`flex cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent hover:bg-(--glass-hover) ${CONTROL}`}>
             <Icon name="ajustes" className="size-5" />
           </Dropdown.Trigger>
           <Dropdown.Popover placement="bottom end" className={MENU}>
-            <Dropdown.Menu aria-label="Vista y aspecto" className="hubly-sin-anillo" onAction={(key) => { if (key === "fondo") onOpenBackground(); }}>
+            <Dropdown.Menu aria-label="Paneles visibles" className="hubly-sin-anillo">
               <Dropdown.Section aria-label="Paneles de Hoy" selectionMode="multiple" selectedKeys={PANELES.filter((panel) => panels[panel.id]).map((panel) => panel.id)}
                 onSelectionChange={(selection) => {
                   if (selection === "all") return;
                   const changed = PANELES.find((panel) => selection.has(panel.id) !== panels[panel.id]);
                   if (changed) onTogglePanel(changed.id);
-                }} className="border-b border-(--glass-line) pb-1.5">
+                }}>
                 {PANELES.map((panel) => (
                   <Dropdown.Item key={panel.id} id={panel.id} textValue={panel.label} className={ITEM}>
                     <Icon name={panel.icon} /> <span className="grow">{panel.label}</span>
@@ -285,18 +290,10 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, p
                   </Dropdown.Item>
                 ))}
               </Dropdown.Section>
-              <Dropdown.Section aria-label="Aspecto" className="pt-1.5">
-                <Dropdown.Item id="fondo" textValue="Personalizar aspecto" className={ITEM}><Icon name="imagen" /> Personalizar aspecto</Dropdown.Item>
-              </Dropdown.Section>
             </Dropdown.Menu>
           </Dropdown.Popover>
         </Dropdown>
       </div>
-      <span aria-hidden="true" className="mx-1.5 hidden h-6 w-px bg-(--glass-line-strong) lg:block" />
-      <ToggleButton isSelected={focusMode} onChange={onToggleFocus}
-        className="hidden h-11 shrink-0 gap-2 rounded-xl border-0 bg-transparent px-3 text-sm font-semibold text-(--text-secondary) data-[hovered]:text-(--text-primary) data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary) lg:inline-flex">
-        <Icon name="enfoque" className="size-5" /> Enfoque
-      </ToggleButton>
     </div>
   );
 }

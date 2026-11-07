@@ -45,7 +45,7 @@ export const KNOWN_APP_ROUTES = new Map([
 ]);
 
 // Regla 3 (#69): Lista blanca explícita de claves de preferencias de interfaz en localStorage/sessionStorage.
-export const ALLOWED_BROWSER_STORAGE_KEYS = new Set(["hubly-theme", "hubly-accent", "hubly-estilo", "hubly_tz_refresh_attempted", "hubly-carril", "hubly-lienzo"]);
+export const ALLOWED_BROWSER_STORAGE_KEYS = new Set(["hubly-theme", "hubly-accent", "hubly-accent-color", "hubly-estilo", "hubly_tz_refresh_attempted", "hubly-carril", "hubly-lienzo"]);
 
 // Regla 4 (#69): Placeholders neutros y correos oficiales de contacto de Hubly permitidos en interfaz y enlaces mailto:.
 export const ALLOWED_UI_PLACEHOLDER_EMAILS = new Set(["equipo@agencia.es", "privacidad@hubly.es", "legal@hubly.es", "soporte@hubly.es", "hola@hubly.es"]);

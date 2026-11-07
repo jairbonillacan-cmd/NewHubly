@@ -157,6 +157,15 @@
 .hubly-estilo-muestra[data-estilo-muestra="sistema"] { --muestra-fondo: linear-gradient(135deg, #F7F7F8 50%, #111317 50%); --muestra-barra: #8A8D96; }
 .hubly-estilo-muestra { background: var(--muestra-fondo); }
 .hubly-estilo-muestra-barra { background: var(--muestra-barra); }
+/* Acento personalizado: textos posibles sobre el acento y color con el que empieza el selector. */
+:root { --accent-on-claro: #FFFFFF; --accent-on-oscuro: #0C0D0F; --accent-personalizado-inicial: #7C3AED; }
+/* Acento personalizado: el color lo elige la persona; hover y fondo sutil se derivan, y el texto encima se elige por contraste. */
+:root[data-accent="personalizado"] { --accent-primary: var(--accent-custom, #1D4ED8); --accent-primary-hover: color-mix(in srgb, var(--accent-custom, #1D4ED8) 85%, #000000);
+  --accent-primary-subtle: color-mix(in srgb, var(--accent-custom, #1D4ED8) 12%, #FFFFFF); --text-on-accent: var(--accent-custom-on, #FFFFFF); }
+:root[data-theme="dark"][data-accent="personalizado"] { --accent-primary-hover: color-mix(in srgb, var(--accent-custom, #6F98FF) 80%, #FFFFFF);
+  --accent-primary-subtle: color-mix(in srgb, var(--accent-custom, #6F98FF) 22%, #111317); }
+.hubly-acento-arcoiris { background: conic-gradient(#EF4444, #F59E0B, #EAB308, #22C55E, #06B6D4, #3B82F6, #8B5CF6, #EC4899, #EF4444); }
+.hubly-acento-elegido { background-color: var(--accent-custom, #7C3AED); }
 /* Muestras del selector de acento: cada una pinta su propio color en el tema actual. */
 .hubly-acento-muestra[data-acento="azul"] { background-color: #1D4ED8; }
 .hubly-acento-muestra[data-acento="violeta"] { background-color: #6D28D9; }

@@ -164,8 +164,11 @@ export function LienzoBarra({ layout, onLayout, onOpenFondo, fondo, lienzo }: Li
         </Dropdown.Trigger>
         <Dropdown.Popover placement="top end" className={MENU}>
           <Dropdown.Menu aria-label="Opciones del lienzo" onAction={onMenu}>
-            {/* Solo lo del lienzo: el aspecto está en «Vista y aspecto» y el enfoque en la barra de arriba. */}
-            <Dropdown.Section aria-label="Modo de los paneles" className="pb-1.5">
+            {/* El aspecto vive aquí; el enfoque, en la barra de arriba; el mapa y «ver todos», con su botón. */}
+            <Dropdown.Section aria-label="Aspecto" className="border-b border-(--glass-line) pb-1.5">
+              <Dropdown.Item id="fondo" textValue="Personalizar aspecto" className={ITEM}><Icon name="imagen" /> <span className="grow">Personalizar aspecto</span></Dropdown.Item>
+            </Dropdown.Section>
+            <Dropdown.Section aria-label="Modo de los paneles" className="py-1.5">
               {MODOS.map((modo) => (
                 <Dropdown.Item key={modo.id} id={modo.id} textValue={modo.label} className={ITEM}>
                   <Icon name={modo.icon} /> <span className="grow">{modo.label}</span>{check(layout === modo.id)}
