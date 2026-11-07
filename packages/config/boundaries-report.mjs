@@ -33,6 +33,7 @@ export const KNOWN_APP_ROUTES = new Map([
   ["/terminos", "Términos del servicio públicos"],
   ["/precios", "Planes y precios públicos (precio en «Próximamente»)"],
   ["/api/chat", "API privada de chat de agencia"],
+  ["/api/chat/attachments", "Subida y firma privada de adjuntos del chat de agencia"],
   ["/auth/callback", "Callback de intercambio de código de autenticación"],
   ["/auth/confirm", "Enlaces de los correos de Auth (token validado en el servidor)"],
 ]);

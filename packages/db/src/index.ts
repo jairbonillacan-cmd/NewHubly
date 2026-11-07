@@ -1,6 +1,7 @@
 import "server-only";
 import * as schema from "./schema";
 
+export { sql } from "drizzle-orm";
 export { schema };
 export * from "./schema";
 export { withUserContext, type DbTransaction, type UserClaims, type UserContext } from "./context";
