@@ -97,8 +97,23 @@ export function notifyHiddenTabMention(params: {
   return false;
 }
 
-interface Draft { text: string; key?: string; sending: boolean; failed: boolean }
+/** Borrador por conversación; `mentions` son los ids elegidos en el desplegable de @menciones. */
+interface Draft { text: string; key?: string; sending: boolean; failed: boolean; mentions?: string[] }
 const emptyDraft: Draft = { text: "", sending: false, failed: false };
+const noMentions: string[] = [];
+
+/** Menciones que viajan con el envío: personas del directorio cuyo «@Nombre» sigue en el texto. */
+export function mentionsToSend(mentions: readonly string[], people: readonly ChatParticipant[], body: string): string[] {
+  return mentions.filter((personId) => {
+    const person = people.find((entry) => entry.id === personId);
+    return person !== undefined && body.includes(`@${personName(person.id, person)}`);
+  });
+}
+
+/** Borrador tras un envío: vacío si salió bien; si falló, conserva texto, clave de reintento y menciones. */
+export function draftAfterSend(text: string, key: string, mentions: readonly string[], ok: boolean): Draft {
+  return ok ? emptyDraft : { text, key, sending: false, failed: true, mentions: [...mentions] };
+}
 const displayError = (error: unknown) => error instanceof ChatRequestError ? error.message : "Se interrumpió la conexión con el chat.";
 const hasStatus = (error: unknown, status: number) => error instanceof ChatRequestError && error.status === status;
 
@@ -420,12 +435,17 @@ export function ChatScreen({
     const key = draft.key ?? crypto.randomUUID();
     const replyToId = replyingToId && messages.some((entry) => entry.id === replyingToId) ? replyingToId : null;
     sending.current.add(id);
-    setDrafts((previous) => ({ ...previous, [id]: { text: draft.text, key, sending: true, failed: false } }));
-    const ok = await submit({ kind: "send", conversationId: id, retryKey: key, body, ...(replyToId ? { replyToId } : {}) });
+    const mentions = draft.mentions ?? [];
+    setDrafts((previous) => ({ ...previous, [id]: { text: draft.text, key, sending: true, failed: false, mentions } }));
+    const mentioned = mentionsToSend(mentions, people, body);
+    const ok = await submit({
+      kind: "send", conversationId: id, retryKey: key, body,
+      ...(replyToId ? { replyToId } : {}), ...(mentioned.length ? { mentionedUserIds: mentioned } : {}),
+    });
     sending.current.delete(id);
     if (ok && replyToId) setReplyingToId((previous) => previous === replyToId ? null : previous);
     setDrafts((previous) => previous[id]?.key !== key ? previous : {
-      ...previous, [id]: ok ? emptyDraft : { text: draft.text, key, sending: false, failed: true },
+      ...previous, [id]: draftAfterSend(draft.text, key, mentions, ok),
     });
   }
 
@@ -564,12 +584,17 @@ export function ChatScreen({
     onMarkMentionsRead={handleMarkMentionsRead}
     onFilter={setUnreadOnly} onSelect={select} onOlder={() => void loadOlder()}
     onVisible={markVisible} onCommand={submit}
+    typingUserIds={typingUserIds} onTyping={sendTyping} attachmentsEnabled={false}
+    mentionedUserIds={draft.mentions ?? noMentions}
+    onMentionsChange={(ids) => {
+      if (currentId) setDrafts((previous) => ({ ...previous, [currentId]: { ...(previous[currentId] ?? emptyDraft), mentions: ids } }));
+    }}
     onDraft={(text) => {
-      if (text.trim()) sendTyping();
       if (currentId) setDrafts((previous) => {
         const old = previous[currentId];
         const keep = old?.key !== undefined && old.text.trim() === text.trim();
-        return { ...previous, [currentId]: keep && old.key ? { text, key: old.key, sending: false, failed: old.failed } : { text, sending: false, failed: false } };
+        const mentions = old?.mentions ?? [];
+        return { ...previous, [currentId]: keep && old.key ? { text, key: old.key, sending: false, failed: old.failed, mentions } : { text, sending: false, failed: false, mentions } };
       });
     }} onSend={() => void send()} />;
 }
