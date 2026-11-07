@@ -57,17 +57,17 @@ const VIEWS = [
 ] as const;
 const SAVED = { saved: "Todo guardado", saving: "Guardando…", error: "Sin guardar" };
 
-export function createTodayDock({ todos, date, layout, onLayout, filter, onFilter, entry, createNote, exportData, saveState, suggestion = null }: {
+export function createTodayDock({ todos, date, layout, onLayout, filter, onFilter, entry, createNote, saveState, suggestion = null }: {
   todos: EspacioTodo[]; date: string; layout: LayoutId; onLayout: (layout: LayoutId) => void;
   filter: HoyFilter; onFilter: (filter: HoyFilter) => void; entry: CaptureFieldProps;
-  createNote: () => void; exportData: () => void; saveState: NoteSaveState; suggestion?: DockSuggestion | null;
+  createNote: () => void; saveState: NoteSaveState; suggestion?: DockSuggestion | null;
 }): DockConfig {
   const due = todos.filter((todo) => todo.dueDate === date);
   const pending = due.filter((todo) => !todo.isDone);
   const overdue = todos.filter((todo) => !todo.isDone && todo.dueDate && todo.dueDate < date);
   return {
     label: "Dock de Hoy", context: "Todo tu espacio",
-    actions: [{ key: "N", label: "Nota", icon: "nota", run: createNote }, { key: "E", label: "Exportar", icon: "descargar", run: exportData }],
+    actions: [{ key: "N", label: "Nota", icon: "nota", run: createNote }],
     entry,
     waiting: { detail: `${overdue.length} ${overdue.length === 1 ? "vencido" : "vencidos"} · ${pending.length} para hoy`, items: [...overdue, ...pending],
       filters: (["vencidos", "hoy"] as const).map((id) => ({ label: id === "hoy" ? "Para hoy" : "Vencidos", selected: filter === id, run: () => onFilter(filter === id ? null : id) })) },

@@ -31,7 +31,9 @@ describe("Marco fijo de Tu espacio (issue 105): barra superior, carril y dock fi
   it("la barra superior tiene el grupo de controles en orden y el avatar con la inicial del correo", () => {
     const html = render({ userEmail: "ana@agencia.es" });
     const toolbar = html.slice(html.indexOf('role="toolbar" aria-label="Controles del espacio"'));
-    const order = ["Buscar o ejecutar (Ctrl K)", "Enfoque", "Avisos", "Cambiar a tema", "Ayuda y atajos", "Ajustes"].map((label) => toolbar.indexOf(label));
+    // Sin repetidos: el tema vive en Apariencia; Enfoque abre el grupo, a la izquierda.
+    const order = ["Enfoque", "Buscar o ejecutar (Ctrl K)", "Avisos", "Ayuda y atajos", "Vista y aspecto"].map((label) => toolbar.indexOf(label));
+    expect(toolbar).not.toContain("Cambiar a tema");
     expect(order.every((index) => index > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(html).toContain('aria-label="Menú de tu cuenta"');
@@ -61,7 +63,7 @@ describe("Marco fijo de Tu espacio (issue 105): barra superior, carril y dock fi
 describe("Carril de herramientas", () => {
   const renderRail = (props: Partial<CarrilProps> = {}) => renderToStaticMarkup(createElement(Carril, {
     expandido: false, activa: "hoy", onToggleExpandido: noop, onSelect: noop, hoyPendientes: 3,
-    semana: { hechos: 1, total: 3 }, ...props,
+    ...props,
   }));
 
   it("en compacto marca Hub como página activa y permite expandir el carril", () => {
@@ -71,15 +73,15 @@ describe("Carril de herramientas", () => {
     expect(html).not.toContain("Tu semana");
   });
 
-  it("en completo muestra las fichas, el progreso y la acción de agregar desactivada", () => {
+  it("en completo muestra las fichas y la acción de agregar desactivada", () => {
     const html = renderRail({ expandido: true, activa: "calendario" });
     expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Calendario, próximamente")(?=[^>]*aria-current="page")/);
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Contraer el carril")(?=[^>]*aria-expanded="true")/);
     expect(html).toMatch(/<button[^>]*(?=[^>]*aria-label="Agregar una herramienta, muy pronto")(?=[^>]* disabled="")/);
     expect(html).toContain(">Pronto<");
-    expect(html).toContain(">Tu semana<");
-    expect(html).toMatch(/<progress[^>]*value="1"[^>]*max="3"/);
+    expect(html).not.toContain(">Tu semana<"); // ahora vive en la bandeja, abajo a la izquierda
+    expect(html).not.toContain("<progress");
   });
 
   it("presenta una herramienta futura con su icono, nombre y descripción", () => {
@@ -92,7 +94,8 @@ describe("Carril de herramientas", () => {
   });
 
   it("abre Calendario desde el estado inicial y muestra Próximamente en lugar de los paneles", () => {
-    const content = (html: string) => html.match(/<main\b[^>]*>(?:<div class="hubly-espacio-escena[^>]*>)?(.*?)(?:<\/div>)?<\/main>/s)?.[1];
+    // El contenido va dentro de la escena del espacio y de la envoltura que anima el cambio de sección.
+    const content = (html: string) => html.match(/<main\b[^>]*>(?:<div class="hubly-espacio-escena[^>]*>)?(?:<div class="[^"]*hubly-seccion-[^"]*">)?(.*?)(?:<\/div>)?(?:<\/div>)?<\/main>/s)?.[1];
     expect(content(render())).toContain("Hoy");
     expect(content(render({ initialHerramienta: "calendario" }))).toMatch(/^<section[^>]*aria-labelledby="proximamente-titulo"[\s\S]*>Calendario<\/h2>[\s\S]*<\/section>$/);
   });
@@ -126,9 +129,11 @@ describe("Marco compacto: medidas por tokens y objetivos táctiles de 44 px", ()
 
   it("el carril retraído deja 44 px útiles por botón (ancho menos el relleno) y el desplegado usa su token", () => {
     expect(px("--frame-rail-w") - 2 * px("--frame-rail-pad")).toBeGreaterThanOrEqual(44);
-    const rail = (expandido: boolean) => renderToStaticMarkup(createElement(Carril, { expandido, activa: "hoy", onToggleExpandido: noop, onSelect: noop, hoyPendientes: 0, semana: { hechos: 0, total: 0 } }));
+    const rail = (expandido: boolean) => renderToStaticMarkup(createElement(Carril, { expandido, activa: "hoy", onToggleExpandido: noop, onSelect: noop, hoyPendientes: 0 }));
     expect(rail(false)).toContain("w-(--frame-rail-w) ");
     expect(rail(true)).toContain("w-(--frame-rail-w-open)");
-    expect(/<button[^>]*aria-label="Hub"[^>]*>/.exec(rail(false))![0]).toContain(" h-11 ");
+    // Cada herramienta usa --rail-item: 44 px en táctil (valor base); con ratón el token baja a 36 px.
+    expect(px("--rail-item")).toBeGreaterThanOrEqual(44);
+    expect(/<button[^>]*aria-label="Hub"[^>]*>/.exec(rail(false))![0]).toContain(" h-(--rail-item) ");
   });
 });

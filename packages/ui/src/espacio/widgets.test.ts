@@ -54,6 +54,7 @@ describe("Widget de vencidos (issue 240)", () => {
     }));
     const boton = /<button[^>]*aria-label="Marcar como hecho: Enviar minuta[^"]*"[^>]*>([\s\S]*?)<\/button>/.exec(html);
     expect(boton?.[0]).toContain("min-h-11");
+    expect(boton?.[0]).toContain("hubly-fila-tactil");
     expect(boton?.[0]).toContain("w-full");
     expect(boton?.[1]).toContain("Enviar minuta");
   });

@@ -264,7 +264,7 @@ function Vencidos({ todos, todayDate, onToggleTodo }: { todos: readonly EspacioT
           {/* Toda la fila es el control (al menos 44 px de alto); la casilla es solo el dibujo (issue 240).
               La fecha se lee como en el panel de Hoy («Ayer», «5 nov»), no en ISO (revisión de Prisma, #246). */}
           <button type="button" onClick={() => onToggleTodo(todo.id)} aria-label={`Marcar como hecho: ${todo.title}, venció: ${relativeDateLabel(todo.dueDate, todayDate)}`}
-            className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-(--hover-acento) focus-visible:ring-2 focus-visible:ring-(--accent-primary) focus-visible:outline-none">
+            className="hubly-fila-tactil flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-(--hover-acento) focus-visible:ring-2 focus-visible:ring-(--accent-primary) focus-visible:outline-none">
             <span aria-hidden="true" className="size-4 shrink-0 rounded border border-(--border-control)" />
             <span className="min-w-0 grow truncate text-sm">{todo.title}</span>
             <span aria-hidden="true" className="shrink-0 text-xs text-(--status-danger-text)">{relativeDateLabel(todo.dueDate, todayDate)}</span>
@@ -332,7 +332,7 @@ export function Bandeja({ datos, anclados }: { datos: WidgetDatos; anclados: rea
           <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
             <FilaBandeja icon="hoy" titulo="Tu semana" detalle={semana.total ? `${semana.hechos} de ${semana.total} hechos · ${pct} %` : "Sin pendientes esta semana"}>
               <span className="flex shrink-0 flex-col items-end text-xs">
-                <span className={vencidos ? "font-semibold text-(--status-danger-text)" : "text-(--text-muted)"}>{vencidos} vencidos</span>
+                <span className={vencidos ? "font-semibold text-(--status-danger-text)" : "text-(--text-muted)"}>{vencidos} {vencidos === 1 ? "vencido" : "vencidos"}</span>
                 <span className="text-(--text-muted)">{paraHoy} para hoy</span>
               </span>
             </FilaBandeja>
@@ -347,7 +347,7 @@ export function Bandeja({ datos, anclados }: { datos: WidgetDatos; anclados: rea
                 </FilaBandeja>
               );
               if (id === "semana") return <FilaBandeja key={id} icon="hoy" titulo={`${pct} % de la semana`} detalle={`${semana.hechos} de ${semana.total} pendientes`} onLienzo={alLienzo} />;
-              return <FilaBandeja key={id} icon={widget.icon} titulo={`${vencidos} vencidos`} detalle={vencidos ? "Ciérralos desde el lienzo" : "Vas al día"} onLienzo={alLienzo} />;
+              return <FilaBandeja key={id} icon={widget.icon} titulo={`${vencidos} ${vencidos === 1 ? "vencido" : "vencidos"}`} detalle={vencidos ? "Ciérralos desde el lienzo" : "Vas al día"} onLienzo={alLienzo} />;
             })}
           </ul>
           {!anclados.length && <p className="m-0 px-2 pt-1 pb-2 text-xs text-(--text-muted)">Ancla aquí un widget con el alfiler de su cabecera.</p>}

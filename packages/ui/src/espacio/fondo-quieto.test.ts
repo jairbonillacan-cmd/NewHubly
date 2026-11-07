@@ -19,6 +19,6 @@ describe("Fondo ilustrado quieto o animado (issue 239)", () => {
   it("el Hub pasa al fondo la preferencia guardada de movimiento", () => {
     const hub = readFileSync(new URL("./EspacioHoy.tsx", import.meta.url), "utf8");
     expect(hub).toContain("useFondoMovimiento()");
-    expect(hub).toMatch(/<Wallpaper [^>]*animado=\{movimiento === "animado"\}/);
+    expect(hub).toMatch(/<Wallpaper [^>]*animado=\{(?:fondoM|m)ovimiento === "animado"\}/);
   });
 });
