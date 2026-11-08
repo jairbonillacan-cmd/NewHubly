@@ -72,14 +72,29 @@ export function setThemePreference(next: HublyThemePreference): void {
   notify();
 }
 
-/** Aplica la preferencia que llega del servidor sin volver a guardarla en la cuenta. */
-export function hydrateThemePreference(next: HublyThemePreference): void {
-  ensureInitialized();
-  if (typeof window !== "undefined") {
-    try { window.localStorage.setItem(THEME_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
-  }
-  apply(next);
-  notify();
+/**
+ * Aplica la preferencia que llega del servidor. Hace lo mismo que setThemePreference; el nombre aclara la intención:
+ * quien la llama (EspacioHoy) recuerda este valor como ya guardado y no lo vuelve a enviar a la cuenta.
+ */
+export const hydrateThemePreference = setThemePreference;
+
+/**
+ * Decide si un cambio de preferencia hay que guardarlo en la cuenta. El primer valor que se observa (el del navegador
+ * antes de hidratar) y la preferencia que llegó del servidor nunca se reenvían; solo los cambios posteriores (issue 105).
+ */
+export function createThemePersistenceTracker(initial: HublyThemePreference | null) {
+  let last = initial;
+  let first = true;
+  return (current: HublyThemePreference): boolean => {
+    if (first) {
+      first = false;
+      if (last === null) last = current;
+      return false;
+    }
+    if (current === last) return false;
+    last = current;
+    return true;
+  };
 }
 
 export function getThemePreference(): HublyThemePreference {
