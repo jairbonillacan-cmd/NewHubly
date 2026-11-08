@@ -19,6 +19,8 @@ const systemTheme = (): HublyTheme => {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
 
+const isThemePreference = (value: unknown): value is HublyThemePreference => value === "light" || value === "dark" || value === "system";
+
 const storedPreference = (): HublyThemePreference => {
   if (typeof window === "undefined") return "light";
   try {
@@ -52,6 +54,12 @@ function ensureInitialized(): void {
   systemMedia?.addEventListener?.("change", () => {
     if (preference !== "system") return;
     apply("system");
+    notify();
+  });
+  // Otra pestaña eligió tema (issue 271): se aplica aquí también, sin volver a guardarlo en la cuenta, que ya lo guardó la otra.
+  window.addEventListener?.("storage", (event) => {
+    if (event.key !== THEME_STORAGE_KEY || !isThemePreference(event.newValue) || event.newValue === preference) return;
+    apply(event.newValue);
     notify();
   });
 }
