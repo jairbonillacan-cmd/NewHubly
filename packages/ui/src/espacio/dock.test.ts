@@ -61,6 +61,34 @@ describe("Registro de atajos", () => {
     expect(search).toHaveBeenCalledOnce();
     expect(run).not.toHaveBeenCalled();
   });
+
+  it("en cualquier campo de escritura, Ctrl K y Cmd K abren la búsqueda y evitan la acción del navegador (issue 269)", () => {
+    const run = vi.fn(), search = vi.fn();
+    const dispatch = createShortcutRegistry([{ key: "N", label: "Nota", run }, { key: "Ctrl K", label: "Buscar", run: search }]);
+    const fields = [{ tagName: "INPUT" }, { tagName: "TEXTAREA" }, { tagName: "DIV", isContentEditable: true }];
+    for (const target of fields) {
+      for (const modifier of [{ ctrlKey: true }, { metaKey: true }]) {
+        const preventDefault = vi.fn();
+        dispatch({ key: "k", ...modifier, target, preventDefault } as unknown as KeyboardEvent);
+        expect(preventDefault).toHaveBeenCalledOnce();
+      }
+      dispatch({ key: "n", target, preventDefault: vi.fn() } as unknown as KeyboardEvent);
+    }
+    expect(search).toHaveBeenCalledTimes(fields.length * 2);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("con IME, Alt o la tecla mantenida no se dispara nada, aunque lleve Ctrl o Cmd (issue 269)", () => {
+    const search = vi.fn(), preventDefault = vi.fn();
+    const dispatch = createShortcutRegistry([{ key: "Ctrl K", label: "Buscar", run: search }]);
+    const input = { tagName: "INPUT" };
+    for (const extra of [{ isComposing: true }, { altKey: true }, { repeat: true }]) {
+      dispatch({ key: "k", ctrlKey: true, target: input, preventDefault, ...extra } as unknown as KeyboardEvent);
+      dispatch({ key: "k", metaKey: true, target: input, preventDefault, ...extra } as unknown as KeyboardEvent);
+    }
+    expect(search).not.toHaveBeenCalled();
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
 });
 
 describe("Lengüeta de Hubi", () => {
