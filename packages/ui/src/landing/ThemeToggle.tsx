@@ -56,11 +56,26 @@ function ensureInitialized(): void {
     apply("system");
     notify();
   });
-  // Otra pestaña eligió tema (issue 271): se aplica aquí también, sin volver a guardarlo en la cuenta, que ya lo guardó la otra.
+  // Otra pestaña cambió la apariencia (issues 271 y 273): se muestra aquí también, sin volver a guardarla en este
+  // navegador ni en la cuenta, que ya lo hizo la otra. Los borrados y los valores no válidos se ignoran.
   window.addEventListener?.("storage", (event) => {
-    if (event.key !== THEME_STORAGE_KEY || !isThemePreference(event.newValue) || event.newValue === preference) return;
-    apply(event.newValue);
-    notify();
+    const value = event.newValue;
+    if (event.key === THEME_STORAGE_KEY && isThemePreference(value) && value !== preference) {
+      apply(value);
+      notify();
+    } else if (event.key === ESTILO_STORAGE_KEY && isEstilo(value)) {
+      mostrarEstilo(value);
+      reajustarAcento();
+      estiloListeners.forEach((listener) => listener());
+    } else if (event.key === ACCENT_STORAGE_KEY && isAccent(value)) {
+      mostrarAcento(value);
+    } else if (event.key === ACCENT_COLOR_STORAGE_KEY && value && HEX.test(value)) {
+      accentColor = value;
+      reajustarAcento();
+      accentListeners.forEach((listener) => listener());
+    } else if (event.key === HUD_KEY && isHud(value)) {
+      mostrarHud(value);
+    }
   });
 }
 
@@ -292,10 +307,15 @@ function readAccent(): HublyAccent {
 }
 
 export function setAccent(next: HublyAccent): void {
-  accent = next;
   if (typeof window !== "undefined") {
     try { window.localStorage.setItem(ACCENT_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
   }
+  mostrarAcento(next);
+}
+
+/** Muestra el acento sin guardarlo; lo usan la elección y lo que llega de otra pestaña. */
+function mostrarAcento(next: HublyAccent): void {
+  accent = next;
   if (typeof document !== "undefined") {
     if (next === "azul") document.documentElement.removeAttribute("data-accent");
     else document.documentElement.setAttribute("data-accent", next);
@@ -304,9 +324,16 @@ export function setAccent(next: HublyAccent): void {
   accentListeners.forEach((listener) => listener());
 }
 
+/** Avisa cuando cambia el acento o su color libre, venga de donde venga; es la suscripción de sus hooks. */
+export function subscribeToAccent(listener: () => void): () => void {
+  ensureInitialized();
+  accentListeners.add(listener);
+  return () => { accentListeners.delete(listener); };
+}
+
 export function useHublyAccentColor() {
   return useSyncExternalStore(
-    (listener) => { accentListeners.add(listener); return () => { accentListeners.delete(listener); }; },
+    subscribeToAccent,
     readAccentColor,
     () => "",
   );
@@ -314,7 +341,7 @@ export function useHublyAccentColor() {
 
 export function useHublyAccent() {
   const current = useSyncExternalStore(
-    (listener) => { accentListeners.add(listener); return () => { accentListeners.delete(listener); }; },
+    subscribeToAccent,
     readAccent,
     () => "azul" as HublyAccent,
   );
@@ -350,24 +377,35 @@ function readEstilo(): HublyEstilo | null {
 /** Elige un estilo: fija la base (claro, oscuro o sistema) y la variante de colores. */
 export function setEstilo(next: HublyEstilo): void {
   const estilo = HUBLY_ESTILOS.find((entry) => entry.id === next)!;
-  estiloActual = next;
   if (typeof window !== "undefined") {
     try { window.localStorage.setItem(ESTILO_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
   }
-  if (typeof document !== "undefined") {
-    if (ORIGINALES.includes(next)) document.documentElement.removeAttribute("data-estilo");
-    else document.documentElement.setAttribute("data-estilo", next);
-  }
+  mostrarEstilo(next);
   setThemePreference(estilo.base);
   reajustarAcento();
   estiloListeners.forEach((listener) => listener());
+}
+
+/** Muestra la variante de colores sin guardarla. La base (claro u oscuro) va aparte, por el tema. */
+function mostrarEstilo(next: HublyEstilo): void {
+  estiloActual = next;
+  if (typeof document === "undefined") return;
+  if (ORIGINALES.includes(next)) document.documentElement.removeAttribute("data-estilo");
+  else document.documentElement.setAttribute("data-estilo", next);
+}
+
+/** Avisa cuando cambia el estilo, venga de donde venga; es la suscripción de useHublyEstilo. */
+export function subscribeToEstilo(listener: () => void): () => void {
+  ensureInitialized();
+  estiloListeners.add(listener);
+  return () => { estiloListeners.delete(listener); };
 }
 
 /** Estilo elegido; si no hay uno guardado, el original que corresponde a la preferencia de tema. */
 export function useHublyEstilo() {
   const [preference] = useHublyThemePreference();
   const guardado = useSyncExternalStore(
-    (listener) => { estiloListeners.add(listener); return () => { estiloListeners.delete(listener); }; },
+    subscribeToEstilo,
     readEstilo,
     () => null,
   );
@@ -384,6 +422,7 @@ export const HUBLY_HUD = [
 ] as const;
 export type HublyHud = (typeof HUBLY_HUD)[number]["id"];
 const HUD_KEY = "hubly-hud";
+const isHud = (value: unknown): value is HublyHud => HUBLY_HUD.some((hud) => hud.id === value);
 let hudActual: HublyHud | null = null;
 const hudListeners = new Set<() => void>();
 
@@ -391,13 +430,18 @@ function readHud(): HublyHud {
   if (hudActual) return hudActual;
   let stored: string | null = null;
   try { stored = typeof window === "undefined" ? null : window.localStorage.getItem(HUD_KEY); } catch { /* sin almacenamiento */ }
-  hudActual = stored === "grande" || stored === "muy-grande" ? stored : "normal";
+  hudActual = isHud(stored) ? stored : "normal";
   return hudActual;
 }
 
 export function setHud(next: HublyHud): void {
-  hudActual = next;
   try { window.localStorage.setItem(HUD_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
+  mostrarHud(next);
+}
+
+/** Muestra el tamaño del HUD sin guardarlo. */
+function mostrarHud(next: HublyHud): void {
+  hudActual = next;
   if (typeof document !== "undefined") {
     if (next === "normal") document.documentElement.removeAttribute("data-hud");
     else document.documentElement.setAttribute("data-hud", next);
@@ -405,9 +449,16 @@ export function setHud(next: HublyHud): void {
   hudListeners.forEach((listener) => listener());
 }
 
+/** Avisa cuando cambia el tamaño del HUD, venga de donde venga; es la suscripción de useHublyHud. */
+export function subscribeToHud(listener: () => void): () => void {
+  ensureInitialized();
+  hudListeners.add(listener);
+  return () => { hudListeners.delete(listener); };
+}
+
 export function useHublyHud() {
   const current = useSyncExternalStore(
-    (listener) => { hudListeners.add(listener); return () => { hudListeners.delete(listener); }; },
+    subscribeToHud,
     readHud,
     () => "normal" as HublyHud,
   );
