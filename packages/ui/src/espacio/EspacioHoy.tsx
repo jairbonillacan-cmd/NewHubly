@@ -4,7 +4,7 @@ import { Button, Dropdown } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { Hubi, type HubiPose } from "../components/brand/Hubi";
-import { hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyTheme, type HublyThemePreference } from "../landing/ThemeToggle";
+import { createThemePersistenceTracker, hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyThemePreference } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { useFondoMovimiento } from "./fondoMovimiento";
 import { Bandeja, WIDGETS, WIDGET_INICIAL, WidgetPanel, WidgetsCajon, toggleWidget, useWidgets, type WidgetDatos } from "./widgets";
@@ -41,9 +41,7 @@ export interface EspacioHoyProps {
   initialPreferences?: EspacioPreferencias | undefined;
   /** Se llama con las preferencias completas cada vez que cambian (fondo, opacidad, distribución o paneles). */
   onPreferencesChange?: ((prefs: EspacioPreferencias) => void) | undefined;
-  /** Tema guardado de la persona; si llega, manda sobre el del navegador al entrar. */
-  initialTheme?: HublyTheme | undefined;
-  /** Preferencia guardada, incluido «system» (#105); manda sobre initialTheme. */
+  /** Tema guardado de la persona, incluido «system» (#105); si llega, manda sobre el del navegador al entrar. */
   initialThemePreference?: HublyThemePreference | undefined;
   /** Se llama cuando la persona cambia de tema desde el menú del perfil o la paleta. */
   onThemeChange?: ((theme: HublyThemePreference) => void) | undefined;
@@ -177,9 +175,8 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const widgets = useWidgets();
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
-  const initialPreference = props.initialThemePreference ?? props.initialTheme ?? null;
-  const lastPersistedTheme = useRef<HublyThemePreference | null>(initialPreference);
-  const skipFirstTheme = useRef(true);
+  const initialPreference = props.initialThemePreference ?? null;
+  const [shouldPersistTheme] = useState(() => createThemePersistenceTracker(initialPreference));
 
   // El tema guardado en el servidor manda al entrar; después, cada cambio de preferencia se guarda una sola vez.
   useEffect(() => {
@@ -187,14 +184,7 @@ export function EspacioHoy(props: EspacioHoyProps) {
     // Solo al montar: initialPreference es el valor con el que se cargó la página.
   }, []);
   useEffect(() => {
-    if (skipFirstTheme.current) {
-      skipFirstTheme.current = false;
-      if (lastPersistedTheme.current === null) lastPersistedTheme.current = themePreference;
-      return;
-    }
-    if (themePreference === lastPersistedTheme.current) return;
-    lastPersistedTheme.current = themePreference;
-    onThemeChangeRef.current?.(themePreference);
+    if (shouldPersistTheme(themePreference)) onThemeChangeRef.current?.(themePreference);
   }, [themePreference]);
   const [filter, setFilter] = useState<HoyFilter>(null);
   const [openNoteId, setOpenNoteId] = useState<string | null>(() => notes.find((n) => n.isPinned && !n.isArchived)?.id ?? notes.find((n) => !n.isArchived)?.id ?? null);
@@ -402,11 +392,14 @@ export function EspacioHoy(props: EspacioHoyProps) {
     ...(dock ? [{ key: dock.entry.shortcut, label: "Escribir un pendiente", run: focusCapture }, ...dock.actions] : []),
   ];
 
+  // Un solo oyente de teclado durante toda la visita; en cada render solo cambia el registro al que apunta.
+  const dispatchShortcut = useRef<(event: KeyboardEvent) => void>(noop);
+  dispatchShortcut.current = createShortcutRegistry(shortcuts);
   useEffect(() => {
-    const onKeyDown = createShortcutRegistry(shortcuts);
+    const onKeyDown = (event: KeyboardEvent) => dispatchShortcut.current(event);
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [shortcuts]);
+  }, []);
 
   const hoyPanel = (className: string) => (
     <HoyPanel
