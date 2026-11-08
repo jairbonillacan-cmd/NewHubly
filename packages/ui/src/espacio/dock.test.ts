@@ -7,18 +7,17 @@ import type { EspacioTodo } from "./types";
 
 describe("Dock de Hoy", () => {
   it("conecta acciones, vistas y pendientes del día", () => {
-    const note = vi.fn(), exportData = vi.fn(), onLayout = vi.fn(), onFilter = vi.fn();
+    const note = vi.fn(), onLayout = vi.fn(), onFilter = vi.fn();
     const date = "2026-11-05";
     const todo = (id: string, dueDate: string, isDone = false): EspacioTodo => ({ id, title: id, dueDate, isDone, priority: "low", noteId: null });
     const config = createTodayDock({
-      date, layout: "libre", onLayout, filter: null, onFilter, createNote: note, exportData, saveState: "saved",
+      date, layout: "libre", onLayout, filter: null, onFilter, createNote: note, saveState: "saved",
       entry: { label: "Capturar pendiente", hint: "Captura", shortcut: "C", chips: () => [], onSubmit: vi.fn() },
       todos: [todo("vencido", "2026-11-04"), todo("hoy", date), todo("hecho", date, true), todo("mañana", "2026-11-06")],
     });
-    expect(config.actions.map(({ label, key }) => [label, key])).toEqual([["Nota", "N"], ["Exportar", "E"]]);
+    expect(config.actions.map(({ label, key }) => [label, key])).toEqual([["Nota", "N"]]);
     config.actions.forEach((action) => action.run());
     expect(note).toHaveBeenCalledOnce();
-    expect(exportData).toHaveBeenCalledOnce();
     expect(config.views.map(({ id, selected }) => [id, selected])).toEqual([["libre", true], ["lado", false], ["enfoque", false]]);
     config.views.find((view) => view.id === "lado")?.run();
     expect(onLayout).toHaveBeenCalledWith("lado");

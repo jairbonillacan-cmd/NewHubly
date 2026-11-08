@@ -2,7 +2,11 @@
 
 import { useCallback, useRef, useState } from "react";
 
-export type WallpaperId = "contornos" | "patron" | "tinta" | "grafito" | "puntos" | "cuadricula" | "aurora" | "hubis" | "arena" | "imagen";
+import { FONDOS_ILUSTRADOS, fondoIlustrado, type FondoIlustradoId } from "./fondos";
+
+export { FONDOS_ILUSTRADOS, fondoIlustrado, type FondoIlustradoId };
+
+export type WallpaperId ="contornos" | "patron" | "tinta" | "grafito" | "puntos" | "cuadricula" | "aurora" | "hubis" | "arena" | FondoIlustradoId | "imagen";
 export type LayoutId = "libre" | "lado" | "enfoque";
 export type PanelId = "hoy" | "nota" | "notas";
 
@@ -13,6 +17,8 @@ export interface EspacioPreferencias {
   distribucion: LayoutId;
   paneles: Record<PanelId, boolean>;
 }
+
+export const WALLPAPERS_ILUSTRADOS: { id: WallpaperId; claro: string; oscuro: string }[] = FONDOS_ILUSTRADOS.map(({ id, nombre }) => ({ id, claro: nombre, oscuro: nombre }));
 
 export const WALLPAPERS: { id: WallpaperId; claro: string; oscuro: string }[] = [
   { id: "contornos", claro: "Contornos", oscuro: "Contornos" },

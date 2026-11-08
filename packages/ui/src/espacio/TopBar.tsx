@@ -1,10 +1,9 @@
 "use client";
 
-import { Button, Chip, Dropdown, Kbd, Popover, ToggleButton, Tooltip } from "@heroui/react";
+import { Button, Chip, Dropdown, Kbd, Popover, ToggleButton } from "@heroui/react";
 import type { ReactNode } from "react";
 import { FileTrigger, type Key, type Selection } from "react-aria-components";
 import { HubiFace } from "../components/brand/HublyLogo";
-import { useHublyTheme, useHublyThemePreference } from "../landing/ThemeToggle";
 import { Icon, type IconName } from "./icons";
 import type { Shortcut } from "./dockConfig";
 import { AVATAR_TYPES, Avatar } from "./PerfilDialog";
@@ -17,6 +16,8 @@ export interface TopBarProps {
   shortcuts: readonly Shortcut[];
   onOpenPalette: () => void;
   onOpenBackground: () => void;
+  /** Sección abierta: en el Hub se eligen sus paneles; en las demás, los ajustes de esa sección. */
+  seccion?: { esHub: boolean; nombre: string } | undefined;
   onExport: (format: "json" | "md") => void;
   onSignOut: () => void;
   workspaces: EspacioWorkspace[];
@@ -47,7 +48,7 @@ export interface TopBarProps {
 }
 
 const MENU = "hubly-pop-surface hubly-popover-scroll min-w-64 rounded-xl p-1.5 text-(--text-primary)";
-const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--glass-hover) data-[disabled]:cursor-default data-[disabled]:opacity-60";
+const ITEM = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-none data-[focused]:bg-(--hover-acento) data-[disabled]:cursor-default data-[disabled]:opacity-60";
 
 function SpaceMenu({ workspaces, activeWorkspace, switchingTo, onSelectWorkspace, onCreateAgency, onOpenTeam }: Pick<TopBarProps, "workspaces" | "activeWorkspace" | "switchingTo" | "onSelectWorkspace" | "onCreateAgency" | "onOpenTeam">) {
   const shown = switchingTo ?? activeWorkspace;
@@ -63,7 +64,7 @@ function SpaceMenu({ workspaces, activeWorkspace, switchingTo, onSelectWorkspace
   };
   return (
     <Dropdown>
-      <Dropdown.Trigger aria-label={`Cambiar de espacio (actual: ${label})`} aria-busy={switchingTo !== undefined} className="flex h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-sm font-semibold whitespace-nowrap text-(--text-primary) hover:bg-(--glass-hover)">
+      <Dropdown.Trigger aria-label={`Cambiar de espacio (actual: ${label})`} aria-busy={switchingTo !== undefined} className="flex h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-sm font-semibold whitespace-nowrap text-(--text-primary) hover:bg-(--hover-acento)">
         <span aria-hidden="true" className="hidden size-5 items-center justify-center rounded-md bg-(--accent-primary) text-(--text-on-accent) sm:flex"><Icon name={isAgency ? "equipo" : "usuario"} className="size-3.5" /></span>
         <span className="max-w-40 truncate">{label}</span>
         <Icon name="chevrones" className="size-3.5 text-(--text-muted)" />
@@ -116,24 +117,16 @@ export function PresenceDot({ status, className = "size-3.5" }: { status: Espaci
   );
 }
 
-const THEME_LABEL = { light: "Claro", dark: "Oscuro", system: "Sistema" } as const;
-
-function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, presence, onChangePresence, onEditProfile, onPickAvatar, shortcuts, onExport, onSignOut }: Pick<TopBarProps, "timezone" | "userEmail" | "userName" | "avatarUrl" | "avatarBusy" | "presence" | "onChangePresence" | "onEditProfile" | "onPickAvatar" | "shortcuts" | "onExport" | "onSignOut">) {
+function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, presence, onChangePresence, onEditProfile, onPickAvatar, onExport, onSignOut }: Pick<TopBarProps, "timezone" | "userEmail" | "userName" | "avatarUrl" | "avatarBusy" | "presence" | "onChangePresence" | "onEditProfile" | "onPickAvatar" | "onExport" | "onSignOut">) {
   const initial = initialOf(userName || userEmail);
   const pick = (files: FileList | null) => { const file = files?.[0]; if (file) onPickAvatar?.(file); };
   const photoLabel = avatarUrl ? "Cambiar foto" : "Subir foto";
   const status = presence ?? "online";
-  const [preference, , setThemePreference] = useHublyThemePreference();
   const onAction = (key: Key) => {
     if (key === "json") onExport("json");
     else if (key === "md") onExport("md");
     else if (key === "salir") onSignOut();
     else if (key === "editar") onEditProfile?.();
-  };
-  const onTheme = (selection: Selection) => {
-    if (selection === "all") return;
-    const next = [...selection][0];
-    if (next === "light" || next === "dark" || next === "system") setThemePreference(next);
   };
   const onPresence = (selection: Selection) => {
     if (selection === "all") return;
@@ -144,9 +137,11 @@ function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, pre
   const avatarGrande = <Avatar url={avatarUrl ?? null} initial={initial} className="size-14 text-xl" iconClassName="size-6" />;
   return (
     <Dropdown>
-      <Dropdown.Trigger aria-label="Menú de tu cuenta" className="relative size-11 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0 transition-transform data-[hovered]:scale-105">
-        <Avatar url={avatarUrl ?? null} initial={initial} className="size-11 text-base" />
-        <PresenceDot status={status} className="absolute -right-0.5 -bottom-0.5 size-4" />
+      <Dropdown.Trigger aria-label="Menú de tu cuenta" className="relative flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 transition-transform data-[hovered]:scale-105">
+        <span className="relative">
+          <Avatar url={avatarUrl ?? null} initial={initial} className="size-8 text-sm" iconClassName="size-4" />
+          <PresenceDot status={status} className="absolute -right-0.5 -bottom-0.5 size-3" />
+        </span>
       </Dropdown.Trigger>
       <Dropdown.Popover placement="bottom end" className={`${MENU} w-80`}>
         <div className="flex items-center gap-3 border-b border-(--glass-line) px-2.5 pt-2 pb-3">
@@ -204,33 +199,6 @@ function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, pre
               </Dropdown.Item>
             )}
             <Dropdown.SubmenuTrigger>
-              <Dropdown.Item id="tema" textValue="Tema" className={ITEM}>
-                <Icon name="luna" /> <span className="grow">Tema</span><span className="mr-5 text-xs text-(--text-muted)">{THEME_LABEL[preference]}</span><Dropdown.SubmenuIndicator />
-              </Dropdown.Item>
-              <Dropdown.Popover placement="left top" className={MENU}>
-                <Dropdown.Menu aria-label="Tema" className="hubly-sin-anillo" selectionMode="single" selectedKeys={[preference]} onSelectionChange={onTheme}>
-                  <Dropdown.Item id="light" textValue="Tema claro" className={ITEM}><Icon name="sol" /> <span className="grow">Claro</span>{check(preference === "light")}</Dropdown.Item>
-                  <Dropdown.Item id="dark" textValue="Tema oscuro" className={ITEM}><Icon name="luna" /> <span className="grow">Oscuro</span>{check(preference === "dark")}</Dropdown.Item>
-                  <Dropdown.Item id="system" textValue="Tema del sistema" className={ITEM}><Icon name="paneles" /> <span className="grow">Sistema</span>{check(preference === "system")}</Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.SubmenuTrigger>
-            <Dropdown.SubmenuTrigger>
-              <Dropdown.Item id="atajos" textValue="Atajos de teclado" className={ITEM}>
-                <Icon name="teclado" /> <span className="grow">Atajos de teclado</span><Dropdown.SubmenuIndicator />
-              </Dropdown.Item>
-              <Dropdown.Popover placement="left top" className={MENU}>
-                <Dropdown.Menu aria-label="Atajos de teclado" className="hubly-sin-anillo">
-                  {shortcuts.map((shortcut) => (
-                    <Dropdown.Item key={shortcut.key} id={`atajo:${shortcut.key}`} isDisabled textValue={`${shortcut.label}: ${shortcut.key}`} className={ITEM}>
-                      <span className="grow">{shortcut.label}</span>
-                      <Kbd><Kbd.Content>{shortcut.key}</Kbd.Content></Kbd>
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.SubmenuTrigger>
-            <Dropdown.SubmenuTrigger>
               <Dropdown.Item id="datos" textValue="Descargar mis datos" className={ITEM}>
                 <Icon name="descargar" /> <span className="grow">Descargar mis datos</span><Dropdown.SubmenuIndicator />
               </Dropdown.Item>
@@ -251,24 +219,8 @@ function AccountMenu({ timezone, userEmail, userName, avatarUrl, avatarBusy, pre
   );
 }
 
-const CONTROL = "size-11 min-w-11 text-(--text-secondary) data-[hovered]:text-(--text-primary)";
+const CONTROL = "size-(--dock-control) min-w-(--dock-control) text-(--text-secondary) data-[hovered]:text-(--text-primary)";
 
-/** Botón de icono del grupo de controles, con su nombre en el tooltip. */
-function Control({ icon, label, onPress, pressed }: { icon: IconName; label: string; onPress?: () => void; pressed?: boolean }) {
-  return (
-    <Tooltip delay={400}>
-      {pressed === undefined ? (
-        <Button isIconOnly variant="ghost" aria-label={label} onPress={() => onPress?.()} className={CONTROL}><Icon name={icon} className="size-5" /></Button>
-      ) : (
-        <ToggleButton isIconOnly variant="ghost" aria-label={label} isSelected={pressed} onChange={() => onPress?.()}
-          className={`${CONTROL} data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary)`}>
-          <Icon name={icon} className="size-5" />
-        </ToggleButton>
-      )}
-      <Tooltip.Content placement="bottom">{label}</Tooltip.Content>
-    </Tooltip>
-  );
-}
 
 /** Botón de icono que abre una ventanita (avisos y ayuda). */
 function ControlPopover({ icon, label, title, children }: { icon: IconName; label: string; title: string; children: ReactNode }) {
@@ -294,26 +246,26 @@ const PANELES: { id: PanelId; label: string; icon: IconName }[] = [
 ];
 
 /** Grupo de controles de la barra superior (#105, sección 2), en el orden de la maqueta. */
-function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, onExport, panels, onTogglePanel, shortcuts }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "onOpenBackground" | "onExport" | "panels" | "onTogglePanel" | "shortcuts">) {
-  const [theme, setTheme] = useHublyTheme();
+function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, panels, onTogglePanel, shortcuts, seccion }: Pick<TopBarProps, "focusMode" | "onToggleFocus" | "onOpenPalette" | "onOpenBackground" | "panels" | "onTogglePanel" | "shortcuts" | "seccion">) {
+  const esHub = seccion?.esHub ?? true;
   return (
     <div role="toolbar" aria-label="Controles del espacio" className="flex items-center gap-0.5">
-      <Button variant="ghost" onPress={onOpenPalette} aria-label="Buscar o ejecutar (Ctrl K)" className="h-11 min-w-11 gap-2 px-3 text-sm text-(--text-secondary) data-[hovered]:text-(--text-primary)">
-        <Icon name="buscar" className="size-5" />
-        <span className="hidden lg:inline">Buscar</span>
-        <Kbd className="hidden lg:inline-flex"><Kbd.Abbr keyValue="ctrl" /><Kbd.Content>K</Kbd.Content></Kbd>
-      </Button>
       <ToggleButton isSelected={focusMode} onChange={onToggleFocus}
-        className="hidden h-11 gap-2 rounded-xl border-0 bg-transparent px-3 text-sm font-semibold text-(--text-secondary) data-[hovered]:text-(--text-primary) data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary) lg:inline-flex">
+        className="hidden h-(--dock-control) shrink-0 gap-2 rounded-xl border-0 bg-transparent px-2.5 text-xs font-semibold text-(--text-secondary) data-[hovered]:text-(--text-primary) data-[selected]:bg-(--accent-primary-subtle) data-[selected]:text-(--accent-primary) lg:inline-flex">
         <Icon name="enfoque" className="size-5" /> Enfoque
       </ToggleButton>
+      <span aria-hidden="true" className="mx-1.5 hidden h-6 w-px bg-(--glass-line-strong) lg:block" />
+      <Button variant="ghost" onPress={onOpenPalette} aria-label="Buscar o ejecutar (Ctrl K)" className="h-(--dock-control) min-w-(--dock-control) gap-1.5 rounded-lg bg-(--glass-field) px-2.5 text-xs text-(--text-secondary) data-[hovered]:text-(--text-primary) lg:min-w-44 lg:justify-start">
+        <Icon name="buscar" className="size-4" />
+        <span className="hidden grow text-left lg:inline">Buscar</span>
+        <Kbd className="hidden lg:inline-flex"><Kbd.Abbr keyValue="ctrl" /><Kbd.Content>K</Kbd.Content></Kbd>
+      </Button>
       <span aria-hidden="true" className="mx-1.5 hidden h-6 w-px bg-(--glass-line-strong) lg:block" />
       <div className="hidden items-center gap-0.5 lg:flex">
         <ControlPopover icon="campana" label="Avisos" title="Avisos">
           <p className="m-0 text-sm text-(--text-secondary)">Aquí llegarán los avisos de tu espacio.</p>
           <Chip size="sm" variant="soft" className="self-start">Próximamente</Chip>
         </ControlPopover>
-        <Control icon={theme === "dark" ? "sol" : "luna"} label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} onPress={() => setTheme(theme === "dark" ? "light" : "dark")} />
         <ControlPopover icon="ayuda" label="Ayuda y atajos" title="Atajos de teclado">
           <ul className="m-0 flex list-none flex-col gap-2 p-0 text-sm">
             {shortcuts.map((shortcut) => (
@@ -325,29 +277,37 @@ function Controls({ focusMode, onToggleFocus, onOpenPalette, onOpenBackground, o
           </ul>
         </ControlPopover>
         <Dropdown>
-          <Dropdown.Trigger aria-label="Ajustes" className={`flex cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent hover:bg-(--glass-hover) ${CONTROL}`}>
+          <Dropdown.Trigger aria-label="Vista y aspecto" className={`flex cursor-pointer items-center justify-center rounded-xl border-0 bg-transparent hover:bg-(--hover-acento) ${CONTROL}`}>
             <Icon name="ajustes" className="size-5" />
           </Dropdown.Trigger>
           <Dropdown.Popover placement="bottom end" className={MENU}>
-            <Dropdown.Menu aria-label="Ajustes del espacio" className="hubly-sin-anillo" onAction={(key) => { if (key === "fondo") onOpenBackground(); else if (key === "json" || key === "md") onExport(key); }}>
-              <Dropdown.Section aria-label="Paneles de Hoy" selectionMode="multiple" selectedKeys={PANELES.filter((panel) => panels[panel.id]).map((panel) => panel.id)}
-                onSelectionChange={(selection) => {
-                  if (selection === "all") return;
-                  const changed = PANELES.find((panel) => selection.has(panel.id) !== panels[panel.id]);
-                  if (changed) onTogglePanel(changed.id);
-                }} className="border-b border-(--glass-line) pb-1.5">
-                {PANELES.map((panel) => (
-                  <Dropdown.Item key={panel.id} id={panel.id} textValue={panel.label} className={ITEM}>
-                    <Icon name={panel.icon} /> <span className="grow">{panel.label}</span>
-                    <Dropdown.ItemIndicator />
+            <Dropdown.Menu aria-label="Vista y aspecto" className="hubly-sin-anillo" onAction={(key) => { if (key === "aspecto") onOpenBackground(); }}>
+              <Dropdown.Section aria-label="Aspecto" className="border-b border-(--glass-line) pb-1.5">
+                <Dropdown.Item id="aspecto" textValue="Personalizar aspecto" className={ITEM}>
+                  <Icon name="imagen" /> <span className="flex grow flex-col"><span>Personalizar aspecto</span><span className="text-xs text-(--text-muted)">Fondo, tema, colores y tamaño</span></span>
+                </Dropdown.Item>
+              </Dropdown.Section>
+              {esHub ? (
+                <Dropdown.Section aria-label="Paneles del Hub" selectionMode="multiple" selectedKeys={PANELES.filter((panel) => panels[panel.id]).map((panel) => panel.id)}
+                  onSelectionChange={(selection) => {
+                    if (selection === "all") return;
+                    const changed = PANELES.find((panel) => selection.has(panel.id) !== panels[panel.id]);
+                    if (changed) onTogglePanel(changed.id);
+                  }} className="pt-1.5">
+                  {PANELES.map((panel) => (
+                    <Dropdown.Item key={panel.id} id={panel.id} textValue={panel.label} className={ITEM}>
+                      <Icon name={panel.icon} /> <span className="grow">{panel.label}</span>
+                      <Dropdown.ItemIndicator />
+                    </Dropdown.Item>
+                  ))}
+                </Dropdown.Section>
+              ) : (
+                <Dropdown.Section aria-label={`Ajustes de ${seccion?.nombre ?? "esta sección"}`} className="pt-1.5">
+                  <Dropdown.Item id="seccion" isDisabled textValue={`Ajustes de ${seccion?.nombre ?? "esta sección"}`} className={ITEM}>
+                    <Icon name="ajustes" /> <span className="flex grow flex-col"><span>Ajustes de {seccion?.nombre}</span><span className="text-xs text-(--text-muted)">Llegan con la herramienta</span></span>
                   </Dropdown.Item>
-                ))}
-              </Dropdown.Section>
-              <Dropdown.Section aria-label="Acciones" className="pt-1.5">
-                <Dropdown.Item id="fondo" textValue="Cambiar fondo" className={ITEM}><Icon name="imagen" /> Cambiar fondo</Dropdown.Item>
-                <Dropdown.Item id="json" textValue="Exportar en JSON" className={ITEM}><Icon name="descargar" /> Exportar en JSON</Dropdown.Item>
-                <Dropdown.Item id="md" textValue="Exportar en Markdown" className={ITEM}><Icon name="descargar" /> Exportar en Markdown</Dropdown.Item>
-              </Dropdown.Section>
+                </Dropdown.Section>
+              )}
             </Dropdown.Menu>
           </Dropdown.Popover>
         </Dropdown>
@@ -361,8 +321,9 @@ export function TopBar(props: TopBarProps) {
   const { todayDate } = props;
   return (
     <div className="flex flex-col gap-2">
-      <header className="hubly-glass hubly-enter flex h-(--frame-topbar-h) items-center gap-2 rounded-(--glass-radius-access-bar) pr-1.5 pl-3 lg:gap-3">
-        <a href="/" aria-label="Hubly, inicio" className="flex min-h-11 min-w-11 items-center justify-center">
+      <header className="hubly-glass hubly-enter flex h-(--frame-topbar-h) items-center gap-2 rounded-(--glass-radius-access-bar) pr-1.5 pl-3 lg:gap-3 lg:pl-0">
+        {/* En escritorio el logo ocupa el ancho del carril: la cara de Hubi queda en la misma columna que sus iconos. */}
+        <a href="/hub" aria-label="Ir a tu Hub" className="flex min-h-11 min-w-11 items-center justify-center lg:-ml-px lg:w-(--frame-rail-w) lg:shrink-0">
           <HubiFace className="size-7" />
         </a>
         <SpaceMenu {...props} />

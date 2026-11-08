@@ -5,6 +5,8 @@ import {
 } from "@hubly/contracts";
 import { SessionExpiredError } from "../../../server/composition/auth";
 import { getChatService } from "../../../server/composition/chat";
+import { ChatAttachmentError, ChatAttachmentPurgeError, purgeMessageAttachmentsFromStorage } from "../../../server/composition/chat-attachments";
+import { signCoworkerAvatars } from "../../../server/composition/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,8 @@ const json = (value: unknown, status = 200) => Response.json(value, { status, he
 function failed(error: unknown) {
   if (error instanceof SessionExpiredError) return json({ error: "Tu sesión caducó." }, 401);
   if (error instanceof ChatAccessError) return json({ error: "Chat o conversación no disponible." }, 404);
+  if (error instanceof ChatAttachmentPurgeError) return json({ error: error.message }, 503);
+  if (error instanceof ChatAttachmentError) return json({ error: error.message }, 400);
   if (error instanceof ChatRequestError) {
     return json({ error: error.message }, error.reason === "conflict" ? 409 : error.reason === "rate-limit" ? 429 : 400);
   }
@@ -34,7 +38,7 @@ function failed(error: unknown) {
 function download(messages: ChatMessage[], format: "json" | "md") {
   const content = format === "json"
     ? JSON.stringify({ version: 1, messages }, null, 2)
-    : ["# Mis mensajes de Hubly", ...messages.map(({ sentAt, conversationId, body }) =>
+    : ["# Mensajes de la agencia en Hubly", ...messages.map(({ sentAt, conversationId, body }) =>
       `## ${sentAt} · ${conversationId}\n\n${(body ?? "").split("\n").map((line) => `    ${line}`).join("\n")}`),
     ].join("\n\n");
   return new Response(content, { headers: {
@@ -62,16 +66,27 @@ export async function GET(request: Request): Promise<Response> {
       }
       case "history": {
         const before = params.get("before");
-        const input = chatHistorySchema.safeParse({ workspaceId, conversationId, before: before === null ? undefined : Number(before) });
+        const threadRootId = params.get("threadRootId") ?? undefined;
+        const input = chatHistorySchema.safeParse({
+          workspaceId, conversationId, before: before === null ? undefined : Number(before), threadRootId,
+        });
         if (!input.success) return json({ error: "La página solicitada no es válida." }, 400);
-        return json(chatHistoryResultSchema.parse(await chat.history(workspaceId, input.data.conversationId, input.data.before)));
+        return json(chatHistoryResultSchema.parse(
+          await chat.history(workspaceId, input.data.conversationId, input.data.before, input.data.threadRootId),
+        ));
       }
-      case "directory":
-        return json(chatParticipantSchema.array().parse(await chat.directory(workspaceId)));
+      case "directory": {
+        const people = await chat.directory(workspaceId);
+        // Firma con la sesión de la persona (RLS decide): solo se intentan los compañeros con foto.
+        const avatars = await signCoworkerAvatars(people.map(({ id, hasAvatar }) => ({ id, hasAvatar: hasAvatar ?? false })));
+        return json(chatParticipantSchema.array().parse(
+          people.map((person) => ({ ...person, avatarUrl: avatars.get(person.id) ?? null })),
+        ));
+      }
       case "export": {
         const input = chatExportSchema.safeParse({ workspaceId, format: params.get("format") });
         if (!input.success) return json({ error: "El formato de descarga no es válido." }, 400);
-        return download(chatMessageSchema.array().parse(await chat.exportOwn(workspaceId)), input.data.format);
+        return download(chatMessageSchema.array().parse(await chat.exportAgency(workspaceId)), input.data.format);
       }
       default: return json({ error: "La solicitud de chat no es válida." }, 400);
     }
@@ -107,6 +122,10 @@ export async function POST(request: Request): Promise<Response> {
     const input = chatCommandSchema.safeParse(value);
     if (!input.success) return json({ error: "Revisa los datos del chat." }, 400);
     const chat = await getChatService(input.data.workspaceId);
+    if (input.data.kind === "remove") {
+      // Los archivos se borran por la API de Storage ANTES de retirar: si la purga falla, el mensaje no se retira.
+      await purgeMessageAttachmentsFromStorage(input.data.workspaceId, input.data.conversationId, input.data.messageId);
+    }
     const result = await chat.command(input.data);
     return json(result.message ? { ...result, message: chatMessageSchema.parse(result.message) } : result);
   } catch (error) {

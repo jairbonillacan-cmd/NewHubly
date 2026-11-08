@@ -17,11 +17,12 @@ export interface ChatRepository {
   conversation(id: string): Promise<ChatConversation | null>;
   canContact(userId: string): Promise<boolean>;
   ownsMessage(conversationId: string, messageId: string): Promise<boolean>;
-  history(id: string, before?: number): Promise<ChatHistory | null>;
+  /** Sin `threadRootId` devuelve la conversación principal; con él, solo las respuestas de ese hilo. */
+  history(id: string, before?: number, threadRootId?: string): Promise<ChatHistory | null>;
   sync(id: string | undefined, after: number): Promise<ChatSync>;
   ensureGeneral(): Promise<string>;
   command(input: ChatCommand): Promise<ChatCommandResult>;
-  ownMessages(): Promise<ChatMessage[]>;
+  agencyExportMessages(): Promise<ChatMessage[]>;
   directory(): Promise<ChatParticipant[]>;
 }
 
@@ -70,11 +71,11 @@ export function createChatService(ctx: ChatContext, repo: ChatRepository) {
       requireAgency(workspaceId);
       return await guarded(() => repo.ensureGeneral());
     },
-    async history(workspaceId: string, id: string, before?: number) {
+    async history(workspaceId: string, id: string, before?: number, threadRootId?: string) {
       requireAgency(workspaceId);
-      const input = chatHistorySchema.safeParse({ workspaceId, conversationId: id, before });
+      const input = chatHistorySchema.safeParse({ workspaceId, conversationId: id, before, threadRootId });
       if (!input.success) throw new ChatRequestError("invalid");
-      const page = await guarded(() => repo.history(input.data.conversationId, input.data.before));
+      const page = await guarded(() => repo.history(input.data.conversationId, input.data.before, input.data.threadRootId));
       if (!page) throw new ChatAccessError();
       return page;
     },
@@ -90,7 +91,9 @@ export function createChatService(ctx: ChatContext, repo: ChatRepository) {
       if (!parsed.success) throw new ChatRequestError("invalid");
       const input = parsed.data;
       requireAgency(input.workspaceId);
-      if (ctx.role === "viewer" && input.kind !== "read") throw new ChatAccessError();
+      // Leer y marcar menciones como leídas solo exige poder leer; el resto, un rol que pueda escribir.
+      const readOnly = input.kind === "read" || input.kind === "markMentionsRead";
+      if (ctx.role === "viewer" && !readOnly) throw new ChatAccessError();
       if (input.kind === "createChannel" || input.kind === "renameChannel" || input.kind === "archiveChannel") {
         if (ctx.role !== "owner" && ctx.role !== "admin") throw new ChatAccessError();
       }
@@ -99,7 +102,7 @@ export function createChatService(ctx: ChatContext, repo: ChatRepository) {
       }
       if ("conversationId" in input) {
         const conversation = await guarded(() => repo.conversation(input.conversationId));
-        if (!conversation || (input.kind !== "read" && !conversation.writable)) throw new ChatAccessError();
+        if (!conversation || (!readOnly && !conversation.writable)) throw new ChatAccessError();
         if ((input.kind === "renameChannel" || input.kind === "archiveChannel")
             && (conversation.kind !== "channel" || conversation.slug === "general")) throw new ChatAccessError();
       }
@@ -111,9 +114,10 @@ export function createChatService(ctx: ChatContext, repo: ChatRepository) {
       requireAgency(workspaceId);
       return await guarded(() => repo.directory());
     },
-    async exportOwn(workspaceId: string) {
+    async exportAgency(workspaceId: string) {
       requireAgency(workspaceId);
-      return await guarded(() => repo.ownMessages());
+      if (ctx.role !== "owner") throw new ChatAccessError();
+      return await guarded(() => repo.agencyExportMessages());
     },
   };
 }

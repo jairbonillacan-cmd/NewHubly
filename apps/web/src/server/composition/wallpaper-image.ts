@@ -159,9 +159,15 @@ function stripWebp(bytes: Uint8Array): Uint8Array {
 }
 
 /** Valida tamaño y tipo real y devuelve la imagen sin metadatos. Lanza WallpaperImageError con un mensaje para la persona. */
-export function sanitizeWallpaperImage(input: Uint8Array): { bytes: Uint8Array; contentType: WallpaperImageType } {
+export function sanitizeWallpaperImage(
+  input: Uint8Array,
+  maxBytes = WALLPAPER_MAX_BYTES,
+): { bytes: Uint8Array; contentType: WallpaperImageType } {
   if (input.length === 0) throw invalid();
-  if (input.length > WALLPAPER_MAX_BYTES) throw new WallpaperImageError("La imagen pesa más de 5 MB. Elige una más ligera.");
+  if (input.length > maxBytes) {
+    const limitMb = Math.round(maxBytes / (1024 * 1024));
+    throw new WallpaperImageError(`La imagen pesa más de ${limitMb} MB. Elige una más ligera.`);
+  }
   const contentType = sniffWallpaperType(input);
   if (!contentType) throw invalid();
   const bytes = contentType === "image/jpeg" ? stripJpeg(input) : contentType === "image/png" ? stripPng(input) : stripWebp(input);
