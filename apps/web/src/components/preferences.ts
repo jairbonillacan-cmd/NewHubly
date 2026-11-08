@@ -26,6 +26,3 @@ export function fromEspacioPreferencias(prefs: EspacioPreferencias): Omit<UserPr
   if (prefs.paneles.notas) visiblePanels.push("pinned_notes");
   return { wallpaper: prefs.fondo, panelOpacity: prefs.opacidad, layoutMode: LAYOUT_FROM_UI[prefs.distribucion], visiblePanels };
 }
-
-/** «system» no fuerza nada: se respeta lo que ya tenga el navegador. */
-export const themeToApply = (theme: UserPreferences["theme"]): "light" | "dark" | undefined => (theme === "system" ? undefined : theme);
