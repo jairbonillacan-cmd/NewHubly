@@ -70,6 +70,9 @@ function subscribe(listener: () => void): () => void {
   return () => { listeners.delete(listener); };
 }
 
+/** Avisa cuando cambia el tema que se ve, venga de donde venga; es la misma suscripción que usan los hooks del tema. */
+export const subscribeToTheme = subscribe;
+
 /** Quienes guardan el tema en la cuenta: solo se enteran de lo que elige la persona, nunca de la carga ni de la hidratación. */
 const choiceListeners = new Set<(next: HublyThemePreference) => void>();
 
