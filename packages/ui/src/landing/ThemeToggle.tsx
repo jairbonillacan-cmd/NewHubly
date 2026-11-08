@@ -62,8 +62,10 @@ function subscribe(listener: () => void): () => void {
   return () => { listeners.delete(listener); };
 }
 
-/** Cambia el tema y lo guarda para esta persona en el navegador; «system» sigue al sistema operativo. */
-export function setThemePreference(next: HublyThemePreference): void {
+/** Quienes guardan el tema en la cuenta: solo se enteran de lo que elige la persona, nunca de la carga ni de la hidratación. */
+const choiceListeners = new Set<(next: HublyThemePreference) => void>();
+
+function storeAndApply(next: HublyThemePreference): void {
   ensureInitialized();
   if (typeof window !== "undefined") {
     try { window.localStorage.setItem(THEME_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
@@ -72,14 +74,23 @@ export function setThemePreference(next: HublyThemePreference): void {
   notify();
 }
 
-/** Aplica la preferencia que llega del servidor sin volver a guardarla en la cuenta. */
-export function hydrateThemePreference(next: HublyThemePreference): void {
+/** La persona elige un tema; se guarda en el navegador y se avisa para guardarlo en su cuenta. «system» sigue al sistema operativo. */
+export function setThemePreference(next: HublyThemePreference): void {
   ensureInitialized();
-  if (typeof window !== "undefined") {
-    try { window.localStorage.setItem(THEME_STORAGE_KEY, next); } catch { /* sin almacenamiento: solo esta visita */ }
-  }
-  apply(next);
-  notify();
+  const changed = next !== preference;
+  storeAndApply(next);
+  if (changed) choiceListeners.forEach((listener) => listener(next));
+}
+
+/** Aplica la preferencia que llega del servidor al entrar. No es una elección de la persona: no se vuelve a guardar en la cuenta (issue 265). */
+export function hydrateThemePreference(next: HublyThemePreference): void {
+  storeAndApply(next);
+}
+
+/** Avisa cada vez que la persona elige otro tema (menú, paleta, apariencia o el botón del landing). Devuelve cómo dejar de escuchar. */
+export function onThemePreferenceChosen(listener: (next: HublyThemePreference) => void): () => void {
+  choiceListeners.add(listener);
+  return () => { choiceListeners.delete(listener); };
 }
 
 export function getThemePreference(): HublyThemePreference {
