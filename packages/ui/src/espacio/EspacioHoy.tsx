@@ -4,7 +4,7 @@ import { Button, Dropdown } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HubiFace } from "../components/brand/HublyLogo";
 import { Hubi, type HubiPose } from "../components/brand/Hubi";
-import { createThemePersistenceTracker, hydrateThemePreference, useHublyTheme, useHublyThemePreference, type HublyThemePreference } from "../landing/ThemeToggle";
+import { hydrateThemePreference, onThemePreferenceChosen, useHublyTheme, type HublyThemePreference } from "../landing/ThemeToggle";
 import { CommandPalette, type PaletteAction } from "./CommandPalette";
 import { useFondoMovimiento } from "./fondoMovimiento";
 import { Bandeja, WIDGETS, WIDGET_INICIAL, WidgetPanel, WidgetsCajon, toggleWidget, useWidgets, type WidgetDatos } from "./widgets";
@@ -154,7 +154,6 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const [teamMode, setTeamMode] = useState<EquipoDialogMode | null>(null);
   const [prefs, setPrefs] = useEspacioPreferencias(props.initialPreferences, props.onPreferencesChange);
   const [theme, setTheme] = useHublyTheme();
-  const [themePreference] = useHublyThemePreference();
   const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(props.wallpaperImageUrl ?? null);
   const imagenControls: WallpaperImageControls | undefined = props.onUploadWallpaper && props.onRemoveWallpaper
     ? {
@@ -176,16 +175,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const onThemeChangeRef = useRef(props.onThemeChange);
   onThemeChangeRef.current = props.onThemeChange;
   const initialPreference = props.initialThemePreference ?? null;
-  const [shouldPersistTheme] = useState(() => createThemePersistenceTracker(initialPreference));
 
-  // El tema guardado en el servidor manda al entrar; después, cada cambio de preferencia se guarda una sola vez.
+  // El tema guardado en el servidor manda al entrar, sin volver a guardarse; en la cuenta solo se guarda lo que elige la persona.
   useEffect(() => {
     if (initialPreference) hydrateThemePreference(initialPreference);
     // Solo al montar: initialPreference es el valor con el que se cargó la página.
   }, []);
-  useEffect(() => {
-    if (shouldPersistTheme(themePreference)) onThemeChangeRef.current?.(themePreference);
-  }, [themePreference]);
+  useEffect(() => onThemePreferenceChosen((next) => onThemeChangeRef.current?.(next)), []);
   const [filter, setFilter] = useState<HoyFilter>(null);
   const [openNoteId, setOpenNoteId] = useState<string | null>(() => notes.find((n) => n.isPinned && !n.isArchived)?.id ?? notes.find((n) => !n.isArchived)?.id ?? null);
   const [linkedNoteId, setLinkedNoteId] = useState<string | null>(null);
