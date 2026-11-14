@@ -237,4 +237,35 @@ describe("Fase 2 · Marcas, piezas y eventos del calendario editorial con RLS (A
     expect(updatedAfterExit?.assigneeId).toBe(exMember);
     expect(updatedAfterExit?.status).toBe("borrador");
   });
+
+  it("7. Piezas de agencia solo con marcas de agencia y escritura con persona en contexto (issue 228)", async () => {
+    const [ownPrivateBrand] = await withUserContext({ sub: ownerA, role: "authenticated" }, (tx) =>
+      tx.insert(brands).values({ workspaceId: agencyAId, createdBy: ownerA, name: "Marca Privada 228", visibility: "private" }).returning());
+
+    // Ni quien creó la marca privada puede colgarla en una pieza que verá toda la agencia.
+    await expectPgError(() => withUserContext({ sub: ownerA, role: "authenticated" }, (tx) =>
+      tx.insert(contentPieces).values({
+        workspaceId: agencyAId, brandId: ownPrivateBrand!.id, createdBy: ownerA,
+        title: "Pieza agencia con marca privada", plannedDate: "2026-11-25",
+      }),
+    ), /workspace_piece_requires_workspace_brand/, "23514");
+
+    // En una pieza privada sí cabe la marca privada: solo quien la creó ve ambas.
+    const [privatePiece] = await withUserContext({ sub: ownerA, role: "authenticated" }, (tx) =>
+      tx.insert(contentPieces).values({
+        workspaceId: agencyAId, brandId: ownPrivateBrand!.id, createdBy: ownerA,
+        title: "Idea con marca privada", plannedDate: "2026-11-25", visibility: "private",
+      }).returning());
+
+    // Abrir esa pieza a la agencia con la marca privada puesta también se rechaza.
+    await expectPgError(() => withUserContext({ sub: ownerA, role: "authenticated" }, (tx) =>
+      tx.update(contentPieces).set({ visibility: "workspace" }).where(eq(contentPieces.id, privatePiece!.id)),
+    ), /workspace_piece_requires_workspace_brand/, "23514");
+
+    // Un proceso de servicio sin persona en contexto no puede ligar marcas: se exige withUserContext.
+    await expectPgError(() =>
+      db.execute(sql`insert into public.content_pieces (workspace_id, brand_id, created_by, title, planned_date)
+        values (${agencyAId}::uuid, ${brandAId}::uuid, ${ownerA}::uuid, 'Pieza de servicio', '2026-11-26')`),
+    /content_piece_brand_requires_user_context/, "23514");
+  });
 });

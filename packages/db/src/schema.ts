@@ -1,4 +1,5 @@
 import "server-only";
+import { sql } from "drizzle-orm";
 import { boolean, date, foreignKey, index, integer, jsonb, pgTable, primaryKey, text, time, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 // Fuente de verdad: migraciones SQL (supabase/migrations). No usar drizzle-kit push ni generate.
 
@@ -114,6 +115,8 @@ export const contentPieces = pgTable("content_pieces", {
 }, (t) => [
   unique("content_pieces_workspace_id_id_unique").on(t.workspaceId, t.id),
   foreignKey({ columns: [t.workspaceId, t.brandId], foreignColumns: [brands.workspaceId, brands.id], name: "content_pieces_workspace_brand_fk" }).onDelete("set null"),
+  // El on delete set null de brand_id en la FK compuesta (PostgreSQL 15+) lo gobierna la migración SQL
+  // de contenido: al borrar la marca, la pieza sobrevive con brand_id en null (#228).
   index("content_pieces_workspace_planned_date_idx").on(t.workspaceId, t.plannedDate),
   index("content_pieces_workspace_brand_idx").on(t.workspaceId, t.brandId),
 ]);
@@ -126,7 +129,9 @@ export const contentPieceEvents = pgTable("content_piece_events", {
   from: text("from"),
   to: text("to"),
   actorId: uuid("actor_id").notNull(),
-  at: timestamp("at", { withTimezone: true }).defaultNow().notNull(),
+  // clock_timestamp(), como la migración (#228): now() congela la hora de inicio de la transacción y
+  // varios eventos en la misma transacción quedarían con la misma marca.
+  at: timestamp("at", { withTimezone: true }).default(sql`clock_timestamp()`).notNull(),
 }, (t) => [
   foreignKey({ columns: [t.workspaceId, t.pieceId], foreignColumns: [contentPieces.workspaceId, contentPieces.id], name: "content_piece_events_workspace_piece_fk" }).onDelete("cascade"),
   index("content_piece_events_piece_at_idx").on(t.pieceId, t.at),

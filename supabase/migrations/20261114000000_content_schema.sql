@@ -106,6 +106,11 @@ end; $$;
 create or replace function private.enforce_content_piece_write() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
+  -- Sin persona en contexto (rol de servicio) la marca no se puede validar: se exige withUserContext (#228).
+  if new.brand_id is not null and (tg_op = 'INSERT' or new.brand_id is distinct from old.brand_id)
+      and (select auth.uid()) is null then
+    raise exception 'content_piece_brand_requires_user_context' using errcode = '23514';
+  end if;
   if new.brand_id is not null and (tg_op = 'INSERT' or new.brand_id is distinct from old.brand_id) and not exists (
     select 1 from public.brands b
     where b.id = new.brand_id
@@ -113,6 +118,16 @@ begin
       and private.can_read_workspace_item(b.workspace_id, b.created_by, b.visibility)
   ) then
     raise exception 'brand_workspace_mismatch' using errcode = '23514';
+  end if;
+  -- Una pieza visible para toda la agencia no puede señalar una marca privada que el resto no ve:
+  -- se liga solo con marcas de visibilidad workspace (o sin marca) (#228).
+  if new.visibility = 'workspace' and new.brand_id is not null
+      and (tg_op = 'INSERT' or new.brand_id is distinct from old.brand_id or new.visibility is distinct from old.visibility)
+      and not exists (
+    select 1 from public.brands b
+    where b.id = new.brand_id and b.workspace_id = new.workspace_id and b.visibility = 'workspace'
+  ) then
+    raise exception 'workspace_piece_requires_workspace_brand' using errcode = '23514';
   end if;
   if new.assignee_id is not null and (tg_op = 'INSERT' or new.assignee_id is distinct from old.assignee_id) and not exists (
     select 1 from public.workspace_members wm where wm.workspace_id = new.workspace_id and wm.user_id = new.assignee_id
