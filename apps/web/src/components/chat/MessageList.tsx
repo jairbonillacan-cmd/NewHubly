@@ -95,6 +95,19 @@ export function MessageList({
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reportedMentionIds = useRef<Set<string>>(new Set());
   const [localHighlightId, setLocalHighlightId] = useState<string | null>(null);
+  // Una sola barra de acciones abierta en la conversación (#264): la abre la última y se cierra por clic fuera.
+  const [openActionsId, setOpenActionsId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (openActionsId === null) return;
+    const close = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(`li[data-message-id="${openActionsId}"]`)) return;
+      setOpenActionsId(null);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [openActionsId]);
 
   if (!loading && baselineMax.current === null) {
     baselineMax.current = messages.reduce((max, item) => Math.max(max, item.number), 0);
@@ -200,6 +213,8 @@ export function MessageList({
               grouped={grouped} isNew={isNew} highlighted={activeHighlight === entry.id}
               quotedMessage={quoted} reactions={reactionsByMessage?.[entry.id] ?? entry.reactions}
               reactionError={reactionErrorsByMessage?.[entry.id]} now={now} onCommand={onCommand}
+              actionsOpen={openActionsId === entry.id}
+              onActionsOpenChange={(open) => setOpenActionsId(open ? entry.id : null)}
               onReply={onReply} onOpenThread={onOpenThread} onJumpToMessage={handleJump}
               onToggleReaction={onToggleReaction} />
           </React.Fragment>;

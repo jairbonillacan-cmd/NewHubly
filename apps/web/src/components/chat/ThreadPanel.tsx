@@ -36,12 +36,25 @@ function useNarrowViewport(): boolean {
   return narrow;
 }
 
-const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+// tabindex="-1" queda fuera; summary y [contenteditable] sí son enfocables de verdad (#264).
+export const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), summary:not([disabled]), [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Visibilidad real para la trampa de foco (#264): checkVisibility cubre display y visibility en
+ * navegadores modernos; sin él (jsdom, que devuelve getClientRects vacío para todo) solo se
+ * descarta visibility:hidden, que es lo que la revisión pedía filtrar.
+ */
+export function isVisibleForFocus(el: HTMLElement): boolean {
+  const check = (el as HTMLElement & { checkVisibility?: (options?: { checkOpacity?: boolean; checkVisibilityCSS?: boolean }) => boolean }).checkVisibility;
+  if (typeof check === "function") return check.call(el, { checkOpacity: false, checkVisibilityCSS: true });
+  const view = el.ownerDocument?.defaultView;
+  return !view || typeof view.getComputedStyle !== "function" || view.getComputedStyle(el).visibility !== "hidden";
+}
 
 /** Mantiene el foco dentro de `container`: del último control vuelve al primero y al revés. */
 export function trapTab(event: Pick<KeyboardEvent, "shiftKey" | "preventDefault">, container: HTMLElement): void {
   const items = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE))
-    .filter((el) => !el.hasAttribute("inert") && (typeof el.getClientRects !== "function" || el.getClientRects().length > 0));
+    .filter((el) => !el.hasAttribute("inert") && isVisibleForFocus(el));
   const first = items[0];
   const last = items[items.length - 1];
   if (!first || !last) { event.preventDefault(); return; }
@@ -63,12 +76,44 @@ export function ThreadPanel({
 
   // Al abrir, el foco entra al hilo; al cerrar, vuelve al control que lo abrió («Abrir hilo» o «Ver hilo»).
   useEffect(() => {
-    const opener = typeof document === "undefined" ? null : document.activeElement;
+    const opener = typeof document === "undefined" ? null : document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const panelElement = panel.current;
     title.current?.focus();
     return () => {
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+      // Al cambiar de hilo sin cerrar el anterior, el foco ya está en el botón nuevo: restaurar
+      // ahí el origen del hilo viejo devolvería el foco al mensaje que no es (#264). Solo se
+      // restaura si el foco se perdió o seguía dentro de este panel.
+      if (opener instanceof HTMLElement && opener.isConnected && panelElement
+        && (document.activeElement === document.body || panelElement.contains(document.activeElement))) {
+        opener.focus();
+      }
     };
   }, []);
+
+  // A pantalla completa el fondo no se desplaza detrás de la capa modal (#264).
+  useEffect(() => {
+    if (!narrow) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [narrow]);
+
+  // --visual-viewport-height no lo define nadie: con el teclado de iOS, el hilo sigue al visor real (#264).
+  useEffect(() => {
+    if (!narrow) return;
+    const panelElement = panel.current;
+    const viewport = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!panelElement || !viewport) return;
+    const apply = () => panelElement.style.setProperty("--visual-viewport-height", `${viewport.height}px`);
+    apply();
+    viewport.addEventListener("resize", apply);
+    viewport.addEventListener("scroll", apply);
+    return () => {
+      viewport.removeEventListener("resize", apply);
+      viewport.removeEventListener("scroll", apply);
+      panelElement.style.removeProperty("--visual-viewport-height");
+    };
+  }, [narrow]);
 
   useEffect(() => {
     // Escape cierra el hilo salvo que otro control ya lo haya usado (p. ej. la lista de @menciones).

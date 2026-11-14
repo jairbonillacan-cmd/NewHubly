@@ -183,6 +183,9 @@ export interface MessageItemProps {
   highlighted?: boolean; now?: Date | undefined; quotedMessage?: ChatMessageView | null | undefined;
   quotedAuthorName?: string | undefined; reactions?: readonly ChatReactionSummary[] | undefined;
   reactionError?: string | null | undefined; initialActionsOpen?: boolean; initialPickerOpen?: boolean;
+  /** Barra de acciones controlada por la lista: una abierta a la vez y cierre por clic fuera (#264). */
+  actionsOpen?: boolean | undefined;
+  onActionsOpenChange?: ((open: boolean) => void) | undefined;
   onCommand: (input: ChatViewCommand) => Promise<boolean>;
   onReply?: ((message: ChatMessageView) => void) | undefined;
   onOpenThread?: ((message: ChatMessageView) => void) | undefined;
@@ -194,14 +197,22 @@ export function MessageItem({
   entry, name, person, people, viewerId, isOwn = false, writable = true, canEdit,
   grouped = false, isNew = false, highlighted = false, now, quotedMessage, quotedAuthorName,
   reactions, reactionError, initialActionsOpen = false, initialPickerOpen = false,
+  actionsOpen: actionsOpenProp, onActionsOpenChange,
   onCommand, onReply, onOpenThread, onJumpToMessage, onToggleReaction,
 }: MessageItemProps) {
   const effectiveViewerId = viewerId ?? (isOwn ? entry.authorId : "");
   const peopleMap = people ?? new Map<string, ChatParticipant>();
   const [mode, setMode] = useState<"edit" | "remove" | null>(null);
   const [busy, setBusy] = useState(false);
-  const [actionsOpen, setActionsOpen] = useState(initialActionsOpen);
+  const [uncontrolledActionsOpen, setUncontrolledActionsOpen] = useState(initialActionsOpen);
+  const actionsOpen = actionsOpenProp ?? uncontrolledActionsOpen;
+  const setActionsOpen = (open: boolean) => {
+    if (onActionsOpenChange) onActionsOpenChange(open);
+    else setUncontrolledActionsOpen(open);
+  };
   const [pickerOpen, setPickerOpen] = useState(initialPickerOpen);
+  const [pressing, setPressing] = useState(false);
+  const pointerType = useRef<"touch" | "pen" | "mouse" | "">("");
   const [localReactions, setLocalReactions] = useState<readonly ChatReactionSummary[]>(reactions ?? entry.reactions ?? []);
   const [localError, setLocalError] = useState<{ emoji: string; message: string } | null>(
     reactionError ? { emoji: QUICK_REACTIONS[0], message: reactionError } : null,
@@ -213,7 +224,7 @@ export function MessageItem({
   const item = useRef<HTMLLIElement>(null);
   const returnFocus = useRef(false);
   const removedHere = useRef(false);
-  const longPress = useRef(createLongPressController(() => setActionsOpen(true)));
+  const longPress = useRef(createLongPressController(() => { setActionsOpen(true); }));
 
   useEffect(() => { setLocalReactions(reactions ?? entry.reactions ?? []); }, [reactions, entry.reactions]);
   useEffect(() => () => longPress.current.cancel(), []);
@@ -257,8 +268,12 @@ export function MessageItem({
   return <li ref={item} id={`chat-msg-${entry.id}`} data-message-id={entry.id} tabIndex={-1}
     data-grouped={grouped ? "true" : undefined} data-highlighted={highlighted ? "true" : undefined}
     data-mentions-viewer={mentionsMe ? "true" : undefined}
-    onPointerDown={() => longPress.current.start()} onPointerUp={() => longPress.current.cancel()}
-    onPointerCancel={() => longPress.current.cancel()} onPointerLeave={() => longPress.current.cancel()}
+    onPointerDown={(event) => { pointerType.current = event.pointerType; longPress.current.start(); setPressing(true); }}
+    onPointerUp={() => { longPress.current.cancel(); setPressing(false); }}
+    onPointerCancel={() => { longPress.current.cancel(); setPressing(false); }}
+    onPointerLeave={() => { longPress.current.cancel(); setPressing(false); }}
+    // En táctil la pulsación larga abre nuestra barra: sin el menú nativo del sistema (#264).
+    onContextMenu={(event) => { if (pointerType.current === "touch" || pointerType.current === "pen") event.preventDefault(); }}
     onKeyDown={(event) => {
       if (event.key !== "Escape" || !(pickerOpen || actionsOpen)) return;
       // Al cerrar la barra con Escape, el foco vuelve a «Acciones del mensaje» en vez de perderse en el body.
@@ -266,7 +281,7 @@ export function MessageItem({
       setPickerOpen(false); setActionsOpen(false);
       actionsButton.current?.focus();
     }}
-    className={`group relative flex gap-3 rounded-xl px-2 outline-none transition-colors duration-(--motion-fast) ease-(--motion-ease) focus-visible:ring-2 focus-visible:ring-(--focus-ring-color) motion-reduce:transition-none ${grouped ? "py-1" : "py-2.5"} ${highlighted ? "bg-(--accent-primary-subtle) ring-1 ring-(--accent-primary)" : mentionsMe ? "bg-(--accent-primary-subtle) shadow-[inset_2px_0_0_var(--accent-primary)]" : ""} ${isNew ? "hubly-chat-msg-enter" : ""}`}>
+    className={`group relative flex gap-3 rounded-xl px-2 outline-none transition-colors duration-(--motion-fast) ease-(--motion-ease) focus-visible:ring-2 focus-visible:ring-(--focus-ring-color) motion-reduce:transition-none ${grouped ? "py-1" : "py-2.5"} ${highlighted ? "bg-(--accent-primary-subtle) ring-1 ring-(--accent-primary)" : mentionsMe ? "bg-(--accent-primary-subtle) shadow-[inset_2px_0_0_var(--accent-primary)]" : ""} ${isNew ? "hubly-chat-msg-enter" : ""} ${pressing ? "select-none" : ""}`}>
     {grouped ? <span className="flex w-8 shrink-0 items-baseline justify-center pt-0.5">
       <time dateTime={entry.sentAt} className="text-xs text-(--text-muted)" suppressHydrationWarning>{hhmm(entry.sentAt)}</time>
     </span> : <ChatAvatar person={person} fallbackName={isOwn ? "Tú" : undefined} />}
@@ -323,10 +338,11 @@ export function MessageItem({
       {/* Una sola entrada por mensaje (teclado, toque o ratón): abre la barra completa bajo el mensaje.
           En escritorio el botón solo se ve al pasar el ratón o con el foco dentro; no ocupa espacio. */}
       {entry.body !== null && mode === null && <Button ref={actionsButton} isIconOnly size="sm" variant="ghost"
-        aria-label={`Acciones del mensaje de ${name}`} aria-expanded={actionsOpen || pickerOpen}
-        onPress={() => { setPickerOpen(false); setActionsOpen((open) => !open); }}
-        className={`absolute top-1 right-1 ${actionsOpen || pickerOpen ? "" : "lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"}`}>
-        <Icon name="chevron" />
+        aria-label={`Más acciones del mensaje de ${name}`} aria-expanded={actionsOpen || pickerOpen}
+        onPress={() => { setPickerOpen(false); setActionsOpen(!actionsOpen); }}
+        className={`absolute top-1 right-1 min-h-10 min-w-10 ${actionsOpen || pickerOpen ? "" : "lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"}`}>
+        <Icon name="chevron"
+          className={`transition-transform duration-(--motion-fast) ease-(--motion-ease) motion-reduce:transition-none ${actionsOpen || pickerOpen ? "rotate-180" : ""}`} />
       </Button>}
       {entry.body !== null && mode === null && <div role="toolbar" aria-label={`Acciones del mensaje de ${name}`}
         data-actions-open={actionsOpen || pickerOpen ? "true" : undefined}
