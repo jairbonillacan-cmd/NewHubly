@@ -1,4 +1,6 @@
 import type { ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { EMOJI_CATEGORIES, EmojiPicker, EquipoDialog, filterEmojis } from "@hubly/ui";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -9,7 +11,7 @@ import {
   executeOptimisticReaction, formatReactorNames, jumpToQuotedMessage, type ChatMessageView, type ChatReactionSummary,
 } from "../src/components/chat/MessageItem";
 import { daySeparatorLabel, shouldGroupMessages } from "../src/components/chat/MessageList";
-import { ThreadPanel, trapTab } from "../src/components/chat/ThreadPanel";
+import { FOCUSABLE, ThreadPanel, isVisibleForFocus, trapTab } from "../src/components/chat/ThreadPanel";
 import { agencyExportHref } from "../src/components/chat/transport";
 
 const channel: ChatConversation = {
@@ -315,7 +317,7 @@ describe("Revisión de Prisma del PR 261", () => {
           viewerId="actor" isOwn writable canEdit onCommand={vi.fn()} />
       </ul>,
     );
-    expect(html).toContain('aria-label="Acciones del mensaje de Tú" aria-expanded="false"');
+    expect(html).toContain('aria-label="Más acciones del mensaje de Tú" aria-expanded="false"');
     const toolbar = html.match(/<div role="toolbar"[^>]*>/)?.[0] ?? "";
     // Cerrada no se pinta (ni flota sobre el texto): solo se abre en línea, bajo el mensaje.
     expect(toolbar).toMatch(/class="[^"]*\bhidden\b/);
@@ -406,5 +408,58 @@ describe("Hilo como capa modal en pantallas estrechas", () => {
     trapTab(event, middle.container);
     expect(event.preventDefault).not.toHaveBeenCalled();
     expect(middle.focused).toEqual([]);
+  });
+});
+
+describe("Remates de interacción y foco del chat 2.0 (issue 264)", () => {
+  it("el botón «Acciones» se distingue de la barra, anuncia su estado y mide objetivo táctil de 40 px", () => {
+    const html = renderToStaticMarkup(
+      <ul><MessageItem entry={{ ...entry, body: "Propuesta lista" }} name="Ana" viewerId="actor" canEdit onCommand={vi.fn()} /></ul>,
+    );
+    expect(html).toContain('aria-label="Más acciones del mensaje de Ana" aria-expanded="false"');
+    expect(html).toContain('aria-label="Acciones del mensaje de Ana"');
+    const button = html.match(/<button[^>]*aria-label="Más acciones del mensaje de Ana"[^>]*>/)?.[0] ?? "";
+    expect(button).toMatch(/min-h-10/);
+  });
+
+  it("con la barra abierta el chevron gira y la barra se pinta expandida", () => {
+    const html = renderToStaticMarkup(
+      <ul><MessageItem entry={{ ...entry, body: "Hola" }} name="Ana" viewerId="actor" canEdit onCommand={vi.fn()}
+        actionsOpen onActionsOpenChange={() => {}} /></ul>,
+    );
+    expect(html).toMatch(/rotate-180/);
+    expect(html).toContain('data-actions-open="true"');
+  });
+
+  it("la pulsación larga no selecciona texto y en táctil no abre el menú nativo del sistema", () => {
+    const source = readFileSync(resolve(__dirname, "../src/components/chat/MessageItem.tsx"), "utf8");
+    expect(source).toMatch(/\$\{pressing \? "select-none" : ""\}/);
+    expect(source).toMatch(/onContextMenu=\{\(event\) => \{ if \(pointerType\.current === "touch" \|\| pointerType\.current === "pen"\) event\.preventDefault\(\); \}\}/);
+  });
+
+  it("la trampa de foco filtra lo invisible con checkVisibility o visibility:hidden, sin excluir jsdom", () => {
+    const plain = { hasAttribute: () => false, focus: vi.fn() } as unknown as HTMLElement;
+    expect(isVisibleForFocus(plain)).toBe(true);
+    const hidden = {
+      hasAttribute: () => false, focus: vi.fn(),
+      ownerDocument: { defaultView: { getComputedStyle: () => ({ visibility: "hidden" }) } },
+    } as unknown as HTMLElement;
+    expect(isVisibleForFocus(hidden)).toBe(false);
+    const checked = { hasAttribute: () => false, focus: vi.fn(), checkVisibility: () => false } as unknown as HTMLElement;
+    expect(isVisibleForFocus(checked)).toBe(false);
+  });
+
+  it("el selector de foco suma summary y contenteditable y sigue excluyendo tabindex -1", () => {
+    expect(FOCUSABLE).toContain("summary:not([disabled])");
+    expect(FOCUSABLE).toContain('[contenteditable]:not([contenteditable="false"])');
+    expect(FOCUSABLE).toContain('[tabindex]:not([tabindex="-1"])');
+  });
+
+  it("el hilo a pantalla completa fija el alto del visor real y congela el fondo", () => {
+    const source = readFileSync(resolve(__dirname, "../src/components/chat/ThreadPanel.tsx"), "utf8");
+    expect(source).toContain("--visual-viewport-height");
+    expect(source).toMatch(/document\.body\.style\.overflow = "hidden"/);
+    // Al cambiar de hilo sin cerrar el anterior, el foco no vuelve al mensaje equivocado.
+    expect(source).toMatch(/panelElement\.contains\(document\.activeElement\)/);
   });
 });
