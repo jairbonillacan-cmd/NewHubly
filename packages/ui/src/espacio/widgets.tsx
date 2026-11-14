@@ -226,7 +226,7 @@ function Enfoque() {
       <span className="text-xs font-semibold tracking-wide text-(--text-secondary) uppercase">{modo === "enfoque" ? "Enfoque" : "Descanso"}</span>
       <span role="timer" aria-live="off" className="text-4xl font-semibold tabular-nums">{mmss(restante)}</span>
       <span aria-hidden="true" className="h-1 w-full overflow-hidden rounded-full bg-(--glass-line-strong)">
-        <span className="hubly-widget-avance block h-full rounded-full bg-(--accent-primary)" data-avance={Math.round(avance * 20) * 5} />
+        <span className="hubly-widget-avance block h-full w-full rounded-full bg-(--accent-primary)" data-avance={Math.round(avance * 20) * 5} />
       </span>
       <div className="flex gap-2">
         <Button size="sm" variant="primary" onPress={() => alternarEnfoque()}>{corriendo ? "Pausar" : "Empezar"}</Button>

@@ -136,29 +136,30 @@
 @media (pointer: fine) { :root { --dock-control: calc(2rem * var(--hud-escala)); --frame-dock-h: calc(2.75rem * var(--hud-escala)); --rail-item: calc(2.25rem * var(--hud-escala));
   --frame-topbar-h: calc(3rem * var(--hud-escala)); --frame-rail-w: calc(3.5rem * var(--hud-escala)); --hud-icono: calc(1.5rem * var(--hud-escala)); } }
 @media (pointer: coarse) { :root[data-hud="muy-grande"] { --dock-control: 3rem; --rail-item: 3rem; --frame-dock-h: 3.25rem; --frame-topbar-h: 3.25rem; --frame-rail-w: 3.75rem; --hud-icono: 1.65rem; } }
-/* Avance del widget de Enfoque, en pasos de 5 %, para no usar estilos en línea. */
-.hubly-widget-avance { transition: width 1s linear; }
-.hubly-widget-avance[data-avance="0"] { width: 0%; }
-.hubly-widget-avance[data-avance="5"] { width: 5%; }
-.hubly-widget-avance[data-avance="10"] { width: 10%; }
-.hubly-widget-avance[data-avance="15"] { width: 15%; }
-.hubly-widget-avance[data-avance="20"] { width: 20%; }
-.hubly-widget-avance[data-avance="25"] { width: 25%; }
-.hubly-widget-avance[data-avance="30"] { width: 30%; }
-.hubly-widget-avance[data-avance="35"] { width: 35%; }
-.hubly-widget-avance[data-avance="40"] { width: 40%; }
-.hubly-widget-avance[data-avance="45"] { width: 45%; }
-.hubly-widget-avance[data-avance="50"] { width: 50%; }
-.hubly-widget-avance[data-avance="55"] { width: 55%; }
-.hubly-widget-avance[data-avance="60"] { width: 60%; }
-.hubly-widget-avance[data-avance="65"] { width: 65%; }
-.hubly-widget-avance[data-avance="70"] { width: 70%; }
-.hubly-widget-avance[data-avance="75"] { width: 75%; }
-.hubly-widget-avance[data-avance="80"] { width: 80%; }
-.hubly-widget-avance[data-avance="85"] { width: 85%; }
-.hubly-widget-avance[data-avance="90"] { width: 90%; }
-.hubly-widget-avance[data-avance="95"] { width: 95%; }
-.hubly-widget-avance[data-avance="100"] { width: 100%; }
+/* Avance del widget de Enfoque, en pasos de 5 %, para no usar estilos en línea.
+   La barra llena con transform (scaleX), no con width: solo transform y opacity se animan (#252). */
+.hubly-widget-avance { transform-origin: left center; transform: scaleX(var(--avance, 0)); transition: transform var(--motion-base) linear; }
+.hubly-widget-avance[data-avance="0"] { --avance: 0; }
+.hubly-widget-avance[data-avance="5"] { --avance: 0.05; }
+.hubly-widget-avance[data-avance="10"] { --avance: 0.1; }
+.hubly-widget-avance[data-avance="15"] { --avance: 0.15; }
+.hubly-widget-avance[data-avance="20"] { --avance: 0.2; }
+.hubly-widget-avance[data-avance="25"] { --avance: 0.25; }
+.hubly-widget-avance[data-avance="30"] { --avance: 0.3; }
+.hubly-widget-avance[data-avance="35"] { --avance: 0.35; }
+.hubly-widget-avance[data-avance="40"] { --avance: 0.4; }
+.hubly-widget-avance[data-avance="45"] { --avance: 0.45; }
+.hubly-widget-avance[data-avance="50"] { --avance: 0.5; }
+.hubly-widget-avance[data-avance="55"] { --avance: 0.55; }
+.hubly-widget-avance[data-avance="60"] { --avance: 0.6; }
+.hubly-widget-avance[data-avance="65"] { --avance: 0.65; }
+.hubly-widget-avance[data-avance="70"] { --avance: 0.7; }
+.hubly-widget-avance[data-avance="75"] { --avance: 0.75; }
+.hubly-widget-avance[data-avance="80"] { --avance: 0.8; }
+.hubly-widget-avance[data-avance="85"] { --avance: 0.85; }
+.hubly-widget-avance[data-avance="90"] { --avance: 0.9; }
+.hubly-widget-avance[data-avance="95"] { --avance: 0.95; }
+.hubly-widget-avance[data-avance="100"] { --avance: 1; }
 /* Avisos de error compactos, abajo al centro y por encima del dock; no empujan el contenido. */
 /* En mÃ³vil, la barra inferior es mÃ¡s alta que el dock: el aviso sube a la altura de los demÃ¡s avisos (bottom-36) para no taparla (revisiÃ³n de Prisma, #247). */
 .hubly-aviso { bottom: 9rem; }
@@ -207,8 +208,10 @@ html[data-theme="dark"] { --hover-acento: color-mix(in srgb, var(--accent-primar
 .hubly-estilo-muestra-barra { background: var(--muestra-barra); }
 /* Selector de color libre: pomos claros con sombra y sugeridos; el sugerido elegido lleva un anillo. */
 :root { --sugerido-1: #E11D48; --sugerido-2: #EA580C; --sugerido-3: #CA8A04; --sugerido-4: #16A34A; --sugerido-5: #0891B2; --sugerido-6: #2563EB; --sugerido-7: #7C3AED; --sugerido-8: #C026D3; }
-.hubly-color-pomo { border: 2px solid var(--accent-on-claro); box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25), 0 1px 4px rgb(0 0 0 / 0.35); }
-.hubly-color-pomo[data-focus-visible] { box-shadow: 0 0 0 2px var(--accent-primary), 0 1px 4px rgb(0 0 0 / 0.35); }
+/* Sombras del pomo del color: tokens, sin rgb() sueltos en la regla (#252). */
+:root { --pomo-sombra: 0 0 0 1px rgb(0 0 0 / 0.25), 0 1px 4px rgb(0 0 0 / 0.35); --pomo-sombra-foco: 0 0 0 2px var(--accent-primary), 0 1px 4px rgb(0 0 0 / 0.35); }
+.hubly-color-pomo { border: 2px solid var(--accent-on-claro); box-shadow: var(--pomo-sombra); }
+.hubly-color-pomo[data-focus-visible] { box-shadow: var(--pomo-sombra-foco); }
 .hubly-color-sugerido[data-selected] { box-shadow: 0 0 0 2px var(--text-primary); }
 .hubly-color-sugerido[data-focus-visible] { box-shadow: 0 0 0 2px var(--accent-primary); }
 /* Acento personalizado: textos posibles sobre el acento y color con el que empieza el selector. */
@@ -431,7 +434,7 @@ body {
 @keyframes hubly-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 .hubly-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: hubly-draw var(--motion-slow) var(--motion-ease) calc(var(--motion-step) * 6) forwards; }
 @keyframes hubly-float { from { transform: translateY(0) rotate(0deg); } to { transform: translateY(calc(var(--motion-rise) * -0.4)) rotate(-2deg); } }
-.hubly-float { animation: hubly-float 2.8s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+.hubly-float { animation: hubly-float 2.8s ease-in-out infinite alternate; transform-origin: 50% 100%; } /* exento-movimiento: mascota, deuda #252 */
 .hubly-bars > span { transform-origin: 50% 100%; transition: transform var(--motion-slow) var(--motion-ease); }
 .hubly-motion .hubly-bars:not([data-visible="true"]) > span { transform: scaleY(0.08); }
 .hubly-bars > span:nth-child(2) { transition-delay: calc(var(--motion-step) * 0.5); }
@@ -500,11 +503,12 @@ body {
 .hubly-palette { animation: hubly-palette-in var(--motion-space) var(--motion-ease) both; }
 .hubly-palette[data-exiting] { animation: hubly-palette-out calc(var(--motion-space) * 2 / 3) var(--motion-ease) both; }
 .hubly-palette-row { animation: hubly-palette-row var(--motion-fast) var(--motion-ease) both; transition: background-color var(--motion-fast) var(--motion-ease); }
-.hubly-palette-row:nth-child(2) { animation-delay: 30ms; }
-.hubly-palette-row:nth-child(3) { animation-delay: 50ms; }
-.hubly-palette-row:nth-child(4) { animation-delay: 70ms; }
-.hubly-palette-row:nth-child(5) { animation-delay: 90ms; }
-.hubly-palette-row:nth-child(n+6) { animation-delay: 110ms; }
+/* Escalón de --motion-step en cuartos: 22,5–112,5 ms; con la animación de 180 ms no pasa de 300 ms (#252). */
+.hubly-palette-row:nth-child(2) { animation-delay: calc(var(--motion-step) * 0.25); }
+.hubly-palette-row:nth-child(3) { animation-delay: calc(var(--motion-step) * 0.5); }
+.hubly-palette-row:nth-child(4) { animation-delay: calc(var(--motion-step) * 0.75); }
+.hubly-palette-row:nth-child(5) { animation-delay: calc(var(--motion-step) * 1); }
+.hubly-palette-row:nth-child(n+6) { animation-delay: calc(var(--motion-step) * 1.25); }
 .hubly-palette-input:focus-visible { outline: none; }
 /* Contenedores de ventanitas que reciben el foco al abrirse: el anillo enmarcaría todo el contenido. */
 .hubly-sin-anillo:focus-visible { outline: none; }
@@ -581,14 +585,14 @@ body {
 .hubly-lienzo-capa { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: translate(var(--lienzo-x, 0), var(--lienzo-y, 0)) scale(var(--lienzo-zoom, 1)); }
 .hubly-lienzo-item { position: absolute; left: var(--item-x); top: var(--item-y); width: var(--item-w); height: var(--item-h); z-index: var(--item-z); border-radius: 1rem; cursor: auto;
   outline: 2px solid transparent; outline-offset: 4px;
-  transition: transform 0.5s cubic-bezier(0.22, 1.2, 0.36, 1), box-shadow 0.5s var(--motion-ease), outline-color var(--motion-fast) var(--motion-ease); }
+  transition: transform var(--motion-space) var(--motion-ease-move), box-shadow var(--motion-space) var(--motion-ease), outline-color var(--motion-fast) var(--motion-ease); }
 .hubly-lienzo-cuerpo { height: 100%; overflow: hidden; border-radius: 1rem; }
 .hubly-lienzo-cuerpo > * { height: 100%; }
 /* Guía azul: al pasar el ratón, el borde avisa que el panel se mueve y cambia de tamaño; la cabecera se tiñe. */
 .hubly-lienzo-item:hover, .hubly-lienzo-item[data-estado="borde"] { outline-color: color-mix(in srgb, var(--accent-primary) 65%, transparent); }
 .hubly-lienzo-item [data-lienzo-asa] { cursor: grab; transition: background-color var(--motion-fast) var(--motion-ease); }
 @keyframes hubly-agarre { 0% { transform: scale(1); } 40% { transform: scale(0.985); } 100% { transform: scale(1); } }
-.hubly-lienzo-item[data-estado="flotando"] [data-lienzo-asa] { cursor: grabbing; background-color: var(--accent-primary-subtle); animation: hubly-agarre 0.22s var(--motion-ease); }
+.hubly-lienzo-item[data-estado="flotando"] [data-lienzo-asa] { cursor: grabbing; background-color: var(--accent-primary-subtle); animation: hubly-agarre var(--motion-fast) var(--motion-ease); }
 @media (prefers-reduced-motion: reduce) { .hubly-lienzo-item[data-estado="flotando"] [data-lienzo-asa] { animation: none; } }
 .hubly-lienzo-item [data-lienzo-asa]:hover { background-color: var(--accent-primary-subtle); }
 /* Bordes invisibles de 10 px para cambiar el tamaño desde cualquier lado; las esquinas encima de los lados. */
@@ -603,15 +607,16 @@ body {
 .hubly-lienzo-borde[data-lienzo-borde="nw"] { top: -6px; left: -6px; cursor: nwse-resize; }
 .hubly-lienzo-borde[data-lienzo-borde="se"] { bottom: -6px; right: -6px; cursor: nwse-resize; }
 /* Al tomarlo, el panel se eleva y flota; al soltarlo baja, rebota apenas y se asienta. */
-@keyframes hubly-flotar { 0%, 100% { transform: translateY(-6px) rotate(-0.6deg) scale(1.015); } 50% { transform: translateY(-11px) rotate(0.4deg) scale(1.015); } }
+/* El elemento flotante queda quieto levantado: nada de bucles decorativos fuera de los fondos
+   elegidos (movimiento.md); al soltar, se asienta en 240 ms (#252). */
 @keyframes hubly-asentar {
   0% { transform: translateY(-6px) rotate(-0.6deg) scale(1.015); box-shadow: 0 1.75rem 3.5rem -1rem rgb(0 0 0 / 0.38); }
   55% { transform: translateY(1.5px) rotate(0.1deg) scale(0.996); box-shadow: 0 0.25rem 0.75rem -0.25rem rgb(0 0 0 / 0.2); }
   80% { transform: translateY(-0.5px) scale(1.001); }
   100% { transform: none; box-shadow: none; }
 }
-.hubly-lienzo-item[data-estado="flotando"] { outline-color: var(--accent-primary); box-shadow: 0 1.75rem 3.5rem -1rem rgb(0 0 0 / 0.38); transform: translateY(-6px) rotate(-0.6deg) scale(1.015); animation: hubly-flotar 2.4s ease-in-out var(--motion-fast) infinite; }
-.hubly-lienzo-item[data-estado="asentando"] { animation: hubly-asentar 0.52s cubic-bezier(0.25, 0.8, 0.3, 1) both; }
+.hubly-lienzo-item[data-estado="flotando"] { outline-color: var(--accent-primary); box-shadow: 0 1.75rem 3.5rem -1rem rgb(0 0 0 / 0.38); transform: translateY(-6px) rotate(-0.6deg) scale(1.015); }
+.hubly-lienzo-item[data-estado="asentando"] { animation: hubly-asentar var(--motion-space) var(--motion-ease) both; }
 /* Icono sobre el fondo de acento (carril seleccionado): siluetas en el color sobre acento y relieve en el acento. */
 .hubly-icono-activo { --hi-borde: var(--text-on-accent); --hi-tono-1: var(--text-on-accent); --hi-tono-2: var(--text-on-accent); --hi-medio: var(--text-on-accent);
   --hi-acento: var(--text-on-accent); --hi-relieve: var(--accent-primary); --hi-brillo: var(--accent-primary); --hi-fondo: var(--accent-primary); }
@@ -629,7 +634,9 @@ body {
 @media (prefers-reduced-transparency: reduce) { .hubly-carril-asa { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--surface-raised); background-image: none; } }
 /* Sin transformaciones al pasar el ratón: el botón no se mueve, solo se marca su borde. */
 /* Al pasar el ratón solo cambia el color de la flecha, sin anillo; la zona activa es el propio botón de 24 px. */
-.hubly-carril { transition: width var(--motion-space) var(--motion-ease-move), box-shadow var(--motion-fast) var(--motion-ease); scrollbar-width: none; will-change: width; }
+/* El ancho del carril cambia al instante (animar width reflowa la cuadrícula cada fotograma);
+   la cascada de textos es la que confirma la apertura, solo con transform y opacity (#252). */
+.hubly-carril { transition: box-shadow var(--motion-fast) var(--motion-ease); scrollbar-width: none; }
 .hubly-carril::-webkit-scrollbar { display: none; }
 /* Herramientas del carril: el icono crece un poco al pasar el ratón y la activa flota con un halo del acento. */
 .hubly-carril-item { transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
@@ -646,12 +653,13 @@ body {
 /* Al desplegar, los textos entran en cascada después de que el carril empieza a abrirse; al plegar, desaparecen sin esperar. */
 /* Texto del carril: elemento pequeño (180 ms) y escalonado que termina antes de 300 ms. */
 @keyframes hubly-carril-texto { 0% { opacity: 0; transform: translateX(-0.5rem); } 100% { opacity: 1; transform: none; } }
-.hubly-carril-texto { animation: hubly-carril-texto var(--motion-fast) var(--motion-ease) 40ms both; }
-.hubly-carril li:nth-child(1) .hubly-carril-texto { animation-delay: 40ms; }
-.hubly-carril li:nth-child(2) .hubly-carril-texto { animation-delay: 60ms; }
-.hubly-carril li:nth-child(3) .hubly-carril-texto { animation-delay: 80ms; }
-.hubly-carril li:nth-child(4) .hubly-carril-texto { animation-delay: 100ms; }
-.hubly-carril li:nth-child(5) .hubly-carril-texto { animation-delay: 120ms; }
+.hubly-carril-texto { animation: hubly-carril-texto var(--motion-fast) var(--motion-ease) both; }
+/* Escalones de --motion-step en cuartos (22,5–112,5 ms): con los 180 ms de la animación no pasa de 300 ms (#252). */
+.hubly-carril li:nth-child(1) .hubly-carril-texto { animation-delay: calc(var(--motion-step) * 0.25); }
+.hubly-carril li:nth-child(2) .hubly-carril-texto { animation-delay: calc(var(--motion-step) * 0.5); }
+.hubly-carril li:nth-child(3) .hubly-carril-texto { animation-delay: calc(var(--motion-step) * 0.75); }
+.hubly-carril li:nth-child(4) .hubly-carril-texto { animation-delay: calc(var(--motion-step) * 1); }
+.hubly-carril li:nth-child(5) .hubly-carril-texto { animation-delay: calc(var(--motion-step) * 1.25); }
 /* Recorte de la foto de perfil (issue 150): el componente pone el tamaño natural y el encuadre en variables. */
 .hubly-recorte-visor { box-shadow: inset 0 0 0 2px var(--accent-primary-subtle); }
 .hubly-recorte-foto { position: absolute; left: 50%; top: 50%; width: var(--foto-w); height: var(--foto-h); max-width: none; user-select: none; pointer-events: none;
@@ -659,9 +667,10 @@ body {
 .hubly-wallpaper { transition: background-color var(--motion-base) var(--motion-ease); }
 .hubly-wallpaper svg { transition: opacity var(--motion-base) var(--motion-ease); }
 /* Aurora (issue 134): manchas de color que se mueven muy despacio detrás de los paneles. */
+/* Fondos ilustrados elegidos por la persona: única excepción de bucles (movimiento.md, #250). */
 @keyframes hubly-aurora { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(6%, -4%) scale(1.12); } }
-.hubly-aurora { position: absolute; border-radius: 9999px; filter: blur(80px); animation: hubly-aurora 24s ease-in-out infinite; }
+.hubly-aurora { position: absolute; border-radius: 9999px; filter: blur(80px); animation: hubly-aurora 24s ease-in-out infinite; } /* exento-movimiento: fondo elegido #250 */
 .hubly-aurora-1 { top: -25%; left: -15%; width: 60vmax; height: 60vmax; }
-.hubly-aurora-2 { top: 25%; right: -20%; width: 55vmax; height: 55vmax; animation-duration: 31s; animation-direction: reverse; }
-.hubly-aurora-3 { bottom: -33%; left: 25%; width: 50vmax; height: 50vmax; animation-duration: 38s; }
+.hubly-aurora-2 { top: 25%; right: -20%; width: 55vmax; height: 55vmax; animation-duration: 31s; animation-direction: reverse; } /* exento-movimiento: fondo elegido #250 */
+.hubly-aurora-3 { bottom: -33%; left: 25%; width: 50vmax; height: 50vmax; animation-duration: 38s; } /* exento-movimiento: fondo elegido #250 */
 @media (prefers-reduced-motion: reduce) { .hubly-carril { transition: none; } .hubly-carril-texto { animation: none; } .hubly-lienzo-item, .hubly-lienzo-item[data-estado] { animation: none; transition: none; } .hubly-wallpaper, .hubly-wallpaper svg { transition: none; } .hubly-aurora { animation: none; } }
