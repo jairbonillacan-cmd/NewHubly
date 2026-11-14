@@ -4,6 +4,7 @@ import type { ChatConversation, ChatMessage, ChatParticipant } from "@hubly/cont
 import { Button } from "@hubly/ui";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { personName, type ChatViewCommand } from "./MemberList";
+import type { ChatAttachmentItem } from "./ChatAttachmentView";
 import {
   MessageItem, jumpToQuotedMessage, messageMentionsViewer, type ChatMessageView, type ChatReactionSummary,
 } from "./MessageItem";
@@ -71,13 +72,14 @@ export function shouldGroupMessages(previous: GroupedFields | undefined, current
 
 export function MessageList({
   conversation, messages, people, userId, loading, hasOlder, loadingOlder, freshMessageIds,
-  highlightedMessageId, reactionsByMessage, reactionErrorsByMessage, unreadMentionMessageIds, now,
+  highlightedMessageId, reactionsByMessage, attachmentsByMessage, reactionErrorsByMessage, unreadMentionMessageIds, now,
   onOlder, onVisible, onMarkMentionsRead, onCommand, onReply, onOpenThread, onJumpToMessage, onToggleReaction,
 }: {
   conversation: ChatConversation; messages: readonly ChatMessageView[]; people: Map<string, ChatParticipant>; userId: string;
   loading: boolean; hasOlder: boolean; loadingOlder: boolean; freshMessageIds?: ReadonlySet<string> | undefined;
   highlightedMessageId?: string | null | undefined;
   reactionsByMessage?: Readonly<Record<string, readonly ChatReactionSummary[]>> | undefined;
+  attachmentsByMessage?: Readonly<Record<string, readonly ChatAttachmentItem[]>> | undefined;
   reactionErrorsByMessage?: Readonly<Record<string, string | null | undefined>> | undefined;
   unreadMentionMessageIds?: ReadonlySet<string> | undefined;
   now?: Date | undefined; onOlder: () => void; onVisible: (conversationId: string, number: number) => void;
@@ -199,6 +201,7 @@ export function MessageList({
               writable={conversation.writable} canEdit={conversation.writable && isOwn}
               grouped={grouped} isNew={isNew} highlighted={activeHighlight === entry.id}
               quotedMessage={quoted} reactions={reactionsByMessage?.[entry.id] ?? entry.reactions}
+              signedAttachments={attachmentsByMessage?.[entry.id]}
               reactionError={reactionErrorsByMessage?.[entry.id]} now={now} onCommand={onCommand}
               onReply={onReply} onOpenThread={onOpenThread} onJumpToMessage={handleJump}
               onToggleReaction={onToggleReaction} />

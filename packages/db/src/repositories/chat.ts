@@ -15,7 +15,7 @@ type MessageRow = Omit<ChatMessage, "sentAt" | "editedAt" | "deletedAt" | "threa
 const messageColumns = sql`id, conversation_id as "conversationId", author_id as "authorId", body,
   message_number as number, change_number as change, created_at as "sentAt",
   edited_at as "editedAt", deleted_at as "deletedAt"`;
-// Cita, hilo y reacciones agregadas por emoji (en orden de primera reacción). Requiere el alias `m`.
+// Cita, hilo, reacciones agregadas por emoji (en orden de primera reacción) y adjuntos registrados. Requiere el alias `m`.
 const socialColumns = sql`, m.reply_to_id as "replyToId", m.thread_root_id as "threadRootId",
   m.thread_reply_count as "threadReplyCount", m.thread_last_reply_at as "threadLastReplyAt",
   coalesce((select json_agg(json_build_object('emoji', g.emoji, 'count', g.total, 'userIds', g.user_ids) order by g.first_at, g.emoji)
@@ -23,7 +23,11 @@ const socialColumns = sql`, m.reply_to_id as "replyToId", m.thread_root_id as "t
         min(r.created_at) as first_at
       from private.chat_reactions r
       where r.workspace_id = m.workspace_id and r.conversation_id = m.conversation_id and r.message_id = m.id
-      group by r.emoji) g), '[]'::json) as reactions`;
+      group by r.emoji) g), '[]'::json) as reactions,
+  coalesce((select json_agg(json_build_object('id', a.id, 'fileName', a.file_name, 'mimeType', a.mime_type,
+        'byteSize', a.byte_size, 'width', a.width, 'height', a.height) order by a.created_at, a.id)
+    from private.chat_attachments a
+    where a.workspace_id = m.workspace_id and a.conversation_id = m.conversation_id and a.message_id = m.id), '[]'::json) as attachments`;
 const pageSize = 50;
 const mentionLimit = 100;
 

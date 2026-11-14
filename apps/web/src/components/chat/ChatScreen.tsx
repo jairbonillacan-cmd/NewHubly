@@ -1,11 +1,13 @@
 "use client";
 
-import type { ChatConversation, ChatMessage, ChatParticipant, ChatReactionSummary } from "@hubly/contracts";
+import type { ChatCommandResult, ChatConversation, ChatMessage, ChatParticipant, ChatReactionSummary } from "@hubly/contracts";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatView, type BrowserNotificationPermission, type ChatViewCommand } from "./ChatView";
 import { readBrowserNotificationPermission } from "./ConversationHeader";
 import { conversationName, personName } from "./MemberList";
 import { messageMentionsViewer } from "./MessageItem";
+import { type ComposerAttachmentDraft, uploadComposerAttachments } from "./Composer";
+import { type ChatAttachmentItem, fetchChatAttachmentsByMessage } from "./ChatAttachmentView";
 import { CHAT_POLL_MS, incomingChatNotice, incomingMainMessages, mergeChatMessages, startChatPolling } from "./sync";
 import { ChatRequestError, chatTransport, resolveChatPollIntervalMs } from "./transport";
 
@@ -114,7 +116,14 @@ export function mentionsToSend(mentions: readonly string[], people: readonly Cha
 export function draftAfterSend(text: string, key: string, mentions: readonly string[], ok: boolean): Draft {
   return ok ? emptyDraft : { text, key, sending: false, failed: true, mentions: [...mentions] };
 }
+
+/** El envío exige texto: los adjuntos no viajan solos (el contrato y la función de BD requieren cuerpo). */
+export function sendWithoutBodyNotice(attachmentCount: number): string | null {
+  return attachmentCount > 0 ? "Escribe un mensaje para enviar los archivos adjuntos." : null;
+}
 const displayError = (error: unknown) => error instanceof ChatRequestError ? error.message : "Se interrumpió la conexión con el chat.";
+/** Las URLs firmadas de los adjuntos viven 1 h; se renuevan a los 45 min con la conversación abierta. */
+const ATTACHMENT_URLS_REFRESH_MS = 45 * 60_000;
 const hasStatus = (error: unknown, status: number) => error instanceof ChatRequestError && error.status === status;
 
 export function ChatScreen({
@@ -145,6 +154,11 @@ export function ChatScreen({
   const notificationsExplicitlyEnabled = useRef(false);
   const notifiedMentionIds = useRef(new Set<string>());
   const peopleRef = useRef<ChatParticipant[]>([]);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  // Adjuntos ya pedidos (o en camino) y edad del último lote firmado, para no pedir en cada sondeo.
+  const attachmentRequests = useRef(new Set<string>());
+  const attachmentsFetchedAt = useRef(0);
+  const attachmentRetryAt = useRef(0);
   const announced = useRef(0);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const readRetryAt = useRef(new Map<string, number>());
@@ -165,6 +179,12 @@ export function ChatScreen({
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   // Pendiente de conectar al compositor (PR del compositor): quién escribe y el aviso con enfriamiento.
   const [typingUserIds, setTypingUserIds] = useState<readonly string[]>([]);
+  // Adjuntos (#259): borradores por conversación, URLs firmadas por mensaje y subida tras enviar.
+  const [attachmentDrafts, setAttachmentDrafts] = useState<Record<string, ComposerAttachmentDraft[]>>({});
+  const [signedAttachments, setSignedAttachments] = useState<Record<string, ChatAttachmentItem[]>>({});
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [failedUpload, setFailedUpload] = useState<{ conversationId: string; messageId: string; drafts: ComposerAttachmentDraft[] } | null>(null);
   const locallyReadMentionIds = useRef(new Set<string>());
   const typingSentAt = useRef(0);
   const draft = currentId ? drafts[currentId] ?? emptyDraft : emptyDraft;
@@ -177,6 +197,10 @@ export function ChatScreen({
   useEffect(() => {
     peopleRef.current = people;
   }, [people]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -233,6 +257,12 @@ export function ChatScreen({
     setReplyingToId(null);
     setTypingUserIds([]);
     announced.current = 0;
+    setSignedAttachments({});
+    attachmentRequests.current.clear();
+    attachmentsFetchedAt.current = 0;
+    setUploadProgress(null);
+    setAttachmentError(null);
+    setFailedUpload(null);
   }, []);
 
   const handleFatalAccess = useCallback((error: unknown) => {
@@ -240,6 +270,11 @@ export function ChatScreen({
     setConversations([]);
     setPeople([]);
     setDrafts({});
+    setAttachmentDrafts({});
+    setSignedAttachments({});
+    setUploadProgress(null);
+    setAttachmentError(null);
+    setFailedUpload(null);
     readThrough.current.clear();
     select(null);
     if (hasStatus(error, 401)) window.location.assign("/login");
@@ -271,6 +306,25 @@ export function ChatScreen({
       );
     }
   }, [api, handleFatalAccess]);
+
+  /** Pide en un solo lote las URLs firmadas de los adjuntos de los mensajes que aún no se han pedido (#259). */
+  const ensureSignedAttachments = useCallback(async (conversationId: string, candidates: readonly ChatMessage[]) => {
+    const pending = candidates.filter((entry) => entry.attachments?.length && !attachmentRequests.current.has(entry.id)).slice(0, 50);
+    if (pending.length === 0 || Date.now() < attachmentRetryAt.current) return;
+    for (const entry of pending) attachmentRequests.current.add(entry.id);
+    try {
+      const byMessage = await fetchChatAttachmentsByMessage({
+        workspaceId, conversationId, messageIds: pending.map((entry) => entry.id),
+      });
+      setSignedAttachments((previous) => ({ ...previous, ...byMessage }));
+      attachmentsFetchedAt.current = Date.now();
+      attachmentRetryAt.current = 0;
+    } catch {
+      // Sin cortar el sondeo del chat: se reintenta en un ciclo posterior.
+      for (const entry of pending) attachmentRequests.current.delete(entry.id);
+      attachmentRetryAt.current = Date.now() + CHAT_POLL_MS * 3;
+    }
+  }, [workspaceId]);
 
   const revokeConversation = useCallback((id: string, reason: string) => {
     setDrafts((previous) => Object.fromEntries(Object.entries(previous).filter(([key]) => key !== id)));
@@ -315,6 +369,7 @@ export function ChatScreen({
           setMessages(page.messages);
           setBefore(page.before);
           loaded = true;
+          void ensureSignedAttachments(currentId, page.messages);
         }
         const update = await api.sync(currentId, cursor, signal);
         if (signal.aborted) return false;
@@ -340,6 +395,7 @@ export function ChatScreen({
         if (update.changes.length) {
           const previousLatest = latestNumber;
           setMessages((previous) => mergeChatMessages(previous, update.changes));
+          if (currentId) void ensureSignedAttachments(currentId, update.changes);
           const incomingItems = incomingMainMessages(update.changes, previousLatest, userId);
           const incoming = incomingItems.length;
           latestNumber = Math.max(latestNumber, ...update.changes.map((item) => item.number));
@@ -379,6 +435,13 @@ export function ChatScreen({
         }
         setLoading(false);
         setConnectionError(null);
+        // Las URLs firmadas caducan a la hora; con la conversación abierta se renuevan antes.
+        if (attachmentsFetchedAt.current > 0 && Date.now() - attachmentsFetchedAt.current > ATTACHMENT_URLS_REFRESH_MS
+          && messagesRef.current.some((entry) => entry.attachments?.length)) {
+          attachmentsFetchedAt.current = Date.now();
+          attachmentRequests.current.clear();
+          if (currentId) void ensureSignedAttachments(currentId, messagesRef.current);
+        }
         if (Date.now() - directoryAt.current >= 30_000 && !document.hidden) {
           void loadDirectory(signal);
         }
@@ -402,9 +465,9 @@ export function ChatScreen({
       controller.abort();
       poll.stop();
     };
-  }, [accessLost, api, currentId, handleFatalAccess, loadDirectory, revokeConversation, select, userId, workspaceName]);
+  }, [accessLost, api, currentId, ensureSignedAttachments, handleFatalAccess, loadDirectory, revokeConversation, select, userId, workspaceName]);
 
-  async function submit(input: ChatViewCommand): Promise<boolean> {
+  async function runCommand(input: ChatViewCommand): Promise<ChatCommandResult | null> {
     const controller = new AbortController();
     mutations.current.add(controller);
     setActionError(null);
@@ -416,37 +479,88 @@ export function ChatScreen({
         setMessages((previous) => mergeChatMessages(previous, [message]));
       }
       refresh.current();
-      return true;
+      return result;
     } catch (error) {
       if (!controller.signal.aborted) {
         setActionError(displayError(error));
         if (hasStatus(error, 401) || hasStatus(error, 404)) refresh.current();
       }
-      return false;
+      return null;
     } finally {
       mutations.current.delete(controller);
     }
   }
 
+  async function submit(input: ChatViewCommand): Promise<boolean> {
+    return (await runCommand(input)) !== null;
+  }
+
+  /** Sube los adjuntos del compositor contra el mensaje ya enviado y guarda sus URLs firmadas (#259). */
+  async function uploadMessageAttachments(conversationId: string, messageId: string, drafts: readonly ComposerAttachmentDraft[]) {
+    setUploadProgress(0);
+    setAttachmentError(null);
+    try {
+      const signed = await uploadComposerAttachments({
+        workspaceId, conversationId, messageId, attachments: drafts, onProgress: setUploadProgress,
+      });
+      setSignedAttachments((previous) => ({ ...previous, ...(signed.length > 0 ? { [messageId]: signed } : {}) }));
+      const sentIds = new Set(drafts.map((item) => item.id));
+      setAttachmentDrafts((previous) => ({
+        ...previous, [conversationId]: (previous[conversationId] ?? []).filter((item) => !sentIds.has(item.id)),
+      }));
+      setFailedUpload(null);
+    } catch (error) {
+      // El mensaje ya viajó: los borradores se conservan para reintentar la subida.
+      setAttachmentError(error instanceof Error ? error.message : "No se pudieron subir los archivos adjuntos.");
+      setFailedUpload({ conversationId, messageId, drafts: [...drafts] });
+    } finally {
+      setUploadProgress(null);
+    }
+  }
+
+  /** Reintenta la subida fallida; solo los adjuntos que siguen en el compositor. */
+  function retryAttachmentUpload() {
+    const failed = failedUpload;
+    if (!failed || uploadProgress !== null) return;
+    const currentIds = new Set((attachmentDrafts[failed.conversationId] ?? []).map((item) => item.id));
+    const drafts = failed.drafts.filter((item) => currentIds.has(item.id));
+    if (drafts.length === 0) {
+      setFailedUpload(null);
+      setAttachmentError(null);
+      return;
+    }
+    void uploadMessageAttachments(failed.conversationId, failed.messageId, drafts);
+  }
+
   async function send() {
     const id = currentId;
     const body = draft.text.trim();
-    if (!id || active.current !== id || !body || sending.current.has(id)) return;
+    const pendingAttachments = id ? attachmentDrafts[id] ?? [] : [];
+    if (!id || active.current !== id || sending.current.has(id)) return;
+    if (!body) {
+      const notice = sendWithoutBodyNotice(pendingAttachments.length);
+      if (notice) setActionError(notice);
+      return;
+    }
     const key = draft.key ?? crypto.randomUUID();
     const replyToId = replyingToId && messages.some((entry) => entry.id === replyingToId) ? replyingToId : null;
     sending.current.add(id);
     const mentions = draft.mentions ?? [];
     setDrafts((previous) => ({ ...previous, [id]: { text: draft.text, key, sending: true, failed: false, mentions } }));
     const mentioned = mentionsToSend(mentions, people, body);
-    const ok = await submit({
+    const result = await runCommand({
       kind: "send", conversationId: id, retryKey: key, body,
       ...(replyToId ? { replyToId } : {}), ...(mentioned.length ? { mentionedUserIds: mentioned } : {}),
     });
     sending.current.delete(id);
+    const ok = result !== null;
     if (ok && replyToId) setReplyingToId((previous) => previous === replyToId ? null : previous);
     setDrafts((previous) => previous[id]?.key !== key ? previous : {
       ...previous, [id]: draftAfterSend(draft.text, key, mentions, ok),
     });
+    if (ok && pendingAttachments.length > 0 && result?.message) {
+      await uploadMessageAttachments(id, result.message.id, pendingAttachments);
+    }
   }
 
   async function sendThreadReply(rootMessageId: string, body: string): Promise<boolean> {
@@ -488,6 +602,7 @@ export function ChatScreen({
       if (controller.signal.aborted) return;
       setMessages((previous) => mergeChatMessages(previous, page.messages));
       setBefore(page.before);
+      void ensureSignedAttachments(id, page.messages);
     } catch (error) {
       if (controller.signal.aborted) return;
       if (hasStatus(error, 404)) revokeConversation(id, displayError(error));
@@ -552,12 +667,15 @@ export function ChatScreen({
     if (!currentId || !threadRootId) return;
     const controller = new AbortController();
     api.history(currentId, null, controller.signal, threadRootId).then((page) => {
-      if (!controller.signal.aborted) setMessages((previous) => mergeChatMessages(previous, page.messages));
+      if (!controller.signal.aborted) {
+        setMessages((previous) => mergeChatMessages(previous, page.messages));
+        void ensureSignedAttachments(currentId, page.messages);
+      }
     }, (error: unknown) => {
       if (!controller.signal.aborted) setActionError(displayError(error));
     });
     return () => controller.abort();
-  }, [api, currentId, threadRootId]);
+  }, [api, currentId, ensureSignedAttachments, threadRootId]);
 
   const mainMessages = messages.filter((entry) => !entry.threadRootId && (before === null || entry.number >= before));
   const threadMessages = threadRootId ? messages.filter((entry) => entry.threadRootId === threadRootId) : [];
@@ -574,7 +692,8 @@ export function ChatScreen({
     draft={draft.text} sending={draft.sending} failedSend={draft.failed} error={actionError ?? connectionError}
     directoryError={directoryError} onRetryDirectory={() => void loadDirectory()} notice={notice}
     unreadMentionsCount={unreadMentionsCount} unreadMentionMessageIds={mentionIds}
-    reactionsByMessage={reactionsByMessage} activeThreadRootId={threadRootId} threadMessages={threadMessages}
+    reactionsByMessage={reactionsByMessage} attachmentsByMessage={signedAttachments}
+    activeThreadRootId={threadRootId} threadMessages={threadMessages}
     replyingToMessageId={replyingToId}
     onReplyToMessage={(message) => setReplyingToId(message?.id ?? null)}
     onOpenThread={(message) => setThreadRootId(message?.id ?? null)}
@@ -584,7 +703,13 @@ export function ChatScreen({
     onMarkMentionsRead={handleMarkMentionsRead}
     onFilter={setUnreadOnly} onSelect={select} onOlder={() => void loadOlder()}
     onVisible={markVisible} onCommand={submit}
-    typingUserIds={typingUserIds} onTyping={sendTyping} attachmentsEnabled={false}
+    typingUserIds={typingUserIds} onTyping={sendTyping} attachmentsEnabled
+    attachments={currentId ? attachmentDrafts[currentId] ?? [] : []}
+    onAttachmentsChange={(next) => {
+      if (currentId) setAttachmentDrafts((previous) => ({ ...previous, [currentId]: next }));
+    }}
+    uploadProgress={uploadProgress} attachmentError={attachmentError}
+    onRetryAttachmentUpload={retryAttachmentUpload}
     mentionedUserIds={draft.mentions ?? noMentions}
     onMentionsChange={(ids) => {
       if (currentId) setDrafts((previous) => ({ ...previous, [currentId]: { ...(previous[currentId] ?? emptyDraft), mentions: ids } }));

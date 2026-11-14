@@ -8,7 +8,8 @@ import { ChatAttachmentList, type ChatAttachmentItem } from "./ChatAttachmentVie
 import { formatMessageTime, type ChatMessageView } from "./MessageItem";
 
 const control = "min-h-11";
-export type ThreadMessageView = ChatMessageView & { attachments?: readonly ChatAttachmentItem[] | undefined };
+/** Los metadatos del contrato se sustituyen por los adjuntos firmados que trae la vista (#259). */
+export type ThreadMessageView = Omit<ChatMessageView, "attachments"> & { attachments?: readonly ChatAttachmentItem[] | undefined };
 
 export interface ThreadPanelProps {
   rootMessage: ThreadMessageView; replies: readonly ThreadMessageView[];

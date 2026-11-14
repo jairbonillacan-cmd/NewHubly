@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { createChatService } from "@hubly/application";
+import { sql } from "drizzle-orm";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+import { withUserContext } from "../src/context";
 import { DrizzleChatRepository } from "../src/repositories/chat";
 
 const db = postgres(process.env.DATABASE_URL || "postgresql://postgres:postgres@127.0.0.1:54322/postgres");
@@ -190,6 +192,23 @@ describe("Chat: casos de uso y repositorio", { timeout: 30000 }, () => {
     expect(await writer.command({ kind: "markMentionsRead", workspaceId, conversationId: general, upToNumber: quoted.number }))
       .toMatchObject({ cleared: 1 });
     expect((await writer.sync(workspaceId, general, 0)).unreadMentions).toEqual([]);
+  });
+
+  it("incluye los adjuntos registrados en el historial, la sincronización y el envío (issue 259)", async () => {
+    const sent = (await send("Mira estos planos")).message!;
+    const reserve = async (query: ReturnType<typeof sql>) =>
+      (await withUserContext({ sub: editor, role: "authenticated" }, (tx) => tx.execute<{ id: string }>(query)))[0]!.id;
+    const reservationId = await reserve(sql`select id from private.chat_reserve_attachment_upload(
+      ${workspaceId}::uuid, ${general}::uuid, ${sent.id}::uuid, 'planos.pdf', 'application/pdf', 2048)`);
+    await withUserContext({ sub: editor, role: "authenticated" }, (tx) => tx.execute(sql`
+      select private.chat_register_attachment(${workspaceId}::uuid, ${general}::uuid, ${sent.id}::uuid,
+        ${reservationId}::uuid, 'planos.pdf', 'application/pdf', 2048, null, null)`));
+
+    const expected = [{ id: reservationId, fileName: "planos.pdf", mimeType: "application/pdf", byteSize: 2048, width: null, height: null }];
+    const page = await writer.history(workspaceId, general);
+    expect(page.messages.find((entry) => entry.id === sent.id)?.attachments).toEqual(expected);
+    const update = await reader.sync(workspaceId, general, 0);
+    expect(update.changes.find((entry) => entry.id === sent.id)?.attachments).toEqual(expected);
   });
 
   it("indica qué compañeros tienen foto en el directorio", async () => {

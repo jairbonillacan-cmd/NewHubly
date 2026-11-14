@@ -62,6 +62,16 @@ export const chatCommandSchema = z.discriminatedUnion("kind", [
 ]);
 export const chatExportSchema = chatScopeSchema.extend({ format: z.enum(["json", "md"]) });
 
+/** Metadatos del adjunto de un mensaje; las URLs firmadas se piden aparte (caducan, no viajan en cada sondeo). */
+const chatAttachmentMimeType = z.enum(["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"]);
+export const chatMessageAttachmentSchema = z.object({
+  id: z.uuid(),
+  fileName: z.string().min(1).max(120),
+  mimeType: chatAttachmentMimeType,
+  byteSize: positiveCursor,
+  width: cursorSchema.nullable(),
+  height: cursorSchema.nullable(),
+});
 export const chatConversationSchema = z.object({
   id: conversationId,
   kind: z.enum(["channel", "direct"]),
@@ -87,6 +97,7 @@ export const chatMessageSchema = z.object({
   threadReplyCount: cursorSchema.optional(),
   threadLastReplyAt: timestamp.nullable().optional(),
   reactions: z.array(chatReactionSummarySchema).optional(),
+  attachments: z.array(chatMessageAttachmentSchema).optional(),
 });
 export const chatHistoryResultSchema = z.object({
   conversation: chatConversationSchema,
@@ -104,6 +115,7 @@ export const chatSyncResultSchema = z.object({
   unreadMentions: z.array(chatUnreadMentionSchema).optional(),
 });
 export type ChatReactionSummary = z.infer<typeof chatReactionSummarySchema>;
+export type ChatMessageAttachment = z.infer<typeof chatMessageAttachmentSchema>;
 export type ChatUnreadMention = z.infer<typeof chatUnreadMentionSchema>;
 export type ChatConversation = z.infer<typeof chatConversationSchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;

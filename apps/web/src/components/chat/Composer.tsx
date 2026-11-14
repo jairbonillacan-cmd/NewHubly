@@ -176,6 +176,8 @@ export interface ComposerProps {
   onAttachmentsChange?: ((files: ComposerAttachmentDraft[]) => void) | undefined;
   uploadProgress?: number | null | undefined;
   attachmentError?: string | null | undefined;
+  /** Reintenta la subida de los adjuntos de un mensaje ya enviado cuando falló (#259). */
+  onRetryAttachmentUpload?: (() => void) | undefined;
   typingUserIds?: readonly string[] | undefined;
   typingNames?: readonly string[] | undefined;
   onTyping?: (() => void) | undefined;
@@ -191,7 +193,7 @@ export interface ComposerProps {
 export function Composer({
   writable, loading, draft, sending, failedSend, onDraft, onSend,
   userId, members = [], mentionedUserIds, onMentionsChange,
-  attachments, onAttachmentsChange, uploadProgress, attachmentError,
+  attachments, onAttachmentsChange, uploadProgress, attachmentError, onRetryAttachmentUpload,
   typingUserIds = [], typingNames, onTyping, onSubmitWithExtras, attachmentsEnabled = true,
 }: ComposerProps) {
   const composer = useRef<HTMLTextAreaElement>(null);
@@ -358,8 +360,11 @@ export function Composer({
         <span>{`Subiendo adjuntos… ${Math.max(0, Math.min(100, Math.round(uploadProgress)))}%`}</span>
       </div>
     )}
-    {displayedError && <p role="alert" className="mb-2 rounded-xl bg-(--status-danger-bg) px-3 py-1.5 text-xs text-(--status-danger-text)">
-      {displayedError}
+    {displayedError && <p role="alert" className="mb-2 flex flex-wrap items-center gap-2 rounded-xl bg-(--status-danger-bg) px-3 py-1.5 text-xs text-(--status-danger-text)">
+      <span>{displayedError}</span>
+      {!localError && attachmentError && onRetryAttachmentUpload && (
+        <Button type="button" size="sm" variant="ghost" className="min-h-8 text-xs" onPress={onRetryAttachmentUpload}>Reintentar subida</Button>
+      )}
     </p>}
     <form className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end"
       onSubmit={(event) => {

@@ -1,7 +1,8 @@
 import { ChatAccessError, ChatRequestError } from "@hubly/application";
 import { SessionExpiredError } from "../../../../server/composition/auth";
 import {
-  ChatAttachmentError, commitChatAttachmentUploads, listSignedChatMessageAttachments, reserveChatAttachmentUploads,
+  ChatAttachmentError, commitChatAttachmentUploads, listSignedChatAttachmentsForMessages, listSignedChatMessageAttachments,
+  reserveChatAttachmentUploads,
 } from "../../../../server/composition/chat-attachments";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,13 @@ function failed(error: unknown): Response {
 export async function GET(request: Request): Promise<Response> {
   const params = new URL(request.url).searchParams;
   try {
+    // Lote (#259): las URLs firmadas de varios mensajes en una sola petición, para pintar el historial.
+    const messageIds = (params.get("messageIds") ?? "").split(",").map((id) => id.trim()).filter(Boolean);
+    if (messageIds.length > 0) {
+      return json({ attachmentsByMessage: await listSignedChatAttachmentsForMessages({
+        workspaceId: params.get("workspaceId") ?? "", conversationId: params.get("conversationId") ?? "", messageIds,
+      }) });
+    }
     return json({ attachments: await listSignedChatMessageAttachments({
       workspaceId: params.get("workspaceId") ?? "", conversationId: params.get("conversationId") ?? "", messageId: params.get("messageId") ?? "",
     }) });
