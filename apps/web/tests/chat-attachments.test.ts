@@ -239,3 +239,41 @@ describe("Adjuntos de chat: firma binaria, limpieza, cuarentena y ruta privada (
     expect(commandSpy).not.toHaveBeenCalled();
   });
 });
+
+describe("Adjuntos por lote para pintar el historial (issue 259)", () => {
+  const MSG_ID_2 = "77777777-7777-4777-8777-777777777777";
+  const batchGet = (messageIds: string) => new Request(
+    `http://localhost:3100/api/chat/attachments?workspaceId=${WS_ID}&conversationId=${CONV_ID}&messageIds=${messageIds}`,
+  );
+
+  afterEach(() => {
+    setSupabaseServerClientFactoryForTests(null); storedRows.length = 0; reservedRows.clear(); bucketFiles.clear();
+    messageRetired = false; purgeDenied = false; removeFails = false; expiredPaths.length = 0; calls.length = 0; commandSpy.mockClear();
+  });
+
+  it("GET con messageIds devuelve en una sola respuesta los adjuntos firmados agrupados por mensaje", async () => {
+    installStorageStub();
+    const firstPath = seedStoredAttachment();
+    const secondPath = `${WS_ID}/${CONV_ID}/${MSG_ID_2}`;
+    storedRows.push({ id: MSG_ID_2, message_id: MSG_ID_2, object_path: secondPath, file_name: "plan d'action.pdf", mime_type: "application/pdf", byte_size: 4096, width: null, height: null });
+    bucketFiles.set(secondPath, new Uint8Array([1]));
+
+    const response = await GET(batchGet(`${MSG_ID},${MSG_ID_2}`));
+    expect(response.status).toBe(200);
+    const body = await response.json() as { attachmentsByMessage: Record<string, Array<{ fileName: string; url: string; downloadUrl: string }>> };
+    expect(Object.keys(body.attachmentsByMessage).sort()).toEqual([MSG_ID, MSG_ID_2].sort());
+    expect(body.attachmentsByMessage[MSG_ID]![0]).toMatchObject({
+      fileName: "foto.png",
+      url: `https://storage.test/${firstPath}?exp=3600`,
+      downloadUrl: expect.stringContaining("download=foto.png"),
+    });
+    expect(body.attachmentsByMessage[MSG_ID_2]![0]).toMatchObject({ fileName: "plan d'action.pdf", mimeType: "application/pdf" });
+  });
+
+  it("rechaza lotes con ids inválidos o con más de 50 mensajes", async () => {
+    installStorageStub();
+    expect((await GET(batchGet("no-es-uuid"))).status).toBe(400);
+    const many = Array.from({ length: 51 }, (_, i) => `33333333-3333-4333-8333-${String(i).padStart(12, "0")}`).join(",");
+    expect((await GET(batchGet(many))).status).toBe(400);
+  });
+});

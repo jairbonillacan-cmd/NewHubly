@@ -10,6 +10,8 @@ import {
 } from "../src/components/chat/MessageItem";
 import { daySeparatorLabel, shouldGroupMessages } from "../src/components/chat/MessageList";
 import { ThreadPanel, trapTab } from "../src/components/chat/ThreadPanel";
+import { fetchChatAttachmentsByMessage } from "../src/components/chat/ChatAttachmentView";
+import { sendWithoutBodyNotice } from "../src/components/chat/ChatScreen";
 import { agencyExportHref } from "../src/components/chat/transport";
 
 const channel: ChatConversation = {
@@ -406,5 +408,71 @@ describe("Hilo como capa modal en pantallas estrechas", () => {
     trapTab(event, middle.container);
     expect(event.preventDefault).not.toHaveBeenCalled();
     expect(middle.focused).toEqual([]);
+  });
+});
+
+describe("Adjuntos visibles en los mensajes (issue 259)", () => {
+  const msgWithAttachments: ChatMessage = {
+    ...entry, id: "m-att", body: "Los planos del cliente", number: 3, change: 3,
+    attachments: [{ id: "att-1", fileName: "planos.png", mimeType: "image/png", byteSize: 2048, width: 320, height: 240 }],
+  };
+  const signed = [{
+    id: "att-1", messageId: "m-att", fileName: "planos.png", mimeType: "image/png", byteSize: 2048,
+    width: 320, height: 240, url: "https://storage.test/planos.png", downloadUrl: "https://storage.test/planos.png?download=1",
+  }];
+
+  it("muestra el adjunto firmado bajo el mensaje, con descarga", () => {
+    const html = renderToStaticMarkup(
+      <ChatView {...props} messages={[msgWithAttachments]} attachmentsByMessage={{ "m-att": signed }} />,
+    );
+    expect(html).toContain('data-attachment-kind="image"');
+    expect(html).toContain('src="https://storage.test/planos.png"');
+    expect(html).toContain("Descargar planos.png");
+  });
+
+  it("con metadatos sin firmar muestra el aviso de carga y no pinta imágenes vacías", () => {
+    const html = renderToStaticMarkup(<ChatView {...props} messages={[msgWithAttachments]} />);
+    expect(html).toContain("Cargando adjuntos…");
+    expect(html).not.toContain("data-attachment-kind");
+    expect(html).not.toContain('src=""');
+  });
+
+  it("el hilo recibe los adjuntos firmados de la raíz y de las respuestas", () => {
+    const root = { ...msgWithAttachments, threadReplyCount: 1, threadLastReplyAt: null };
+    const reply = { ...msgWithAttachments, id: "m-reply", threadRootId: "m-att", number: 4, change: 4 };
+    const html = renderToStaticMarkup(
+      <ChatView {...props} messages={[root, reply]} activeThreadRootId="m-att"
+        attachmentsByMessage={{ "m-att": signed, "m-reply": signed }} />,
+    );
+    // Uno en el mensaje principal del hilo y otro en la respuesta, además del historial.
+    expect(html.match(/data-attachment-kind="image"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+  });
+
+  it("pide las URLs firmadas de varios mensajes en una sola petición y traduce el error", async () => {
+    const urls: string[] = [];
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      urls.push(url);
+      if (url.includes("conversationId=falla")) {
+        return { ok: false, json: async () => ({ error: "Chat no disponible." }) };
+      }
+      return { ok: true, json: async () => ({ attachmentsByMessage: { "m-1": [{ id: "att-1", fileName: "f.png", mimeType: "image/png", byteSize: 10 }] } }) };
+    });
+    const byMessage = await fetchChatAttachmentsByMessage({
+      workspaceId: "ws-1", conversationId: "conv-1", messageIds: ["m-1", "m-2"],
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(urls).toHaveLength(1);
+    expect(urls[0]).toContain("/api/chat/attachments?");
+    expect(urls[0]).toContain("messageIds=m-1%2Cm-2");
+    expect(byMessage["m-1"]).toHaveLength(1);
+    await expect(fetchChatAttachmentsByMessage({
+      workspaceId: "ws-1", conversationId: "falla", messageIds: ["m-1"], fetchImpl: fetchMock as unknown as typeof fetch,
+    })).rejects.toThrow("Chat no disponible.");
+  });
+
+  it("sin texto, el aviso explica que los adjuntos necesitan un mensaje", () => {
+    expect(sendWithoutBodyNotice(2)).toBe("Escribe un mensaje para enviar los archivos adjuntos.");
+    expect(sendWithoutBodyNotice(0)).toBeNull();
   });
 });

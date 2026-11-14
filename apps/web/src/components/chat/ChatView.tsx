@@ -10,7 +10,8 @@ import {
 } from "./MemberList";
 import type { ChatMessageView, ChatReactionSummary } from "./MessageItem";
 import { MessageList } from "./MessageList";
-import { ThreadPanel } from "./ThreadPanel";
+import { ThreadPanel, type ThreadMessageView } from "./ThreadPanel";
+import type { ChatAttachmentItem } from "./ChatAttachmentView";
 
 export type { BrowserNotificationPermission } from "./ConversationHeader";
 export type { ChatViewCommand } from "./MemberList";
@@ -42,6 +43,8 @@ export interface ChatViewProps {
   threadMessages?: readonly ChatMessageView[];
   replyingToMessageId?: string | null;
   reactionsByMessage?: Readonly<Record<string, readonly ChatReactionSummary[]>>;
+  /** Adjuntos con URL firmada por mensaje (#259); los metadatos viajan dentro de cada mensaje. */
+  attachmentsByMessage?: Readonly<Record<string, readonly ChatAttachmentItem[]>>;
   reactionErrorsByMessage?: Readonly<Record<string, string | null | undefined>>;
   unreadMentionsCount?: number | undefined;
   unreadMentionMessageIds?: ReadonlySet<string> | undefined;
@@ -69,6 +72,7 @@ export interface ChatViewProps {
   attachments?: ComposerProps["attachments"];
   uploadProgress?: ComposerProps["uploadProgress"];
   attachmentError?: ComposerProps["attachmentError"];
+  onRetryAttachmentUpload?: ComposerProps["onRetryAttachmentUpload"];
   onMentionsChange?: ComposerProps["onMentionsChange"];
   onAttachmentsChange?: ComposerProps["onAttachmentsChange"];
   onTyping?: ComposerProps["onTyping"];
@@ -104,8 +108,11 @@ function ConversationView({ props, conversation, people }: {
 
   const replyingTo = replyingToId ? props.messages.find((item) => item.id === replyingToId) ?? null : null;
   const threadRoot = threadRootId ? props.messages.find((item) => item.id === threadRootId) ?? null : null;
-  const threadReplies = threadRoot
-    ? (props.threadMessages ?? props.messages.filter((item) => item.threadRootId === threadRoot.id))
+  // En el hilo los adjuntos se muestran con su URL firmada cuando ya se cargó (#259).
+  const withSignedAttachments = (view: ChatMessageView): ThreadMessageView =>
+    props.attachmentsByMessage?.[view.id] ? { ...view, attachments: props.attachmentsByMessage[view.id] } : { ...view, attachments: undefined };
+  const threadReplies: ThreadMessageView[] = threadRoot
+    ? (props.threadMessages ?? props.messages.filter((item) => item.threadRootId === threadRoot.id)).map(withSignedAttachments)
     : [];
 
   return (
@@ -119,6 +126,7 @@ function ConversationView({ props, conversation, people }: {
           loading={props.loading} hasOlder={props.hasOlder} loadingOlder={props.loadingOlder}
           freshMessageIds={props.freshMessageIds} highlightedMessageId={props.highlightedMessageId}
           reactionsByMessage={props.reactionsByMessage} reactionErrorsByMessage={props.reactionErrorsByMessage}
+          attachmentsByMessage={props.attachmentsByMessage}
           unreadMentionMessageIds={props.unreadMentionMessageIds}
           now={props.now} onOlder={props.onOlder} onVisible={props.onVisible}
           onMarkMentionsRead={props.onMarkMentionsRead} onCommand={props.onCommand}
@@ -147,11 +155,12 @@ function ConversationView({ props, conversation, people }: {
           mentionedUserIds={props.mentionedUserIds} onMentionsChange={props.onMentionsChange}
           attachments={props.attachments} onAttachmentsChange={props.onAttachmentsChange}
           uploadProgress={props.uploadProgress} attachmentError={props.attachmentError}
+          onRetryAttachmentUpload={props.onRetryAttachmentUpload}
           onTyping={props.onTyping} onSubmitWithExtras={props.onSubmitWithExtras}
           attachmentsEnabled={props.attachmentsEnabled} />
       </section>
       {threadRoot && (
-        <ThreadPanel key={threadRoot.id} rootMessage={threadRoot} replies={threadReplies} people={people} userId={props.userId}
+        <ThreadPanel key={threadRoot.id} rootMessage={withSignedAttachments(threadRoot)} replies={threadReplies} people={people} userId={props.userId}
           writable={conversation.writable} now={props.now} sending={props.sending}
           onClose={() => { setThreadRootId(null); props.onOpenThread?.(null); }}
           onSendReply={props.onSendThreadReply} />

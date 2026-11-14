@@ -292,6 +292,42 @@ export async function purgeMessageAttachmentsFromStorage(workspaceId: string, co
   return paths;
 }
 
+export const CHAT_ATTACHMENTS_BATCH_MAX = 50;
+
+/**
+ * URLs firmadas de los adjuntos de varios mensajes de una conversación en una sola consulta (#259):
+ * evita una petición por mensaje al pintar el historial. La política `chat_attachments_read` limita
+ * la lectura a los mensajes que la sesión puede ver y no están retirados.
+ */
+export async function listSignedChatAttachmentsForMessages(params: {
+  workspaceId: string; conversationId: string; messageIds: readonly string[];
+}): Promise<Record<string, SignedChatAttachment[]>> {
+  const { workspaceId, conversationId, messageIds } = params;
+  if (!UUID_RE.test(workspaceId) || !UUID_RE.test(conversationId)) throw new ChatAttachmentError("Identificadores de mensaje o conversación inválidos.");
+  const ids = [...new Set(messageIds)];
+  if (ids.length === 0 || ids.length > CHAT_ATTACHMENTS_BATCH_MAX || ids.some((id) => !UUID_RE.test(id))) {
+    throw new ChatAttachmentError("Identificadores de mensaje o conversación inválidos.");
+  }
+  const { claims } = await getVerifiedServerSession();
+  if (!isChatEnabled(workspaceId)) throw new ChatAccessError();
+  // Los UUID ya vienen validados con UUID_RE; el literal de arreglo de Postgres es seguro, como en command().
+  const messageIdsLiteral = `{${ids.join(",")}}`;
+  const rows = await withUserContext(claims, (tx) => tx.execute<{ message_id: string; id: string; object_path: string; file_name: string; mime_type: ChatAttachmentMimeType; byte_size: number; width: number | null; height: number | null }>(sql`
+    select a.message_id, a.id, a.object_path, a.file_name, a.mime_type, a.byte_size, a.width, a.height
+    from private.chat_attachments a
+    where a.workspace_id = ${workspaceId}::uuid and a.conversation_id = ${conversationId}::uuid
+      and a.message_id = any(${messageIdsLiteral}::uuid[])
+    order by a.created_at, a.id
+  `));
+  const out: Record<string, SignedChatAttachment[]> = {};
+  for (const r of rows) {
+    const signed = await signAttachmentObject(r.object_path, r.file_name);
+    if (!signed) throw new ChatAccessError();
+    (out[r.message_id] ??= []).push({ id: r.id, messageId: r.message_id, fileName: r.file_name, mimeType: r.mime_type, byteSize: r.byte_size, width: r.width, height: r.height, ...signed });
+  }
+  return out;
+}
+
 export async function listSignedChatMessageAttachments(params: { workspaceId: string; conversationId: string; messageId: string }): Promise<SignedChatAttachment[]> {
   const { workspaceId, conversationId, messageId } = params;
   if (!UUID_RE.test(workspaceId) || !UUID_RE.test(conversationId) || !UUID_RE.test(messageId)) throw new ChatAttachmentError("Identificadores de mensaje o conversación inválidos.");

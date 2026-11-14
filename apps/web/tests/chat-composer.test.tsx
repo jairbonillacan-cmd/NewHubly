@@ -288,6 +288,16 @@ describe("Adjuntos ocultos mientras los mensajes no los muestran (Constitución:
     expect(html).not.toContain("foto.png");
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*disabled/);
   });
+
+  it("con adjuntos activos y error de subida ofrece reintentar la subida (issue 259)", () => {
+    const html = renderToStaticMarkup(
+      <Composer writable loading={false} draft="" sending={false} failedSend={false}
+        attachmentError="No se pudo registrar los archivos adjuntos." onRetryAttachmentUpload={() => {}}
+        onDraft={vi.fn()} onSend={vi.fn()} />,
+    );
+    expect(html).toContain("No se pudo registrar los archivos adjuntos.");
+    expect(html).toContain("Reintentar subida");
+  });
 });
 
 describe("Menciones guardadas con el borrador de ChatScreen (issue 207)", () => {

@@ -20,6 +20,21 @@ export function formatAttachmentBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** URLs firmadas de los adjuntos de varios mensajes en una sola petición (#259). */
+export async function fetchChatAttachmentsByMessage(options: {
+  workspaceId: string;
+  conversationId: string;
+  messageIds: readonly string[];
+  fetchImpl?: typeof fetch | undefined;
+}): Promise<Record<string, ChatAttachmentItem[]>> {
+  const { workspaceId, conversationId, messageIds, fetchImpl = fetch } = options;
+  const query = new URLSearchParams({ workspaceId, conversationId, messageIds: messageIds.join(",") });
+  const response = await fetchImpl(`/api/chat/attachments?${query.toString()}`, { cache: "no-store" });
+  const body = (await response.json().catch(() => null)) as { attachmentsByMessage?: Record<string, ChatAttachmentItem[]>; error?: string } | null;
+  if (!response.ok || !body?.attachmentsByMessage) throw new Error(body?.error ?? "No se pudieron cargar los archivos adjuntos.");
+  return body.attachmentsByMessage;
+}
+
 export function ChatAttachmentList({ attachments }: { attachments?: readonly ChatAttachmentItem[] | undefined }) {
   if (!attachments?.length) return null;
   return (

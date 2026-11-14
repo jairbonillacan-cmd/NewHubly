@@ -4,6 +4,7 @@ import type { ChatMessage, ChatParticipant } from "@hubly/contracts";
 import { Button, EmojiPicker, Icon, TextArea } from "@hubly/ui";
 import React, { useEffect, useRef, useState } from "react";
 import { ChatAvatar, personName, type ChatViewCommand } from "./MemberList";
+import { ChatAttachmentList, type ChatAttachmentItem } from "./ChatAttachmentView";
 
 const control = "min-h-11";
 // Hora en la zona del navegador, como el resto de la app.
@@ -182,6 +183,8 @@ export interface MessageItemProps {
   isOwn?: boolean; writable?: boolean; canEdit: boolean; grouped?: boolean; isNew?: boolean;
   highlighted?: boolean; now?: Date | undefined; quotedMessage?: ChatMessageView | null | undefined;
   quotedAuthorName?: string | undefined; reactions?: readonly ChatReactionSummary[] | undefined;
+  /** Adjuntos con URL firmada; los metadatos sin firmar llegan en `entry.attachments` (#259). */
+  signedAttachments?: readonly ChatAttachmentItem[] | undefined;
   reactionError?: string | null | undefined; initialActionsOpen?: boolean; initialPickerOpen?: boolean;
   onCommand: (input: ChatViewCommand) => Promise<boolean>;
   onReply?: ((message: ChatMessageView) => void) | undefined;
@@ -193,7 +196,7 @@ export interface MessageItemProps {
 export function MessageItem({
   entry, name, person, people, viewerId, isOwn = false, writable = true, canEdit,
   grouped = false, isNew = false, highlighted = false, now, quotedMessage, quotedAuthorName,
-  reactions, reactionError, initialActionsOpen = false, initialPickerOpen = false,
+  reactions, signedAttachments, reactionError, initialActionsOpen = false, initialPickerOpen = false,
   onCommand, onReply, onOpenThread, onJumpToMessage, onToggleReaction,
 }: MessageItemProps) {
   const effectiveViewerId = viewerId ?? (isOwn ? entry.authorId : "");
@@ -299,6 +302,11 @@ export function MessageItem({
           </mark>
         ) : seg.text)}
       </p>}
+      {entry.body !== null && entry.attachments !== undefined && entry.attachments.length > 0 && (
+        signedAttachments?.length
+          ? <ChatAttachmentList attachments={signedAttachments} />
+          : <p role="status" className="mt-1.5 text-xs text-(--text-muted)">Cargando adjuntos…</p>
+      )}
       {localReactions.length > 0 && entry.body !== null && <div role="group" aria-label={`Reacciones del mensaje de ${name}`} className="mt-1.5 flex flex-wrap items-center gap-1.5">
         {localReactions.map(({ emoji, userIds }) => {
           const reactedByMe = userIds.includes(effectiveViewerId);
