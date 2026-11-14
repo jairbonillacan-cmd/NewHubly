@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 let messageRetired = false;
 let purgeDenied = false;
+const purgeDeniedConversations = new Set<string>();
+let quarantineOnly = false;
 const expiredPaths: string[] = [];
 const calls: string[] = [];
 const commandSpy = vi.fn(async (input: { conversationId: string }) => { calls.push("command"); return { conversationId: input.conversationId }; });
@@ -22,7 +24,12 @@ vi.mock("@hubly/db", () => ({
         const vals = q?.values ?? [];
         if (text.includes("chat_expired_reservation_paths")) return expiredPaths.map((object_path) => ({ object_path }));
         if (text.includes("chat_message_attachment_paths")) {
-          if (purgeDenied) throw Object.assign(new Error("denegado"), { code: "42501" });
+          // Conversaciones sin derecho de escritura (p. ej. un directo archivado): la BD niega con 42501.
+          if (purgeDenied || purgeDeniedConversations.has(String(vals[1] ?? ""))) throw Object.assign(new Error("denegado"), { code: "42501" });
+          if (quarantineOnly) {
+            // Solo queda huérfana la copia en cuarentena: required false y sin objeto en Storage.
+            return storedRows.map((r) => ({ object_path: r.object_path.replace(/\/([^/]+)$/, "/quarantine/$1"), required: false }));
+          }
           return storedRows.flatMap((r) => [
             { object_path: r.object_path, required: true },
             { object_path: r.object_path.replace(/\/([^/]+)$/, "/quarantine/$1"), required: false },
@@ -131,6 +138,7 @@ describe("Adjuntos de chat: firma binaria, limpieza, cuarentena y ruta privada (
   afterEach(() => {
     setSupabaseServerClientFactoryForTests(null); storedRows.length = 0; reservedRows.clear(); bucketFiles.clear();
     messageRetired = false; purgeDenied = false; removeFails = false; expiredPaths.length = 0; calls.length = 0; commandSpy.mockClear();
+    purgeDeniedConversations.clear(); quarantineOnly = false;
   });
 
   it("valida firma binaria real, conserva apóstrofos, limpia metadatos y rechaza PDFs con escapes hex o acciones", () => {
@@ -237,5 +245,54 @@ describe("Adjuntos de chat: firma binaria, limpieza, cuarentena y ruta privada (
     expect((await chatPOST(chatRequest({ kind: "remove", workspaceId: WS_ID, conversationId: CONV_ID, messageId: MSG_ID }))).status).toBe(404);
     expect(calls.slice(callsBefore).some((call) => call.startsWith("remove:"))).toBe(false);
     expect(commandSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("No bloqueantes de las revisiones del PR 230 (issue 260)", () => {
+  const removeRequest = () => chatPOST(chatRequest({ kind: "remove", workspaceId: WS_ID, conversationId: CONV_ID, messageId: MSG_ID }));
+
+  afterEach(() => {
+    setSupabaseServerClientFactoryForTests(null); storedRows.length = 0; reservedRows.clear(); bucketFiles.clear();
+    messageRetired = false; purgeDenied = false; removeFails = false; expiredPaths.length = 0; calls.length = 0; commandSpy.mockClear();
+    purgeDeniedConversations.clear(); quarantineOnly = false;
+  });
+
+  it("un directo que ya no se puede escribir no purga: 404, sin borrado en Storage y sin retirar el mensaje", async () => {
+    installStorageStub();
+    seedStoredAttachment();
+    purgeDeniedConversations.add(CONV_ID);
+    const response = await removeRequest();
+    expect(response.status).toBe(404);
+    expect(calls.some((call) => call.startsWith("remove:"))).toBe(false);
+    expect(commandSpy).not.toHaveBeenCalled();
+  });
+
+  it("con rutas required:false y remove sin objetos borrados, el mensaje sí se retira (200)", async () => {
+    installStorageStub();
+    seedStoredAttachment();
+    quarantineOnly = true; // Solo queda huérfana la cuarentena y Storage no devuelve borrados.
+    const response = await removeRequest();
+    expect(response.status).toBe(200);
+    expect(commandSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("si falla el borrado de cuarentena tras registrar, el adjunto se conserva y el error queda registrado", async () => {
+    installStorageStub();
+    const png = makePng(8, 8);
+    const reserve = await POST(jsonRequest({ op: "reserve", workspaceId: WS_ID, conversationId: CONV_ID, messageId: MSG_ID, files: [{ fileName: "foto.png", mimeType: "image/png", byteSize: png.byteLength }] }));
+    const { reservations } = await reserve.json() as { reservations: Array<{ id: string; quarantinePath: string }> };
+    bucketFiles.set(reservations[0]!.quarantinePath, png);
+    removeFails = true;
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const commit = await POST(jsonRequest({ op: "commit", workspaceId: WS_ID, conversationId: CONV_ID, messageId: MSG_ID, reservationIds: [reservations[0]!.id] }));
+      expect(commit.status).toBe(200);
+      const body = await commit.json() as { attachments: Array<{ fileName: string }> };
+      expect(body.attachments[0]).toMatchObject({ fileName: "foto.png" });
+      expect(errorSpy).toHaveBeenCalledWith("[chat-attachments] no se pudo borrar la cuarentena tras registrar",
+        expect.objectContaining({ message: "Storage caído", paths: 1 }));
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });

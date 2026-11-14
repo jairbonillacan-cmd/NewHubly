@@ -252,8 +252,22 @@ export async function commitChatAttachmentUploads(params: {
     throw error;
   }
   // Registro correcto: la copia sin sanear se borra por la API de Storage (la política permite borrar la
-  // cuarentena de un adjunto ya registrado). Si falla, no se pierde el adjunto; queda para limpieza posterior.
-  await bucket.remove(quarantinePaths).catch(() => undefined);
+  // cuarentena de un adjunto ya registrado). Storage resuelve con { error } en vez de rechazar: se revisa
+  // el resultado y se deja constancia en el registro; el adjunto ya está a salvo (#260).
+  await bucket.remove(quarantinePaths).then(
+    (result: { error?: { message?: string } | null }) => {
+      if (result?.error) {
+        console.error("[chat-attachments] no se pudo borrar la cuarentena tras registrar", {
+          message: result.error.message ?? "Storage no borró la cuarentena", paths: quarantinePaths.length,
+        });
+      }
+    },
+    (error: unknown) => {
+      console.error("[chat-attachments] no se pudo borrar la cuarentena tras registrar", {
+        name: (error as Error | null)?.name, paths: quarantinePaths.length,
+      });
+    },
+  );
   const results: SignedChatAttachment[] = [];
   for (const item of prepared) {
     const signed = await signAttachmentObject(item.finalPath, item.fileName);
