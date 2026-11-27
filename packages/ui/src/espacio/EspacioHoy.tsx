@@ -241,7 +241,12 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const desktopCapture = useRef<HTMLInputElement>(null);
   const mobileCapture = useRef<HTMLInputElement>(null);
+  const initialIdsWorkspace = useRef(activeWorkspace.id);
   const initialIds = useRef(new Set(todos.map((todo) => todo.id)));
+  if (initialIdsWorkspace.current !== activeWorkspace.id) {
+    initialIdsWorkspace.current = activeWorkspace.id;
+    initialIds.current = new Set(todos.map((todo) => todo.id));
+  }
   const freshIds = useMemo(() => new Set(todos.filter((todo) => !initialIds.current.has(todo.id)).map((todo) => todo.id)), [todos]);
 
   // La opacidad elegida se aplica como variable CSS del contenedor; es un valor calculado en tiempo de ejecución.
@@ -402,11 +407,14 @@ export function EspacioHoy(props: EspacioHoyProps) {
     ...(dock ? [{ key: dock.entry.shortcut, label: "Escribir un pendiente", run: focusCapture }, ...dock.actions] : []),
   ];
 
+  const shortcutsRef = useRef(shortcuts);
+  shortcutsRef.current = shortcuts;
+
   useEffect(() => {
-    const onKeyDown = createShortcutRegistry(shortcuts);
+    const onKeyDown = (event: KeyboardEvent) => createShortcutRegistry(shortcutsRef.current)(event);
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [shortcuts]);
+  }, []);
 
   const hoyPanel = (className: string) => (
     <HoyPanel

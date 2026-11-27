@@ -8,6 +8,39 @@ import type { EspacioNote, EspacioTodo, EspacioVisibility, NoteSaveState } from 
 
 const AUTOSAVE_DELAY_MS = 700;
 
+/** Planificador de autoguardado con debounce y flush explícito para no perder ediciones al desmontar o cambiar de nota. */
+export function createNoteAutosaveScheduler(
+  onSave: (id: string, title: string, content: string) => void,
+  delayMs = AUTOSAVE_DELAY_MS,
+) {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let pending: { id: string; title: string; content: string } | null = null;
+  let saveHandler = onSave;
+
+  const flush = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    const current = pending;
+    if (!current) return;
+    pending = null;
+    saveHandler(current.id, current.title, current.content);
+  };
+
+  return {
+    setHandler(next: (id: string, title: string, content: string) => void) {
+      saveHandler = next;
+    },
+    schedule(id: string, title: string, content: string) {
+      if (timer) clearTimeout(timer);
+      pending = { id, title, content };
+      timer = setTimeout(flush, delayMs);
+    },
+    flush,
+  };
+}
+
 export interface NotaPanelProps {
   note: EspacioNote | null;
   linkedTodos: EspacioTodo[];
@@ -28,22 +61,30 @@ const SAVE_LABEL: Record<NoteSaveState, string> = { saved: "Guardado", saving: "
 export function NotaPanel({ note, linkedTodos, saveState, onSave, onTogglePin, onToggleArchive, onCreateTodoFromNote, onCreateNote, onChangeVisibility, onClose, className }: NotaPanelProps) {
   const [title, setTitle] = useState(note?.title ?? "");
   const [content, setContent] = useState(note?.content ?? "");
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduler = useRef<ReturnType<typeof createNoteAutosaveScheduler> | null>(null);
+  scheduler.current ??= createNoteAutosaveScheduler(onSave);
+  scheduler.current.setHandler(onSave);
   const noteId = note?.id ?? null;
 
   useEffect(() => {
     setTitle(note?.title ?? "");
     setContent(note?.content ?? "");
+    // Al cambiar de nota o desmontar el panel, se guarda lo pendiente para no perder cambios recientes.
+    return () => { scheduler.current?.flush(); };
     // Solo al cambiar de nota: mientras se escribe manda el estado local.
   }, [noteId]);
 
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onPageHide = () => scheduler.current?.flush();
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, []);
 
   const readOnly = Boolean(note?.readOnly);
   const schedule = (nextTitle: string, nextContent: string) => {
     if (!noteId || readOnly) return;
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => onSave(noteId, nextTitle, nextContent), AUTOSAVE_DELAY_MS);
+    scheduler.current?.schedule(noteId, nextTitle, nextContent);
   };
 
   if (!note) {
