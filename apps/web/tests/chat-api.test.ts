@@ -41,6 +41,17 @@ describe("API privada de chat", () => {
     });
     expect((await POST(request)).status).toBe(200);
     expect(send).toHaveBeenCalledWith(command);
+
+    const proxied = new Request("http://127.0.0.1:3100/api/chat", {
+      method: "POST", body: JSON.stringify(command),
+      headers: {
+        origin: "https://hubly.mx",
+        host: "hubly.mx",
+        "x-forwarded-proto": "https, http",
+        "content-type": "APPLICATION/JSON; charset=utf-8",
+      },
+    });
+    expect((await POST(proxied)).status).toBe(200);
   });
 
   it("distingue sesión caducada y falta de acceso sin exponer el recurso", async () => {

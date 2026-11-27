@@ -1,6 +1,6 @@
 "use server";
 import type { NoteFilter } from "@hubly/application";
-import { createNoteSchema, presenceStatusSchema, type PresenceStatus, createTodoSchema, exportDataSchema, updateNoteSchema, updateTodoSchema, updateUserPreferencesSchema, type CreateNoteInput, type CreateTodoInput, type ExportData, type UpdateNoteInput, type UpdateTodoInput, type UpdateUserPreferencesInput, type UserPreferences } from "@hubly/contracts";
+import { booleanFlagSchema, createNoteSchema, noteFilterSchema, presenceStatusSchema, safeIdentifierSchema, todoViewSchema, type PresenceStatus, createTodoSchema, exportDataSchema, updateNoteSchema, updateTodoSchema, updateUserPreferencesSchema, type CreateNoteInput, type CreateTodoInput, type ExportData, type UpdateNoteInput, type UpdateTodoInput, type UpdateUserPreferencesInput, type UserPreferences } from "@hubly/contracts";
 import {
   acceptWorkspaceInvitationSafely, archiveNoteUseCase, changeMemberRoleUseCase, changeNoteVisibilityUseCase,
   changeTodoVisibilityUseCase, createAgencyWorkspaceUseCase, createNoteUseCase, createTodoFromNoteUseCase,
@@ -62,13 +62,16 @@ export async function updateTodoAction(input: UpdateTodoInput, workspaceId?: str
   return updateTodoUseCase(await ensureAuthenticatedWorkspace(workspaceId))(updateTodoSchema.parse(input));
 }
 export async function toggleTodoAction(todoId: string, workspaceId?: string): Promise<WorkspaceTodo> {
-  return toggleTodoUseCase(await ensureAuthenticatedWorkspace(workspaceId))(todoId);
+  const validTodoId = safeIdentifierSchema.parse(todoId);
+  return toggleTodoUseCase(await ensureAuthenticatedWorkspace(workspaceId))(validTodoId);
 }
 export async function listTodosByViewAction(view: WorkspaceTodoView, workspaceId?: string): Promise<WorkspaceTodo[]> {
-  return listTodosUseCase(await ensureAuthenticatedWorkspace(workspaceId))(view);
+  const validView = todoViewSchema.parse(view);
+  return listTodosUseCase(await ensureAuthenticatedWorkspace(workspaceId))(validView);
 }
 export async function createTodoFromNoteAction(noteId: string, input: Omit<CreateTodoInput, "noteId">, workspaceId?: string): Promise<WorkspaceTodo> {
-  return createTodoFromNoteUseCase(await ensureAuthenticatedWorkspace(workspaceId))(noteId, createTodoSchema.omit({ noteId: true }).parse(input));
+  const validNoteId = safeIdentifierSchema.parse(noteId);
+  return createTodoFromNoteUseCase(await ensureAuthenticatedWorkspace(workspaceId))(validNoteId, createTodoSchema.omit({ noteId: true }).parse(input));
 }
 export async function createNoteAction(input: CreateNoteInput, workspaceId?: string): Promise<WorkspaceNote> {
   return createNoteUseCase(await ensureAuthenticatedWorkspace(workspaceId))(createNoteSchema.parse(input));
@@ -77,13 +80,25 @@ export async function saveNoteAction(input: UpdateNoteInput, workspaceId?: strin
   return updateNoteUseCase(await ensureAuthenticatedWorkspace(workspaceId))(autosaveNoteSchema.parse(input));
 }
 export async function pinNoteAction(noteId: string, isPinned: boolean, workspaceId?: string): Promise<WorkspaceNote> {
-  return pinNoteUseCase(await ensureAuthenticatedWorkspace(workspaceId))(noteId, isPinned);
+  const validNoteId = safeIdentifierSchema.parse(noteId);
+  const validPinned = booleanFlagSchema.parse(isPinned);
+  return pinNoteUseCase(await ensureAuthenticatedWorkspace(workspaceId))(validNoteId, validPinned);
 }
 export async function archiveNoteAction(noteId: string, isArchived: boolean, workspaceId?: string): Promise<WorkspaceNote> {
-  return archiveNoteUseCase(await ensureAuthenticatedWorkspace(workspaceId))(noteId, isArchived);
+  const validNoteId = safeIdentifierSchema.parse(noteId);
+  const validArchived = booleanFlagSchema.parse(isArchived);
+  return archiveNoteUseCase(await ensureAuthenticatedWorkspace(workspaceId))(validNoteId, validArchived);
 }
 export async function listNotesAction(filter?: NoteFilter, workspaceId?: string): Promise<WorkspaceNote[]> {
-  return listNotesUseCase(await ensureAuthenticatedWorkspace(workspaceId))(filter);
+  const parsed = noteFilterSchema.parse(filter);
+  const cleanFilter: NoteFilter | undefined = parsed
+    ? {
+        ...(parsed.isPinned !== undefined ? { isPinned: parsed.isPinned } : {}),
+        ...(parsed.isArchived !== undefined ? { isArchived: parsed.isArchived } : {}),
+        ...(parsed.visibility !== undefined ? { visibility: parsed.visibility } : {}),
+      }
+    : undefined;
+  return listNotesUseCase(await ensureAuthenticatedWorkspace(workspaceId))(cleanFilter);
 }
 export async function exportWorkspaceAction(workspaceId?: string): Promise<{ jsonFilename: string; mdFilename: string; jsonContent: string; markdownContent: string; data: ExportData }> {
   const ctx = await ensureAuthenticatedWorkspace(workspaceId);
@@ -95,7 +110,7 @@ export async function createAgencyWorkspaceAction(input: { name: string; slug?: 
   return createAgencyWorkspaceUseCase(await ensureAuthenticatedWorkspace())(input);
 }
 export async function selectActiveWorkspaceAction(workspaceId: string): Promise<WorkspaceSummary> {
-  const ctx = await ensureAuthenticatedWorkspace(workspaceId);
+  const ctx = await ensureAuthenticatedWorkspace(safeIdentifierSchema.parse(workspaceId));
   await persistActiveWorkspaceCookie(ctx.workspaceId);
   return { id: ctx.workspaceId, name: ctx.workspaceName, slug: ctx.workspaceSlug ?? ctx.workspaceId, kind: ctx.workspaceKind, role: ctx.role };
 }
@@ -177,9 +192,10 @@ export async function removeAvatarAction(): Promise<ProfileResult<null>> {
 }
 
 export async function saveDisplayNameAction(name: string): Promise<ProfileResult<string>> {
+  if (typeof name !== "string") return { ok: false, message: "Escribe tu nombre." };
   await ensureAuthenticatedWorkspace();
   try {
-    return { ok: true, value: await saveUserDisplayName(String(name)) };
+    return { ok: true, value: await saveUserDisplayName(name) };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "No se pudo guardar tu nombre." };
   }

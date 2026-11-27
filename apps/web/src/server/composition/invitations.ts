@@ -36,7 +36,10 @@ export async function acceptWorkspaceInvitationByToken(rawInputToken: string, db
   const cleaned = rawInputToken.includes("#") ? rawInputToken.slice(rawInputToken.lastIndexOf("#") + 1) : rawInputToken;
   const { rawToken } = acceptInvitationInputSchema.parse({ rawToken: cleaned });
   const { claims } = await getVerifiedServerSession();
-  const workspaceId = await new DrizzleWorkspaceRepository(claims, db).acceptInvitation(rawToken);
+  const wsRepo = new DrizzleWorkspaceRepository(claims, db);
+  const workspaceId = await wsRepo.acceptInvitation(rawToken);
+  // Garantiza un espacio personal para reubicar notas/pendientes privados si la persona sale de la agencia (NV-1).
+  await wsRepo.ensurePersonalWorkspace();
   await persistActiveWorkspaceCookie(workspaceId);
   return { workspaceId };
 }

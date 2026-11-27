@@ -113,9 +113,11 @@ describe("Autenticación con Supabase Auth, cookies httpOnly, middleware y Serve
 
     members.length = 0;
     await expect(listNotesAction(undefined, "ws-user-b")).rejects.toThrow("No autorizado en el espacio de trabajo: ws-user-b");
+    await expect(listNotesAction(undefined, "ws-1\nINJECTED")).rejects.toThrow(/Identificador inválido/);
     await expect(exportWorkspaceAction("ws-user-b")).rejects.toThrow("No autorizado en el espacio de trabajo: ws-user-b");
     members.push({ workspaceId: "ws-user-a", userId: "user-a", role: "owner" });
     await expect(toggleTodoAction("todo-b", "ws-user-a")).rejects.toThrow();
+    await expect(toggleTodoAction("bad\nid", "ws-user-a")).rejects.toThrow(/Identificador inválido/);
     expect(todosB[0]?.isDone).toBe(false);
   });
 

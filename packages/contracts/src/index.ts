@@ -2,6 +2,9 @@
 import { z } from 'zod';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/, TITLE_MSG = 'El título no puede superar los 200 caracteres';
+const SAFE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+export const NOTE_CONTENT_MAX = 100_000;
+const CONTENT_MSG = 'El contenido no puede superar los 100 000 caracteres';
 
 function isValidCalendarDate(v: string): boolean {
   const [y = 0, m = 0, d = 0] = v.split('-').map(Number);
@@ -22,16 +25,25 @@ export const workspaceRoleSchema = z.enum(['owner', 'admin', 'editor', 'viewer']
 export const invitationRoleSchema = z.enum(['admin', 'editor', 'viewer'] as const, { message: 'Rol de invitación inválido' });
 export const workspaceKindSchema = z.enum(['personal', 'agency'] as const, { message: 'Tipo de espacio inválido' });
 export const itemVisibilitySchema = z.enum(['private', 'workspace'] as const, { message: 'Visibilidad inválida' });
+export const safeIdentifierSchema = z.string().regex(SAFE_ID_RE, 'Identificador inválido');
+export const booleanFlagSchema = z.boolean({ message: 'Valor booleano inválido' });
+export const todoViewSchema = z.enum(['today', 'upcoming', 'no_date', 'done'] as const, { message: 'Vista de pendientes inválida' });
+export const noteFilterSchema = z.object({
+  isPinned: z.boolean().optional(),
+  isArchived: z.boolean().optional(),
+  visibility: itemVisibilitySchema.optional(),
+  query: z.string().max(200, 'La búsqueda no puede superar los 200 caracteres').optional(),
+}).optional();
 
 export const createNoteSchema = z.object({
   title: z.string().trim().max(200, TITLE_MSG).default(''),
-  content: z.string().optional().default(''),
+  content: z.string().max(NOTE_CONTENT_MAX, CONTENT_MSG).optional().default(''),
   visibility: itemVisibilitySchema.optional(),
 });
 export const updateNoteSchema = z.object({
   id: z.string().min(1, 'El ID es obligatorio'),
   title: z.string().trim().max(200, TITLE_MSG).optional(),
-  content: z.string().optional(), isPinned: z.boolean().optional(), isArchived: z.boolean().optional(),
+  content: z.string().max(NOTE_CONTENT_MAX, CONTENT_MSG).optional(), isPinned: z.boolean().optional(), isArchived: z.boolean().optional(),
   visibility: itemVisibilitySchema.optional(),
   expectedVersion: z.number().int().positive('La versión esperada debe ser un entero positivo').optional(),
 });

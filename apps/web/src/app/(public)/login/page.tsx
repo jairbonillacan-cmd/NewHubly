@@ -25,7 +25,10 @@ const LINK_ERRORS: Record<string, string> = {
   "enlace-caducado": "Ese enlace ya no sirve: caducó o ya se usó. Entra con tu contraseña o pide uno nuevo.",
   "enlace-invalido": "Ese enlace no es válido. Pide uno nuevo desde aquí.",
 };
-export const linkErrorMessage = (search: string): string | null => LINK_ERRORS[new URLSearchParams(search).get("error") ?? ""] ?? null;
+export const linkErrorMessage = (search: string): string | null => {
+  const code = new URLSearchParams(search).get("error") ?? "";
+  return Object.hasOwn(LINK_ERRORS, code) ? (LINK_ERRORS[code] ?? null) : null;
+};
 
 function visibleError(message: string) {
   // Next oculta el mensaje de una Server Action que lanza en producción (React #441).
