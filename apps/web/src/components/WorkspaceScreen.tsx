@@ -2,7 +2,7 @@
 import { canEditItem, parseQuickCapture, suggestOverdueTodos } from "@hubly/application";
 import { createTodoSchema, type PresenceStatus, type UserPreferences } from "@hubly/contracts";
 import { BienvenidaDialog, EspacioEstado, EspacioHoy, type HerramientaId, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   archiveNoteAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction, createAgencyWorkspaceAction,
   createNoteAction, createTodoAction, createTodoFromNoteAction, exportWorkspaceAction, inviteWorkspaceMemberAction, loadWorkspaceDashboardAction,
@@ -12,6 +12,7 @@ import {
 } from "../actions";
 import { signOutAction } from "../actions/auth";
 import { createLatestWins } from "./latest-wins";
+import { createNoteSaveQueue } from "./note-save-queue";
 import { ChatScreen, syncDocumentTitleMentions } from "./chat/ChatScreen";
 import { ChatRequestError, agencyExportHref, chatTransport } from "./chat/transport";
 import { fromEspacioPreferencias, toEspacioPreferencias } from "./preferences";
@@ -98,6 +99,25 @@ export async function executeProtectedAction(
   }
 }
 
+export type WorkspaceChatSummary = { unread: number | null; unreadMentions?: number | null | undefined };
+
+/** Evita crear un objeto nuevo si el conteo de menciones no cambió, previniendo bucles de render en /chat (#290). */
+export function mergeChatUnreadMentions(prev: WorkspaceChatSummary | null, count: number): WorkspaceChatSummary | null {
+  if (!prev || prev.unreadMentions === count) return prev;
+  return { ...prev, unreadMentions: count };
+}
+
+/** Sincroniza conversaciones y menciones sin leer del sondeo fuera de /chat sin re-renderizar si no hay cambios (#290). */
+export function mergeChatPollResult(
+  prev: WorkspaceChatSummary | null,
+  result: { conversations: ReadonlyArray<{ unread: boolean }>; unreadMentions?: ReadonlyArray<unknown> | undefined },
+): WorkspaceChatSummary {
+  const nextUnread = result.conversations.filter((item) => item.unread).length;
+  const nextMentions = result.unreadMentions !== undefined ? result.unreadMentions.length : prev?.unreadMentions;
+  if (prev && prev.unread === nextUnread && prev.unreadMentions === nextMentions) return prev;
+  return { unread: nextUnread, ...(nextMentions !== undefined ? { unreadMentions: nextMentions } : {}) };
+}
+
 /** Permisos de interfaz por elemento en una agencia. Solo orientan: RLS y los casos de uso deciden en el servidor (ADR 0007). */
 export function itemPermissions(ws: WorkspaceSummary | undefined, currentUserId: string, createdBy: string) {
   if (!ws || ws.kind !== "agency") return {};
@@ -114,6 +134,20 @@ const toEspacioNote = (n: WorkspaceNote, ws: WorkspaceSummary | undefined, userI
   return { id: n.id, title: n.title, content: n.content, isPinned: n.isPinned, isArchived: n.isArchived, ...(ws?.kind === "agency" ? { visibility: n.visibility ?? "private", canChangeVisibility: Boolean(canChangeVisibility), readOnly: Boolean(readOnly) } : {}) };
 };
 const toEspacioWorkspace = (w: WorkspaceSummary): EspacioWorkspace => ({ id: w.id, name: w.name, kind: w.kind, role: w.role });
+
+/** Al recargar el mismo espacio, conserva el borrador local de notas que siguen guardándose o en cola (issue 290). */
+export function mergeReloadedNotes<TNote extends { id: string; title: string; content: string }>(
+  prevNotes: readonly TNote[],
+  freshNotes: readonly TNote[],
+  isActive: (noteId: string) => boolean,
+): TNote[] {
+  const prevById = new Map(prevNotes.map((note) => [note.id, note]));
+  return freshNotes.map((note) => {
+    if (!isActive(note.id)) return note;
+    const local = prevById.get(note.id);
+    return local ? { ...note, title: local.title, content: local.content } : note;
+  });
+}
 
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
@@ -165,10 +199,7 @@ export function WorkspaceScreen({
       controller = current;
       void api.sync(null, 0, current.signal).then((result) => {
         if (!current.signal.aborted) {
-          setChat((prev) => ({
-            unread: result.conversations.filter((item) => item.unread).length,
-            ...(prev?.unreadMentions !== undefined ? { unreadMentions: prev.unreadMentions } : {}),
-          }));
+          setChat((prev) => mergeChatPollResult(prev, result));
         }
       }, (error: unknown) => {
         if (!current.signal.aborted && error instanceof ChatRequestError && (error.status === 401 || error.status === 404)) setChat(null);
@@ -178,11 +209,19 @@ export function WorkspaceScreen({
     window.addEventListener("focus", update);
     return () => { clearInterval(interval); window.removeEventListener("focus", update); controller?.abort(); };
   }, [wsId, chatAvailable, chatMode]);
+  const handleUnreadMentionsChange = useCallback((count: number) => {
+    setChat((prev) => mergeChatUnreadMentions(prev, count));
+  }, []);
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<ActionErrorState | null>(initialActionError);
   // Espacio al que se está cambiando (#215): mientras llega, la pantalla no muestra datos del anterior. Gana siempre el último cambio pedido.
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
   const enqueueSwitch = useRef(createLatestWins()).current;
+  const noteSaveQueue = useRef(createNoteSaveQueue<WorkspaceNote>()).current;
+  const activeWorkspaceIdRef = useRef<string | undefined>(wsId);
+  useEffect(() => {
+    activeWorkspaceIdRef.current = wsId;
+  }, [wsId]);
   const [noteStatus, setNoteStatus] = useState<Record<string, NoteSaveState>>({});
   const redirectLogin = () => { if (onLoginRedirect) onLoginRedirect(); else if (typeof window !== "undefined") window.location.assign("/login"); };
   const runSafe = (fallbackMsg: string, fn: () => Promise<void>) => executeProtectedAction(fallbackMsg, fn, redirectLogin, setActionError);
@@ -265,16 +304,43 @@ export function WorkspaceScreen({
   };
 
   const handleSaveNote = (id: string, nextTitle: string, nextContent: string) => {
+    const originWsId = wsId;
+    if (originWsId !== activeWorkspaceIdRef.current) return;
     const note = notes.find((n) => n.id === id); if (!note) return;
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, title: nextTitle, content: nextContent } : n)));
-    setNoteStatus((prev) => ({ ...prev, [id]: "saving" }));
-    void executeProtectedAction("No se pudo guardar la nota.", async () => {
-      const saved = onSaveNote ? await onSaveNote(note, nextTitle, nextContent) : await saveNoteAction({ id, title: nextTitle, content: nextContent, expectedVersion: note.version }, wsId);
-      setNotes((prev) => prev.map((n) => (n.id === id ? saved : n))); setNoteStatus((prev) => ({ ...prev, [id]: "saved" }));
-    }, redirectLogin, (errState) => {
-      if (errState) setNoteStatus((prev) => ({ ...prev, [id]: "error" }));
-      setActionError(errState);
-    });
+    void noteSaveQueue.enqueue(
+      id,
+      nextTitle,
+      nextContent,
+      note.version,
+      (payload) => (onSaveNote
+        ? onSaveNote({ ...note, version: payload.expectedVersion }, payload.title, payload.content)
+        : saveNoteAction(payload, originWsId)),
+      {
+        onSaving: (noteId) => {
+          setActionError(null);
+          setNoteStatus((prev) => ({ ...prev, [noteId]: "saving" }));
+        },
+        onSaved: (saved, hasMorePending) => {
+          // Si ya hay un texto local más nuevo en cola, actualiza solo la versión/metadatos para no pisarlo (issue 290).
+          setNotes((prev) => prev.map((n) => (n.id === saved.id
+            ? (hasMorePending ? { ...n, version: saved.version, updatedAt: saved.updatedAt } : saved)
+            : n)));
+          if (!hasMorePending) setNoteStatus((prev) => ({ ...prev, [saved.id]: "saved" }));
+        },
+        onError: (noteId, err, retry) => {
+          const msg = err instanceof Error ? err.message : "";
+          const digest = (err as { digest?: unknown } | null)?.digest;
+          if (msg.includes("Sesión caducada") || msg.includes("No hay una sesión activa") || (typeof digest === "string" && digest.startsWith("NEXT_REDIRECT"))) {
+            redirectLogin();
+            return;
+          }
+          setNoteStatus((prev) => ({ ...prev, [noteId]: "error" }));
+          const sanitizedByServer = typeof digest === "string";
+          setActionError({ message: sanitizedByServer || !msg ? "No se pudo guardar la nota." : msg, retry });
+        },
+      },
+    );
   };
 
   const handleTogglePin = (id: string) => runSafe("No se pudo fijar la nota.", async () => {
@@ -302,10 +368,20 @@ export function WorkspaceScreen({
 
   const reload = async (nextWsId?: string, onApplied?: () => void) => {
     const fresh = await loadWorkspaceDashboardAction(nextWsId);
-    if (chatMode && (fresh.activeWorkspace.id !== wsId || !fresh.chat)) { window.location.assign("/hub"); return; }
+    const sameWorkspace = fresh.activeWorkspace.id === wsId;
+    if (chatMode && (!sameWorkspace || !fresh.chat)) { window.location.assign("/hub"); return; }
     setChat(fresh.chat ?? null);
+    activeWorkspaceIdRef.current = fresh.activeWorkspace.id;
     setActiveWs(fresh.activeWorkspace); setWorkspaces(fresh.workspaces); setMembers(fresh.members); setInvitations(fresh.pendingInvitations);
-    setNotes(fresh.notes); setTodos(fresh.todos); setNoteStatus({});
+    if (sameWorkspace) {
+      setNotes((prev) => mergeReloadedNotes(prev, fresh.notes, noteSaveQueue.isActive));
+      setNoteStatus((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => noteSaveQueue.isActive(id))));
+    } else {
+      noteSaveQueue.clear();
+      setNotes(fresh.notes);
+      setNoteStatus({});
+    }
+    setTodos(fresh.todos);
     onApplied?.();
   };
   /** Cambia de espacio en orden: lo anterior se oculta ya, y los datos nuevos y el fin del cambio llegan en una sola actualización. */
@@ -394,9 +470,7 @@ export function WorkspaceScreen({
                 role={activeWs.role}
                 initiallyUnread={initiallyUnread}
                 initialUnreadMentions={chat.unreadMentions ?? 0}
-                onUnreadMentionsChange={(count) =>
-                  setChat((prev) => (prev ? { ...prev, unreadMentions: count } : prev))
-                }
+                onUnreadMentionsChange={handleUnreadMentionsChange}
               />
             ),
           } : {}),

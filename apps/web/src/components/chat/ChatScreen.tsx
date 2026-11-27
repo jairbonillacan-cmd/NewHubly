@@ -183,13 +183,18 @@ export function ChatScreen({
     return syncDocumentTitleMentions(document, unreadMentionsCount);
   }, [unreadMentionsCount]);
 
-  useEffect(() => {
-    onUnreadMentionsChange?.(unreadMentionsCount);
-  }, [onUnreadMentionsChange, unreadMentionsCount]);
+  const onUnreadMentionsChangeRef = useRef(onUnreadMentionsChange);
+  onUnreadMentionsChangeRef.current = onUnreadMentionsChange;
+  const onTypingUsersChangeRef = useRef(onTypingUsersChange);
+  onTypingUsersChangeRef.current = onTypingUsersChange;
 
   useEffect(() => {
-    onTypingUsersChange?.(typingUserIds);
-  }, [onTypingUsersChange, typingUserIds]);
+    onUnreadMentionsChangeRef.current?.(unreadMentionsCount);
+  }, [unreadMentionsCount]);
+
+  useEffect(() => {
+    onTypingUsersChangeRef.current?.(typingUserIds);
+  }, [typingUserIds]);
 
   const requestNotificationPermission = useCallback(async () => {
     if (
