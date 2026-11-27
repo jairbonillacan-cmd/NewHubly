@@ -126,6 +126,19 @@ export async function archiveNote(r: NoteRepository, c: Clock, id: string, isArc
 
 export const listNotes = (r: NoteRepository, ctx: AppContext, f?: NoteFilter) => r.findByWorkspace(ctx.workspaceId, ctx.userId, f);
 
+/** Carga todos los pendientes en una sola consulta al repositorio preservando el orden canónico por vista y prioridad (issue 291). */
+export async function listTodosForDashboard(repo: TodoRepository, clock: Clock, ctx: AppContext): Promise<Todo[]> {
+  const all = await repo.findByWorkspace(ctx.workspaceId, ctx.userId), ref = clock.todayString();
+  const ordered = [
+    ...sortTodosForView(all.filter(t => isToday(t, ref)), 'today', ref),
+    ...sortTodosForView(all.filter(t => isUpcoming(t, ref)), 'upcoming', ref),
+    ...sortTodosForView(all.filter(t => isNoDate(t)), 'no_date', ref),
+    ...sortTodosForView(all.filter(t => isDoneView(t)), 'done', ref),
+  ];
+  const seen = new Set<string>();
+  return ordered.filter(t => (seen.has(t.id) ? false : (seen.add(t.id), true)));
+}
+
 export async function createTodo(repo: TodoRepository, clock: Clock, idGen: IdGenerator, input: CreateTodoInput, ctx: AppContext, noteRepo?: NoteRepository): Promise<Todo> {
   const vis = input.visibility ?? 'private', role = roleOf(ctx);
   if (!canCreateWithVisibility(role, vis)) throw new ForbiddenWorkspaceActionError('Un lector no puede crear pendientes compartidos en la agencia');

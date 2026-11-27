@@ -53,4 +53,17 @@ describe("Fondos ilustrados (issue 238)", () => {
     expect(isClientModule('"use client";\nexport {}')).toBe(true);
     expect(isClientModule(source("./preferencias.ts"))).toBe(true);
   });
+
+  it("evita IDs SVG duplicados entre Wallpaper y WallpaperSwatch (issue 291)", () => {
+    const html = [
+      renderToStaticMarkup(createElement(Wallpaper, { fondo: "patron" })),
+      renderToStaticMarkup(createElement(WallpaperSwatch, { fondo: "patron" })),
+      renderToStaticMarkup(createElement(WallpaperSwatch, { fondo: "puntos" })),
+      renderToStaticMarkup(createElement(WallpaperSwatch, { fondo: "cuadricula" })),
+      renderToStaticMarkup(createElement(WallpaperSwatch, { fondo: "hubis" })),
+    ].join("");
+    const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]!);
+    expect(ids.length).toBeGreaterThanOrEqual(5);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
 });

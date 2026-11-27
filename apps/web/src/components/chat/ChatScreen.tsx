@@ -7,7 +7,10 @@ import { readBrowserNotificationPermission } from "./ConversationHeader";
 import { conversationName, personName } from "./MemberList";
 import { messageMentionsViewer } from "./MessageItem";
 import { CHAT_POLL_MS, incomingChatNotice, incomingMainMessages, mergeChatMessages, startChatPolling } from "./sync";
+import { formatDocumentTitleWithMentions, syncDocumentTitleMentions } from "./title-mentions";
 import { ChatRequestError, chatTransport, resolveChatPollIntervalMs } from "./transport";
+
+export { formatDocumentTitleWithMentions, syncDocumentTitleMentions };
 
 export interface ChatScreenProps {
   workspaceId: string;
@@ -19,26 +22,6 @@ export interface ChatScreenProps {
   onUnreadMentionsChange?: (count: number) => void;
   /** Quién escribe en la conversación abierta (sin la propia persona). Se conecta al compositor al integrar su PR. */
   onTypingUsersChange?: (userIds: readonly string[]) => void;
-}
-
-const stripTitlePrefix = (title: string): string => title.replace(/^\(\d+\)\s*/, "").trim() || "Hubly";
-
-export function formatDocumentTitleWithMentions(baseTitle: string, unreadMentionsCount: number): string {
-  const clean = stripTitlePrefix(baseTitle);
-  const count = Math.max(0, Math.floor(unreadMentionsCount));
-  return count > 0 ? `(${count}) ${clean}` : clean;
-}
-
-export function syncDocumentTitleMentions(
-  doc: { title: string } | null | undefined,
-  unreadMentionsCount: number,
-): () => void {
-  if (!doc) return () => {};
-  const baseTitle = stripTitlePrefix(doc.title);
-  doc.title = formatDocumentTitleWithMentions(baseTitle, unreadMentionsCount);
-  return () => {
-    doc.title = baseTitle;
-  };
 }
 
 export function discountUnreadMentions(params: {

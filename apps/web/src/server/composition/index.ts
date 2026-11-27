@@ -2,7 +2,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import {
   archiveNote, changeTodoVisibility, createNote, createTodo, createTodoFromNote, exportWorkspaceData,
-  getUserPreferences, listNotes, listTodosByView, pinNote, saveUserPreferences, toggleTodoDone, updateNote, updateTodo,
+  getUserPreferences, listNotes, listTodosByView, listTodosForDashboard, pinNote, saveUserPreferences, toggleTodoDone, updateNote, updateTodo,
   type AppContext, type Clock, type IdGenerator, type NoteFilter,
 } from "@hubly/application";
 import {
@@ -128,6 +128,8 @@ export const toggleTodoUseCase = (ctx: CompositionContext) => (todoId: string) =
   toggleTodoDone(repos(ctx).todoRepo, repos(ctx).clock, todoId, ctx);
 export const listTodosUseCase = (ctx: CompositionContext) => (view: Parameters<typeof listTodosByView>[2]) =>
   listTodosByView(repos(ctx).todoRepo, repos(ctx).clock, view, ctx);
+export const listDashboardTodosUseCase = (ctx: CompositionContext) => () =>
+  listTodosForDashboard(repos(ctx).todoRepo, repos(ctx).clock, ctx);
 export const createTodoFromNoteUseCase = (ctx: CompositionContext) => (noteId: string, input: Omit<CreateTodoInput, "noteId">) => {
   const { todoRepo, noteRepo, clock } = repos(ctx);
   return createTodoFromNote(todoRepo, noteRepo, clock, systemIdGenerator, noteId, createTodoSchema.omit({ noteId: true }).parse(input), ctx);

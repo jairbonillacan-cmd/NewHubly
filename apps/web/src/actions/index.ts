@@ -4,7 +4,7 @@ import { createNoteSchema, presenceStatusSchema, type PresenceStatus, createTodo
 import {
   acceptWorkspaceInvitationSafely, archiveNoteUseCase, changeMemberRoleUseCase, changeNoteVisibilityUseCase,
   changeTodoVisibilityUseCase, createAgencyWorkspaceUseCase, createNoteUseCase, createTodoFromNoteUseCase,
-  createTodoUseCase, ensureAuthenticatedWorkspace, exportDataUseCase, getUserPreferencesUseCase, issueWorkspaceInvitation, listNotesUseCase,
+  createTodoUseCase, ensureAuthenticatedWorkspace, exportDataUseCase, getUserPreferencesUseCase, issueWorkspaceInvitation, listDashboardTodosUseCase, listNotesUseCase,
   listPendingInvitationsUseCase, listTodosUseCase, listUserWorkspacesUseCase, listWorkspaceMembersUseCase,
   WallpaperImageError, persistActiveWorkspaceCookie, pinNoteUseCase, removeOrLeaveMemberUseCase, removeUserWallpaper, revokePendingWorkspaceInvitation, saveUserPreferencesUseCase,
   signUserWallpaper, uploadUserWallpaper, loadUserProfile, removeUserAvatar, saveUserDisplayName, saveUserPresence, uploadUserAvatar,
@@ -39,19 +39,22 @@ const autosaveNoteSchema = updateNoteSchema.required({ expectedVersion: true });
 
 export async function loadWorkspaceDashboardAction(workspaceId?: string): Promise<WorkspaceDashboardData> {
   const ctx = await ensureAuthenticatedWorkspace(workspaceId);
-  const listView = listTodosUseCase(ctx);
-  const [notes, todayTodos, upcomingTodos, noDateTodos, doneTodos, userWorkspaces, members, pendingInvitations, preferences, profile] = await Promise.all([
-    listNotesUseCase(ctx)(), listView("today"), listView("upcoming"), listView("no_date"), listView("done"),
-    listUserWorkspacesUseCase(ctx)(), listWorkspaceMembersUseCase(ctx)(), listPendingInvitationsUseCase(ctx)(), getUserPreferencesUseCase(ctx)(), loadUserProfile(ctx.userId, ctx.userDisplayName),
-  ]);
-  const seen = new Set<string>();
-  const todos = [...todayTodos, ...upcomingTodos, ...noDateTodos, ...doneTodos].filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)));
   const activeWorkspace: WorkspaceSummary = { id: ctx.workspaceId, name: ctx.workspaceName, slug: ctx.workspaceSlug ?? ctx.workspaceId, kind: ctx.workspaceKind, role: ctx.role };
+  const chatEnabled = activeWorkspace.kind === "agency" && isChatEnabled(activeWorkspace.id);
+  const [notes, todos, userWorkspaces, members, pendingInvitations, preferences, profile, chat] = await Promise.all([
+    listNotesUseCase(ctx)(),
+    listDashboardTodosUseCase(ctx)(),
+    listUserWorkspacesUseCase(ctx)(),
+    listWorkspaceMembersUseCase(ctx)(),
+    listPendingInvitationsUseCase(ctx)(),
+    getUserPreferencesUseCase(ctx)(),
+    loadUserProfile(ctx.userId, ctx.userDisplayName),
+    chatEnabled
+      ? composeChatService(activeWorkspace, ctx.claims, ctx.db).list(activeWorkspace.id)
+        .then((conversations) => ({ unread: conversations.filter((item) => item.unread).length }), () => ({ unread: null }))
+      : Promise.resolve(null),
+  ]);
   const wallpaperImageUrl = preferences.wallpaper === "imagen" ? await signUserWallpaper(ctx.userId) : null;
-  const chat = activeWorkspace.kind === "agency" && isChatEnabled(activeWorkspace.id)
-    ? { unread: await composeChatService(activeWorkspace, ctx.claims, ctx.db).list(activeWorkspace.id)
-      .then((conversations) => conversations.filter((item) => item.unread).length, () => null) }
-    : null;
   return { notes, todos, todayDate: ctx.todayDate, timezone: ctx.timezone, currentUserId: ctx.userId, activeWorkspace, workspaces: userWorkspaces.length > 0 ? userWorkspaces : [activeWorkspace], members, pendingInvitations, preferences, wallpaperImageUrl, currentUserEmail: ctx.userEmail, currentUserName: profile.name, avatarUrl: profile.avatarUrl, presence: profile.presence, chat };
 }
 

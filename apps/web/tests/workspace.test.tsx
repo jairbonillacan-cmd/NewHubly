@@ -21,12 +21,14 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
 
   const setupMockDb = (instant: Date) => {
     const nameOf = (t: unknown) => (t as { [k: symbol]: string })?.[Symbol.for("drizzle:Name")];
+    const tableCounts = new Map<string, number>();
     const tx = {
       execute: vi.fn().mockResolvedValue([]),
       select: vi.fn().mockImplementation(() => ({
         from: (table: unknown) => ({
           where: () => {
             const n = nameOf(table);
+            if (n) tableCounts.set(n, (tableCounts.get(n) ?? 0) + 1);
             const rows = n === "notes"
               ? [{ id: "n-1", workspaceId: "w-1", createdBy: "u-1", title: "Estrategia Q4", content: "Objetivos", isPinned: true, isArchived: false, version: 2, createdAt: instant, updatedAt: instant }]
               : n === "todos"
@@ -42,7 +44,7 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     setWorkspaceDbForTests({ transaction: vi.fn().mockImplementation((cb: (t: typeof tx) => Promise<unknown>) => cb(tx)) } as any);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSupabaseServerClientFactoryForTests(() => ({ auth: { getUser: getUserSpy } }) as any);
-    return getUserSpy;
+    return { getUserSpy, tableCounts };
   };
 
   it("renderiza los 4 estados obligatorios de pantalla terminada (carga, sin sesión, error y listo/vacío), conteos HeroUI y botón Cerrar sesión", async () => {
@@ -78,10 +80,12 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     setClockNowForTests(() => instant);
     setTimeZoneResolverForTests(() => "America/Mexico_City");
     expect(createSystemClock("America/Mexico_City").todayIsoDate()).toBe("2026-11-03");
-    const getUserSpy = setupMockDb(instant);
+    const { getUserSpy, tableCounts } = setupMockDb(instant);
 
     const dashboard = await loadWorkspaceDashboardAction("w-1");
     expect(getUserSpy).toHaveBeenCalledTimes(1);
+    // Una sola lectura de todos en lugar de 4 consultas redundantes por vista (issue 291).
+    expect(tableCounts.get("todos")).toBe(1);
     expect(dashboard.todayDate).toBe("2026-11-03");
     expect(dashboard.timezone).toBe("America/Mexico_City");
 
@@ -184,5 +188,76 @@ describe("Agencias en Hoy: permisos de interfaz por elemento (#64, #78)", () => 
       activeWorkspace: { id: agency.id, name: agency.name },
       workspaces: [{ id: personal.id, kind: "personal" }, { id: agency.id, kind: "agency" }],
     });
+  });
+
+  it("consolida todos en una sola lectura preservando prioridad y carga el resumen de chat en paralelo con fallback (issue 291)", async () => {
+    const agencyId = "11111111-1111-4111-8111-111111111111";
+    const previousPilot = process.env.HUBLY_CHAT_PILOT_WORKSPACE_IDS;
+    const instant = new Date("2026-11-04T01:00:00.000Z");
+    setClockNowForTests(() => instant);
+    setTimeZoneResolverForTests(() => "America/Mexico_City");
+    process.env.HUBLY_CHAT_PILOT_WORKSPACE_IDS = agencyId;
+
+    let chatFails = false;
+    let chatExecuted = 0;
+    const tableCounts = new Map<string, number>();
+    const nameOf = (t: unknown) => (t as { [k: symbol]: string })?.[Symbol.for("drizzle:Name")];
+    const tx = {
+      execute: vi.fn().mockImplementation(async (query?: unknown) => {
+        const text = JSON.stringify(query ?? "");
+        if (text.includes("chat_conversations")) {
+          chatExecuted += 1;
+          if (chatFails) throw new Error("Chat no disponible");
+          return [
+            { id: "c-1", kind: "channel", slug: "general", peerId: null, archived: false, writable: true, unread: true, changeCursor: 2 },
+            { id: "c-2", kind: "channel", slug: "equipo", peerId: null, archived: false, writable: true, unread: false, changeCursor: 1 },
+          ];
+        }
+        return [];
+      }),
+      select: vi.fn().mockImplementation(() => ({
+        from: (table: unknown) => ({
+          where: () => {
+            const n = nameOf(table);
+            if (n) tableCounts.set(n, (tableCounts.get(n) ?? 0) + 1);
+            const rows = n === "workspaces"
+              ? [{ id: agencyId, name: "Agencia Pulso", slug: "pulso", kind: "agency", createdAt: instant, updatedAt: instant }]
+              : n === "todos"
+                ? [
+                  { id: "t-low", workspaceId: agencyId, createdBy: "u-1", noteId: null, title: "Baja", detail: "", dueDate: "2026-11-03", priority: "low", isDone: false, doneAt: null, createdAt: instant, updatedAt: instant },
+                  { id: "t-high", workspaceId: agencyId, createdBy: "u-1", noteId: null, title: "Alta", detail: "", dueDate: "2026-11-03", priority: "high", isDone: false, doneAt: null, createdAt: instant, updatedAt: instant },
+                  { id: "t-over", workspaceId: agencyId, createdBy: "u-1", noteId: null, title: "Vencido", detail: "", dueDate: "2026-11-01", priority: "medium", isDone: false, doneAt: null, createdAt: instant, updatedAt: instant },
+                ]
+                : n === "notes"
+                  ? []
+                  : [{ workspaceId: agencyId, userId: "u-1", role: "owner", createdAt: instant }];
+            return { limit: async (c: number) => rows.slice(0, c), orderBy: async () => rows };
+          },
+        }),
+      })),
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setWorkspaceDbForTests({ transaction: vi.fn().mockImplementation((cb: (t: typeof tx) => Promise<unknown>) => cb(tx)) } as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSupabaseServerClientFactoryForTests(() => ({ auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u-1", email: "ana@agencia.es" } }, error: null }) } }) as any);
+
+    try {
+      const dash = await loadWorkspaceDashboardAction(agencyId);
+      expect(tableCounts.get("todos")).toBe(1);
+      expect(dash.todos.map((t) => t.id)).toEqual(["t-over", "t-high", "t-low"]);
+      expect(chatExecuted).toBe(1);
+      expect(dash.chat).toEqual({ unread: 1 });
+
+      chatFails = true;
+      const dashFallback = await loadWorkspaceDashboardAction(agencyId);
+      expect(dashFallback.chat).toEqual({ unread: null });
+    } finally {
+      if (previousPilot === undefined) delete process.env.HUBLY_CHAT_PILOT_WORKSPACE_IDS;
+      else process.env.HUBLY_CHAT_PILOT_WORKSPACE_IDS = previousPilot;
+      setSupabaseServerClientFactoryForTests(null);
+      setWorkspaceDbForTests(undefined);
+      setTimeZoneResolverForTests(null);
+      setClockNowForTests(null);
+    }
   });
 });

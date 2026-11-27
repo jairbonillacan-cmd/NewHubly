@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   InMemoryNoteRepository, InMemoryTodoRepository, InMemoryAgencyWorkspaceRepository,
-  createNote, updateNote, pinNote, archiveNote, listNotes, createTodo, updateTodo, toggleTodoDone, listTodosByView,
+  createNote, updateNote, pinNote, archiveNote, listNotes, createTodo, updateTodo, toggleTodoDone, listTodosByView, listTodosForDashboard,
   createTodoFromNote, exportWorkspaceData, createAgency, inviteWorkspaceMember, acceptWorkspaceInvitation,
   revokeWorkspaceInvitation, changeWorkspaceMemberRole, removeOrLeaveWorkspaceMember, changeNoteVisibility, changeTodoVisibility,
   type Clock, type IdGenerator,
@@ -59,6 +59,20 @@ describe('Application: Use cases', () => {
     expect((await listTodosByView(todoRepo, clock, 'no_date', ctx1)).map(t => t.id)).toEqual([noDate.id]);
     expect((await toggleTodoDone(todoRepo, clock, todayLow.id, ctx1)).isDone).toBe(true);
     expect((await listTodosByView(todoRepo, clock, 'done', ctx1)).map(t => t.id)).toEqual([todayLow.id]);
+    let findCalls = 0;
+    const origFind = todoRepo.findByWorkspace.bind(todoRepo);
+    todoRepo.findByWorkspace = async (...args) => { findCalls += 1; return origFind(...args); };
+    expect((await listTodosForDashboard(todoRepo, clock, ctx1)).map(t => t.id)).toEqual([
+      overdueHigh.id,
+      overdueMed1.id,
+      overdueMed2.id,
+      todayHigh.id,
+      upcoming1.id,
+      upcoming2.id,
+      noDate.id,
+      todayLow.id,
+    ]);
+    expect(findCalls).toBe(1);
     expect((await updateTodo(todoRepo, clock, { id: noDate.id, title: 'Con fecha', detail: 'D' }, ctx1)).detail).toBe('D');
   });
 
