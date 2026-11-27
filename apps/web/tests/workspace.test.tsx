@@ -11,7 +11,7 @@ import {
   TZ_REFRESH_STORAGE_KEY, type ActionErrorState, WorkspaceScreen, classifyTodoItemForView,
   executeProtectedAction, itemPermissions, shouldTriggerQuickCaptureShortcut, syncTimeZoneAndMaybeRefresh,
 } from "../src/components/WorkspaceScreen";
-import { createSystemClock, isValidIanaTimeZone, setClockNowForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests, setWorkspaceDbForTests } from "../src/server/composition";
+import { createSystemClock, isValidIanaTimeZone, resolveActiveWorkspaceCookie, setActiveWorkspaceCookieForTests, setClockNowForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests, setWorkspaceDbForTests } from "../src/server/composition";
 
 describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores recuperables y HeroUI (#27 y #46)", () => {
   afterEach(() => {
@@ -67,8 +67,10 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     const signOutSpy = vi.fn().mockResolvedValue({ error: null });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSupabaseServerClientFactoryForTests(() => ({ auth: { signOut: signOutSpy } }) as any);
+    setActiveWorkspaceCookieForTests("ws-anterior");
     expect(await signOutAction()).toEqual({ ok: true });
     expect(signOutSpy).toHaveBeenCalledTimes(1);
+    expect(await resolveActiveWorkspaceCookie()).toBeNull();
   });
 
   it("calcula Hoy en America/Mexico_City a las 19:00 local (2026-11-04T01:00:00Z = 2026-11-03 local) y limita recarga por zona horaria a un intento por sesión", async () => {

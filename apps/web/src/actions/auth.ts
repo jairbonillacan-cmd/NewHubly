@@ -3,7 +3,7 @@ import {
   signInWithMagicLinkSchema, signInWithPasswordSchema, signUpWithPasswordSchema,
   type SignInWithMagicLinkInput, type SignInWithPasswordInput, type SignUpWithPasswordInput,
 } from "@hubly/contracts";
-import { GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, SIGNUP_FLOW, createSupabaseServerClient, ensureAuthenticatedWorkspace, getVerifiedServerSession, resolveSiteUrl } from "../server/composition";
+import { GENERIC_AUTH_ERROR, GENERIC_MAGIC_LINK_MESSAGE, SIGNUP_FLOW, createSupabaseServerClient, ensureAuthenticatedWorkspace, getVerifiedServerSession, persistActiveWorkspaceCookie, resolveSiteUrl } from "../server/composition";
 
 /**
  * Los fallos esperados se devuelven, no se lanzan: en producción Next.js no deja pasar al cliente el mensaje de un
@@ -59,6 +59,10 @@ export async function hasActiveSessionAction(): Promise<boolean> {
 }
 
 export async function signOutAction(): Promise<{ ok: true }> {
-  await (await createSupabaseServerClient()).auth.signOut();
+  try {
+    await (await createSupabaseServerClient()).auth.signOut();
+  } finally {
+    await persistActiveWorkspaceCookie(null);
+  }
   return { ok: true };
 }
