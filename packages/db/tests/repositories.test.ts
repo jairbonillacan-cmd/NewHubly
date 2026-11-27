@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 import { ConcurrencyError } from "@hubly/domain";
-import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleWorkspaceRepository, type UserClaims } from "../src/index";
+import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleWorkspaceRepository, escapeLikePattern, type UserClaims } from "../src/index";
 
 function createMockDb(state: {
   notes: Record<string, unknown>[]; todos: Record<string, unknown>[];
@@ -10,7 +10,14 @@ function createMockDb(state: {
 }) {
   const nameOf = (t: unknown) => (t as { [k: symbol]: string })?.[Symbol.for("drizzle:Name")];
   const tx = {
-    execute: vi.fn().mockImplementation(async () => [{ id: "w-provisioned" }]),
+    execute: vi.fn().mockImplementation(async (query?: unknown) => {
+      const text = JSON.stringify(query ?? "");
+      if (text.includes("w.kind = 'personal'")) {
+        const personal = state.workspaces.find((w) => (w.kind ?? "personal") === "personal");
+        return personal ? [{ id: personal.id }] : [];
+      }
+      return [{ id: "w-provisioned" }];
+    }),
     select: vi.fn().mockImplementation(() => ({
       from: (table: unknown) => ({
         where: () => {
@@ -86,7 +93,7 @@ describe("Repositorios Drizzle y aislamiento con withUserContext (#25)", () => {
         { id: "t-today", workspaceId: "w-1", createdBy: "u-1", noteId: null, title: "Hoy", detail: "", dueDate: "2026-11-03", priority: "low", isDone: false, doneAt: null, createdAt: now, updatedAt: now },
         { id: "t-over", workspaceId: "w-1", createdBy: "u-1", noteId: "n-1", title: "Vencido", detail: "D", dueDate: "2026-11-01", priority: "high", isDone: false, doneAt: null, createdAt: now, updatedAt: now },
       ] as Record<string, unknown>[],
-      workspaces: [{ id: "w-1", name: "Hubly", slug: "hubly", createdAt: now, updatedAt: now }],
+      workspaces: [{ id: "w-1", name: "Hubly", slug: "hubly", kind: "personal", createdAt: now, updatedAt: now }] as Record<string, unknown>[],
       members: [{ workspaceId: "w-1", userId: "u-1", role: "owner", createdAt: now }],
     };
     const { db } = createMockDb(state);
@@ -99,7 +106,16 @@ describe("Repositorios Drizzle y aislamiento con withUserContext (#25)", () => {
     expect((await wsRepo.findById("w-1"))?.slug).toBe("hubly");
     expect((await wsRepo.findMember("w-1", "u-1"))?.role).toBe("owner");
     expect(await wsRepo.ensurePersonalWorkspace("Mi Espacio")).toBe("w-1");
+    // Si la única membresía es una agencia (NV-1), provisiona un espacio personal en lugar de devolver la agencia.
+    state.workspaces = [{ id: "ag-1", name: "Agencia", slug: "agencia", kind: "agency", createdAt: now, updatedAt: now }];
+    state.members = [{ workspaceId: "ag-1", userId: "u-1", role: "editor", createdAt: now }];
+    expect(await wsRepo.ensurePersonalWorkspace("Personal Nuevo")).toBe("w-provisioned");
     state.members.length = 0;
     expect(await wsRepo.ensurePersonalWorkspace("Nuevo Espacio")).toBe("w-provisioned");
+  });
+
+  it("escapeLikePattern escapa comodines LIKE/ILIKE para búsqueda literal (issue 293)", () => {
+    expect(escapeLikePattern("100% _test_ \\ruta")).toBe("100\\% \\_test\\_ \\\\ruta");
+    expect(escapeLikePattern("nota normal")).toBe("nota normal");
   });
 });

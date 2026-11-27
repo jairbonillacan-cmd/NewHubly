@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  createNoteSchema, updateNoteSchema, createTodoSchema, updateTodoSchema, exportDataSchema,
+  NOTE_CONTENT_MAX, booleanFlagSchema, createNoteSchema, noteFilterSchema, safeIdentifierSchema, todoViewSchema,
+  updateNoteSchema, createTodoSchema, updateTodoSchema, exportDataSchema,
   workspaceRoleSchema, invitationRoleSchema, workspaceKindSchema, itemVisibilitySchema,
   createAgencyInputSchema, inviteMemberInputSchema, acceptInvitationInputSchema,
   changeMemberRoleInputSchema, removeMemberInputSchema, changeItemVisibilityInputSchema,
@@ -11,7 +12,24 @@ describe('Contracts: Zod schemas', () => {
   it('valida notas admitiendo título vacío por defecto y rechazando longitud excesiva', () => {
     expect(createNoteSchema.safeParse({}).data?.title).toBe('');
     expect(createNoteSchema.safeParse({ title: 'a'.repeat(201) }).error?.issues[0]?.message).toContain('200');
+    expect(createNoteSchema.safeParse({ content: 'x'.repeat(NOTE_CONTENT_MAX + 1) }).error?.issues[0]?.message).toContain('100 000');
+    expect(updateNoteSchema.safeParse({ id: '1', content: 'x'.repeat(NOTE_CONTENT_MAX + 1) }).success).toBe(false);
     expect(updateNoteSchema.safeParse({ id: '1', expectedVersion: 0 }).error?.issues[0]?.message).toContain('positivo');
+    expect(safeIdentifierSchema.safeParse('ws-user-b').success).toBe(true);
+    expect(safeIdentifierSchema.safeParse('ws-1\nINJECTED').success).toBe(false);
+    expect(safeIdentifierSchema.safeParse('').success).toBe(false);
+    expect(todoViewSchema.safeParse('today').success).toBe(true);
+    expect(todoViewSchema.safeParse('invalid').success).toBe(false);
+    expect(booleanFlagSchema.safeParse(true).success).toBe(true);
+    expect(booleanFlagSchema.safeParse('true').success).toBe(false);
+    expect(noteFilterSchema.safeParse({ query: 'hola', isPinned: true }).success).toBe(true);
+    expect(noteFilterSchema.safeParse({ query: 'x'.repeat(201) }).success).toBe(false);
+    expect(updateNoteSchema.safeParse({ id: 'nota-1\nINJECTED', expectedVersion: 1 }).success).toBe(false);
+    expect(updateTodoSchema.safeParse({ id: 'todo-1\nINJECTED' }).success).toBe(false);
+    expect(createTodoSchema.safeParse({ title: 'A', noteId: 'nota-1\nINJECTED' }).success).toBe(false);
+    expect(changeItemVisibilityInputSchema.safeParse({ workspaceId: 'w-1', itemId: 'n-1\nX', itemType: 'note', visibility: 'private' }).success).toBe(false);
+    expect(changeMemberRoleInputSchema.safeParse({ workspaceId: 'w-1', targetUserId: 'u-1\nX', nextRole: 'editor' }).success).toBe(false);
+    expect(removeMemberInputSchema.safeParse({ workspaceId: 'w-1', targetUserId: 'u-1\nX' }).success).toBe(false);
   });
 
   it('valida pendientes y exportDataSchema con valores por defecto y rechazos', () => {

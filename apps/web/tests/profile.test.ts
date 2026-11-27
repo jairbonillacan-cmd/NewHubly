@@ -10,8 +10,12 @@ describe("Perfil (issue 135)", () => {
     expect(avatarObjectPath("u-1")).toBe("u-1/foto");
   });
 
-  it("limpia el nombre: sin espacios de sobra, con tope y sin aceptar vacíos", () => {
+  it("limpia el nombre: sin controles ni bidi, sin espacios de sobra, con tope y sin aceptar vacíos", () => {
     expect(normalizeDisplayName("  Ana   López ")).toBe("Ana López");
+    expect(normalizeDisplayName("Ana\n\tLópez")).toBe("Ana López");
+    expect(normalizeDisplayName("\u202eAna\u0007\u2066 López\u0000")).toBe("Ana López");
+    expect(normalizeDisplayName("\u061c\u200b\ufeff")).toBeNull();
+    expect(normalizeDisplayName("\u202e\u0000\u0007")).toBeNull();
     expect(normalizeDisplayName("   ")).toBeNull();
     expect(normalizeDisplayName("x".repeat(80))).toHaveLength(DISPLAY_NAME_MAX);
   });

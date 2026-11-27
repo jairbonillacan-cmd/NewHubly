@@ -7,7 +7,7 @@ import {
 } from "@hubly/application";
 import {
   changeItemVisibilityInputSchema, changeMemberRoleInputSchema, createAgencyInputSchema, createNoteSchema, createTodoSchema,
-  removeMemberInputSchema, updateNoteSchema, updateTodoSchema, type CreateNoteInput, type CreateTodoInput, type UpdateNoteInput, type UpdateTodoInput, type UpdateUserPreferencesInput,
+  removeMemberInputSchema, safeIdentifierSchema, updateNoteSchema, updateTodoSchema, type CreateNoteInput, type CreateTodoInput, type UpdateNoteInput, type UpdateTodoInput, type UpdateUserPreferencesInput,
 } from "@hubly/contracts";
 import { DrizzleNoteRepository, DrizzleTodoRepository, DrizzleUserPreferencesRepository, DrizzleWorkspaceRepository, withUserContext, type ItemVisibility, type UserClaims, type UserWorkspaceSummary, type WorkspaceInvitationRecord, type WorkspaceKind, type WorkspaceRole } from "@hubly/db";
 import {
@@ -77,14 +77,18 @@ export async function ensureAuthenticatedWorkspace(workspaceId?: string, default
   const resolvedDb = process.env.NODE_ENV === "test" ? testDbOverride : undefined;
   const wsRepo = new DrizzleWorkspaceRepository(claims, resolvedDb);
   let resolvedWorkspaceId: string | undefined, member = null;
-  if (workspaceId) {
-    member = await wsRepo.findMember(workspaceId, claims.sub);
-    if (!member) throw new Error(`No autorizado en el espacio de trabajo: ${workspaceId}`);
-    resolvedWorkspaceId = workspaceId;
+  if (workspaceId !== undefined) {
+    const validWorkspaceId = safeIdentifierSchema.parse(workspaceId);
+    member = await wsRepo.findMember(validWorkspaceId, claims.sub);
+    if (!member) throw new Error(`No autorizado en el espacio de trabajo: ${validWorkspaceId}`);
+    resolvedWorkspaceId = validWorkspaceId;
   } else if (cookieWsId) {
-    member = await wsRepo.findMember(cookieWsId, claims.sub);
-    if (member) resolvedWorkspaceId = cookieWsId;
-    else await persistActiveWorkspaceCookie(null);
+    const parsedCookieWs = safeIdentifierSchema.safeParse(cookieWsId);
+    if (parsedCookieWs.success) {
+      member = await wsRepo.findMember(parsedCookieWs.data, claims.sub);
+      if (member) resolvedWorkspaceId = parsedCookieWs.data;
+    }
+    if (!resolvedWorkspaceId) await persistActiveWorkspaceCookie(null);
   }
   if (!resolvedWorkspaceId) {
     resolvedWorkspaceId = await wsRepo.ensurePersonalWorkspace(defaultName);

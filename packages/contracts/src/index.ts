@@ -2,6 +2,9 @@
 import { z } from 'zod';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/, TITLE_MSG = 'El título no puede superar los 200 caracteres';
+const SAFE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+export const NOTE_CONTENT_MAX = 100_000;
+const CONTENT_MSG = 'El contenido no puede superar los 100 000 caracteres';
 
 function isValidCalendarDate(v: string): boolean {
   const [y = 0, m = 0, d = 0] = v.split('-').map(Number);
@@ -22,16 +25,26 @@ export const workspaceRoleSchema = z.enum(['owner', 'admin', 'editor', 'viewer']
 export const invitationRoleSchema = z.enum(['admin', 'editor', 'viewer'] as const, { message: 'Rol de invitación inválido' });
 export const workspaceKindSchema = z.enum(['personal', 'agency'] as const, { message: 'Tipo de espacio inválido' });
 export const itemVisibilitySchema = z.enum(['private', 'workspace'] as const, { message: 'Visibilidad inválida' });
+const safeId = (message = 'Identificador inválido') => z.string().regex(SAFE_ID_RE, message);
+export const safeIdentifierSchema = safeId();
+export const booleanFlagSchema = z.boolean({ message: 'Valor booleano inválido' });
+export const todoViewSchema = z.enum(['today', 'upcoming', 'no_date', 'done'] as const, { message: 'Vista de pendientes inválida' });
+export const noteFilterSchema = z.object({
+  isPinned: z.boolean().optional(),
+  isArchived: z.boolean().optional(),
+  visibility: itemVisibilitySchema.optional(),
+  query: z.string().max(200, 'La búsqueda no puede superar los 200 caracteres').optional(),
+}).optional();
 
 export const createNoteSchema = z.object({
   title: z.string().trim().max(200, TITLE_MSG).default(''),
-  content: z.string().optional().default(''),
+  content: z.string().max(NOTE_CONTENT_MAX, CONTENT_MSG).optional().default(''),
   visibility: itemVisibilitySchema.optional(),
 });
 export const updateNoteSchema = z.object({
-  id: z.string().min(1, 'El ID es obligatorio'),
+  id: safeId('El ID es obligatorio'),
   title: z.string().trim().max(200, TITLE_MSG).optional(),
-  content: z.string().optional(), isPinned: z.boolean().optional(), isArchived: z.boolean().optional(),
+  content: z.string().max(NOTE_CONTENT_MAX, CONTENT_MSG).optional(), isPinned: z.boolean().optional(), isArchived: z.boolean().optional(),
   visibility: itemVisibilitySchema.optional(),
   expectedVersion: z.number().int().positive('La versión esperada debe ser un entero positivo').optional(),
 });
@@ -41,17 +54,17 @@ export const createTodoSchema = z.object({
   dueDate: dueDateSchema,
   priority: z.enum(['low', 'medium', 'high'] as const, { message: 'Prioridad inválida' }).default('medium'),
   visibility: itemVisibilitySchema.optional(),
-  noteId: z.string().min(1, 'El ID de nota no puede estar vacío').optional().nullable(),
+  noteId: safeId('El ID de nota no es válido').optional().nullable(),
 });
 export const updateTodoSchema = z.object({
-  id: z.string().min(1, 'El ID es obligatorio'),
+  id: safeId('El ID es obligatorio'),
   title: z.string().trim().min(1, 'El título no puede estar vacío').max(200, TITLE_MSG).optional(),
   detail: z.string().max(1000).optional(),
   dueDate: dueDateSchema,
   priority: z.enum(['low', 'medium', 'high'] as const, { message: 'Prioridad inválida' }).optional(),
   visibility: itemVisibilitySchema.optional(),
   isDone: z.boolean().optional(),
-  noteId: z.string().min(1, 'El ID de nota no puede estar vacío').optional().nullable(),
+  noteId: safeId('El ID de nota no es válido').optional().nullable(),
 });
 export const noteSchema = z.object({
   id: z.string().min(1), workspaceId: z.string().min(1), createdBy: z.string().min(1),
@@ -79,12 +92,20 @@ export const createAgencyInputSchema = z.object({
   name: z.string().trim().min(1, 'El nombre de la agencia es obligatorio').max(80, 'El nombre no puede superar los 80 caracteres'),
   slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'El slug solo admite minúsculas, números y guiones').max(64).optional().nullable(),
 });
-export const inviteMemberInputSchema = z.object({ workspaceId: z.string().min(1, 'El ID de agencia es obligatorio'), email: emailField.transform(v => v.toLowerCase()), role: invitationRoleSchema });
+export const inviteMemberInputSchema = z.object({ workspaceId: safeId('El ID de agencia es obligatorio'), email: emailField.transform(v => v.toLowerCase()), role: invitationRoleSchema });
 export const acceptInvitationInputSchema = z.object({ rawToken: z.string().trim().min(16, 'El token de invitación es inválido') });
-export const revokeInvitationInputSchema = z.object({ workspaceId: z.string().min(1, 'El ID de agencia es obligatorio'), invitationId: z.string().min(1, 'El ID de invitación es obligatorio') });
-export const changeMemberRoleInputSchema = z.object({ workspaceId: z.string().min(1, 'El ID de agencia es obligatorio'), targetUserId: z.string().min(1, 'El ID de usuario es obligatorio'), nextRole: workspaceRoleSchema });
-export const removeMemberInputSchema = z.object({ workspaceId: z.string().min(1, 'El ID de agencia es obligatorio'), targetUserId: z.string().min(1, 'El ID de usuario es obligatorio') });
-export const changeItemVisibilityInputSchema = z.object({ workspaceId: z.string().min(1, 'El ID de espacio es obligatorio'), itemId: z.string().min(1, 'El ID del elemento es obligatorio'), itemType: z.enum(['note', 'todo'] as const, { message: 'Tipo de elemento inválido' }), visibility: itemVisibilitySchema });
+export const revokeInvitationInputSchema = z.object({ workspaceId: safeId('El ID de agencia es obligatorio'), invitationId: safeId('El ID de invitación es obligatorio') });
+export const changeMemberRoleInputSchema = z.object({ workspaceId: safeId('El ID de agencia es obligatorio'), targetUserId: safeId('El ID de usuario es obligatorio'), nextRole: workspaceRoleSchema });
+export const removeMemberInputSchema = z.object({ workspaceId: safeId('El ID de agencia es obligatorio'), targetUserId: safeId('El ID de usuario es obligatorio') });
+export const changeItemVisibilityInputSchema = z.object({ workspaceId: safeId('El ID de espacio es obligatorio'), itemId: safeId('El ID del elemento es obligatorio'), itemType: z.enum(['note', 'todo'] as const, { message: 'Tipo de elemento inválido' }), visibility: itemVisibilitySchema });
+
+export const inviteMemberActionSchema = z.object({ workspaceId: safeIdentifierSchema.optional(), email: emailField, role: invitationRoleSchema });
+export const revokeInvitationActionSchema = z.object({ workspaceId: safeIdentifierSchema.optional(), invitationId: safeIdentifierSchema });
+export const acceptInvitationActionSchema = z.object({ token: z.string() });
+export const changeMemberRoleActionSchema = z.object({ workspaceId: safeIdentifierSchema.optional(), targetUserId: safeIdentifierSchema, role: workspaceRoleSchema });
+export const removeMemberActionSchema = z.object({ workspaceId: safeIdentifierSchema.optional(), targetUserId: safeIdentifierSchema });
+export const changeNoteVisibilityActionSchema = z.object({ noteId: safeIdentifierSchema, visibility: itemVisibilitySchema });
+export const changeTodoVisibilityActionSchema = z.object({ todoId: safeIdentifierSchema, visibility: itemVisibilitySchema });
 
 // Preferencias visuales por persona del espacio de Hoy (#83). Mismos valores que los check de public.user_preferences.
 export const wallpaperSchema = z.enum(['contornos', 'patron', 'tinta', 'grafito', 'puntos', 'cuadricula', 'aurora', 'hubis', 'arena', 'aurora-polar', 'bosque-de-niebla', 'dunas-de-cobre', 'herbario-de-tinta', 'jardin-japones', 'jardin-submarino', 'lluvia-en-casa', 'luz-de-cantera', 'marea-lenta', 'papel-plegado', 'refugio-alpino', 'tokio-nocturno', 'imagen'] as const, { message: 'Fondo inválido' });

@@ -17,4 +17,5 @@ next-env.d.ts
 
 # Archivos locales de agentes (#172)
 .agents/
+.claude/
 apps/web/AGENTS.md

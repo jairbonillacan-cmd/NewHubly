@@ -124,10 +124,13 @@ describe("Enlaces de los correos: /auth/confirm, registro con bienvenida y nombr
     expect(await hasActiveSessionAction()).toBe(false);
   });
 
-  it("/login explica los enlaces caducados o inválidos e ignora cualquier otro valor", () => {
+  it("/login explica los enlaces caducados o inválidos e ignora cualquier otro valor o propiedad heredada", () => {
     expect(linkErrorMessage("?error=enlace-caducado")).toMatch(/caducó o ya se usó/);
     expect(linkErrorMessage("?error=enlace-invalido")).toMatch(/no es válido/);
     expect(linkErrorMessage("?error=<script>")).toBeNull();
+    expect(linkErrorMessage("?error=constructor")).toBeNull();
+    expect(linkErrorMessage("?error=toString")).toBeNull();
+    expect(linkErrorMessage("?error=__proto__")).toBeNull();
     expect(linkErrorMessage("")).toBeNull();
   });
 

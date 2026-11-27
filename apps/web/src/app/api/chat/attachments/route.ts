@@ -3,19 +3,11 @@ import { SessionExpiredError } from "../../../../server/composition/auth";
 import {
   ChatAttachmentError, commitChatAttachmentUploads, listSignedChatMessageAttachments, reserveChatAttachmentUploads,
 } from "../../../../server/composition/chat-attachments";
+import { isJsonContentType, isSameOriginRequest } from "../../../../server/composition/http";
 
 export const dynamic = "force-dynamic";
 const privateHeaders = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
 const json = (value: unknown, status = 200) => Response.json(value, { status, headers: privateHeaders });
-
-function sameOrigin(request: Request): boolean {
-  const source = request.headers.get("origin");
-  if (!source) return false;
-  const target = new URL(request.url);
-  if (source === target.origin) return true;
-  const host = request.headers.get("host"), scheme = request.headers.get("x-forwarded-proto") ?? target.protocol.slice(0, -1);
-  return Boolean(host) && (scheme === "https" || scheme === "http") && source === `${scheme}://${host}`;
-}
 
 function failed(error: unknown): Response {
   if (error instanceof SessionExpiredError) return json({ error: "Tu sesión caducó." }, 401);
@@ -44,8 +36,8 @@ export async function GET(request: Request): Promise<Response> {
 
 // Solo JSON: el archivo sube directo a Storage con una URL firmada (op "reserve") y el servidor lo sanea al confirmar (op "commit").
 export async function POST(request: Request): Promise<Response> {
-  if (!sameOrigin(request)) return json({ error: "La solicitud de adjuntos no está permitida." }, 403);
-  if (request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "application/json") {
+  if (!isSameOriginRequest(request)) return json({ error: "La solicitud de adjuntos no está permitida." }, 403);
+  if (!isJsonContentType(request)) {
     return json({ error: "La solicitud de adjuntos debe enviarse como JSON." }, 415);
   }
   const body: unknown = await request.json().catch(() => null);

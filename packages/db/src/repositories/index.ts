@@ -31,6 +31,10 @@ export interface WorkspaceRepository {
 
 const toIso = (d: Date | string): string => (d instanceof Date ? d.toISOString() : new Date(d).toISOString());
 const toOptIso = (d: unknown): string | null => (d instanceof Date || typeof d === "string" ? toIso(d) : null);
+/** Escapa comodines de LIKE/ILIKE (\, %, _) para buscar texto literal en Postgres. */
+export function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
 const unwrapPg = async <T>(p: Promise<T>): Promise<T> => { try { return await p; } catch (e) { throw (e as { cause?: unknown })?.cause instanceof Error ? (e as { cause: Error }).cause : e; } };
 const mapInvitationRow = (r: Record<string, unknown>): WorkspaceInvitationRecord => ({
   id: String(r.id), workspaceId: String(r.workspace_id ?? r.workspaceId), email: String(r.email), role: r.role as "admin" | "editor" | "viewer",
@@ -63,7 +67,7 @@ export class DrizzleNoteRepository implements NoteRepository {
       if (filter?.isArchived !== undefined) conds.push(eq(notes.isArchived, filter.isArchived));
       if (filter?.visibility !== undefined) conds.push(eq(notes.visibility, filter.visibility));
       if (filter?.query?.trim()) {
-        const q = `%${filter.query.trim()}%`;
+        const q = `%${escapeLikePattern(filter.query.trim())}%`;
         const searchCond = or(ilike(notes.title, q), ilike(notes.content, q));
         if (searchCond) conds.push(searchCond);
       }
@@ -206,11 +210,14 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     return unwrapPg(withUserContext(this.claims, async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${this.claims.sub}))`);
       const members = await tx.select().from(workspaceMembers).where(eq(workspaceMembers.userId, this.claims.sub)).limit(20);
-      if (members.length > 1) {
+      if (members.length > 0) {
         const personal = await tx.execute<{ id: string }>(sql`select w.id from public.workspaces w join public.workspace_members m on m.workspace_id = w.id where m.user_id = ${this.claims.sub}::uuid and w.kind = 'personal' limit 1`);
         if (personal[0]?.id) return personal[0].id;
+        if (members.length === 1 && members[0]?.workspaceId) {
+          const [ws] = await tx.select().from(workspaces).where(eq(workspaces.id, members[0].workspaceId)).limit(1);
+          if (ws && ws.kind !== "agency") return members[0].workspaceId;
+        }
       }
-      if (members[0]?.workspaceId) return members[0].workspaceId;
       const name = defaultName.trim() || "Mi Espacio";
       const res = await tx.execute<{ id: string }>(sql`select private.create_personal_workspace(${name}, null) as id`);
       if (!res[0]?.id) throw new Error("No se pudo provisionar el espacio personal");

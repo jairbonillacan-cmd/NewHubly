@@ -33,11 +33,20 @@ export async function revokePendingWorkspaceInvitation(ctx: InvitationContext, i
 }
 
 export async function acceptWorkspaceInvitationByToken(rawInputToken: string, db?: InvitationContext["db"]): Promise<{ workspaceId: string }> {
-  const cleaned = rawInputToken.includes("#") ? rawInputToken.slice(rawInputToken.lastIndexOf("#") + 1) : rawInputToken;
+  const cleaned = typeof rawInputToken === "string"
+    ? (rawInputToken.includes("#") ? rawInputToken.slice(rawInputToken.lastIndexOf("#") + 1) : rawInputToken)
+    : rawInputToken;
   const { rawToken } = acceptInvitationInputSchema.parse({ rawToken: cleaned });
   const { claims } = await getVerifiedServerSession();
-  const workspaceId = await new DrizzleWorkspaceRepository(claims, db).acceptInvitation(rawToken);
+  const wsRepo = new DrizzleWorkspaceRepository(claims, db);
+  const workspaceId = await wsRepo.acceptInvitation(rawToken);
   await persistActiveWorkspaceCookie(workspaceId);
+  // Garantiza un espacio personal para reubicar notas/pendientes privados si la persona sale de la agencia (NV-1).
+  try {
+    await wsRepo.ensurePersonalWorkspace();
+  } catch (err) {
+    console.error("No se pudo aprovisionar el espacio personal tras aceptar invitación", err);
+  }
   return { workspaceId };
 }
 
