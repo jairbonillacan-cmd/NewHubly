@@ -4,7 +4,7 @@ import { createNoteSchema, presenceStatusSchema, type PresenceStatus, createTodo
 import {
   acceptWorkspaceInvitationSafely, archiveNoteUseCase, changeMemberRoleUseCase, changeNoteVisibilityUseCase,
   changeTodoVisibilityUseCase, createAgencyWorkspaceUseCase, createNoteUseCase, createTodoFromNoteUseCase,
-  createTodoUseCase, ensureAuthenticatedWorkspace, exportDataUseCase, getUserPreferencesUseCase, issueWorkspaceInvitation, listAllTodosUseCase, listNotesUseCase,
+  createTodoUseCase, ensureAuthenticatedWorkspace, exportDataUseCase, getUserPreferencesUseCase, issueWorkspaceInvitation, listDashboardTodosUseCase, listNotesUseCase,
   listPendingInvitationsUseCase, listTodosUseCase, listUserWorkspacesUseCase, listWorkspaceMembersUseCase,
   WallpaperImageError, persistActiveWorkspaceCookie, pinNoteUseCase, removeOrLeaveMemberUseCase, removeUserWallpaper, revokePendingWorkspaceInvitation, saveUserPreferencesUseCase,
   signUserWallpaper, uploadUserWallpaper, loadUserProfile, removeUserAvatar, saveUserDisplayName, saveUserPresence, uploadUserAvatar,
@@ -43,7 +43,7 @@ export async function loadWorkspaceDashboardAction(workspaceId?: string): Promis
   const chatEnabled = activeWorkspace.kind === "agency" && isChatEnabled(activeWorkspace.id);
   const [notes, todos, userWorkspaces, members, pendingInvitations, preferences, profile, chat] = await Promise.all([
     listNotesUseCase(ctx)(),
-    listAllTodosUseCase(ctx)(),
+    listDashboardTodosUseCase(ctx)(),
     listUserWorkspacesUseCase(ctx)(),
     listWorkspaceMembersUseCase(ctx)(),
     listPendingInvitationsUseCase(ctx)(),
