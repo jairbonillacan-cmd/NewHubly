@@ -204,4 +204,48 @@ describe("Fase 1B · Roles de agencia, invitaciones, visibilidad, reubicación y
     await db.delete(workspaces).where(eq(workspaces.id, agencyBId));
     expect(await db.select().from(workspaces).where(eq(workspaces.id, agencyBId))).toEqual([]);
   });
+
+  it("7. Endurecimiento auditoría (issue 295): índice user_id, tope notes.content 100k y reubicación NV-1 sin espacio personal previo", async () => {
+    const idxRows = await db.execute<{ indexname: string }>(
+      sql`select indexname from pg_indexes where schemaname = 'public' and tablename = 'workspace_members' and indexname = 'workspace_members_user_workspace_idx'`,
+    );
+    expect(idxRows).toHaveLength(1);
+
+    await expectPgError(
+      () => withUserContext({ sub: ownerA, role: "authenticated" }, (tx) =>
+        tx.insert(notes).values({ workspaceId: agencyAId, createdBy: ownerA, visibility: "private", title: "Demasiado larga", content: "x".repeat(100_001) }),
+      ),
+      /notes_content_max_len/,
+    );
+
+    const invitedOnly = crypto.randomUUID();
+    const invitedEmail = `invited-only-${runId}@hubly.local`;
+    const invToken = `tok-nv1-${runId}`;
+    await db.execute(sql`insert into auth.users (id, email, email_confirmed_at) values (${invitedOnly}::uuid, ${invitedEmail}, now()) on conflict (id) do nothing`);
+    await withUserContext({ sub: ownerA, role: "authenticated" }, (tx) => insertInv(tx, agencyAId, invitedEmail, "editor", invToken, ownerA));
+    await withUserContext({ sub: invitedOnly, role: "authenticated" }, (tx) => tx.execute(sql`select private.accept_workspace_invitation(${invToken})`));
+
+    const [privNote, privTodo] = await withUserContext({ sub: invitedOnly, role: "authenticated" }, async (tx) => {
+      const [n] = await tx.insert(notes).values({ workspaceId: agencyAId, createdBy: invitedOnly, visibility: "private", title: "Nota NV1" }).returning();
+      const [t] = await tx.insert(todos).values({ workspaceId: agencyAId, createdBy: invitedOnly, visibility: "private", noteId: n!.id, title: "Todo NV1" }).returning();
+      return [n!, t!];
+    });
+
+    await withUserContext({ sub: invitedOnly, role: "authenticated" }, (tx) =>
+      tx.delete(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, agencyAId), eq(workspaceMembers.userId, invitedOnly))),
+    );
+
+    await withUserContext({ sub: invitedOnly, role: "authenticated" }, async (tx) => {
+      const personalRows = await tx.execute<{ id: string }>(
+        sql`select w.id from public.workspaces w join public.workspace_members m on m.workspace_id = w.id where m.user_id = ${invitedOnly}::uuid and w.kind = 'personal'`,
+      );
+      expect(personalRows).toHaveLength(1);
+      const personalId = personalRows[0]!.id;
+      const [movedNote] = await tx.select().from(notes).where(eq(notes.id, privNote.id));
+      const [movedTodo] = await tx.select().from(todos).where(eq(todos.id, privTodo.id));
+      expect(movedNote?.workspaceId).toBe(personalId);
+      expect(movedTodo?.workspaceId).toBe(personalId);
+      expect(movedTodo?.noteId).toBe(privNote.id);
+    });
+  });
 });

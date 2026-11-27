@@ -14,7 +14,10 @@ export const workspaceMembers = pgTable("workspace_members", {
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
   userId: uuid("user_id").notNull(), role: text("role", { enum: ["owner", "admin", "editor", "viewer"] }).notNull().default("owner"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [primaryKey({ columns: [t.workspaceId, t.userId] })]);
+}, (t) => [
+  primaryKey({ columns: [t.workspaceId, t.userId] }),
+  index("workspace_members_user_workspace_idx").on(t.userId, t.workspaceId),
+]);
 
 export const workspaceInvitations = pgTable("workspace_invitations", {
   id: uuid("id").primaryKey().defaultRandom(),
