@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 import { createNoteSaveQueue, type NoteSavePayload } from "../src/components/note-save-queue";
-import { mergeChatPollResult, mergeChatUnreadMentions } from "../src/components/WorkspaceScreen";
+import { mergeChatPollResult, mergeChatUnreadMentions, mergeReloadedNotes } from "../src/components/WorkspaceScreen";
 
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
@@ -72,6 +72,72 @@ describe("Cola serializada de autoguardado de notas (issue 290)", () => {
     expect(persist).toHaveBeenCalledTimes(2);
     expect(persist).toHaveBeenLastCalledWith({ id: "n-1", title: "T", content: "Texto recuperado", expectedVersion: 3 });
     expect(onSaved).toHaveBeenCalledWith({ id: "n-1", title: "T", content: "Texto recuperado", version: 4 }, false);
+  });
+
+  it("permite invocar retry() de forma síncrona dentro de onError y usa los cierres más recientes al fusionar ediciones", async () => {
+    const queue = createNoteSaveQueue<{ id: string; title: string; content: string; version: number }>();
+    const first = deferred<{ id: string; title: string; content: string; version: number }>();
+    const firstPersist = vi.fn(() => first.promise);
+    const latestPersist = vi.fn()
+      .mockRejectedValueOnce(new Error("Corte breve"))
+      .mockResolvedValueOnce({ id: "n-1", title: "T2", content: "C2", version: 3 });
+    const latestSaved = vi.fn();
+    let syncRetryPromise: Promise<void> | null = null;
+
+    const p1 = queue.enqueue("n-1", "T1", "C1", 1, firstPersist, {
+      onSaving: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+    });
+    const p2 = queue.enqueue("n-1", "T2", "C2", 1, latestPersist, {
+      onSaving: vi.fn(),
+      onSaved: latestSaved,
+      onError: (_id, _err, retry) => { syncRetryPromise = retry(); },
+    });
+
+    first.resolve({ id: "n-1", title: "T1", content: "C1", version: 2 });
+    await Promise.all([p1, p2]);
+    expect(syncRetryPromise).not.toBeNull();
+    await syncRetryPromise;
+
+    expect(firstPersist).toHaveBeenCalledTimes(1);
+    expect(latestPersist).toHaveBeenCalledTimes(2);
+    expect(latestPersist).toHaveBeenLastCalledWith({ id: "n-1", title: "T2", content: "C2", expectedVersion: 2 });
+    expect(latestSaved).toHaveBeenCalledWith({ id: "n-1", title: "T2", content: "C2", version: 3 }, false);
+  });
+
+  it("clear() invalida por generación los guardados en vuelo al cambiar de espacio y mergeReloadedNotes preserva borradores activos en el mismo espacio", async () => {
+    const queue = createNoteSaveQueue<{ id: string; title: string; content: string; version: number }>();
+    const inFlightSave = deferred<{ id: string; title: string; content: string; version: number }>();
+    const onSaved = vi.fn();
+    const onError = vi.fn();
+
+    const pending = queue.enqueue("n-a", "Espacio A", "Texto A", 1, () => inFlightSave.promise, {
+      onSaving: vi.fn(),
+      onSaved,
+      onError,
+    });
+    expect(queue.isActive("n-a")).toBe(true);
+    queue.clear();
+    inFlightSave.reject(new Error("Fallo tardío de espacio anterior"));
+    await pending;
+
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+    expect(queue.isActive("n-a")).toBe(false);
+
+    const merged = mergeReloadedNotes(
+      [{ id: "n-1", title: "Local", content: "Borrador sin subir", version: 1 }],
+      [
+        { id: "n-1", title: "Servidor", content: "Viejo", version: 1 },
+        { id: "n-2", title: "Otra", content: "Fresca", version: 2 },
+      ],
+      (id) => id === "n-1",
+    );
+    expect(merged).toEqual([
+      { id: "n-1", title: "Local", content: "Borrador sin subir", version: 1 },
+      { id: "n-2", title: "Otra", content: "Fresca", version: 2 },
+    ]);
   });
 });
 

@@ -32,6 +32,26 @@ import { Wallpaper } from "./Wallpaper";
 const TOAST_MS = 5000;
 const BACK_TO_HUB_LABEL = "Volver al Hub";
 const CHAT_PALETTE_EXAMPLES = [BACK_TO_HUB_LABEL, "Equipo e invitaciones", "Editar perfil"] as const;
+
+/** Calcula qué pendientes aparecieron después de cargar el espacio activo; al cambiar de espacio devuelve vacío. */
+export function computeFreshTodoIds(
+  todos: readonly Pick<EspacioTodo, "id">[],
+  initialIds: ReadonlySet<string>,
+  sameWorkspace: boolean,
+): Set<string> {
+  if (!sameWorkspace) return new Set();
+  return new Set(todos.filter((todo) => !initialIds.has(todo.id)).map((todo) => todo.id));
+}
+
+/** Registra un único listener `keydown` estable delegando siempre al manejador más reciente. */
+export function attachStableKeydownListener(
+  target: Pick<Window, "addEventListener" | "removeEventListener">,
+  getHandler: () => (event: KeyboardEvent) => void,
+): () => void {
+  const onKeyDown = (event: KeyboardEvent) => getHandler()(event);
+  target.addEventListener("keydown", onKeyDown);
+  return () => target.removeEventListener("keydown", onKeyDown);
+}
 /** Ancho a partir del cual se usa la distribución de escritorio (coincide con el punto «lg» de Tailwind). */
 const DESKTOP_MIN_WIDTH = 1024;
 
@@ -241,13 +261,19 @@ export function EspacioHoy(props: EspacioHoyProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const desktopCapture = useRef<HTMLInputElement>(null);
   const mobileCapture = useRef<HTMLInputElement>(null);
-  const initialIdsWorkspace = useRef(activeWorkspace.id);
-  const initialIds = useRef(new Set(todos.map((todo) => todo.id)));
-  if (initialIdsWorkspace.current !== activeWorkspace.id) {
-    initialIdsWorkspace.current = activeWorkspace.id;
-    initialIds.current = new Set(todos.map((todo) => todo.id));
-  }
-  const freshIds = useMemo(() => new Set(todos.filter((todo) => !initialIds.current.has(todo.id)).map((todo) => todo.id)), [todos]);
+  const [initialIdsState, setInitialIdsState] = useState<{ wsId: string; ids: ReadonlySet<string> }>(() => ({
+    wsId: activeWorkspace.id,
+    ids: new Set(todos.map((todo) => todo.id)),
+  }));
+  useEffect(() => {
+    if (initialIdsState.wsId !== activeWorkspace.id) {
+      setInitialIdsState({ wsId: activeWorkspace.id, ids: new Set(todos.map((todo) => todo.id)) });
+    }
+  }, [activeWorkspace.id, initialIdsState.wsId, todos]);
+  const freshIds = useMemo(
+    () => computeFreshTodoIds(todos, initialIdsState.ids, initialIdsState.wsId === activeWorkspace.id),
+    [todos, initialIdsState, activeWorkspace.id],
+  );
 
   // La opacidad elegida se aplica como variable CSS del contenedor; es un valor calculado en tiempo de ejecución.
   useEffect(() => {
@@ -407,14 +433,13 @@ export function EspacioHoy(props: EspacioHoyProps) {
     ...(dock ? [{ key: dock.entry.shortcut, label: "Escribir un pendiente", run: focusCapture }, ...dock.actions] : []),
   ];
 
-  const shortcutsRef = useRef(shortcuts);
-  shortcutsRef.current = shortcuts;
-
+  const shortcutHandler = createShortcutRegistry(shortcuts);
+  const shortcutHandlerRef = useRef(shortcutHandler);
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => createShortcutRegistry(shortcutsRef.current)(event);
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+    shortcutHandlerRef.current = shortcutHandler;
+  });
+
+  useEffect(() => attachStableKeydownListener(window, () => shortcutHandlerRef.current), []);
 
   const hoyPanel = (className: string) => (
     <HoyPanel

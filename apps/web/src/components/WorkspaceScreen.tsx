@@ -135,6 +135,20 @@ const toEspacioNote = (n: WorkspaceNote, ws: WorkspaceSummary | undefined, userI
 };
 const toEspacioWorkspace = (w: WorkspaceSummary): EspacioWorkspace => ({ id: w.id, name: w.name, kind: w.kind, role: w.role });
 
+/** Al recargar el mismo espacio, conserva el borrador local de notas que siguen guardándose o en cola (issue 290). */
+export function mergeReloadedNotes<TNote extends { id: string; title: string; content: string }>(
+  prevNotes: readonly TNote[],
+  freshNotes: readonly TNote[],
+  isActive: (noteId: string) => boolean,
+): TNote[] {
+  const prevById = new Map(prevNotes.map((note) => [note.id, note]));
+  return freshNotes.map((note) => {
+    if (!isActive(note.id)) return note;
+    const local = prevById.get(note.id);
+    return local ? { ...note, title: local.title, content: local.content } : note;
+  });
+}
+
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialTodos = [], initialNotes = [], initialActionError = null,
@@ -204,6 +218,10 @@ export function WorkspaceScreen({
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
   const enqueueSwitch = useRef(createLatestWins()).current;
   const noteSaveQueue = useRef(createNoteSaveQueue<WorkspaceNote>()).current;
+  const activeWorkspaceIdRef = useRef<string | undefined>(wsId);
+  useEffect(() => {
+    activeWorkspaceIdRef.current = wsId;
+  }, [wsId]);
   const [noteStatus, setNoteStatus] = useState<Record<string, NoteSaveState>>({});
   const redirectLogin = () => { if (onLoginRedirect) onLoginRedirect(); else if (typeof window !== "undefined") window.location.assign("/login"); };
   const runSafe = (fallbackMsg: string, fn: () => Promise<void>) => executeProtectedAction(fallbackMsg, fn, redirectLogin, setActionError);
@@ -286,6 +304,8 @@ export function WorkspaceScreen({
   };
 
   const handleSaveNote = (id: string, nextTitle: string, nextContent: string) => {
+    const originWsId = wsId;
+    if (originWsId !== activeWorkspaceIdRef.current) return;
     const note = notes.find((n) => n.id === id); if (!note) return;
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, title: nextTitle, content: nextContent } : n)));
     void noteSaveQueue.enqueue(
@@ -295,14 +315,14 @@ export function WorkspaceScreen({
       note.version,
       (payload) => (onSaveNote
         ? onSaveNote({ ...note, version: payload.expectedVersion }, payload.title, payload.content)
-        : saveNoteAction(payload, wsId)),
+        : saveNoteAction(payload, originWsId)),
       {
         onSaving: (noteId) => {
           setActionError(null);
           setNoteStatus((prev) => ({ ...prev, [noteId]: "saving" }));
         },
         onSaved: (saved, hasMorePending) => {
-          // Si ya hay un texto local más nuevo en cola, actualiza solo la versión/metadatos para no pisarlo (#290).
+          // Si ya hay un texto local más nuevo en cola, actualiza solo la versión/metadatos para no pisarlo (issue 290).
           setNotes((prev) => prev.map((n) => (n.id === saved.id
             ? (hasMorePending ? { ...n, version: saved.version, updatedAt: saved.updatedAt } : saved)
             : n)));
@@ -348,11 +368,20 @@ export function WorkspaceScreen({
 
   const reload = async (nextWsId?: string, onApplied?: () => void) => {
     const fresh = await loadWorkspaceDashboardAction(nextWsId);
-    if (chatMode && (fresh.activeWorkspace.id !== wsId || !fresh.chat)) { window.location.assign("/hub"); return; }
+    const sameWorkspace = fresh.activeWorkspace.id === wsId;
+    if (chatMode && (!sameWorkspace || !fresh.chat)) { window.location.assign("/hub"); return; }
     setChat(fresh.chat ?? null);
+    activeWorkspaceIdRef.current = fresh.activeWorkspace.id;
     setActiveWs(fresh.activeWorkspace); setWorkspaces(fresh.workspaces); setMembers(fresh.members); setInvitations(fresh.pendingInvitations);
-    noteSaveQueue.clear();
-    setNotes(fresh.notes); setTodos(fresh.todos); setNoteStatus({});
+    if (sameWorkspace) {
+      setNotes((prev) => mergeReloadedNotes(prev, fresh.notes, noteSaveQueue.isActive));
+      setNoteStatus((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => noteSaveQueue.isActive(id))));
+    } else {
+      noteSaveQueue.clear();
+      setNotes(fresh.notes);
+      setNoteStatus({});
+    }
+    setTodos(fresh.todos);
     onApplied?.();
   };
   /** Cambia de espacio en orden: lo anterior se oculta ya, y los datos nuevos y el fin del cambio llegan en una sola actualización. */
