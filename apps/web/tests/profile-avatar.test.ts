@@ -117,5 +117,21 @@ describe("Firma de avatares de compañeros con sesión autenticada (Issue 203, A
     const fallbackUrls = await signCoworkerAvatars([{ id: anaId, hasAvatar: true }]);
     expect(singleCalls).toEqual([`${anaId}/foto`]);
     expect(fallbackUrls.get(anaId)).toBe(`https://storage.test/single/${anaId}/foto?exp=3600`);
+
+    // Si createSignedUrls rechaza con excepción en lugar de devolver { error }, también cae al fallback individual.
+    setSupabaseServerClientFactoryForTests(() => ({
+      storage: {
+        from: () => ({
+          createSignedUrls: async () => { throw new Error("network boom"); },
+          createSignedUrl: async (path: string, seconds: number) => ({
+            data: { signedUrl: `https://storage.test/recovered/${path}?exp=${seconds}` },
+            error: null,
+          }),
+        }),
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any);
+    const recovered = await signCoworkerAvatars([{ id: betoId, hasAvatar: true }]);
+    expect(recovered.get(betoId)).toBe(`https://storage.test/recovered/${betoId}/foto?exp=3600`);
   });
 });

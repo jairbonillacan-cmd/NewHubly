@@ -173,7 +173,10 @@ export function MessageList({
     visibleRef.current();
   }, [conversation.id, loading, loadingOlder, messages]);
 
+  const prevUnreadMentions = useRef(unreadMentionMessageIds);
   useEffect(() => {
+    if (prevUnreadMentions.current === unreadMentionMessageIds) return;
+    prevUnreadMentions.current = unreadMentionMessageIds;
     if (!loading) visibleRef.current();
   }, [loading, unreadMentionMessageIds]);
 

@@ -9,7 +9,7 @@ import { signOutAction } from "../src/actions/auth";
 import { HoyPage } from "../src/app/(workspace)/hub/page";
 import {
   TZ_REFRESH_STORAGE_KEY, type ActionErrorState, WorkspaceScreen, classifyTodoItemForView,
-  executeProtectedAction, itemPermissions, shouldTriggerQuickCaptureShortcut, syncTimeZoneAndMaybeRefresh,
+  executeProtectedAction, itemPermissions, settleOverdueBatch, shouldTriggerQuickCaptureShortcut, syncTimeZoneAndMaybeRefresh,
 } from "../src/components/WorkspaceScreen";
 import { createSystemClock, isValidIanaTimeZone, setClockNowForTests, setSupabaseServerClientFactoryForTests, setTimeZoneResolverForTests, setWorkspaceDbForTests } from "../src/server/composition";
 
@@ -184,5 +184,31 @@ describe("Agencias en Hoy: permisos de interfaz por elemento (#64, #78)", () => 
       activeWorkspace: { id: agency.id, name: agency.name },
       workspaces: [{ id: personal.id, kind: "personal" }, { id: agency.id, kind: "agency" }],
     });
+  });
+
+  it("reprograma vencidos en paralelo preservando en remaining solo los fallidos para reintentar (issue 292)", async () => {
+    const remaining = new Set(["t-1", "t-2", "t-3"]);
+    let failSecond = true;
+    const called: string[] = [];
+    const updateOne = async (id: string) => {
+      called.push(id);
+      if (id === "t-2" && failSecond) throw new Error("Error temporal");
+      return { dueDate: "2026-11-05" };
+    };
+
+    const first = await settleOverdueBatch(remaining, updateOne);
+    expect(first.updates.get("t-1")).toBe("2026-11-05");
+    expect(first.updates.get("t-3")).toBe("2026-11-05");
+    expect(first.updates.has("t-2")).toBe(false);
+    expect(first.firstError).toBeInstanceOf(Error);
+    expect([...remaining]).toEqual(["t-2"]);
+
+    failSecond = false;
+    called.length = 0;
+    const retry = await settleOverdueBatch(remaining, updateOne);
+    expect(called).toEqual(["t-2"]);
+    expect(retry.firstError).toBeNull();
+    expect(retry.updates.get("t-2")).toBe("2026-11-05");
+    expect([...remaining]).toEqual([]);
   });
 });

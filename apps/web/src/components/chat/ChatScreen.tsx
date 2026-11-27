@@ -404,7 +404,7 @@ export function ChatScreen({
     };
   }, [accessLost, api, currentId, handleFatalAccess, loadDirectory, revokeConversation, select, userId, workspaceName]);
 
-  async function submit(input: ChatViewCommand): Promise<boolean> {
+  const submit = useCallback(async (input: ChatViewCommand): Promise<boolean> => {
     const controller = new AbortController();
     mutations.current.add(controller);
     setActionError(null);
@@ -426,7 +426,7 @@ export function ChatScreen({
     } finally {
       mutations.current.delete(controller);
     }
-  }
+  }, [api, select, workspaceId]);
 
   async function send() {
     const id = currentId;
@@ -456,7 +456,7 @@ export function ChatScreen({
     return await submit({ kind: "send", conversationId: id, retryKey: crypto.randomUUID(), body: text, threadRootId: rootMessageId });
   }
 
-  async function toggleReaction(messageId: string, emoji: string): Promise<boolean> {
+  const toggleReaction = useCallback(async (messageId: string, emoji: string): Promise<boolean> => {
     const id = active.current;
     if (!id) return false;
     try {
@@ -467,7 +467,7 @@ export function ChatScreen({
       if (hasStatus(error, 401) || hasStatus(error, 404)) refresh.current();
       return false;
     }
-  }
+  }, [api, workspaceId]);
 
   /** Aviso de «escribiendo» con enfriamiento de 3 s (el servidor también lo limita). */
   function sendTyping() {

@@ -105,16 +105,20 @@ export async function signCoworkerAvatars(
     const bucket = (await createSupabaseServerClient()).storage.from(AVATAR_BUCKET);
     const items = toSign.map((id) => ({ id, path: avatarObjectPath(id.trim()) }));
     if (typeof bucket.createSignedUrls === "function") {
-      const { data, error } = await bucket.createSignedUrls(items.map((item) => item.path), AVATAR_SIGNED_URL_SECONDS);
-      if (!error && Array.isArray(data)) {
-        const byPath = new Map<string, string | null>();
-        for (const row of data) {
-          if (row.path) byPath.set(row.path, row.error || !row.signedUrl ? null : row.signedUrl);
+      try {
+        const { data, error } = await bucket.createSignedUrls(items.map((item) => item.path), AVATAR_SIGNED_URL_SECONDS);
+        if (!error && Array.isArray(data)) {
+          const byPath = new Map<string, string | null>();
+          for (const row of data) {
+            if (row.path) byPath.set(row.path, row.error || !row.signedUrl ? null : row.signedUrl);
+          }
+          for (const item of items) {
+            result.set(item.id, byPath.get(item.path) ?? null);
+          }
+          return result;
         }
-        for (const item of items) {
-          result.set(item.id, byPath.get(item.path) ?? null);
-        }
-        return result;
+      } catch {
+        // Si el lote falla con excepción, se recurre a la firma individual en paralelo.
       }
     }
     await Promise.all(
