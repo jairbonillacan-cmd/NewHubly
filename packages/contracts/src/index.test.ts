@@ -24,6 +24,12 @@ describe('Contracts: Zod schemas', () => {
     expect(booleanFlagSchema.safeParse('true').success).toBe(false);
     expect(noteFilterSchema.safeParse({ query: 'hola', isPinned: true }).success).toBe(true);
     expect(noteFilterSchema.safeParse({ query: 'x'.repeat(201) }).success).toBe(false);
+    expect(updateNoteSchema.safeParse({ id: 'nota-1\nINJECTED', expectedVersion: 1 }).success).toBe(false);
+    expect(updateTodoSchema.safeParse({ id: 'todo-1\nINJECTED' }).success).toBe(false);
+    expect(createTodoSchema.safeParse({ title: 'A', noteId: 'nota-1\nINJECTED' }).success).toBe(false);
+    expect(changeItemVisibilityInputSchema.safeParse({ workspaceId: 'w-1', itemId: 'n-1\nX', itemType: 'note', visibility: 'private' }).success).toBe(false);
+    expect(changeMemberRoleInputSchema.safeParse({ workspaceId: 'w-1', targetUserId: 'u-1\nX', nextRole: 'editor' }).success).toBe(false);
+    expect(removeMemberInputSchema.safeParse({ workspaceId: 'w-1', targetUserId: 'u-1\nX' }).success).toBe(false);
   });
 
   it('valida pendientes y exportDataSchema con valores por defecto y rechazos', () => {

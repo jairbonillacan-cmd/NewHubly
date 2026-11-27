@@ -40,10 +40,11 @@ export async function saveUserPresence(userId: string, status: PresenceStatus): 
   return status;
 }
 
-/** Limpia caracteres de control/bidi y espacios repetidos, corta al máximo y rechaza vacíos. */
+/** Limpia caracteres de control/bidi/invisibles y espacios repetidos, corta al máximo y rechaza vacíos. */
 export function normalizeDisplayName(input: string): string | null {
   const sanitized = input
-    .replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, "")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, DISPLAY_NAME_MAX);

@@ -1,6 +1,12 @@
 "use server";
 import type { NoteFilter } from "@hubly/application";
-import { booleanFlagSchema, createNoteSchema, noteFilterSchema, presenceStatusSchema, safeIdentifierSchema, todoViewSchema, type PresenceStatus, createTodoSchema, exportDataSchema, updateNoteSchema, updateTodoSchema, updateUserPreferencesSchema, type CreateNoteInput, type CreateTodoInput, type ExportData, type UpdateNoteInput, type UpdateTodoInput, type UpdateUserPreferencesInput, type UserPreferences } from "@hubly/contracts";
+import {
+  acceptInvitationActionSchema, booleanFlagSchema, changeMemberRoleActionSchema, changeNoteVisibilityActionSchema,
+  changeTodoVisibilityActionSchema, createAgencyInputSchema, createNoteSchema, inviteMemberActionSchema, noteFilterSchema,
+  presenceStatusSchema, removeMemberActionSchema, revokeInvitationActionSchema, safeIdentifierSchema, todoViewSchema,
+  type PresenceStatus, createTodoSchema, exportDataSchema, updateNoteSchema, updateTodoSchema, updateUserPreferencesSchema,
+  type CreateNoteInput, type CreateTodoInput, type ExportData, type UpdateNoteInput, type UpdateTodoInput, type UpdateUserPreferencesInput, type UserPreferences,
+} from "@hubly/contracts";
 import {
   acceptWorkspaceInvitationSafely, archiveNoteUseCase, changeMemberRoleUseCase, changeNoteVisibilityUseCase,
   changeTodoVisibilityUseCase, createAgencyWorkspaceUseCase, createNoteUseCase, createTodoFromNoteUseCase,
@@ -96,6 +102,7 @@ export async function listNotesAction(filter?: NoteFilter, workspaceId?: string)
         ...(parsed.isPinned !== undefined ? { isPinned: parsed.isPinned } : {}),
         ...(parsed.isArchived !== undefined ? { isArchived: parsed.isArchived } : {}),
         ...(parsed.visibility !== undefined ? { visibility: parsed.visibility } : {}),
+        ...(parsed.query !== undefined ? { query: parsed.query } : {}),
       }
     : undefined;
   return listNotesUseCase(await ensureAuthenticatedWorkspace(workspaceId))(cleanFilter);
@@ -107,7 +114,8 @@ export async function exportWorkspaceAction(workspaceId?: string): Promise<{ jso
   return { jsonFilename: `hubly-export-${date}.json`, mdFilename: `hubly-export-${date}.md`, jsonContent: JSON.stringify(validated, null, 2), markdownContent: res.markdown, data: validated };
 }
 export async function createAgencyWorkspaceAction(input: { name: string; slug?: string | null }): Promise<WorkspaceSummary> {
-  return createAgencyWorkspaceUseCase(await ensureAuthenticatedWorkspace())(input);
+  const parsed = createAgencyInputSchema.parse(input);
+  return createAgencyWorkspaceUseCase(await ensureAuthenticatedWorkspace())({ name: parsed.name, ...(parsed.slug !== undefined ? { slug: parsed.slug } : {}) });
 }
 export async function selectActiveWorkspaceAction(workspaceId: string): Promise<WorkspaceSummary> {
   const ctx = await ensureAuthenticatedWorkspace(safeIdentifierSchema.parse(workspaceId));
@@ -115,26 +123,36 @@ export async function selectActiveWorkspaceAction(workspaceId: string): Promise<
   return { id: ctx.workspaceId, name: ctx.workspaceName, slug: ctx.workspaceSlug ?? ctx.workspaceId, kind: ctx.workspaceKind, role: ctx.role };
 }
 export async function inviteWorkspaceMemberAction(input: { workspaceId?: string; email: string; role: "admin" | "editor" | "viewer" }): Promise<{ invitation: WorkspaceInvitationSummary; invitationPath: string }> {
-  return issueWorkspaceInvitation(await ensureAuthenticatedWorkspace(input.workspaceId), { email: input.email, role: input.role });
+  const parsed = inviteMemberActionSchema.parse(input);
+  return issueWorkspaceInvitation(await ensureAuthenticatedWorkspace(parsed.workspaceId), { email: parsed.email, role: parsed.role });
 }
 export async function revokeWorkspaceInvitationAction(input: { workspaceId?: string; invitationId: string }): Promise<void> {
-  return revokePendingWorkspaceInvitation(await ensureAuthenticatedWorkspace(input.workspaceId), input.invitationId);
+  const parsed = revokeInvitationActionSchema.parse(input);
+  return revokePendingWorkspaceInvitation(await ensureAuthenticatedWorkspace(parsed.workspaceId), parsed.invitationId);
 }
 /** Devuelve un resultado con código en vez de lanzar: así el aviso en español llega también en producción. */
 export async function acceptWorkspaceInvitationAction(input: { token: string }): Promise<AcceptInvitationResult> {
-  return acceptWorkspaceInvitationSafely(input.token);
+  const parsed = acceptInvitationActionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, code: "INVALIDA", message: "La invitación no es válida, ya se usó, se revocó o venció. Pide un enlace nuevo a quien administra la agencia." };
+  }
+  return acceptWorkspaceInvitationSafely(parsed.data.token);
 }
 export async function changeWorkspaceMemberRoleAction(input: { workspaceId?: string; targetUserId: string; role: "owner" | "admin" | "editor" | "viewer" }): Promise<void> {
-  return changeMemberRoleUseCase(await ensureAuthenticatedWorkspace(input.workspaceId))(input.targetUserId, input.role);
+  const parsed = changeMemberRoleActionSchema.parse(input);
+  return changeMemberRoleUseCase(await ensureAuthenticatedWorkspace(parsed.workspaceId))(parsed.targetUserId, parsed.role);
 }
 export async function removeOrLeaveWorkspaceMemberAction(input: { workspaceId?: string; targetUserId: string }): Promise<{ leftCurrentWorkspace: boolean }> {
-  return removeOrLeaveMemberUseCase(await ensureAuthenticatedWorkspace(input.workspaceId))(input.targetUserId);
+  const parsed = removeMemberActionSchema.parse(input);
+  return removeOrLeaveMemberUseCase(await ensureAuthenticatedWorkspace(parsed.workspaceId))(parsed.targetUserId);
 }
 export async function changeNoteVisibilityAction(input: { noteId: string; visibility: "private" | "workspace" }, workspaceId?: string): Promise<WorkspaceNote> {
-  return changeNoteVisibilityUseCase(await ensureAuthenticatedWorkspace(workspaceId))(input.noteId, input.visibility);
+  const parsed = changeNoteVisibilityActionSchema.parse(input);
+  return changeNoteVisibilityUseCase(await ensureAuthenticatedWorkspace(workspaceId))(parsed.noteId, parsed.visibility);
 }
 export async function changeTodoVisibilityAction(input: { todoId: string; visibility: "private" | "workspace" }, workspaceId?: string): Promise<WorkspaceTodo> {
-  return changeTodoVisibilityUseCase(await ensureAuthenticatedWorkspace(workspaceId))(input.todoId, input.visibility);
+  const parsed = changeTodoVisibilityActionSchema.parse(input);
+  return changeTodoVisibilityUseCase(await ensureAuthenticatedWorkspace(workspaceId))(parsed.todoId, parsed.visibility);
 }
 
 /** Guarda las preferencias visuales de la persona de la sesión (#83). Solo puede tocar las suyas: lo impone RLS. */

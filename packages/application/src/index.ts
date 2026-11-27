@@ -19,7 +19,7 @@ import {
 export interface Clock { now(): Date; todayString(): string; }
 export interface IdGenerator { generate(): string; }
 export interface AppContext { workspaceId: string; userId: string; role?: WorkspaceRole | undefined; }
-export interface NoteFilter { isPinned?: boolean; isArchived?: boolean; visibility?: ItemVisibility; }
+export interface NoteFilter { isPinned?: boolean; isArchived?: boolean; visibility?: ItemVisibility; query?: string; }
 export interface TodoFilter { noteId?: string | null; isDone?: boolean; visibility?: ItemVisibility; }
 
 export interface NoteRepository {
@@ -51,7 +51,8 @@ export class InMemoryNoteRepository implements NoteRepository {
   private items = new Map<string, Note>();
   async findById(id: string) { return this.items.get(id) ?? null; }
   async findByWorkspace(wId: string, uId: string, f?: NoteFilter) {
-    return Array.from(this.items.values()).filter(n => n.workspaceId === wId && (n.createdBy === uId || getEffectiveVisibility(n) === 'workspace') && (f?.isPinned === undefined || n.isPinned === f.isPinned) && (f?.isArchived === undefined || n.isArchived === f.isArchived) && (f?.visibility === undefined || getEffectiveVisibility(n) === f.visibility));
+    const q = f?.query?.trim().toLowerCase();
+    return Array.from(this.items.values()).filter(n => n.workspaceId === wId && (n.createdBy === uId || getEffectiveVisibility(n) === 'workspace') && (f?.isPinned === undefined || n.isPinned === f.isPinned) && (f?.isArchived === undefined || n.isArchived === f.isArchived) && (f?.visibility === undefined || getEffectiveVisibility(n) === f.visibility) && (!q || n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)));
   }
   async save(n: Note) { this.items.set(n.id, n); } async delete(id: string) { this.items.delete(id); }
 }
