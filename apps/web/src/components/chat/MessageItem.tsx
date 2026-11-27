@@ -2,12 +2,23 @@
 
 import type { ChatMessage, ChatParticipant } from "@hubly/contracts";
 import { Button, EmojiPicker, Icon, TextArea } from "@hubly/ui";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChatAvatar, personName, type ChatViewCommand } from "./MemberList";
 
 const control = "min-h-11";
-// Hora en la zona del navegador, como el resto de la app.
-const hhmm = (iso: string) => new Intl.DateTimeFormat("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+const EMPTY_PEOPLE_MAP = new Map<string, ChatParticipant>();
+// Hora en la zona del navegador, como el resto de la app; se reutiliza el formateador por zona horaria.
+let cachedTimeFormatter: { tz: string; fmt: Intl.DateTimeFormat } | null = null;
+function hhmm(iso: string): string {
+  const tz = typeof process !== "undefined" ? (process.env.TZ ?? "") : "";
+  if (!cachedTimeFormatter || cachedTimeFormatter.tz !== tz) {
+    cachedTimeFormatter = {
+      tz,
+      fmt: new Intl.DateTimeFormat("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false }),
+    };
+  }
+  return cachedTimeFormatter.fmt.format(new Date(iso));
+}
 const normalizeMentionKey = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
 export const QUICK_REACTIONS = ["👍", "❤️", "😂", "🎉", "👀", "🚀"] as const;
@@ -190,14 +201,14 @@ export interface MessageItemProps {
   onToggleReaction?: ((messageId: string, emoji: string) => Promise<boolean | void> | boolean | void) | undefined;
 }
 
-export function MessageItem({
+export const MessageItem = React.memo(function MessageItem({
   entry, name, person, people, viewerId, isOwn = false, writable = true, canEdit,
   grouped = false, isNew = false, highlighted = false, now, quotedMessage, quotedAuthorName,
   reactions, reactionError, initialActionsOpen = false, initialPickerOpen = false,
   onCommand, onReply, onOpenThread, onJumpToMessage, onToggleReaction,
 }: MessageItemProps) {
   const effectiveViewerId = viewerId ?? (isOwn ? entry.authorId : "");
-  const peopleMap = people ?? new Map<string, ChatParticipant>();
+  const peopleMap = people ?? EMPTY_PEOPLE_MAP;
   const [mode, setMode] = useState<"edit" | "remove" | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(initialActionsOpen);
@@ -251,8 +262,15 @@ export function MessageItem({
     ?? (quotedMessage ? (quotedMessage.authorId === effectiveViewerId ? "Tú" : personName(quotedMessage.authorId, peopleMap.get(quotedMessage.authorId))) : "Mensaje original");
   const quotedBody = quotedMessage === undefined ? "Mensaje original" : quotedMessage === null || quotedMessage.body === null ? "Mensaje eliminado" : quotedMessage.body;
   const displayedError = localError?.message ?? reactionError ?? null;
-  const mentionsMe = messageMentionsViewer(entry, peopleMap, effectiveViewerId);
-  const bodySegments = entry.body !== null ? parseMessageMentions(entry.body, peopleMap, effectiveViewerId) : [];
+  const bodySegments = useMemo(
+    () => (entry.body !== null ? parseMessageMentions(entry.body, peopleMap, effectiveViewerId) : []),
+    [entry.body, peopleMap, effectiveViewerId],
+  );
+  const mentionsMe = useMemo(() => {
+    if (!effectiveViewerId || entry.body === null) return false;
+    if (entry.mentionsViewer || entry.unreadMention || entry.mentionedUserIds?.includes(effectiveViewerId)) return true;
+    return bodySegments.some((seg) => seg.isMention && seg.mentionsViewer);
+  }, [effectiveViewerId, entry.body, entry.mentionsViewer, entry.unreadMention, entry.mentionedUserIds, bodySegments]);
 
   return <li ref={item} id={`chat-msg-${entry.id}`} data-message-id={entry.id} tabIndex={-1}
     data-grouped={grouped ? "true" : undefined} data-highlighted={highlighted ? "true" : undefined}
@@ -357,4 +375,4 @@ export function MessageItem({
       </div>}
     </div>
   </li>;
-}
+});

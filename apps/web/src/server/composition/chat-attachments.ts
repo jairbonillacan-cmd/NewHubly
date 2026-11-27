@@ -144,8 +144,13 @@ export function sanitizeChatAttachment(input: Uint8Array, rawName = "adjunto"): 
   return { bytes, mimeType, fileName, byteSize: bytes.length, width: null, height: null };
 }
 
-async function signAttachmentObject(objectPath: string, fileName: string): Promise<{ url: string; downloadUrl: string } | null> {
-  const bucket = (await createSupabaseServerClient()).storage.from(CHAT_ATTACHMENTS_BUCKET);
+type ChatAttachmentBucket = ReturnType<Awaited<ReturnType<typeof createSupabaseServerClient>>["storage"]["from"]>;
+
+async function signAttachmentObject(
+  bucket: ChatAttachmentBucket,
+  objectPath: string,
+  fileName: string,
+): Promise<{ url: string; downloadUrl: string } | null> {
   const [viewRes, dlRes] = await Promise.all([
     bucket.createSignedUrl(objectPath, CHAT_ATTACHMENT_SIGNED_URL_SECONDS),
     bucket.createSignedUrl(objectPath, CHAT_ATTACHMENT_SIGNED_URL_SECONDS, { download: fileName }),
@@ -188,17 +193,17 @@ export async function reserveChatAttachmentUploads(params: {
     }
     return out;
   });
-  const reservations: ReservedChatAttachmentUpload[] = [];
-  for (const r of rows) {
-    const quarantinePath = r.quarantine_path || chatAttachmentQuarantinePath(workspaceId, conversationId, r.id);
-    const signed = await bucket.createSignedUploadUrl(quarantinePath);
-    if (signed.error || !signed.data?.signedUrl) throw new ChatAccessError();
-    reservations.push({
-      id: r.id, fileName: r.file_name ?? "adjunto", mimeType: r.mime_type, byteSize: r.byte_size,
-      quarantinePath, signedUrl: signed.data.signedUrl, token: signed.data.token ?? "",
-    });
-  }
-  return reservations;
+  return Promise.all(
+    rows.map(async (r): Promise<ReservedChatAttachmentUpload> => {
+      const quarantinePath = r.quarantine_path || chatAttachmentQuarantinePath(workspaceId, conversationId, r.id);
+      const signed = await bucket.createSignedUploadUrl(quarantinePath);
+      if (signed.error || !signed.data?.signedUrl) throw new ChatAccessError();
+      return {
+        id: r.id, fileName: r.file_name ?? "adjunto", mimeType: r.mime_type, byteSize: r.byte_size,
+        quarantinePath, signedUrl: signed.data.signedUrl, token: signed.data.token ?? "",
+      };
+    }),
+  );
 }
 
 export async function commitChatAttachmentUploads(params: {
@@ -254,13 +259,13 @@ export async function commitChatAttachmentUploads(params: {
   // Registro correcto: la copia sin sanear se borra por la API de Storage (la política permite borrar la
   // cuarentena de un adjunto ya registrado). Si falla, no se pierde el adjunto; queda para limpieza posterior.
   await bucket.remove(quarantinePaths).catch(() => undefined);
-  const results: SignedChatAttachment[] = [];
-  for (const item of prepared) {
-    const signed = await signAttachmentObject(item.finalPath, item.fileName);
-    if (!signed) throw new ChatAccessError();
-    results.push({ id: item.id, messageId, fileName: item.fileName, mimeType: item.mimeType, byteSize: item.byteSize, width: item.width, height: item.height, ...signed });
-  }
-  return results;
+  return Promise.all(
+    prepared.map(async (item): Promise<SignedChatAttachment> => {
+      const signed = await signAttachmentObject(bucket, item.finalPath, item.fileName);
+      if (!signed) throw new ChatAccessError();
+      return { id: item.id, messageId, fileName: item.fileName, mimeType: item.mimeType, byteSize: item.byteSize, width: item.width, height: item.height, ...signed };
+    }),
+  );
 }
 
 export class ChatAttachmentPurgeError extends Error {
@@ -306,11 +311,14 @@ export async function listSignedChatMessageAttachments(params: { workspaceId: st
       sql`select id, message_id, object_path, file_name, mime_type, byte_size, width, height from private.chat_attachments where workspace_id = ${workspaceId}::uuid and conversation_id = ${conversationId}::uuid and message_id = ${messageId}::uuid order by created_at asc, id asc`,
     );
   });
-  const out: SignedChatAttachment[] = [];
-  for (const r of rows) {
-    const signed = await signAttachmentObject(r.object_path, r.file_name);
-    if (!signed) throw new ChatAccessError();
-    out.push({ id: r.id, messageId: r.message_id, fileName: r.file_name, mimeType: r.mime_type, byteSize: r.byte_size, width: r.width, height: r.height, ...signed });
-  }
-  return out;
+  const list = [...rows];
+  if (list.length === 0) return [];
+  const bucket = (await createSupabaseServerClient()).storage.from(CHAT_ATTACHMENTS_BUCKET);
+  return Promise.all(
+    list.map(async (r): Promise<SignedChatAttachment> => {
+      const signed = await signAttachmentObject(bucket, r.object_path, r.file_name);
+      if (!signed) throw new ChatAccessError();
+      return { id: r.id, messageId: r.message_id, fileName: r.file_name, mimeType: r.mime_type, byteSize: r.byte_size, width: r.width, height: r.height, ...signed };
+    }),
+  );
 }

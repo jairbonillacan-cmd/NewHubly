@@ -6,7 +6,7 @@ import { ChatView, type BrowserNotificationPermission, type ChatViewCommand } fr
 import { readBrowserNotificationPermission } from "./ConversationHeader";
 import { conversationName, personName } from "./MemberList";
 import { messageMentionsViewer } from "./MessageItem";
-import { CHAT_POLL_MS, incomingChatNotice, incomingMainMessages, mergeChatMessages, startChatPolling } from "./sync";
+import { CHAT_POLL_MS, conversationsEqual, incomingChatNotice, incomingMainMessages, mergeChatMessages, startChatPolling } from "./sync";
 import { ChatRequestError, chatTransport, resolveChatPollIntervalMs } from "./transport";
 
 export interface ChatScreenProps {
@@ -318,7 +318,7 @@ export function ChatScreen({
         }
         const update = await api.sync(currentId, cursor, signal);
         if (signal.aborted) return false;
-        setConversations(update.conversations);
+        setConversations((previous) => (conversationsEqual(previous, update.conversations) ? previous : update.conversations));
         setListReady(true);
         if (currentId && !update.conversationAvailable) {
           revokeConversation(currentId, "La conversación ya no está disponible.");
@@ -404,7 +404,7 @@ export function ChatScreen({
     };
   }, [accessLost, api, currentId, handleFatalAccess, loadDirectory, revokeConversation, select, userId, workspaceName]);
 
-  async function submit(input: ChatViewCommand): Promise<boolean> {
+  const submit = useCallback(async (input: ChatViewCommand): Promise<boolean> => {
     const controller = new AbortController();
     mutations.current.add(controller);
     setActionError(null);
@@ -426,7 +426,7 @@ export function ChatScreen({
     } finally {
       mutations.current.delete(controller);
     }
-  }
+  }, [api, select, workspaceId]);
 
   async function send() {
     const id = currentId;
@@ -456,7 +456,7 @@ export function ChatScreen({
     return await submit({ kind: "send", conversationId: id, retryKey: crypto.randomUUID(), body: text, threadRootId: rootMessageId });
   }
 
-  async function toggleReaction(messageId: string, emoji: string): Promise<boolean> {
+  const toggleReaction = useCallback(async (messageId: string, emoji: string): Promise<boolean> => {
     const id = active.current;
     if (!id) return false;
     try {
@@ -467,7 +467,7 @@ export function ChatScreen({
       if (hasStatus(error, 401) || hasStatus(error, 404)) refresh.current();
       return false;
     }
-  }
+  }, [api, workspaceId]);
 
   /** Aviso de «escribiendo» con enfriamiento de 3 s (el servidor también lo limita). */
   function sendTyping() {
@@ -559,8 +559,20 @@ export function ChatScreen({
     return () => controller.abort();
   }, [api, currentId, threadRootId]);
 
-  const mainMessages = messages.filter((entry) => !entry.threadRootId && (before === null || entry.number >= before));
-  const threadMessages = threadRootId ? messages.filter((entry) => entry.threadRootId === threadRootId) : [];
+  const mainMessages = useMemo(
+    () => messages.filter((entry) => !entry.threadRootId && (before === null || entry.number >= before)),
+    [messages, before],
+  );
+  const threadMessages = useMemo(
+    () => (threadRootId ? messages.filter((entry) => entry.threadRootId === threadRootId) : []),
+    [messages, threadRootId],
+  );
+  const handleReplyToMessage = useCallback((message: { id: string } | null) => {
+    setReplyingToId(message?.id ?? null);
+  }, []);
+  const handleOpenThread = useCallback((message: { id: string } | null) => {
+    setThreadRootId(message?.id ?? null);
+  }, []);
 
   if (accessLost) return <section className="hubly-glass rounded-2xl p-4" aria-labelledby="chat-access">
     <h1 id="chat-access" className="text-lg font-semibold">Chat</h1>
@@ -576,8 +588,8 @@ export function ChatScreen({
     unreadMentionsCount={unreadMentionsCount} unreadMentionMessageIds={mentionIds}
     reactionsByMessage={reactionsByMessage} activeThreadRootId={threadRootId} threadMessages={threadMessages}
     replyingToMessageId={replyingToId}
-    onReplyToMessage={(message) => setReplyingToId(message?.id ?? null)}
-    onOpenThread={(message) => setThreadRootId(message?.id ?? null)}
+    onReplyToMessage={handleReplyToMessage}
+    onOpenThread={handleOpenThread}
     onSendThreadReply={sendThreadReply} onToggleReaction={toggleReaction}
     notificationPermission={notificationPermission}
     onRequestNotificationPermission={requestNotificationPermission}

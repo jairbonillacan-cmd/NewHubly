@@ -115,6 +115,28 @@ const toEspacioNote = (n: WorkspaceNote, ws: WorkspaceSummary | undefined, userI
 };
 const toEspacioWorkspace = (w: WorkspaceSummary): EspacioWorkspace => ({ id: w.id, name: w.name, kind: w.kind, role: w.role });
 
+/** Actualiza en paralelo un lote de pendientes vencidos y conserva en `remaining` solo los que fallaron (issue 292). */
+export async function settleOverdueBatch(
+  remaining: Set<string>,
+  updateOne: (id: string) => Promise<{ dueDate?: string | null | undefined }>,
+): Promise<{ updates: Map<string, string | null>; firstError: unknown }> {
+  const batch = [...remaining];
+  const settled = await Promise.allSettled(
+    batch.map(async (id) => ({ id, updated: await updateOne(id) })),
+  );
+  const updates = new Map<string, string | null>();
+  let firstError: unknown = null;
+  for (const outcome of settled) {
+    if (outcome.status === "fulfilled") {
+      updates.set(outcome.value.id, outcome.value.updated.dueDate ?? null);
+      remaining.delete(outcome.value.id);
+    } else if (firstError === null) {
+      firstError = outcome.reason;
+    }
+  }
+  return { updates, firstError };
+}
+
 export function WorkspaceScreen({
   initialStatus = "ready", errorMessage = "No se pudo cargar tu espacio de trabajo.",
   todayDate = "2026-11-04", initialTimezone, initialTodos = [], initialNotes = [], initialActionError = null,
@@ -242,11 +264,14 @@ export function WorkspaceScreen({
       movingOverdueRef.current = true;
       setMovingOverdue(true);
       try {
-        for (const id of remaining) {
-          const updated = await updateTodoAction({ id, dueDate: todayDate }, wsId);
-          setTodos((prev) => prev.map((todo) => todo.id === id ? { ...todo, dueDate: updated.dueDate } : todo));
-          remaining.delete(id);
+        const { updates, firstError } = await settleOverdueBatch(
+          remaining,
+          (id) => updateTodoAction({ id, dueDate: todayDate }, wsId),
+        );
+        if (updates.size > 0) {
+          setTodos((prev) => prev.map((todo) => (updates.has(todo.id) ? { ...todo, dueDate: updates.get(todo.id) ?? null } : todo)));
         }
+        if (firstError !== null) throw firstError;
       } finally {
         movingOverdueRef.current = false;
         setMovingOverdue(false);

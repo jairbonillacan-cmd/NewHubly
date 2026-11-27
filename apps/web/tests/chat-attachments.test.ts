@@ -238,4 +238,35 @@ describe("Adjuntos de chat: firma binaria, limpieza, cuarentena y ruta privada (
     expect(calls.slice(callsBefore).some((call) => call.startsWith("remove:"))).toBe(false);
     expect(commandSpy).not.toHaveBeenCalled();
   });
+
+  it("reutiliza un único cliente de Supabase al listar y firmar varios adjuntos en paralelo (issue 292)", async () => {
+    let clientCount = 0;
+    process.env.HUBLY_CHAT_PILOT_WORKSPACE_IDS = WS_ID;
+    setSupabaseServerClientFactoryForTests(() => {
+      clientCount += 1;
+      return {
+        auth: { getUser: async () => ({ data: { user: { id: WS_ID, email: "ana@test.local" } }, error: null }) },
+        storage: {
+          from: () => ({
+            createSignedUrl: async (p: string, s: number, opts?: { download?: string | boolean }) => ({
+              data: { signedUrl: `https://storage.test/${p}?exp=${s}${opts?.download ? `&download=${encodeURIComponent(String(opts.download))}` : ""}` },
+              error: null,
+            }),
+          }),
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+    });
+
+    seedStoredAttachment("55555555-5555-4555-8555-555555555551");
+    seedStoredAttachment("55555555-5555-4555-8555-555555555552");
+    seedStoredAttachment("55555555-5555-4555-8555-555555555553");
+
+    const res = await GET(new Request(`http://localhost:3100/api/chat/attachments?workspaceId=${WS_ID}&conversationId=${CONV_ID}&messageId=${MSG_ID}`));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { attachments: Array<{ id: string; url: string; downloadUrl: string }> };
+    expect(body.attachments).toHaveLength(3);
+    // 1 cliente para verificar la sesión + 1 cliente compartido para firmar los 3 adjuntos en paralelo.
+    expect(clientCount).toBe(2);
+  });
 });
