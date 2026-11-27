@@ -97,7 +97,7 @@ describe("Bloques de la landing de marketing (@hubly/ui, issue 101)", () => {
   });
 
   it("las animaciones se apagan con movimiento reducido y no ocultan nada sin JavaScript", () => {
-    const css = readFileSync(tokensCssPath, "utf8");
+    const css = readFileSync(tokensCssPath, "utf8").replace(/\r\n/g, "\n");
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
     expect(css).toMatch(/\.hubly-motion \.hubly-reveal:not\(\[data-visible="true"\]\)/);
     expect(css).not.toMatch(/^\.hubly-reveal:not/m);
