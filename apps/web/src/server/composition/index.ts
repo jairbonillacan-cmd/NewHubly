@@ -2,8 +2,8 @@ import "server-only";
 import { redirect } from "next/navigation";
 import {
   archiveNote, changeTodoVisibility, createNote, createTodo, createTodoFromNote, exportWorkspaceData,
-  getUserPreferences, listNotes, listTodosByView, pinNote, saveUserPreferences, toggleTodoDone, updateNote, updateTodo,
-  type AppContext, type Clock, type IdGenerator, type NoteFilter,
+  getUserPreferences, listNotes, listTodos, listTodosByView, pinNote, saveUserPreferences, toggleTodoDone, updateNote, updateTodo,
+  type AppContext, type Clock, type IdGenerator, type NoteFilter, type TodoFilter,
 } from "@hubly/application";
 import {
   changeItemVisibilityInputSchema, changeMemberRoleInputSchema, createAgencyInputSchema, createNoteSchema, createTodoSchema,
@@ -128,6 +128,8 @@ export const toggleTodoUseCase = (ctx: CompositionContext) => (todoId: string) =
   toggleTodoDone(repos(ctx).todoRepo, repos(ctx).clock, todoId, ctx);
 export const listTodosUseCase = (ctx: CompositionContext) => (view: Parameters<typeof listTodosByView>[2]) =>
   listTodosByView(repos(ctx).todoRepo, repos(ctx).clock, view, ctx);
+export const listAllTodosUseCase = (ctx: CompositionContext) => (filter?: TodoFilter) =>
+  listTodos(repos(ctx).todoRepo, ctx, filter);
 export const createTodoFromNoteUseCase = (ctx: CompositionContext) => (noteId: string, input: Omit<CreateTodoInput, "noteId">) => {
   const { todoRepo, noteRepo, clock } = repos(ctx);
   return createTodoFromNote(todoRepo, noteRepo, clock, systemIdGenerator, noteId, createTodoSchema.omit({ noteId: true }).parse(input), ctx);

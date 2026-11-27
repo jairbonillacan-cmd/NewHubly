@@ -125,6 +125,7 @@ export async function archiveNote(r: NoteRepository, c: Clock, id: string, isArc
 }
 
 export const listNotes = (r: NoteRepository, ctx: AppContext, f?: NoteFilter) => r.findByWorkspace(ctx.workspaceId, ctx.userId, f);
+export const listTodos = (r: TodoRepository, ctx: AppContext, f?: TodoFilter) => r.findByWorkspace(ctx.workspaceId, ctx.userId, f);
 
 export async function createTodo(repo: TodoRepository, clock: Clock, idGen: IdGenerator, input: CreateTodoInput, ctx: AppContext, noteRepo?: NoteRepository): Promise<Todo> {
   const vis = input.visibility ?? 'private', role = roleOf(ctx);

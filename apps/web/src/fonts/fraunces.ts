@@ -21,6 +21,8 @@ export const frauncesLatinExt = localFont({
   ],
   variable: "--font-fraunces-latin-ext",
   display: "swap",
+  // El español usa únicamente el rango latin; evitar preload ahorra ~235 KB en la carga inicial (#291).
+  preload: false,
   adjustFontFallback: false,
   declarations: [{
     prop: "unicode-range",

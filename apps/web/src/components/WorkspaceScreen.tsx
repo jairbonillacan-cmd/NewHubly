@@ -2,6 +2,7 @@
 import { canEditItem, parseQuickCapture, suggestOverdueTodos } from "@hubly/application";
 import { createTodoSchema, type PresenceStatus, type UserPreferences } from "@hubly/contracts";
 import { BienvenidaDialog, EspacioEstado, EspacioHoy, type HerramientaId, type CaptureInput, type EspacioNote, type EspacioTodo, type EspacioVisibility, type EspacioWorkspace, type NoteSaveState } from "@hubly/ui";
+import dynamic from "next/dynamic";
 import React, { useEffect, useRef, useState } from "react";
 import {
   archiveNoteAction, changeNoteVisibilityAction, changeTodoVisibilityAction, changeWorkspaceMemberRoleAction, createAgencyWorkspaceAction,
@@ -12,9 +13,12 @@ import {
 } from "../actions";
 import { signOutAction } from "../actions/auth";
 import { createLatestWins } from "./latest-wins";
-import { ChatScreen, syncDocumentTitleMentions } from "./chat/ChatScreen";
+import { syncDocumentTitleMentions } from "./chat/title-mentions";
 import { ChatRequestError, agencyExportHref, chatTransport } from "./chat/transport";
 import { fromEspacioPreferencias, toEspacioPreferencias } from "./preferences";
+
+// El chat solo se descarga cuando la persona entra a /chat; así /hub y las demás herramientas no cargan su bundle.
+const ChatScreen = dynamic(() => import("./chat/ChatScreen").then((mod) => mod.ChatScreen));
 
 export type ScreenStatus = "loading" | "unauthenticated" | "error" | "ready";
 export type AutosaveState = NoteSaveState;

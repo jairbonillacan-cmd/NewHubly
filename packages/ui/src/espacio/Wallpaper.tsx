@@ -29,12 +29,15 @@ const WALLPAPER_BG: Partial<Record<WallpaperId, string>> = {
 const bgDe = (fondo: WallpaperId) => WALLPAPER_BG[fondo] ?? "bg-(--wallpaper-grafito)";
 
 /** Fondos dibujados con un patrón SVG; el selector reutiliza los mismos patrones en sus miniaturas. */
-const PATTERN_ID: Partial<Record<WallpaperId, string>> = {
-  patron: "hubly-patron-h",
-  puntos: "hubly-patron-puntos",
-  cuadricula: "hubly-patron-cuadricula",
-  hubis: "hubly-patron-hubis",
+type PatternKey = "patron" | "puntos" | "cuadricula" | "hubis";
+const PATTERN_ID: Partial<Record<WallpaperId, PatternKey>> = {
+  patron: "patron",
+  puntos: "puntos",
+  cuadricula: "cuadricula",
+  hubis: "hubis",
 };
+const patternElementId = (key: PatternKey, scope: "bg" | "swatch") =>
+  scope === "bg" ? `hubly-patron-${key === "patron" ? "h" : key}` : `hubly-swatch-patron-${key === "patron" ? "h" : key}`;
 
 /** Silueta de Hubi (cabeza y orejas) a escala 0.12 del isologo; la oreja derecha va en el acento. */
 function HubiSilueta() {
@@ -47,27 +50,37 @@ function HubiSilueta() {
   );
 }
 
-function PatternDefs() {
+/** Genera solo el patrón requerido con un id único por ámbito para evitar IDs SVG duplicados en el DOM. */
+function PatternDef({ pattern, scope }: { pattern: PatternKey; scope: "bg" | "swatch" }) {
+  const id = patternElementId(pattern, scope);
   return (
     <defs>
-      <pattern id="hubly-patron-h" width="132" height="96" patternUnits="userSpaceOnUse" patternTransform="rotate(-8)">
-        <polygon points="20,22 38,22 35,32 17,32" fill="var(--wallpaper-pattern)" />
-        <polygon points="46,22 64,22 61,32 43,32" fill="var(--wallpaper-pattern)" />
-        <polygon points="17,35 67,35 64,45 14,45" fill="var(--wallpaper-pattern-accent)" />
-        <polygon points="14,48 32,48 29,58 11,58" fill="var(--wallpaper-pattern)" />
-        <polygon points="40,48 58,48 55,58 37,58" fill="var(--wallpaper-pattern)" />
-      </pattern>
-      <pattern id="hubly-patron-puntos" width="24" height="24" patternUnits="userSpaceOnUse">
-        <circle cx="12" cy="12" r="1.4" fill="var(--wallpaper-dot)" />
-      </pattern>
-      <pattern id="hubly-patron-cuadricula" width="128" height="128" patternUnits="userSpaceOnUse">
-        <path d="M32 0V128M64 0V128M96 0V128M0 32H128M0 64H128M0 96H128" fill="none" stroke="var(--wallpaper-line)" strokeWidth="1" />
-        <path d="M0 0.5H128M0.5 0V128" fill="none" stroke="var(--wallpaper-line-accent)" strokeWidth="1" />
-      </pattern>
-      <pattern id="hubly-patron-hubis" width="96" height="84" patternUnits="userSpaceOnUse" patternTransform="rotate(-10)">
-        <HubiSilueta />
-        <g transform="translate(48 42)"><HubiSilueta /></g>
-      </pattern>
+      {pattern === "patron" && (
+        <pattern id={id} width="132" height="96" patternUnits="userSpaceOnUse" patternTransform="rotate(-8)">
+          <polygon points="20,22 38,22 35,32 17,32" fill="var(--wallpaper-pattern)" />
+          <polygon points="46,22 64,22 61,32 43,32" fill="var(--wallpaper-pattern)" />
+          <polygon points="17,35 67,35 64,45 14,45" fill="var(--wallpaper-pattern-accent)" />
+          <polygon points="14,48 32,48 29,58 11,58" fill="var(--wallpaper-pattern)" />
+          <polygon points="40,48 58,48 55,58 37,58" fill="var(--wallpaper-pattern)" />
+        </pattern>
+      )}
+      {pattern === "puntos" && (
+        <pattern id={id} width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="12" cy="12" r="1.4" fill="var(--wallpaper-dot)" />
+        </pattern>
+      )}
+      {pattern === "cuadricula" && (
+        <pattern id={id} width="128" height="128" patternUnits="userSpaceOnUse">
+          <path d="M32 0V128M64 0V128M96 0V128M0 32H128M0 64H128M0 96H128" fill="none" stroke="var(--wallpaper-line)" strokeWidth="1" />
+          <path d="M0 0.5H128M0.5 0V128" fill="none" stroke="var(--wallpaper-line-accent)" strokeWidth="1" />
+        </pattern>
+      )}
+      {pattern === "hubis" && (
+        <pattern id={id} width="96" height="84" patternUnits="userSpaceOnUse" patternTransform="rotate(-10)">
+          <HubiSilueta />
+          <g transform="translate(48 42)"><HubiSilueta /></g>
+        </pattern>
+      )}
     </defs>
   );
 }
@@ -122,10 +135,12 @@ export function Wallpaper({ fondo, imagenUrl, preview, animado = true }: { fondo
           <path key={index} d={path.d} fill="none" stroke={path.accent ? "var(--wallpaper-line-accent)" : "var(--wallpaper-line)"} strokeWidth="1.2" />
         ))}
       </svg>
-      <svg className="absolute inset-0 size-full">
-        <PatternDefs />
-        {pattern && <rect width="100%" height="100%" fill={`url(#${pattern})`} />}
-      </svg>
+      {pattern && (
+        <svg className="absolute inset-0 size-full">
+          <PatternDef pattern={pattern} scope="bg" />
+          <rect width="100%" height="100%" fill={`url(#${patternElementId(pattern, "bg")})`} />
+        </svg>
+      )}
     </div>
   );
 }
@@ -151,8 +166,8 @@ export function WallpaperSwatch({ fondo, className = "h-14" }: { fondo: Wallpape
       )}
       {pattern && (
         <svg className="absolute inset-0 size-full">
-          <PatternDefs />
-          <rect width="100%" height="100%" fill={`url(#${pattern})`} />
+          <PatternDef pattern={pattern} scope="swatch" />
+          <rect width="100%" height="100%" fill={`url(#${patternElementId(pattern, "swatch")})`} />
         </svg>
       )}
     </span>

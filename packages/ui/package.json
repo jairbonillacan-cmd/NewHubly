@@ -2,6 +2,7 @@
   "name": "@hubly/ui",
   "private": true,
   "type": "module",
+  "sideEffects": ["*.css", "./src/**/*.css"],
   "exports": {
     ".": "./src/index.ts",
     "./tokens.css": "./src/tokens.css"

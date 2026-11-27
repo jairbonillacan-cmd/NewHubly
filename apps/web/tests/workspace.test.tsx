@@ -21,12 +21,14 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
 
   const setupMockDb = (instant: Date) => {
     const nameOf = (t: unknown) => (t as { [k: symbol]: string })?.[Symbol.for("drizzle:Name")];
+    const tableCounts = new Map<string, number>();
     const tx = {
       execute: vi.fn().mockResolvedValue([]),
       select: vi.fn().mockImplementation(() => ({
         from: (table: unknown) => ({
           where: () => {
             const n = nameOf(table);
+            if (n) tableCounts.set(n, (tableCounts.get(n) ?? 0) + 1);
             const rows = n === "notes"
               ? [{ id: "n-1", workspaceId: "w-1", createdBy: "u-1", title: "Estrategia Q4", content: "Objetivos", isPinned: true, isArchived: false, version: 2, createdAt: instant, updatedAt: instant }]
               : n === "todos"
@@ -42,7 +44,7 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     setWorkspaceDbForTests({ transaction: vi.fn().mockImplementation((cb: (t: typeof tx) => Promise<unknown>) => cb(tx)) } as any);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSupabaseServerClientFactoryForTests(() => ({ auth: { getUser: getUserSpy } }) as any);
-    return getUserSpy;
+    return { getUserSpy, tableCounts };
   };
 
   it("renderiza los 4 estados obligatorios de pantalla terminada (carga, sin sesión, error y listo/vacío), conteos HeroUI y botón Cerrar sesión", async () => {
@@ -78,10 +80,12 @@ describe("Pantalla Hoy conectada a Server Actions, zona horaria local, errores r
     setClockNowForTests(() => instant);
     setTimeZoneResolverForTests(() => "America/Mexico_City");
     expect(createSystemClock("America/Mexico_City").todayIsoDate()).toBe("2026-11-03");
-    const getUserSpy = setupMockDb(instant);
+    const { getUserSpy, tableCounts } = setupMockDb(instant);
 
     const dashboard = await loadWorkspaceDashboardAction("w-1");
     expect(getUserSpy).toHaveBeenCalledTimes(1);
+    // Una sola lectura de todos en lugar de 4 consultas redundantes por vista (issue 291).
+    expect(tableCounts.get("todos")).toBe(1);
     expect(dashboard.todayDate).toBe("2026-11-03");
     expect(dashboard.timezone).toBe("America/Mexico_City");
 
