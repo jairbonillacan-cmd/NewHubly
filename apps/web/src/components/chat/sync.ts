@@ -1,6 +1,28 @@
-import type { ChatMessage } from "@hubly/contracts";
+import type { ChatConversation, ChatMessage } from "@hubly/contracts";
 
 export const CHAT_POLL_MS = 3000;
+
+export function conversationsEqual(a: readonly ChatConversation[], b: readonly ChatConversation[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i]!;
+    const right = b[i]!;
+    if (
+      left.id !== right.id
+      || left.kind !== right.kind
+      || left.slug !== right.slug
+      || left.peerId !== right.peerId
+      || left.archived !== right.archived
+      || left.writable !== right.writable
+      || left.unread !== right.unread
+      || left.changeCursor !== right.changeCursor
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
 
 export function mergeChatMessages(current: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] {
   const rows = new Map(current.map((entry) => [entry.id, entry]));

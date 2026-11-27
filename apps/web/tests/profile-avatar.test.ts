@@ -73,4 +73,49 @@ describe("Firma de avatares de compañeros con sesión autenticada (Issue 203, A
     expect(urls.get(anaId)).toBeNull();
     expect(getClientCreated()).toBe(0);
   });
+
+  it("usa createSignedUrls en un solo lote cuando Storage lo soporta y hace fallback si falla el lote (issue 292)", async () => {
+    const batchCalls: Array<{ paths: string[]; seconds: number }> = [];
+    const singleCalls: string[] = [];
+    let batchFails = false;
+    setSupabaseServerClientFactoryForTests(() => ({
+      storage: {
+        from: () => ({
+          createSignedUrls: async (paths: string[], seconds: number) => {
+            batchCalls.push({ paths, seconds });
+            if (batchFails) return { data: null, error: new Error("batch unavailable") };
+            return {
+              data: paths.map((path) =>
+                path.startsWith(carlaId)
+                  ? { path, signedUrl: "", error: "not found" }
+                  : { path, signedUrl: `https://storage.test/batch/${path}?exp=${seconds}`, error: null },
+              ),
+              error: null,
+            };
+          },
+          createSignedUrl: async (path: string, seconds: number) => {
+            singleCalls.push(path);
+            return { data: { signedUrl: `https://storage.test/single/${path}?exp=${seconds}` }, error: null };
+          },
+        }),
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any);
+
+    const urls = await signCoworkerAvatars([
+      { id: anaId, hasAvatar: true },
+      { id: betoId, hasAvatar: true },
+      { id: carlaId, hasAvatar: true },
+    ]);
+    expect(batchCalls).toEqual([{ paths: [`${anaId}/foto`, `${betoId}/foto`, `${carlaId}/foto`], seconds: AVATAR_SIGNED_URL_SECONDS }]);
+    expect(singleCalls).toHaveLength(0);
+    expect(urls.get(anaId)).toBe(`https://storage.test/batch/${anaId}/foto?exp=3600`);
+    expect(urls.get(betoId)).toBe(`https://storage.test/batch/${betoId}/foto?exp=3600`);
+    expect(urls.get(carlaId)).toBeNull();
+
+    batchFails = true;
+    const fallbackUrls = await signCoworkerAvatars([{ id: anaId, hasAvatar: true }]);
+    expect(singleCalls).toEqual([`${anaId}/foto`]);
+    expect(fallbackUrls.get(anaId)).toBe(`https://storage.test/single/${anaId}/foto?exp=3600`);
+  });
 });

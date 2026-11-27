@@ -49,10 +49,24 @@ export interface CompositionContext extends AppContext {
   timezone: string; todayDate: string; db?: DbInstance;
 }
 
+const DATE_FORMATTER_CACHE = new Map<string, Intl.DateTimeFormat>();
+const MAX_CACHED_DATE_FORMATTERS = 64;
+
+function getIsoDateFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = DATE_FORMATTER_CACHE.get(timeZone);
+  if (!formatter) {
+    if (DATE_FORMATTER_CACHE.size >= MAX_CACHED_DATE_FORMATTERS) DATE_FORMATTER_CACHE.clear();
+    formatter = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+    DATE_FORMATTER_CACHE.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
 export function createSystemClock(timezone = DEFAULT_APP_TIMEZONE): Clock & { todayIsoDate: () => string } {
   const safeTz = isValidIanaTimeZone(timezone) ? timezone.trim() : DEFAULT_APP_TIMEZONE;
+  const formatter = getIsoDateFormatter(safeTz);
   const now = () => (process.env.NODE_ENV === "test" && testClockNowOverride ? testClockNowOverride() : new Date());
-  const todayString = () => new Intl.DateTimeFormat("en-CA", { timeZone: safeTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(now());
+  const todayString = () => formatter.format(now());
   return { now, todayString, todayIsoDate: todayString };
 }
 

@@ -242,11 +242,24 @@ export function WorkspaceScreen({
       movingOverdueRef.current = true;
       setMovingOverdue(true);
       try {
-        for (const id of remaining) {
-          const updated = await updateTodoAction({ id, dueDate: todayDate }, wsId);
-          setTodos((prev) => prev.map((todo) => todo.id === id ? { ...todo, dueDate: updated.dueDate } : todo));
-          remaining.delete(id);
+        const batch = [...remaining];
+        const settled = await Promise.allSettled(
+          batch.map(async (id) => ({ id, updated: await updateTodoAction({ id, dueDate: todayDate }, wsId) })),
+        );
+        const updates = new Map<string, string | null>();
+        let firstError: unknown = null;
+        for (const outcome of settled) {
+          if (outcome.status === "fulfilled") {
+            updates.set(outcome.value.id, outcome.value.updated.dueDate ?? null);
+            remaining.delete(outcome.value.id);
+          } else if (firstError === null) {
+            firstError = outcome.reason;
+          }
         }
+        if (updates.size > 0) {
+          setTodos((prev) => prev.map((todo) => (updates.has(todo.id) ? { ...todo, dueDate: updates.get(todo.id) ?? null } : todo)));
+        }
+        if (firstError !== null) throw firstError;
       } finally {
         movingOverdueRef.current = false;
         setMovingOverdue(false);

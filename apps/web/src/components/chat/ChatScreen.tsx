@@ -6,7 +6,7 @@ import { ChatView, type BrowserNotificationPermission, type ChatViewCommand } fr
 import { readBrowserNotificationPermission } from "./ConversationHeader";
 import { conversationName, personName } from "./MemberList";
 import { messageMentionsViewer } from "./MessageItem";
-import { CHAT_POLL_MS, incomingChatNotice, incomingMainMessages, mergeChatMessages, startChatPolling } from "./sync";
+import { CHAT_POLL_MS, conversationsEqual, incomingChatNotice, incomingMainMessages, mergeChatMessages, startChatPolling } from "./sync";
 import { ChatRequestError, chatTransport, resolveChatPollIntervalMs } from "./transport";
 
 export interface ChatScreenProps {
@@ -318,7 +318,7 @@ export function ChatScreen({
         }
         const update = await api.sync(currentId, cursor, signal);
         if (signal.aborted) return false;
-        setConversations(update.conversations);
+        setConversations((previous) => (conversationsEqual(previous, update.conversations) ? previous : update.conversations));
         setListReady(true);
         if (currentId && !update.conversationAvailable) {
           revokeConversation(currentId, "La conversación ya no está disponible.");
@@ -559,8 +559,20 @@ export function ChatScreen({
     return () => controller.abort();
   }, [api, currentId, threadRootId]);
 
-  const mainMessages = messages.filter((entry) => !entry.threadRootId && (before === null || entry.number >= before));
-  const threadMessages = threadRootId ? messages.filter((entry) => entry.threadRootId === threadRootId) : [];
+  const mainMessages = useMemo(
+    () => messages.filter((entry) => !entry.threadRootId && (before === null || entry.number >= before)),
+    [messages, before],
+  );
+  const threadMessages = useMemo(
+    () => (threadRootId ? messages.filter((entry) => entry.threadRootId === threadRootId) : []),
+    [messages, threadRootId],
+  );
+  const handleReplyToMessage = useCallback((message: { id: string } | null) => {
+    setReplyingToId(message?.id ?? null);
+  }, []);
+  const handleOpenThread = useCallback((message: { id: string } | null) => {
+    setThreadRootId(message?.id ?? null);
+  }, []);
 
   if (accessLost) return <section className="hubly-glass rounded-2xl p-4" aria-labelledby="chat-access">
     <h1 id="chat-access" className="text-lg font-semibold">Chat</h1>
@@ -576,8 +588,8 @@ export function ChatScreen({
     unreadMentionsCount={unreadMentionsCount} unreadMentionMessageIds={mentionIds}
     reactionsByMessage={reactionsByMessage} activeThreadRootId={threadRootId} threadMessages={threadMessages}
     replyingToMessageId={replyingToId}
-    onReplyToMessage={(message) => setReplyingToId(message?.id ?? null)}
-    onOpenThread={(message) => setThreadRootId(message?.id ?? null)}
+    onReplyToMessage={handleReplyToMessage}
+    onOpenThread={handleOpenThread}
     onSendThreadReply={sendThreadReply} onToggleReaction={toggleReaction}
     notificationPermission={notificationPermission}
     onRequestNotificationPermission={requestNotificationPermission}

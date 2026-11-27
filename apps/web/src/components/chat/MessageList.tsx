@@ -2,7 +2,7 @@
 
 import type { ChatConversation, ChatMessage, ChatParticipant } from "@hubly/contracts";
 import { Button } from "@hubly/ui";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { personName, type ChatViewCommand } from "./MemberList";
 import {
   MessageItem, jumpToQuotedMessage, messageMentionsViewer, type ChatMessageView, type ChatReactionSummary,
@@ -52,13 +52,19 @@ export function collectVisibleUnreadMentions(params: {
   return { messageIds, maxMessageNumber };
 }
 
+const DAY_SEPARATOR_FORMATTER = new Intl.DateTimeFormat("es-MX", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
 export function daySeparatorLabel(iso: string, now: Date = new Date()): string {
   const targetKey = dayKey(iso);
   const diff = dayNumber(targetKey) - dayNumber(dayKey(now.toISOString()));
   if (diff === 0) return "Hoy";
   if (diff === -1) return "Ayer";
-  return new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
-    .format(new Date(`${targetKey}T00:00:00Z`));
+  return DAY_SEPARATOR_FORMATTER.format(new Date(`${targetKey}T00:00:00Z`));
 }
 
 type GroupedFields = Pick<ChatMessage, "authorId" | "sentAt">;
@@ -137,14 +143,23 @@ export function MessageList({
     }
   }
 
-  useEffect(() => {
-    window.addEventListener("scroll", visible, { passive: true });
-    document.addEventListener("visibilitychange", visible);
-    return () => {
-      window.removeEventListener("scroll", visible);
-      document.removeEventListener("visibilitychange", visible);
-    };
+  const visibleRef = useRef<() => void>(() => {});
+  const onVisibleEvent = useCallback(() => {
+    visibleRef.current();
+  }, []);
+
+  useLayoutEffect(() => {
+    visibleRef.current = visible;
   });
+
+  useEffect(() => {
+    window.addEventListener("scroll", onVisibleEvent, { passive: true });
+    document.addEventListener("visibilitychange", onVisibleEvent);
+    return () => {
+      window.removeEventListener("scroll", onVisibleEvent);
+      document.removeEventListener("visibilitychange", onVisibleEvent);
+    };
+  }, [onVisibleEvent]);
 
   useLayoutEffect(() => {
     const element = scroll.current;
@@ -155,10 +170,14 @@ export function MessageList({
     } else if (pinned.current && !earlier.current) {
       element.scrollTop = element.scrollHeight;
     }
-    visible();
-  });
+    visibleRef.current();
+  }, [conversation.id, loading, loadingOlder, messages]);
 
-  function handleJump(targetId: string) {
+  useEffect(() => {
+    if (!loading) visibleRef.current();
+  }, [loading, unreadMentionMessageIds]);
+
+  const handleJump = useCallback((targetId: string) => {
     onJumpToMessage?.(targetId);
     const reduced = typeof window !== "undefined" && typeof window.matchMedia === "function"
       && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -166,12 +185,12 @@ export function MessageList({
     setLocalHighlightId(targetId);
     if (highlightTimer.current !== null) clearTimeout(highlightTimer.current);
     highlightTimer.current = setTimeout(() => setLocalHighlightId(null), 1800);
-  }
+  }, [onJumpToMessage]);
 
-  const messagesById = new Map(messages.map((item) => [item.id, item]));
+  const messagesById = useMemo(() => new Map(messages.map((item) => [item.id, item])), [messages]);
   const activeHighlight = highlightedMessageId ?? localHighlightId;
 
-  return <div ref={scroll} onScroll={visible} tabIndex={0} aria-label="Historial de la conversación" className="min-h-0 grow overflow-y-auto px-3">
+  return <div ref={scroll} onScroll={onVisibleEvent} tabIndex={0} aria-label="Historial de la conversación" className="min-h-0 grow overflow-y-auto px-3">
     {hasOlder && <Button variant="ghost" size="sm" className={control} isPending={loadingOlder} onPress={() => {
       if (scroll.current) earlier.current = { height: scroll.current.scrollHeight, top: scroll.current.scrollTop };
       onOlder();

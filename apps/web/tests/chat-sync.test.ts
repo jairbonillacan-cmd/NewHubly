@@ -1,6 +1,6 @@
-import type { ChatMessage } from "@hubly/contracts";
+import type { ChatConversation, ChatMessage } from "@hubly/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { incomingChatNotice, incomingMainMessages, isMessageEndVisible, mergeChatMessages, startChatPolling } from "../src/components/chat/sync";
+import { conversationsEqual, incomingChatNotice, incomingMainMessages, isMessageEndVisible, mergeChatMessages, startChatPolling } from "../src/components/chat/sync";
 import { chatTransport, resolveChatPollIntervalMs } from "../src/components/chat/transport";
 
 const base = {
@@ -137,5 +137,22 @@ describe("Avisos de mensajes nuevos con hilos (issue 204)", () => {
       { id: "e", number: 9, authorId: other, body: null, threadRootId: null },
     ];
     expect(incomingMainMessages(changes, 5, me).map((item) => item.id)).toEqual(["b"]);
+  });
+
+  it("detecta cuando la lista de conversaciones no cambió entre sondeos (issue 292)", () => {
+    const convA: ChatConversation = {
+      id: "00000000-0000-4000-8000-000000000010",
+      kind: "channel",
+      slug: "general",
+      peerId: null,
+      archived: false,
+      writable: true,
+      unread: false,
+      changeCursor: 5,
+    };
+    expect(conversationsEqual([convA], [{ ...convA }])).toBe(true);
+    expect(conversationsEqual([convA], [{ ...convA, unread: true }])).toBe(false);
+    expect(conversationsEqual([convA], [{ ...convA, changeCursor: 6 }])).toBe(false);
+    expect(conversationsEqual([convA], [])).toBe(false);
   });
 });

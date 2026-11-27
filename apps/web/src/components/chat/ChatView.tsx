@@ -2,7 +2,7 @@
 
 import type { ChatConversation, ChatParticipant } from "@hubly/contracts";
 import { Alert, Button } from "@hubly/ui";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Composer, type ComposerProps } from "./Composer";
 import { ChannelForm, ConversationHeader, type BrowserNotificationPermission } from "./ConversationHeader";
 import {
@@ -108,6 +108,17 @@ function ConversationView({ props, conversation, people }: {
     ? (props.threadMessages ?? props.messages.filter((item) => item.threadRootId === threadRoot.id))
     : [];
 
+  const onReplyToMessage = props.onReplyToMessage;
+  const onOpenThread = props.onOpenThread;
+  const handleReply = useCallback((message: ChatMessageView) => {
+    setReplyingToId(message.id);
+    onReplyToMessage?.(message);
+  }, [onReplyToMessage]);
+  const handleOpenThread = useCallback((message: ChatMessageView) => {
+    setThreadRootId(message.id);
+    onOpenThread?.(message);
+  }, [onOpenThread]);
+
   return (
     <div className="flex min-h-0 min-w-0 grow gap-3">
       <section className="hubly-glass flex min-h-0 min-w-0 grow flex-col overflow-hidden rounded-2xl" aria-labelledby="chat-conversation">
@@ -122,8 +133,8 @@ function ConversationView({ props, conversation, people }: {
           unreadMentionMessageIds={props.unreadMentionMessageIds}
           now={props.now} onOlder={props.onOlder} onVisible={props.onVisible}
           onMarkMentionsRead={props.onMarkMentionsRead} onCommand={props.onCommand}
-          onReply={(message) => { setReplyingToId(message.id); props.onReplyToMessage?.(message); }}
-          onOpenThread={(message) => { setThreadRootId(message.id); props.onOpenThread?.(message); }}
+          onReply={handleReply}
+          onOpenThread={handleOpenThread}
           onJumpToMessage={props.onJumpToMessage}
           onToggleReaction={props.onToggleReaction} />
         {replyingTo && conversation.writable && (
@@ -161,7 +172,7 @@ function ConversationView({ props, conversation, people }: {
 }
 
 export function ChatView(props: ChatViewProps) {
-  const people = new Map(props.people.map((person) => [person.id, person]));
+  const people = useMemo(() => new Map(props.people.map((person) => [person.id, person])), [props.people]);
   const conversation = props.conversations.find((entry) => entry.id === props.currentId);
   const rows = props.unreadOnly ? props.conversations.filter((entry) => entry.unread) : props.conversations;
   const unreadCount = props.conversations.filter((entry) => entry.unread).length;
